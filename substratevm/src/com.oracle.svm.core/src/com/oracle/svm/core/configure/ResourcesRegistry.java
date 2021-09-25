@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.configure;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import java.util.Collection;
 import java.util.Locale;
 
@@ -65,7 +67,7 @@ public interface ResourcesRegistry {
 
     void addResourceBundles(ConfigurationCondition condition, String name);
 
-    void addResourceBundle(String basename, Collection<Locale> locales);
+    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
 
-    void addClassResourceBundle(String basename, String className);
+    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
 }

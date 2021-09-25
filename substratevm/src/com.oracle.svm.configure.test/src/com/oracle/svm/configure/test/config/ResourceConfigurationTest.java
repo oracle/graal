@@ -103,12 +103,12 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addResourceBundle(String basename, Collection<Locale> locales) {
+                public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
 
                 }
 
                 @Override
-                public void addClassResourceBundle(String basename, String className) {
+                public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
 
                 }
             };

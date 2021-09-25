@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.function.BiConsumer;
 
@@ -104,6 +103,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         Map<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames"));
         String basename = asString(resource.get("name"), "Missing attribute 'name' in bundle descriptor object");
+        ConfigurationCondition condition = parseCondition(resource);
         Object locales = resource.get("locales");
         if (locales != null) {
             List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
@@ -113,7 +113,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             if (asList.isEmpty()) {
                 throw new JSONParserException("List of locales for " + basename + " is empty");
             }
-            registry.addResourceBundle(basename, asList);
+            registry.addResourceBundles(condition, basename, asList);
         }
         Object classNames = resource.get("classNames");
         if (classNames != null) {
@@ -123,12 +123,12 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             }
             for (Object o : asList) {
                 String className = asString(o, "Elements of 'classNames' must of strings.");
-                registry.addClassResourceBundle(basename, className);
+                registry.addClassBasedResourceBundle(condition, basename, className);
             }
         }
         if (locales == null && classNames == null) {
             /*- If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundle(basename);
+            registry.addResourceBundles(condition, basename);
         }
     }
 

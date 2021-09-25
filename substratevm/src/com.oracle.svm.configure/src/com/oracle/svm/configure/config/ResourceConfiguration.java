@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -66,37 +65,29 @@ public class ResourceConfiguration implements ConfigurationBase {
             configuration.ignoreResourcePattern(condition, pattern);
         }
 
-        @Override
-        public void addResourceBundles(ConfigurationCondition condition, String name) {
-            // TODO extent the API
-            configuration.addBundle(condition, Collections.emptyList(), name, "TODO");
-        }
-
-        public void addResourceBundles(String baseName) {
-            configuration.addBundle(baseName);
+        public void addResourceBundles(ConfigurationCondition condition, String baseName) {
+            configuration.addBundle(condition, baseName);
         }
 
         @Override
-        public void addResourceBundle(String basename, Collection<Locale> locales) {
-            configuration.addBundle(basename, locales);
+        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+            configuration.addBundle(condition, basename, locales);
         }
 
         @Override
-        public void addClassResourceBundle(String basename, String className) {
-            configuration.addClassResourceBundle(basename, className);
+        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+            configuration.addClassResourceBundle(condition, basename, className);
         }
-    }
-
-    private void addClassResourceBundle(String basename, String className) {
-        getOrCreateBundleConfig(basename).classNames.add(className);
     }
 
     public static class BundleConfiguration {
+        public final ConfigurationCondition condition;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        public BundleConfiguration(String baseName) {
+        public BundleConfiguration(ConfigurationCondition condition, String baseName) {
+            this.condition = condition;
             this.baseName = baseName;
         }
     }
@@ -130,24 +121,23 @@ public class ResourceConfiguration implements ConfigurationBase {
         ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
     }
 
-    private void addBundle(String basename, Collection<Locale> locales) {
-        BundleConfiguration config = getOrCreateBundleConfig(basename);
+    public void addBundle(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+        BundleConfiguration config = getOrCreateBundleConfig(condition, basename);
         for (Locale locale : locales) {
             config.locales.add(locale.toLanguageTag());
         }
     }
 
-    private void addBundle(String baseName) {
-        getOrCreateBundleConfig(baseName);
+    private void addBundle(ConfigurationCondition condition, String baseName) {
+        getOrCreateBundleConfig(condition, baseName);
     }
 
-    public void addBundle(ConfigurationCondition condition, List<Pair<String, String>> bundleInfo, String baseName, String queriedLocaleTag) {
-        ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
-        BundleConfiguration config = bundles.get(key);
-        if (config == null) {
-            config = new BundleConfiguration(baseName);
-            bundles.put(key, config);
-        }
+    private void addClassResourceBundle(ConfigurationCondition condition, String basename, String className) {
+        getOrCreateBundleConfig(condition, basename).classNames.add(className);
+    }
+
+    public void addBundle(ConfigurationCondition condition, List<Pair<String, String>> bundleInfo, String baseName) {
+        BundleConfiguration config = getOrCreateBundleConfig(condition, baseName);
         for (Pair<String, String> pair : bundleInfo) {
             String className = pair.getLeft();
             String localeTag = pair.getRight();
@@ -159,8 +149,9 @@ public class ResourceConfiguration implements ConfigurationBase {
         }
     }
 
-    private BundleConfiguration getOrCreateBundleConfig(String baseName) {
-        return bundles.computeIfAbsent(baseName, key -> new BundleConfiguration(baseName));
+    private BundleConfiguration getOrCreateBundleConfig(ConfigurationCondition condition, String baseName) {
+        ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
+        return bundles.computeIfAbsent(key, cond -> new BundleConfiguration(condition, baseName));
     }
 
     public boolean anyResourceMatches(String s) {
@@ -198,7 +189,7 @@ public class ResourceConfiguration implements ConfigurationBase {
         }
         writer.append('}').append(',').newline();
         writer.quote("bundles").append(':');
-        printResourceBundle(writer, bundles.keySet(), Comparator.naturalOrder(), (p, w) -> printResourceBundle(bundles.get(p), w));
+        JsonPrinter.printCollection(writer, bundles.keySet(), ConditionalElement.comparator(), (p, w) -> printResourceBundle(bundles.get(p), w));
         writer.unindent().newline().append('}');
     }
 
