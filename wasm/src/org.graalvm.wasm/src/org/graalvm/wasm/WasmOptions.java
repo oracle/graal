@@ -66,7 +66,7 @@ public class WasmOptions {
         NONE
     }
 
-    public static OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
+    public static final OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
 
     @Option(help = "Whenever to store the constants in a pool or not. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, deprecated = true)//
     public static final OptionKey<ConstantsStorePolicy> StoreConstantsPolicy = new OptionKey<>(ConstantsStorePolicy.NONE, StoreConstantsPolicyOptionType);

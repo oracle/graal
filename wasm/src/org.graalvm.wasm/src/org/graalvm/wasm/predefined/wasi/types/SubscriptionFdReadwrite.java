@@ -59,7 +59,7 @@ public final class SubscriptionFdReadwrite {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 4;
+    public static final int BYTES = 4;
 
     /** Reads the file descriptor on which to wait for it to become ready for reading or writing. */
     public static int readFileDescriptor(Node node, WasmMemory memory, int address) {
