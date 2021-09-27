@@ -434,7 +434,7 @@ final class SVGSamplerOutput {
             result.put("id", sampleId++);
             result.put("i", sample.getPayload().getTierSelfCount(0));
             int compiledSelfHits = 0;
-            for (int i = 0; i < sample.getPayload().getNumberOfTiers(); i++) {
+            for (int i = 1; i < sample.getPayload().getNumberOfTiers(); i++) {
                 compiledSelfHits += sample.getPayload().getTierSelfCount(i);
             }
             result.put("c", compiledSelfHits);
