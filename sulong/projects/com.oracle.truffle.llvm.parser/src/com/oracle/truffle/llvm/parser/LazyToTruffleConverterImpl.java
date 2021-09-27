@@ -29,6 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.io.PrintWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -84,19 +98,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-import org.graalvm.options.OptionValues;
-
-import java.io.PrintWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
@@ -245,7 +246,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             System.out.println();
         }
 
-        return LLVMLanguage.createCallTarget(rootNode);
+        return rootNode.getCallTarget();
     }
 
     private HashSet<Integer> getDebugValues() {

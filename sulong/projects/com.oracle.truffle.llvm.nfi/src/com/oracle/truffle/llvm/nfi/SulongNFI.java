@@ -34,7 +34,6 @@ import java.io.IOException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -127,7 +126,7 @@ public final class SulongNFI extends TruffleLanguage<Env> {
     }
 
     private static CallTarget wrap(SulongNFI nfi, CallTarget target) {
-        return Truffle.getRuntime().createCallTarget(new RootNode(nfi) {
+        return new RootNode(nfi) {
 
             @Child DirectCallNode call = DirectCallNode.create(target);
 
@@ -136,18 +135,18 @@ public final class SulongNFI extends TruffleLanguage<Env> {
                 Object ret = call.call();
                 return new SulongNFILibrary(ret);
             }
-        });
+        }.getCallTarget();
     }
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 throw CompilerDirectives.shouldNotReachHere("illegal access to internal language");
             }
-        });
+        }.getCallTarget();
     }
 
     @Override
