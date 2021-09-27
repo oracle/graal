@@ -647,7 +647,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
                 GraalRuntimeAccessor.NODES.applyPolyglotEngine(rootNode, partialRootNode);
 
-                targets[i] = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(partialRootNode);
+                targets[i] = (OptimizedCallTarget) partialRootNode.getCallTarget();
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);
                 // we know the parameter types for block compilations. No need to check, lets cast
                 // them unsafely.

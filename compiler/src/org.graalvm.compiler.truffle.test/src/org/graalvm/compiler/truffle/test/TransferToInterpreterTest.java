@@ -53,7 +53,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     public void test() {
         RootNode rootNode = new TestRootNode();
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         target.call(0);
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;

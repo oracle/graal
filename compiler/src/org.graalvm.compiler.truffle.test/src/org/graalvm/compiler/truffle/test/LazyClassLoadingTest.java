@@ -55,7 +55,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import com.oracle.truffle.api.Truffle;
+
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -90,7 +90,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     @Test
     public void testClassLoading() throws IOException, InterruptedException {
         setupContext();
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         Assume.assumeFalse(target.getOptionValue(CompileImmediately));
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));

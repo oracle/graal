@@ -107,7 +107,7 @@ public class OSRCancelTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Child TestInstrumentableNode loop = new TestLoopNode();
 
@@ -116,7 +116,7 @@ public class OSRCancelTest {
                     loop.execute(frame);
                     return "";
                 }
-            });
+            }.getCallTarget();
         }
 
     }

@@ -258,7 +258,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             protected synchronized CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance) {
 
                         @Node.Child private volatile BaseNode child = testedCode;
 
@@ -272,7 +272,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
                             return source.createSection(1);
                         }
 
-                    });
+                    }.getCallTarget();
                 }
                 return target;
             }

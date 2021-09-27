@@ -30,8 +30,8 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
-import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -98,7 +98,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").build());
 
         TestLoopRootNode repeatRootNode = new TestLoopRootNode(new RepeatNTimesNode(9));
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(repeatRootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) repeatRootNode.getCallTarget();
         StructuredGraph graph = partialEval(target, new Object[0]);
 
         Stream<IfNode> ifWithInjectedProfile = graph.getNodes().filter(IfNode.class).stream().filter(i -> i.getProfileData().getProfileSource() == ProfileSource.INJECTED);
@@ -120,7 +120,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false").build());
 
         TestLoopRootNode repeatRootNode = new TestLoopRootNode(new RepeatNTimesNode(9));
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(repeatRootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) repeatRootNode.getCallTarget();
         target.prepareForAOT();
 
         StructuredGraph graph = partialEval(target, new Object[0]);
@@ -257,7 +257,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").build());
 
         RootNode rootNode = new TestPropagateInjectedProfileRootNode(new TestRepeatingNode(9, twoEnds, trueContinue));
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         StructuredGraph graph = partialEval(target, new Object[0]);
 
         Stream<IfNode> ifWithInjectedProfile = graph.getNodes().filter(IfNode.class).stream().filter(i -> i.getProfileData().getProfileSource() == ProfileSource.INJECTED);

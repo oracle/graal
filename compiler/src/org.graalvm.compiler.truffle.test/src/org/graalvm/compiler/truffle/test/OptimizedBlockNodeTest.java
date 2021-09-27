@@ -602,7 +602,7 @@ public class OptimizedBlockNodeTest {
 
     private static OptimizedCallTarget createTest(BlockNode<?> block) {
         TestRootNode root = new TestRootNode(block, "Block[" + block.getElements().length + "]");
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         root.accept(new NodeVisitor() {
             @Override
             public boolean visit(Node node) {

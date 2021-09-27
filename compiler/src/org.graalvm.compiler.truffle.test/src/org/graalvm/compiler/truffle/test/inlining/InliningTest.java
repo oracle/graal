@@ -32,7 +32,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -71,8 +70,7 @@ public class InliningTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            final TruffleRuntime runtime = Truffle.getRuntime();
-            final RootCallTarget mustNotInline = runtime.createCallTarget(new RootNode(this) {
+            final RootCallTarget mustNotInline = new RootNode(this) {
 
                 @Override
                 public String toString() {
@@ -84,10 +82,10 @@ public class InliningTest {
                     CompilerDirectives.bailout("This node should not be inlined");
                     return 42;
                 }
-            });
-            return runtime.createCallTarget(new RootNode(this) {
+            }.getCallTarget();
+            return new RootNode(this) {
 
-                @Child DirectCallNode callNode = runtime.createDirectCallNode(mustNotInline);
+                @Child DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(mustNotInline);
 
                 @Override
                 public String toString() {
@@ -103,7 +101,7 @@ public class InliningTest {
                 public Object execute(VirtualFrame frame) {
                     return callNode.call();
                 }
-            });
+            }.getCallTarget();
         }
     }
 }

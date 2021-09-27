@@ -49,7 +49,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -283,7 +282,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             setupContext(Context.newBuilder().option("engine.ForceFrameLivenessAnalysis", "true"));
         }
         RootNode rootNode = rootProvider.get();
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         StructuredGraph graph = null;
         try {
             callTarget.call(args);
