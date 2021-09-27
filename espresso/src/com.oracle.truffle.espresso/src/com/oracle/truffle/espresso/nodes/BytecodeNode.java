@@ -2280,7 +2280,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private Field resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
-        if (field.isRemoved()) {
+        if (field.needsReResolution()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ClassRedefinition.check();
             field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);

@@ -62,6 +62,7 @@ public final class Field extends Member<Type> implements FieldRef {
 
     private final boolean isAddedField;
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
+    private final Assumption needsReResolution = Truffle.getRuntime().createAssumption();
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
@@ -96,10 +97,19 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public void removeByRedefintion() {
         removedByRedefinition.invalidate();
+        needsReResolution.invalidate();
+    }
+
+    public void markNeedsNewResolution() {
+        needsReResolution.invalidate();
     }
 
     public boolean isRemoved() {
         return !removedByRedefinition.isValid();
+    }
+
+    public boolean needsReResolution() {
+        return !needsReResolution.isValid();
     }
 
     public Attribute[] getAttributes() {

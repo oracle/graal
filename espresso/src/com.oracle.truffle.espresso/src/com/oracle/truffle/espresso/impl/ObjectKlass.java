@@ -1253,6 +1253,11 @@ public final class ObjectKlass extends Klass {
             // add new fields to the extension object
             extensionFieldsMetadata.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
             extensionFieldsMetadata.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
+
+            // make sure all new fields trigger re-resolution of fields
+            // with same name + type in the full class hierarchy
+            markForReResolution(packet.detectedChange.getAddedStaticFields());
+            markForReResolution(packet.detectedChange.getAddedInstanceFields());
             noAddedFields.invalidate();
         }
 
@@ -1332,6 +1337,30 @@ public final class ObjectKlass extends Klass {
 
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
+    }
+
+    private void markForReResolution(List<ParserField> addedFields) {
+        for (ParserField addedField : addedFields) {
+            // search the super hierarchy
+            ObjectKlass superClass = getSuperKlass();
+            while (superClass != null) {
+                Field field = superClass.lookupDeclaredField(addedField.getName(), addedField.getType());
+                if (field != null) {
+                    field.markNeedsNewResolution();
+                }
+                superClass = superClass.getSuperKlass();
+            }
+
+            // search in subtypes
+            List<ObjectKlass> klass = getSubTypes();
+            for (ObjectKlass subType : klass) {
+                Field field = subType.lookupDeclaredField(addedField.getName(), addedField.getType());
+                if (field != null) {
+                    field.markNeedsNewResolution();
+                }
+                superClass = superClass.getSuperKlass();
+            }
+        }
     }
 
     // used by some plugins during klass redefitnion
