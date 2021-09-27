@@ -186,6 +186,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
+    public boolean isLatestJVMCI() {
+        return true;
+    }
+
     public abstract ThreadLocalHandshake getThreadLocalHandshake();
 
     @Override
