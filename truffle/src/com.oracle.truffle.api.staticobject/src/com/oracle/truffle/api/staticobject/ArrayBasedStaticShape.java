@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.staticobject.StaticPropertyKind.N_PRIMITIVES;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import sun.misc.Unsafe;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import static com.oracle.truffle.api.staticobject.StaticPropertyKind.N_PRIMITIVES;
+import sun.misc.Unsafe;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     @CompilationFinal(dimensions = 1) //
@@ -94,7 +94,13 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         } else {
             assert checkShape(receiverObject);
         }
-        return UNSAFE.getObject(receiverObject, (long) (primitive ? propertyLayout.generator.getByteArrayOffset() : propertyLayout.generator.getObjectArrayOffset()));
+        if (primitive) {
+            Object storage = UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getByteArrayOffset());
+            return SomAccessor.RUNTIME.unsafeCast(storage, byte[].class, true, true, true);
+        } else {
+            Object storage = UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getObjectArrayOffset());
+            return SomAccessor.RUNTIME.unsafeCast(storage, Object[].class, true, true, true);
+        }
     }
 
     private boolean checkShape(Object receiverObject) {
