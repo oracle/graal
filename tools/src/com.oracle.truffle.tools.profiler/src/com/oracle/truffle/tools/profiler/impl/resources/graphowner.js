@@ -26,11 +26,22 @@
 // highlighting and info text
 
 function s(node) {        // show
-    let sample = sample_for_id(node.getAttribute("id").substring(2));
+    let sample = null;
+    if (node.getAttribute("class") == "func_g") {
+        sample = sample_for_id(node.getAttribute("id").substring(2));
+    } else if (node.getAttribute("class") == "func_h") {
+        sample = histogram_entry_for_id(node.getAttribute("id").substring(2));
+    }
     let name = name_for_sample(sample)
-    flamegraph_details.textContent = name + " (" + languageNames[sample.l] + ") - " +
-        "(Self:" + (sample.i + sample.c) + " samples " +
-        "Total: " + (sample.h) + " samples)";
+    let details = name + " (" + languageNames[sample.l] + ") - ";
+    if (sample.hasOwnProperty("h")) {
+        details = details + "(Self:" + (sample.i + sample.c) + " samples " +
+            "Total: " + (sample.h) + " samples)";
+    } else {
+        details = details + "(" + (sample.i + sample.c) + " samples)";
+    }
+
+    flamegraph_details.textContent = details;
 }
 
 function c(node) {            // clear
