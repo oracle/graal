@@ -52,7 +52,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -190,7 +189,7 @@ public class FindSourcesVisitorNestingTest extends AbstractPolyglotTest {
                 return this;
             }
 
-            Truffle.getRuntime().createCallTarget(new RootNode(this.language) {
+            new RootNode(this.language) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
@@ -201,7 +200,7 @@ public class FindSourcesVisitorNestingTest extends AbstractPolyglotTest {
                     return CreateCallTargetOnMaterializeNode.this.sourceSection;
                 }
 
-            });
+            }.getCallTarget();
             return new CreateCallTargetOnMaterializeNode(this.env, this.language, this.sourceSection.getSource(), true);
         }
     }
@@ -214,7 +213,7 @@ public class FindSourcesVisitorNestingTest extends AbstractPolyglotTest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 com.oracle.truffle.api.source.Source source = request.getSource();
-                CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                CallTarget target = new RootNode(languageInstance) {
 
                     @Node.Child private CreateCallTargetOnMaterializeNode child = new CreateCallTargetOnMaterializeNode(instrumentEnv, languageInstance, source, false);
 
@@ -228,7 +227,7 @@ public class FindSourcesVisitorNestingTest extends AbstractPolyglotTest {
                         return source.createSection(1);
                     }
 
-                });
+                }.getCallTarget();
                 targets.add(target);
                 return target;
             }

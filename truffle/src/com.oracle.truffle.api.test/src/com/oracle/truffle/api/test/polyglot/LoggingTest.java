@@ -74,7 +74,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -1537,7 +1536,7 @@ public class LoggingTest {
                     return getReference().get(this).getEnv().asGuestValue(null);
                 }
             };
-            return Truffle.getRuntime().createCallTarget(root);
+            return root.getCallTarget();
         }
 
         private void doLog() {

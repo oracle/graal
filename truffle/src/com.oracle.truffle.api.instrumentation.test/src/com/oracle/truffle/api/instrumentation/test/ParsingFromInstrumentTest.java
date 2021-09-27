@@ -40,9 +40,19 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
+import java.io.IOException;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -50,14 +60,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.io.IOException;
-import java.util.function.Function;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Source;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import org.junit.Test;
 
 public class ParsingFromInstrumentTest {
     public static final class ParsingTestLanguage extends ProxyLanguage {
@@ -70,7 +72,7 @@ public class ParsingFromInstrumentTest {
 
             int idx = request.getArgumentNames().indexOf("emptyList");
 
-            return Truffle.getRuntime().createCallTarget(new ParsingNode(idx));
+            return new ParsingNode(idx).getCallTarget();
         }
 
         class ParsingNode extends RootNode {

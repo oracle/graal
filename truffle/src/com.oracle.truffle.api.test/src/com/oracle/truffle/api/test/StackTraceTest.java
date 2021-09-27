@@ -326,7 +326,7 @@ public class StackTraceTest {
     }
 
     private static CallTarget createCallTarget(TestCallNode callNode) {
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(callNode));
+        return new TestRootNode(callNode).getCallTarget();
     }
 
     private static class TestCallWithCallTargetNode extends TestCallNode {

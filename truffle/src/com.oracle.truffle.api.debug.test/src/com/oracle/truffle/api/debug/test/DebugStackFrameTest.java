@@ -49,11 +49,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -67,6 +67,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -76,14 +77,12 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.util.Arrays;
-
-import org.graalvm.polyglot.Source;
 
 public class DebugStackFrameTest extends AbstractDebugTest {
 
@@ -592,7 +591,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new TestStackRootNode(languageInstance, source, DEPTH));
+            return new TestStackRootNode(languageInstance, source, DEPTH).getCallTarget();
         }
 
         private static final class TestStackRootNode extends RootNode {
@@ -652,7 +651,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 List<TruffleStackTraceElement> asyncStack = new ArrayList<>(depth);
                 TestStackRootNode asyncRoot = new TestStackRootNode(language, rootSection.getSource(), depth - 1);
                 do {
-                    RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(asyncRoot);
+                    RootCallTarget callTarget = asyncRoot.getCallTarget();
                     TestNode leaf = asyncRoot.child;
                     while (leaf.testChild != null) {
                         leaf = leaf.testChild;
@@ -678,7 +677,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             private TestNode createTestNodes() {
                 TestNode node;
                 if (depth > 0) {
-                    RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new TestStackRootNode(language, rootSection.getSource(), depth - 1));
+                    RootCallTarget callTarget = new TestStackRootNode(language, rootSection.getSource(), depth - 1).getCallTarget();
                     DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
                     if (depth % 2 == 0) {
                         node = new TestNode() {

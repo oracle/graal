@@ -49,8 +49,6 @@ import java.util.Iterator;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -80,11 +78,10 @@ public class ChildNodeTest {
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildNode leftChild = new TestChildNode();
         TestChildNode rightChild = new TestChildNode();
         TestRootNode rootNode = new TestRootNode(leftChild, rightChild);
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         assertEquals(rootNode, leftChild.getParent());
         assertEquals(rootNode, rightChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();

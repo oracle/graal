@@ -45,7 +45,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -55,8 +54,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ArgumentNode;
-import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExampleRootNode;
+import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.DynamicDispatchExampleFactory.SampleOperationNodeGen;
 
 /**
@@ -120,7 +119,7 @@ public class DynamicDispatchExample {
     @Test
     public void runExample() {
         SampleOperationNode read = SampleOperationNodeGen.create(new ArgumentNode(0));
-        CallTarget target = Truffle.getRuntime().createCallTarget(new ExampleRootNode(read));
+        CallTarget target = new ExampleRootNode(read).getCallTarget();
 
         assertEquals("export1", target.call(new DynamicDispatchObject(SampleExport1.class)));
         assertEquals("export2", target.call(new DynamicDispatchObject(SampleExport2.class)));

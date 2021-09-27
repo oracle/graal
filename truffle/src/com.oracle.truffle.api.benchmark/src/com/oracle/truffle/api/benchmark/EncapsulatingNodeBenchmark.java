@@ -48,7 +48,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -69,7 +68,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
             context.initialize(TEST_LANGUAGE);
         }
         final Integer intValue = 42;
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        final CallTarget callTarget = new RootNode(null) {
 
             private final Integer constant = 42;
 
@@ -84,7 +83,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
                 NodeUtil.popEncapsulatingNode(prev0);
                 return constant;
             }
-        });
+        }.getCallTarget();
 
         private final Node node = new Node() {
         };
@@ -143,7 +142,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
             context.initialize(TEST_LANGUAGE);
         }
         final Integer intValue = 42;
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        final CallTarget callTarget = new RootNode(null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -162,7 +161,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
                 nodeRef0.set(prev0);
                 return null;
             }
-        });
+        }.getCallTarget();
 
         final Node node = new Node() {
         };

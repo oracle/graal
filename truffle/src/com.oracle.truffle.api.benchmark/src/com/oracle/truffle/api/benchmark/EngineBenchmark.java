@@ -60,7 +60,6 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -329,7 +328,7 @@ public class EngineBenchmark extends TruffleBenchmark {
             context.initialize(TEST_LANGUAGE);
         }
         final Integer intValue = 42;
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        final CallTarget callTarget = new RootNode(null) {
 
             private final Integer constant = 42;
 
@@ -337,7 +336,7 @@ public class EngineBenchmark extends TruffleBenchmark {
             public Object execute(VirtualFrame frame) {
                 return constant;
             }
-        });
+        }.getCallTarget();
 
         @TearDown
         public void tearDown() {
@@ -489,7 +488,7 @@ public class EngineBenchmark extends TruffleBenchmark {
             } else {
                 result = getCurrentContext(BenchmarkTestLanguage.class).object;
             }
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
+            return RootNode.createConstantNode(result).getCallTarget();
         }
 
     }

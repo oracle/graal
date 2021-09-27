@@ -258,7 +258,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         if (code != null) {
             SourceSection outer = code.createSection(0, code.getLength());
             BaseNode node = parse(code);
-            RootCallTarget rct = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, node));
+            RootCallTarget rct = new InstrumentationTestRootNode(this, "", outer, node).getCallTarget();
             rct.call();
             if (context.runInitAfterExec) {
                 context.afterTarget = rct;
@@ -282,7 +282,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             throw new IOException(e);
         }
         RootCallTarget afterTarget = InstrumentContext.get(null).afterTarget;
-        return lastParsed = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+        return lastParsed = new InstrumentationTestRootNode(this, "", outer, afterTarget, node).getCallTarget();
     }
 
     public static RootNode parse(String code) {
@@ -1456,7 +1456,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
+            this.target = new InstrumentationTestRootNode(lang, identifier, functionSection, children).getCallTarget();
         }
 
         @Override

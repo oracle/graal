@@ -47,7 +47,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
@@ -96,13 +95,11 @@ public class FrameTest {
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         String varName = "localVar";
         FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
-        CallTarget target = runtime.createCallTarget(rootNode);
-        Object result = target.call();
+        Object result = rootNode.getCallTarget().call();
         assertEquals(42, result);
         frameDescriptor.removeFrameSlot(varName);
         assertNull(frameDescriptor.findFrameSlot(varName));
@@ -195,7 +192,7 @@ public class FrameTest {
         }
 
         FrameRootNode frn = new FrameRootNode();
-        Object ret = Truffle.getRuntime().createCallTarget(frn).call();
+        Object ret = frn.getCallTarget().call();
         assertEquals("Returns itself", frn, ret);
     }
 }

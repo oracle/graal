@@ -55,7 +55,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
@@ -289,7 +288,7 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new CustomRoot(this));
+            return new CustomRoot(this).getCallTarget();
         }
 
         @Override

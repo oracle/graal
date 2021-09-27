@@ -64,7 +64,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -642,7 +641,7 @@ public class ContextPolicyTest {
             this.context = context;
             this.expectedLanguage = language;
             this.expectedEnvironment = env;
-            this.target = Truffle.getRuntime().createCallTarget(new RootNode(language) {
+            this.target = new RootNode(language) {
                 @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(5);
 
                 @SuppressWarnings("unchecked")
@@ -663,7 +662,7 @@ public class ContextPolicyTest {
                         return "done";
                     }
                 }
-            });
+            }.getCallTarget();
         }
 
         @ExportMessage
@@ -793,7 +792,7 @@ public class ContextPolicyTest {
         protected CallTarget parse(ParsingRequest request) throws Exception {
             parseRequest.add(this);
             boolean innerContext = request.getSource().getName().equals(RUN_INNER_CONTEXT);
-            return Truffle.getRuntime().createCallTarget(new LanguageRootNode(this, innerContext));
+            return new LanguageRootNode(this, innerContext).getCallTarget();
         }
 
         @Override

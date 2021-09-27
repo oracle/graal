@@ -41,10 +41,11 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -65,7 +66,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import static org.junit.Assert.fail;
 
 /**
  * Test that {@link TruffleLanguage#parse(TruffleLanguage.InlineParsingRequest)} is called for
@@ -86,7 +86,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new TestRootNode(this, request.getSource()));
+            return new TestRootNode(this, request.getSource()).getCallTarget();
         }
 
         @Override

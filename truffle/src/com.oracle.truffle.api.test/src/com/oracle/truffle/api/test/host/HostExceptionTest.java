@@ -66,7 +66,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -118,7 +117,7 @@ public class HostExceptionTest {
                     default:
                         throw new IllegalArgumentException();
                 }
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new CatcherObject(Truffle.getRuntime().createCallTarget(rootNode))));
+                return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
             }
         });
         context.initialize(ProxyLanguage.ID);

@@ -493,7 +493,7 @@ public class IteratorTest extends AbstractPolyglotTest {
         StatementNode main = new BlockStatement(
                         new ExpressionStatement(IteratorTestFactory.WriteVariableNodeGen.create(new ConstantNode(iterable), iterableSlot)),
                         new ForEachStatement(iterableSlot, itemSlot, log));
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(lang, fd, main));
+        return new TestRootNode(lang, fd, main).getCallTarget();
     }
 
     private static Context createContext(VerifyingHandler handler) {

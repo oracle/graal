@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -64,7 +63,7 @@ public class NoCallNodeTestLanguage extends ProxyLanguage {
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
         NCRootNode root = new NCRootNode(source.createSection(0, source.getLength()));
-        return Truffle.getRuntime().createCallTarget(root);
+        return root.getCallTarget();
     }
 
     private static final class NCRootNode extends RootNode {
@@ -104,7 +103,7 @@ public class NoCallNodeTestLanguage extends ProxyLanguage {
             if (sectionLength > 1) {
                 Source source = sourceSection.getSource();
                 SourceSection childSection = source.createSection(sourceSection.getCharIndex() + 1, sectionLength - 1);
-                childTarget = Truffle.getRuntime().createCallTarget(new NCRootNode(childSection));
+                childTarget = new NCRootNode(childSection).getCallTarget();
             } else {
                 childTarget = null;
             }

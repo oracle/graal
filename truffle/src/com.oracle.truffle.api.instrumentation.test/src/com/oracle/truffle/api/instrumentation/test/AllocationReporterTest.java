@@ -64,7 +64,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -626,7 +625,7 @@ public class AllocationReporterTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final com.oracle.truffle.api.source.Source code = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Node.Child private AllocNode alloc = parse(code.getCharacters().toString());
 
@@ -635,7 +634,7 @@ public class AllocationReporterTest {
                     return alloc.execute(frame);
                 }
 
-            });
+            }.getCallTarget();
         }
 
         private static AllocNode parse(String code) {

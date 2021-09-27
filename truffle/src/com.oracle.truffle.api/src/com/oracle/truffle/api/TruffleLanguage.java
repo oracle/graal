@@ -1570,7 +1570,7 @@ public abstract class TruffleLanguage<C> {
      *
      *     &#64;Override
      *     protected CallTarget parse(ParsingRequest request) throws Exception {
-     *         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+     *         return new RootNode(this) {
      *             &#64;Override
      *             public Object execute(VirtualFrame frame) {
      *                 // fast read
@@ -1578,7 +1578,7 @@ public abstract class TruffleLanguage<C> {
      *                 // access local
      *                 return "";
      *             }
-     *         });
+     *         }.getCallTarget();
      *     }
      *
      *     static final class ExampleLocal {
@@ -1640,7 +1640,7 @@ public abstract class TruffleLanguage<C> {
      *
      *     &#64;Override
      *     protected CallTarget parse(ParsingRequest request) throws Exception {
-     *         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+     *         return new RootNode(this) {
      *             &#64;Override
      *             public Object execute(VirtualFrame frame) {
      *                 // fast read
@@ -1648,7 +1648,7 @@ public abstract class TruffleLanguage<C> {
      *                 // access local
      *                 return "";
      *             }
-     *         });
+     *         }.getCallTarget();
      *     }
      *
      *     static final class ExampleLocal {
