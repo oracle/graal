@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -184,7 +183,7 @@ public class LazyAccessInspectDebugTest {
 
         @Override
         protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, request.getSource()));
+            return new TestRootNode(languageInstance, request.getSource()).getCallTarget();
         }
 
         @Override

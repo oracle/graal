@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
@@ -315,7 +314,7 @@ public class MemoryTracerTest extends AbstractProfilerTest {
         protected CallTarget parse(ParsingRequest request) {
             final ADRARootNode rootNode = new ADRARootNode(this);
             rootNode.setSection(request.getSource().createSection(1));
-            return Truffle.getRuntime().createCallTarget(rootNode);
+            return rootNode.getCallTarget();
         }
 
         @Override
