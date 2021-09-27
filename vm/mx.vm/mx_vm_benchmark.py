@@ -1063,6 +1063,9 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
+        from mx_sdk_vm_impl import get_native_image_locations, has_component
+
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
         host_vm = None
@@ -1071,14 +1074,12 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             assert host_vm
         dims = {
             "vm": vm.name(),
-            "host-vm": host_vm.name() if host_vm else vm.name(),
+            # the host-vm is hardcoded to one of the accepted names of the field
+            "host-vm": 'graalvm-ee' if has_component('svmee') else 'graalvm-ce',
             "host-vm-config": self.host_vm_config_name(host_vm, vm),
             "guest-vm": vm.name() if host_vm else "none",
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
-
-        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
-        from mx_sdk_vm_impl import get_native_image_locations
 
         out = ""
         for gcomponent in graalvm_components():
