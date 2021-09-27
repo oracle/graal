@@ -790,7 +790,7 @@ final class SVGSamplerOutput {
             output.append(ttfString(black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2,
                             "Flamegraph", "middle", "id=\"fg_title\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() / 2, owner.fontSize() * 3,
-                            "Press \"?\" for help", "middle", "id=\"fg_help\""));
+                            "Press \"?\" for help, or \"l\" for legend.", "middle", "id=\"fg_help\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), XPAD, owner.fontSize() * 2,
                             "Reset zoom", "", "id=\"unzoom\" onclick=\"unzoom()\" style=\"opacity:0.1;cursor:pointer\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() - XPAD, owner.fontSize() * 2,
