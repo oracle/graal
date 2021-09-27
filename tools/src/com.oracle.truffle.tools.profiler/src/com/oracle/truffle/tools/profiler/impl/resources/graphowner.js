@@ -26,8 +26,11 @@
 // highlighting and info text
 
 function s(node) {        // show
-    let info = title(node);
-    flamegraph_details.nodeValue = "function: " + info;
+    let sample = sample_for_id(node.getAttribute("id").substring(2));
+    let name = name_for_sample(sample)
+    flamegraph_details.textContent = name + " (" + languageNames[sample.l] + ") - " +
+        "(Self:" + (sample.i + sample.c) + " samples " +
+        "Total: " + (sample.h) + " samples)";
 }
 
 function c(node) {            // clear
