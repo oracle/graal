@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -176,13 +175,13 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         String sourceString = request.getSource().getCharacters().toString();
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 return service.findDynamicClass(HostContext.get(this), sourceString);
             }
-        });
+        }.getCallTarget();
     }
 
     static final LanguageReference<HostLanguage> REFERENCE = LanguageReference.create(HostLanguage.class);
