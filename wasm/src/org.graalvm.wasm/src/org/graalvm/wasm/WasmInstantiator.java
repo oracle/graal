@@ -42,7 +42,6 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.Failure;
@@ -61,7 +60,7 @@ import org.graalvm.wasm.parser.ir.ParserNode;
 import java.util.List;
 
 /**
- * Creates wasm instances by converting parser nodes into truffle nodes.
+ * Creates wasm instances by converting parser nodes into Truffle nodes.
  */
 public class WasmInstantiator {
     private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
@@ -145,8 +144,7 @@ public class WasmInstantiator {
          * nodes {@see TruffleRuntime#createDirectCallNode} during translation.
          */
         WasmRootNode rootNode = new WasmRootNode(language, instance, wasmCodeEntry);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        instance.setTarget(codeEntry.getFunctionIndex(), callTarget);
+        instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
         /*
          * Set the code entry local variables (which contain the parameters and the locals).
          */

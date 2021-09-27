@@ -78,7 +78,6 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -203,12 +202,12 @@ public class WasmJsApiSuite {
                             }),
             });
             WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 210;
                                 }
-                            })));
+                            }.getCallTarget()));
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
             try {
                 final Object callFirst = WebAssembly.instanceExport(instance, "callFirst");
@@ -355,12 +354,12 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object f = new WasmFunctionInstance(context, null,
-                                Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         return 42;
                                     }
-                                }));
+                                }.getCallTarget());
                 final Object writeTable = wasm.readMember("table_write");
                 final Object readTable = wasm.readMember("table_read");
                 final Object a = WebAssembly.instanceExport(instance, "a");
@@ -641,12 +640,12 @@ public class WasmJsApiSuite {
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             null,
                             null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.get(null).language()) {
+                            new RootNode(WasmContext.get(null).language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
                                 }
-                            }));
+                            }.getCallTarget());
 
             // We should be able to set element 1.
             try {
