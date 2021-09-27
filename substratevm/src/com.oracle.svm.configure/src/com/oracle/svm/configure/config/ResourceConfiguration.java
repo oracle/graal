@@ -65,6 +65,7 @@ public class ResourceConfiguration implements ConfigurationBase {
             configuration.ignoreResourcePattern(condition, pattern);
         }
 
+        @Override
         public void addResourceBundles(ConfigurationCondition condition, String baseName) {
             configuration.addBundle(condition, baseName);
         }
