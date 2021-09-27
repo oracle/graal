@@ -1358,7 +1358,6 @@ public final class ObjectKlass extends Klass {
                 if (field != null) {
                     field.markNeedsNewResolution();
                 }
-                superClass = superClass.getSuperKlass();
             }
         }
     }
