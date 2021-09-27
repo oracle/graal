@@ -399,8 +399,10 @@ function graph_popup_fix_width(e, right_justify) {
             max_label_end = label_end;
         }
     }
-    let title = e.getElementsByClassName("title")[0];
-    title.x.baseVal.value = max_label_end / 2;
+    let titles = e.getElementsByClassName("title");
+    for (const title of titles) {
+        title.x.baseVal.value = max_label_end / 2;
+    }
     let popup = e.getElementsByClassName("popup")[0];
     popup.width.baseVal.value = max_label_end;
     if (right_justify) {
