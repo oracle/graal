@@ -367,6 +367,7 @@ deploy_graalvm_linux_amd64: {
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
@@ -387,6 +388,7 @@ deploy_graalvm_linux_aarch64: {
     ${notify-nexus-deploy}
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
@@ -399,6 +401,7 @@ deploy_graalvm_base_darwin_amd64: {
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
 }
 
@@ -412,6 +415,7 @@ deploy_graalvm_installables_darwin_amd64: {
     ${upload_file_sizes}
     ${notify-releaser}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "3:00:00"
 }
 
@@ -425,6 +429,7 @@ deploy_graalvm_base_windows_amd64: {
     ${mx_vm_common} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
@@ -438,6 +443,7 @@ deploy_graalvm_installables_windows_amd64: {
     ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}] ${record_file_sizes}
     ${upload_file_sizes}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
@@ -451,6 +457,7 @@ deploy_graalvm_ruby: {
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["benoit.daloze@oracle.com", "gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
 }
 
