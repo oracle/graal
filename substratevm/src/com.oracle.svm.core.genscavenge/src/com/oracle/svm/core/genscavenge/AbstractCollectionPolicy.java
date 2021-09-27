@@ -248,10 +248,11 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     protected SizeParameters computeSizeParameters() {
         UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-        UnsignedWord minAllSpaces = minSpaceSize().multiply(2); // eden, old
+        UnsignedWord minYoungSpaces = minSpaceSize(); // eden
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
-            minAllSpaces = minAllSpaces.add(minSpaceSize().multiply(2)); // survivor from and to
+            minYoungSpaces = minYoungSpaces.add(minSpaceSize().multiply(2)); // survivor from and to
         }
+        UnsignedWord minAllSpaces = minYoungSpaces.add(minSpaceSize()); // old
 
         UnsignedWord maxHeap;
         long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
@@ -275,6 +276,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
                 maxHeap = reasonableMax;
             }
         }
+        UnsignedWord unadjustedMaxHeap = maxHeap;
         maxHeap = UnsignedUtils.clamp(alignDown(maxHeap), minAllSpaces, alignDown(addressSpaceSize));
 
         UnsignedWord maxYoung;
@@ -286,16 +288,12 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         } else {
             maxYoung = maxHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
         }
-        maxYoung = UnsignedUtils.clamp(alignUp(maxYoung), minSpaceSize(), maxHeap);
+        maxYoung = UnsignedUtils.clamp(alignDown(maxYoung), minYoungSpaces, maxHeap.subtract(minSpaceSize()));
 
-        UnsignedWord maxOld = maxHeap.subtract(maxYoung);
-        maxOld = minSpaceSize(alignUp(maxOld));
+        UnsignedWord maxOld = alignDown(maxHeap.subtract(maxYoung));
         maxHeap = maxYoung.add(maxOld);
-        if (maxHeap.aboveThan(addressSpaceSize)) {
-            maxYoung = alignDown(maxYoung.subtract(minSpaceSize()));
-            maxHeap = maxYoung.add(maxOld);
-            VMError.guarantee(maxHeap.belowOrEqual(addressSpaceSize) && maxYoung.aboveOrEqual(minSpaceSize()));
-        }
+        VMError.guarantee(maxOld.aboveOrEqual(minSpaceSize()) && maxHeap.belowOrEqual(addressSpaceSize) &&
+                        (maxHeap.belowOrEqual(unadjustedMaxHeap) || unadjustedMaxHeap.belowThan(minAllSpaces)));
 
         UnsignedWord minHeap = WordFactory.zero();
         long optionMin = SubstrateGCOptions.MinHeapSize.getValue();
@@ -311,7 +309,8 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         if (initialHeap.equal(maxHeap)) {
             initialYoung = maxYoung;
         } else {
-            initialYoung = UnsignedUtils.clamp(alignUp(initialHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1)), minSpaceSize(), maxYoung);
+            initialYoung = initialHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
+            initialYoung = UnsignedUtils.clamp(alignUp(initialYoung), minYoungSpaces, maxYoung);
         }
         UnsignedWord initialSurvivor = WordFactory.zero();
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
@@ -323,12 +322,11 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
              * generation, which we can exceed the (current) old gen size while copying during
              * collections.
              */
-            initialSurvivor = minSpaceSize(alignUp(initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO)));
+            initialSurvivor = initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO);
+            initialSurvivor = minSpaceSize(alignDown(initialSurvivor));
         }
-        UnsignedWord initialEden = minSpaceSize();
-        if (initialYoung.aboveThan(initialSurvivor.multiply(2))) {
-            initialEden = minSpaceSize(alignUp(initialYoung.subtract(initialSurvivor.multiply(2))));
-        }
+        UnsignedWord initialEden = initialYoung.subtract(initialSurvivor.multiply(2));
+        initialEden = minSpaceSize(alignDown(initialEden));
 
         return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
     }
