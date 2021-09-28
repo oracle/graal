@@ -486,6 +486,19 @@ suite = {
       "testProject" : True,
     },
 
+    "com.oracle.truffle.api.staticobject.test.jdk17": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject.test",
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance": "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "testProject" : True,
+    },
+
     "com.oracle.truffle.api.profiles" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1219,6 +1232,19 @@ suite = {
       ],
       "maven" : False,
      },
+
+    "TRUFFLE_TEST_17" : {
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject.test.jdk17",
+      ],
+      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
+      "distDependencies" : [
+        "TRUFFLE_TEST",
+      ],
+      "maven" : False,
+    },
 
      "TRUFFLE_TEST_NATIVE" : {
        "native" : True,
