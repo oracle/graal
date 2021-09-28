@@ -1149,9 +1149,6 @@ def create_archive(srcdir, arcpath, prefix):
     arc.close()
 
 
-def _jlink_libraries():
-    return not (mx.get_opts().no_jlinking or mx.env_var_to_bool('NO_JLINKING'))
-
 def makegraaljdk_cli(args):
     """make a JDK with Graal as the default top level JIT"""
     parser = ArgumentParser(prog='mx makegraaljdk')
@@ -1321,7 +1318,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             vendor_info = {'vendor-version' : vm_name}
             # Setting dedup_legal_notices=False avoids due to license files conflicting
             # when switching JAVA_HOME from an OpenJDK to an OracleJDK or vice versa between executions.
-            if _jlink_libraries():
+            if mx_sdk_vm_impl._jlink_libraries():
                 jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, ignore_dists=[], root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
                 if export_truffle:
                     jmd = as_java_module(_graal_config().dists_dict['truffle:TRUFFLE_API'], jdk)
