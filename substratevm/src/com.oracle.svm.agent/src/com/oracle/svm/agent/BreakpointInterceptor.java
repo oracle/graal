@@ -53,6 +53,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -649,15 +650,14 @@ final class BreakpointInterceptor {
         JNIObjectHandle loader = getObjectArgument(2);
         JNIObjectHandle control = getObjectArgument(3);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, baseName, locale, loader, control);
-        List<Pair<String, String>> bundleInfo = null;
+        List<Pair<String, String>> bundleInfo = Collections.emptyList();
         if (clearException(jni)) {
             result = nullHandle();
         } else {
             bundleInfo = extractBundleInfo(jni, result);
         }
-        String languageTag = readLocaleTag(jni, locale);
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo);
+                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo);
         return true;
     }
 
@@ -677,15 +677,14 @@ final class BreakpointInterceptor {
         JNIObjectHandle locale = getObjectArgument(3);
         JNIObjectHandle control = getObjectArgument(4);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
-        List<Pair<String, String>> bundleInfo = null;
+        List<Pair<String, String>> bundleInfo = Collections.emptyList();
         if (clearException(jni)) {
             result = nullHandle();
         } else {
             bundleInfo = extractBundleInfo(jni, result);
         }
-        String languageTag = readLocaleTag(jni, locale);
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, bundleInfo);
+                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo);
         return true;
     }
 
@@ -693,6 +692,10 @@ final class BreakpointInterceptor {
         return fromJniString(jni, callObjectMethod(jni, locale, agent.handles().getJavaUtilLocaleToLanguageTag(jni)));
     }
 
+    /**
+     * Traverses the bundle parent chain and collects classnames and locales of all encountered
+     * bundles.
+     */
     private static List<Pair<String, String>> extractBundleInfo(JNIEnvironment jni, JNIObjectHandle result) {
         List<Pair<String, String>> res = new ArrayList<>();
         JNIObjectHandle curr = result;

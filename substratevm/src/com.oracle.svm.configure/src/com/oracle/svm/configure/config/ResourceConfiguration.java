@@ -109,9 +109,7 @@ public class ResourceConfiguration implements ConfigurationBase {
     public void removeAll(ResourceConfiguration other) {
         addedResources.keySet().removeAll(other.addedResources.keySet());
         ignoredResources.keySet().removeAll(other.ignoredResources.keySet());
-        for (ConditionalElement<String> key : other.bundles.keySet()) {
-            bundles.remove(key);
-        }
+        bundles.keySet().removeAll(other.bundles.keySet());
     }
 
     public void addResourcePattern(ConfigurationCondition condition, String pattern) {
