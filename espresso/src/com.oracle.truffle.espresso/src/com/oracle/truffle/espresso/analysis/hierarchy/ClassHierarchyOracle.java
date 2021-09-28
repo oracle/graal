@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 public interface ClassHierarchyOracle {
     /**
-     * Must be called to initialize {@link ObjectKlass#leafTypeAssumption} of {@code newKlass}.
+     * Must be called to initialize {@code leafTypeAssumption} of {@code newKlass}.
      *
      * @param newKlass -- newly created class
      * @return the assumption, indicating whether the class is a leaf in class hierarchy.

@@ -27,9 +27,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
- * compute currently leaf classes, it creates {@link ObjectKlass#leafTypeAssumption} in the
- * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
- * initialized.
+ * compute currently leaf classes, it creates {@code leafTypeAssumption} in the {@link ObjectKlass}
+ * constructor and invalidates it when a descendant of this class is initialized.
  */
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
