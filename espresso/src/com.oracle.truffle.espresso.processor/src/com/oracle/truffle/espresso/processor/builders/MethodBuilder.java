@@ -34,7 +34,7 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     private boolean constructor = false;
     private final String methodName;
     private String returnType = "void";
-    private QualifierBuilder qualifierBuilder;
+    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
     private final List<String> annotations = new ArrayList<>();
     private final List<String> body = new ArrayList<>();
     private final List<String> params = new ArrayList<>();

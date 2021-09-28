@@ -28,7 +28,7 @@ import java.util.List;
 public final class FieldBuilder extends AbstractCodeBuilder {
     private final String name;
     private final String type;
-    private QualifierBuilder qualifierBuilder;
+    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
     private final List<String> annotations = new ArrayList<>();
 
     public FieldBuilder(Object type, Object name) {

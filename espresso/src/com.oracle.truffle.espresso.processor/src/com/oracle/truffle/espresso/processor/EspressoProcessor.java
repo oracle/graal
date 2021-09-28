@@ -247,7 +247,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
                     " * questions.\n" +
                     " */\n\n";
 
-    private static final String PRIVATE = "private";
     static final String PUBLIC_FINAL_CLASS = "public final class ";
     static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
 

@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public final class ClassBuilder extends AbstractCodeBuilder {
     private final String className;
     private JavadocBuilder javaDoc;
-    private QualifierBuilder qualifierBuilder;
+    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
     private String superClass = null;
     private final List<String> annotations = new ArrayList<>();
     private final Set<String> superInterfaces = new HashSet<>();
@@ -114,10 +114,15 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         }
         sb.append(' ').append(BLOCK_OPEN).append(NEWLINE);
 
+        AbstractCodeBuilder prevMember = null;
         for (AbstractCodeBuilder member : members) {
+            if (prevMember instanceof FieldBuilder && member instanceof FieldBuilder) {
+                sb.deleteCharAt(sb.length() - 1);
+            }
             member.setIndentLevel(tabLevel + 1);
             sb.append(member.build());
             sb.append(NEWLINE);
+            prevMember = member;
         }
 
         sb.deleteCharAt(sb.length() - 1);
