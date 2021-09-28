@@ -121,25 +121,6 @@ suite = {
             "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
         },
 
-        "com.oracle.truffle.espresso.jdk8": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "overlayTarget": "com.oracle.truffle.espresso",
-            "checkPackagePrefix": "false",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "javaCompliance": "8",
-        },
-
-        "com.oracle.truffle.espresso.jdk11": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "overlayTarget": "com.oracle.truffle.espresso",
-            "checkPackagePrefix": "false",
-            "multiReleaseJarVersion": "11",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "javaCompliance": "11+",
-        },
-
         "com.oracle.truffle.espresso.jdk17": {
             "subDir": "src",
             "sourceDirs": ["src"],
