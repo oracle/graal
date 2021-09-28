@@ -2907,13 +2907,17 @@ def graalvm_enter(args):
     mx.run(args.cmd, env=env)
 
 
-def graalvm_show(args):
-    """print the GraalVM config"""
+def graalvm_show(args, graalvm_dist=None):
+    """print the GraalVM config
+    
+    :param graalvm_dist: the GraalVM distribution whose config is printed. If None, then the
+                         GraalVM configured by the current environment variables is printed.
+    """
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     args = parser.parse_args(args)
 
-    graalvm_dist = get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution()
+    graalvm_dist = graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
     print("GraalVM distribution: {}".format(graalvm_dist))
     print("Version: {}".format(_suite.release_version()))
     print("Config name: {}".format(graalvm_dist.vm_config_name))
