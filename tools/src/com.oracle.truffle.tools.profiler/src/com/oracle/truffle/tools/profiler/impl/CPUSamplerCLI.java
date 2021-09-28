@@ -166,24 +166,23 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
-            Map<TruffleContext, CPUSamplerData> data = sampler.getData();
-            OptionValues options = env.getOptions();
-            switch (options.get(OUTPUT)) {
-                case HISTOGRAM:
-                    printWarnings(sampler, out);
-                    printSamplingHistogram(out, options, data);
-                    break;
-                case CALLTREE:
-                    printWarnings(sampler, out);
-                    printSamplingCallTree(out, options, data);
-                    break;
-                case JSON:
-                    printSamplingJson(out, options, data);
-                    break;
-                case FLAMEGRAPH:
-                    SVGSamplerOutput.printSamplingFlameGraph(out, data);
-            }
+        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        OptionValues options = env.getOptions();
+        switch (options.get(OUTPUT)) {
+            case HISTOGRAM:
+                printWarnings(sampler, out);
+                printSamplingHistogram(out, options, data);
+                break;
+            case CALLTREE:
+                printWarnings(sampler, out);
+                printSamplingCallTree(out, options, data);
+                break;
+            case JSON:
+                printSamplingJson(out, options, data);
+                break;
+            case FLAMEGRAPH:
+                SVGSamplerOutput.printSamplingFlameGraph(out, data);
         }
     }
 
