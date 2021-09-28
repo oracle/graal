@@ -66,6 +66,8 @@ import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.FinalizationSupport;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -129,6 +131,7 @@ public final class EspressoContext {
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
+    private final ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
     // region Helpers
@@ -293,6 +296,7 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
+        this.classHierarchyOracle = new NoOpClassHierarchyOracle();
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -1015,5 +1019,9 @@ public final class EspressoContext {
      */
     public static EspressoContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public ClassHierarchyOracle getClassHierarchyOracle() {
+        return classHierarchyOracle;
     }
 }

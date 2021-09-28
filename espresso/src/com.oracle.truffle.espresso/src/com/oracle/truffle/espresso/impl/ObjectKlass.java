@@ -46,6 +46,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -141,6 +143,8 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
+    private final LeafTypeAssumption leafTypeAssumption;
+
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
     }
@@ -229,6 +233,7 @@ public final class ObjectKlass extends Klass {
             initSelfReferenceInPool();
         }
 
+        this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForClass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -390,6 +395,7 @@ public final class ObjectKlass extends Klass {
                 throw e;
             }
             checkErroneousInitialization();
+            getContext().getClassHierarchyOracle().onClassInit(this);
             initState = INITIALIZED;
             assert isInitialized();
         }
@@ -1397,6 +1403,16 @@ public final class ObjectKlass extends Klass {
         for (Method declaredMethod : getDeclaredMethods()) {
             declaredMethod.removedByRedefinition();
         }
+    }
+
+    /**
+     * @return the assumption, indicating if this class is a leaf in class hierarchy. This
+     *         assumption must only be used by {@link ClassHierarchyOracle}, other users must use
+     *         {@link ClassHierarchyOracle#isLeafClass(ObjectKlass)}. The assumption is stored in
+     *         ObjectKlass for easy mapping between classes and corresponding assumptions.
+     */
+    public LeafTypeAssumption getLeafTypeAssumption() {
+        return leafTypeAssumption;
     }
 
     public final class KlassVersion {
