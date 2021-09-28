@@ -98,7 +98,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                 throw VMError.shouldNotReachHere("Cannot read instance field of a class that is initialized at run time: " + field.format("%H.%n"));
             }
         } else {
-            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, originalConstantReflection, field.wrapped, universe.toHosted(receiver)));
+            ResolvedJavaField current = field;
+            while (current instanceof AnalysisField) {
+                current = ((AnalysisField) current).wrapped;
+            }
+            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, originalConstantReflection, current, universe.toHosted(receiver)));
         }
 
         return interceptValue(field, value);
