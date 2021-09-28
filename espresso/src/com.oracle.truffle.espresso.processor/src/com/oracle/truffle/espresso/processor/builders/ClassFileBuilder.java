@@ -22,26 +22,61 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.List;
 
 public final class ClassFileBuilder extends AbstractCodeBuilder {
+    public static final String COPYRIGHT = "/* Copyright (c) " + Year.now() + " Oracle and/or its affiliates. All rights reserved.\n" +
+            " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
+            " *\n" +
+            " * This code is free software; you can redistribute it and/or modify it\n" +
+            " * under the terms of the GNU General Public License version 2 only, as\n" +
+            " * published by the Free Software Foundation.\n" +
+            " *\n" +
+            " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
+            " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
+            " * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License\n" +
+            " * version 2 for more details (a copy is included in the LICENSE file that\n" +
+            " * accompanied this code).\n" +
+            " *\n" +
+            " * You should have received a copy of the GNU General Public License version\n" +
+            " * 2 along with this work; if not, write to the Free Software Foundation,\n" +
+            " * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.\n" +
+            " *\n" +
+            " * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n" +
+            " * or visit www.oracle.com if you need additional information or have any\n" +
+            " * questions.\n" +
+            " */\n\n";
+
+    private boolean copyright;
     private String packageName;
-    private final List<String[]> importGroups = new ArrayList<>();
+    private final List<List<String>> importGroups = new ArrayList<>();
     private final List<ClassBuilder> classes = new ArrayList<>();
 
     public ClassFileBuilder inPackage(String packageName) {
         this.packageName = packageName;
+        importGroups.add(new ArrayList<>());
         return this;
     }
 
-    public ClassFileBuilder withImportGroup(String... imports) {
+    public ClassFileBuilder withImport(String pkg) {
+        this.importGroups.get(0).add(pkg);
+        return this;
+    }
+
+    public ClassFileBuilder withImportGroup(List<String> imports) {
         this.importGroups.add(imports);
         return this;
     }
 
     public ClassFileBuilder withClass(ClassBuilder classBuilder) {
         this.classes.add(classBuilder);
+        return this;
+    }
+
+    public ClassFileBuilder withCopyright() {
+        copyright = true;
         return this;
     }
 
@@ -53,16 +88,22 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
 
         StringBuilder sb = new StringBuilder();
 
+        if (copyright) {
+            sb.append(COPYRIGHT);
+        }
+
         if (packageName != null) {
             sb.append("package ").append(packageName).append(SEMICOLON_NEWLINE);
         }
         sb.append(NEWLINE);
 
-        for (String[] imports : importGroups) {
+        for (List<String> imports : importGroups) {
             for (String importStr : imports) {
                 sb.append("import ").append(importStr).append(';').append(NEWLINE);
             }
-            //sb.append(NEWLINE);
+            if (imports.size() > 0) {
+                sb.append(NEWLINE);
+            }
         }
 
         for (ClassBuilder classBuilder : classes) {

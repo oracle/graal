@@ -22,12 +22,53 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
+import java.util.Arrays;
+import java.util.Collection;
+
 public abstract class AbstractCodeBuilder {
-    public static char NEWLINE = '\n';
-    public static String SEMICOLON_NEWLINE = ";" + NEWLINE;
-    public static String TAB_1 = "    ";
-    public static char BLOCK_OPEN = '{';
-    public static char BLOCK_CLOSE = '}';
+    public static final char PAREN_OPEN = '(';
+    public static final char PAREN_CLOSE = ')';
+    public static final char NEWLINE = '\n';
+    public static final String SEMICOLON_NEWLINE = ";" + NEWLINE;
+    public static final String TAB_1 = "    ";
+    public static final char BLOCK_OPEN = '{';
+    public static final char BLOCK_CLOSE = '}';
+
+    protected int tabLevel = 0;
+    protected String baseIndent = "";
+
+    public void setIndentLevel(int lvl) {
+        if (lvl < 0 || lvl > 10) {
+            throw new IllegalArgumentException("Invalid indent level");
+        }
+        final char[] array = new char[lvl * TAB_1.length()];
+        Arrays.fill(array, ' ');
+        this.baseIndent = new String(array);
+        this.tabLevel = lvl;
+    }
+
+    protected String joinParts(Object... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (Object part : parts) {
+            sb.append(part);
+        }
+        return sb.toString();
+    }
+
+    protected String joinPartsWith(String delimiter, Collection<String> parts) {
+        return joinPartsWith(delimiter, parts.toArray());
+    }
+
+    protected String joinPartsWith(String delimiter, Object... parts) {
+        StringBuilder sb = new StringBuilder();
+        for (Object part : parts) {
+            sb.append(part).append(delimiter);
+        }
+        if (parts.length > 0) {
+            sb.delete(sb.length() - delimiter.length(), sb.length());
+        }
+        return sb.toString();
+    }
 
     abstract String build();
 
