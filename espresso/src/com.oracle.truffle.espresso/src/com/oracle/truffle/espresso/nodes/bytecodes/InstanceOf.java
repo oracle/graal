@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -221,12 +222,23 @@ public abstract class InstanceOf extends Node {
     abstract static class ConstantClass extends InstanceOf {
 
         private final ObjectKlass superType;
+        protected final Assumption superTypeIsLeaf;
 
         ConstantClass(ObjectKlass superType) {
             this.superType = superType;
+            this.superTypeIsLeaf = EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(this.superType).getAssumption();
         }
 
-        @Specialization
+        /**
+         * If {@code superType} is a leaf type, {@code maybeSubtype} is a subtype of
+         * {@code superType} iff it is equal to {@code superType}.
+         */
+        @Specialization(assumptions = "superTypeIsLeaf")
+        public boolean doLeaf(ObjectKlass maybeSubtype) {
+            return superType == maybeSubtype;
+        }
+
+        @Specialization(guards = "!superTypeIsLeaf.isValid()")
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             return superType == maybeSubtype || superType.checkOrdinaryClassSubclassing(maybeSubtype);
         }
