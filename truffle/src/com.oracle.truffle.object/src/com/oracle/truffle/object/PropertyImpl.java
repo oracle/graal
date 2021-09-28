@@ -58,7 +58,7 @@ import com.oracle.truffle.api.object.Shape;
  * @since 0.17 or earlier
  */
 @SuppressWarnings("deprecation")
-public class PropertyImpl extends Property {
+public final class PropertyImpl extends Property {
     private final Object key;
     private final Location location;
     private final int flags;
@@ -80,7 +80,7 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final Object getKey() {
+    public Object getKey() {
         return key;
     }
 
@@ -94,26 +94,26 @@ public class PropertyImpl extends Property {
     @Override
     public Property relocate(Location newLocation) {
         if (!getLocation().equals(newLocation)) {
-            return construct(key, newLocation, flags);
+            return new PropertyImpl(key, newLocation, flags);
         }
         return this;
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final Object get(DynamicObject store, Shape shape) {
+    public Object get(DynamicObject store, Shape shape) {
         return getLocation().get(store, shape);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final Object get(DynamicObject store, boolean condition) {
+    public Object get(DynamicObject store, boolean condition) {
         return getLocation().get(store, condition);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final void setInternal(DynamicObject store, Object value) {
+    public void setInternal(DynamicObject store, Object value) {
         try {
             ((LocationImpl) getLocation()).setInternal(store, value);
         } catch (IncompatibleLocationException e) {
@@ -128,14 +128,14 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
+    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         assert verifyShapeParameter(store, shape);
         getLocation().set(store, value, shape);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final void setSafe(DynamicObject store, Object value, Shape shape) {
+    public void setSafe(DynamicObject store, Object value, Shape shape) {
         assert verifyShapeParameter(store, shape);
         try {
             getLocation().set(store, value, shape);
@@ -146,7 +146,7 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final void setGeneric(DynamicObject store, Object value, Shape shape) {
+    public void setGeneric(DynamicObject store, Object value, Shape shape) {
         assert verifyShapeParameter(store, shape);
         try {
             set(store, value, shape);
@@ -163,14 +163,14 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
+    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         assert verifyShapeParameters(store, oldShape, newShape);
         getLocation().set(store, value, oldShape, newShape);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
+    public void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
         assert verifyShapeParameters(store, oldShape, newShape);
         try {
             getLocation().set(store, value, oldShape, newShape);
@@ -181,7 +181,7 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
+    public void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
         assert verifyShapeParameters(store, oldShape, newShape);
         try {
             getLocation().set(store, value, oldShape, newShape);
@@ -243,36 +243,30 @@ public class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public final Location getLocation() {
+    public Location getLocation() {
         return location;
     }
 
     private void setSlowCase(DynamicObject store, Object value) {
         ShapeImpl oldShape = (ShapeImpl) store.getShape();
-        oldShape.getLayout().getStrategy().propertySetFallback(this, store, value, oldShape);
+        oldShape.getLayoutStrategy().propertySetFallback(this, store, value, oldShape);
     }
 
     private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
         ShapeImpl oldShape = (ShapeImpl) currentShape;
-        oldShape.getLayout().getStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
+        oldShape.getLayoutStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
     }
 
     /** @since 0.17 or earlier */
     @Override
-    public final boolean isHidden() {
+    public boolean isHidden() {
         return key instanceof HiddenKey;
-    }
-
-    /** @since 0.17 or earlier */
-    @SuppressWarnings("hiding")
-    protected Property construct(Object name, Location location, int flags) {
-        return new PropertyImpl(name, location, flags);
     }
 
     /** @since 0.17 or earlier */
     @Override
     public Property copyWithFlags(int newFlags) {
-        return construct(key, location, newFlags);
+        return new PropertyImpl(key, location, newFlags);
     }
 
     /** @since 0.17 or earlier */

@@ -43,6 +43,7 @@ package com.oracle.truffle.object.basic.test;
 import java.util.Arrays;
 import java.util.List;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -100,8 +101,8 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         try {
             property.set(object, newValue, shapeWithDeclared);
             Assert.fail();
-        } catch (FinalLocationException | IncompatibleLocationException e) {
-            Assert.assertTrue(e instanceof FinalLocationException);
+        } catch (IncompatibleLocationException | FinalLocationException e) {
+            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
         }
 
         Assert.assertSame(value, library.getOrDefault(object, "declared", null));
@@ -143,7 +144,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
             property.set(object2, newValue, rootShape, shapeWithDeclared);
             Assert.fail();
         } catch (IncompatibleLocationException e) {
-            // Expected
+            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
         }
         Assert.assertSame(rootShape, object2.getShape());
         Assert.assertEquals(false, library.containsKey(object2, "declared"));
