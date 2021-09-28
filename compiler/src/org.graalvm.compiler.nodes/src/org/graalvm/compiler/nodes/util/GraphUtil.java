@@ -536,7 +536,7 @@ public class GraphUtil {
         for (PhiNode phi : begin.phis().snapshot()) {
             GraphUtil.checkRedundantPhi(phi);
         }
-        for (LoopExitNode exit : begin.loopExits()) {
+        for (LoopExitNode exit : begin.loopExits().snapshot()) {
             for (ProxyNode vpn : exit.proxies().snapshot()) {
                 GraphUtil.checkRedundantProxy(vpn);
             }
