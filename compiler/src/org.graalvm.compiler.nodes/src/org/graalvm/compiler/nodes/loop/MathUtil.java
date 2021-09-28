@@ -24,18 +24,21 @@
  */
 package org.graalvm.compiler.nodes.loop;
 
+import java.util.function.BiFunction;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
+import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
-
-import java.util.function.BiFunction;
 
 /**
  * Utility methods to perform integer math with some obvious constant folding first.
@@ -50,30 +53,54 @@ public class MathUtil {
     }
 
     public static ValueNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        return add(graph, v1, v2, true);
+    }
+
+    public static ValueNode add(StructuredGraph graph, ValueNode v1, ValueNode v2, boolean gvn) {
         if (isConstantZero(v1)) {
             return v2;
         }
         if (isConstantZero(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.add(graph, v1, v2, NodeView.DEFAULT);
+        if (gvn) {
+            return BinaryArithmeticNode.add(graph, v1, v2, NodeView.DEFAULT);
+        } else {
+            return graph.addWithoutUniqueWithInputs(new AddNode(v1, v2));
+        }
     }
 
     public static ValueNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        return mul(graph, v1, v2, true);
+    }
+
+    public static ValueNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2, boolean gvn) {
         if (isConstantOne(v1)) {
             return v2;
         }
         if (isConstantOne(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.mul(graph, v1, v2, NodeView.DEFAULT);
+        if (gvn) {
+            return BinaryArithmeticNode.mul(graph, v1, v2, NodeView.DEFAULT);
+        } else {
+            return graph.addWithoutUniqueWithInputs(new MulNode(v1, v2));
+        }
     }
 
     public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        return sub(graph, v1, v2, true);
+    }
+
+    public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2, boolean gvn) {
         if (isConstantZero(v2)) {
             return v1;
         }
-        return BinaryArithmeticNode.sub(graph, v1, v2, NodeView.DEFAULT);
+        if (gvn) {
+            return BinaryArithmeticNode.sub(graph, v1, v2, NodeView.DEFAULT);
+        } else {
+            return graph.addWithoutUniqueWithInputs(new SubNode(v1, v2));
+        }
     }
 
     public static ValueNode divBefore(StructuredGraph graph, FixedNode before, ValueNode dividend, ValueNode divisor, GuardingNode zeroCheck) {
