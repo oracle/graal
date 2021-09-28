@@ -48,7 +48,7 @@ import jdk.vm.ci.code.CodeUtil;
  * The {@code SignExtendNode} converts an integer to a wider integer using sign extension.
  */
 @NodeInfo(cycles = CYCLES_1)
-public final class SignExtendNode extends IntegerConvertNode<SignExtend, Narrow> {
+public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
 
     public static final NodeClass<SignExtendNode> TYPE = NodeClass.create(SignExtendNode.class);
 
