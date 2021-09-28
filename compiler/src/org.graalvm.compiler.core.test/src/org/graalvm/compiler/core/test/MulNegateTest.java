@@ -29,6 +29,8 @@ import org.junit.Test;
 
 public class MulNegateTest extends GraalCompilerTest {
 
+    public static final int[] INT_TEST_CASES = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE};
+
     public static int mulInt(int x, int y) {
         return -x * -y;
     }
@@ -36,7 +38,16 @@ public class MulNegateTest extends GraalCompilerTest {
     @Test
     public void testInt() {
         assertTrue(getFinalGraph("mulInt").getNodes().filter(NegateNode.class).count() == 0);
+
+        for (int i : INT_TEST_CASES) {
+            for (int j : INT_TEST_CASES) {
+                test("mulInt", i, j);
+            }
+        }
     }
+
+    public static final float[] FLOAT_TEST_CASES = {0.0f, -0.0f, 1.0f, -1.0f, Float.MIN_VALUE, Float.MIN_NORMAL,
+                    Float.MAX_VALUE, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, Float.NaN};
 
     public static float mulFlt(float x, float y) {
         return -x * -y;
@@ -45,5 +56,11 @@ public class MulNegateTest extends GraalCompilerTest {
     @Test
     public void testFloat() {
         assertTrue(getFinalGraph("mulFlt").getNodes().filter(NegateNode.class).count() == 0);
+
+        for (float i : FLOAT_TEST_CASES) {
+            for (float j : FLOAT_TEST_CASES) {
+                test("mulFlt", i, j);
+            }
+        }
     }
 }
