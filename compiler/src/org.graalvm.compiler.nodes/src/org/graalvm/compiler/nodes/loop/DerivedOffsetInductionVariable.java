@@ -216,7 +216,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         } else if (newValue instanceof NegateNode) {
             return new DerivedScaledInductionVariable(loop, newBase, (NegateNode) newValue);
         } else {
-            assert newValue instanceof IntegerConvertNode<?, ?> : "Expected integer convert operation. New baseIV=" + newBase + " newValue=" + newValue;
+            assert newValue instanceof IntegerConvertNode<?> : "Expected integer convert operation. New baseIV=" + newBase + " newValue=" + newValue;
             return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
         }
     }
