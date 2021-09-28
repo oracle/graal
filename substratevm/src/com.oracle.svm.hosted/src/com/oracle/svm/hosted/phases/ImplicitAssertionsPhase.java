@@ -130,14 +130,14 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
             } else if (usagesToDelete.contains(exceptionUsage)) {
                 /* Frame state between constructor and allocation. */
             } else if (exceptionUsage instanceof UnwindNode) {
-                if (!hasSimpleControlFlow(exceptionUsage, constructorInvoke.asNode(), null)) {
+                if (!hasSimpleControlFlow(exceptionUsage, constructorInvoke.asFixedNode(), null)) {
                     /* No simple control flow path found to the UnwindNode. */
                     return;
                 }
             } else if (exceptionUsage instanceof PhiNode) {
                 PhiNode phi = (PhiNode) exceptionUsage;
                 for (int i = 0; i < phi.valueCount(); i++) {
-                    if (phi.valueAt(i) == exceptionAllocation && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asNode(), null)) {
+                    if (phi.valueAt(i) == exceptionAllocation && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asFixedNode(), null)) {
                         /* No simple control flow path found to the PhiNode. */
                         return;
                     }

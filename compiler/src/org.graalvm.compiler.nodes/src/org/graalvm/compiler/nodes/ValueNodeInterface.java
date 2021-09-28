@@ -24,9 +24,25 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.graph.NodeInterface;
-
-public interface ValueNodeInterface extends NodeInterface {
-    @Override
+/**
+ * When Graal {@link ValueNode} classes implement interfaces, it is frequently necessary to convert
+ * from an interface type back to a Node. This could be easily done using a cast, but casts come
+ * with a run time cost. Using a conversion method, which is implemented once on
+ * {@link ValueNode#asNode()}, avoids a cast. But it is faster only as long as the implementation
+ * method can be inlined. Therefore, it is important that only one implementation of the interface
+ * method exists, so that either single-implementor speculation (for JIT compilation) or static
+ * analysis results (for AOT compilation) allow the one implementation to be inlined.
+ *
+ * Subinterfaces like {@link FixedNodeInterface} provide a conversion method that has a more precise
+ * return type. Note that these sub-interfaces use a different method name like
+ * {@link FixedNodeInterface#asFixedNode()}, which then have another single implementation without a
+ * cast in {@link FixedNode#asFixedNode()}.
+ */
+public interface ValueNodeInterface {
+    /*
+     * This method is called `asNode` and not `asValueNode` partly for historic reasons, because
+     * originally the interface was called just `NodeInterface`. But since there are so many
+     * callers, we also want to keep the call sites as short as possible.
+     */
     ValueNode asNode();
 }

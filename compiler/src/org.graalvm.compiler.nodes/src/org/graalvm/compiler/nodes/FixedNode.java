@@ -42,8 +42,9 @@ public abstract class FixedNode extends ValueNode implements FixedNodeInterface 
         return super.verify();
     }
 
+    /* This method is final to ensure that it can be de-virtualized and inlined. */
     @Override
-    public FixedNode asNode() {
+    public final FixedNode asFixedNode() {
         return this;
     }
 }

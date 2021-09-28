@@ -735,7 +735,7 @@ public final class GraalFeature implements Feature {
                 InliningUtil.nonNullReceiver(invoke);
             }
             FixedGuardNode guard = new FixedGuardNode(LogicConstantNode.forBoolean(true, node.graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true);
-            node.graph.addBeforeFixed(invoke.asNode(), node.graph.add(guard));
+            node.graph.addBeforeFixed(invoke.asFixedNode(), node.graph.add(guard));
         }
     }
 

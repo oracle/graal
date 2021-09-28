@@ -212,7 +212,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
         deoptNode.setStateAfter(stateAfter);
         if (lastInstr != null) {
-            lastInstr.setNext(deoptNode.asNode());
+            lastInstr.setNext(deoptNode.asFixedNode());
         }
 
         if (deopt.isProxy()) {
@@ -261,7 +261,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             lastInstr = deoptEntryNode.next();
         }
 
-        insertProxies(deoptNode.asNode(), frameState);
+        insertProxies(deoptNode.asFixedNode(), frameState);
     }
 
     private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {

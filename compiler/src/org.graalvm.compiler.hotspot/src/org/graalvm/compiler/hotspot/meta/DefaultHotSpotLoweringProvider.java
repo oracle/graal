@@ -615,7 +615,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             if (!callTarget.isStatic()) {
                 assert receiver != null : "non-static call must have a receiver";
                 if (receiver.stamp(NodeView.DEFAULT) instanceof ObjectStamp && !StampTool.isPointerNonNull(receiver)) {
-                    ValueNode nonNullReceiver = createNullCheckedValue(receiver, invoke.asNode(), tool);
+                    ValueNode nonNullReceiver = createNullCheckedValue(receiver, invoke.asFixedNode(), tool);
                     parameters.set(0, nonNullReceiver);
                     receiver = nonNullReceiver;
                 }
@@ -643,7 +643,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
                                     signature, callTarget.targetMethod(),
                                     HotSpotCallingConventionType.JavaCall, callTarget.invokeKind()));
 
-                    graph.addBeforeFixed(invoke.asNode(), metaspaceMethod);
+                    graph.addBeforeFixed(invoke.asFixedNode(), metaspaceMethod);
                     graph.addAfterFixed(metaspaceMethod, compiledEntry);
                 }
             }

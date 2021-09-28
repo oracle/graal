@@ -600,7 +600,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             appendInvoke(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData, callTarget);
 
-            lastInstr.setNext(invoke.asNode());
+            lastInstr.setNext(invoke.asFixedNode());
             if (invoke instanceof InvokeWithExceptionNode) {
                 lastInstr = ((InvokeWithExceptionNode) invoke).next();
             } else {
@@ -944,7 +944,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (callTarget.invokeKind().isInterface()) {
                 Invoke invoke = invokeData.invoke;
                 ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
-                return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
+                return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asFixedNode());
             }
             return callTarget;
         }
@@ -1063,7 +1063,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             } else {
                 /* Intrinsification failed, restore original state: invoke is in Graph. */
-                invokePredecessor.setNext(invoke.asNode());
+                invokePredecessor.setNext(invoke.asFixedNode());
                 return false;
             }
         }
@@ -1132,7 +1132,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         Invoke invoke = invokeData.invoke;
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
         FixedWithNextNode predecessor = (FixedWithNextNode) invokeNode.predecessor();
         invokeData.invokePredecessor = predecessor;
         invokeNode.replaceAtPredecessor(null);
@@ -1188,7 +1188,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         LoopScope loopScope = inlineScope.callerLoopScope;
         InvokeData invokeData = inlineScope.invokeData;
         Invoke invoke = invokeData.invoke;
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
 
         ValueNode exceptionValue = null;
         int returnNodeCount = 0;

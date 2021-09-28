@@ -26,7 +26,6 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 
-import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.graph.Edges.Type;
@@ -47,11 +46,6 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
     }
 
     public NodeInputList(Node self, List<? extends T> elements) {
-        super(self, elements);
-        assert self.hasNoUsages();
-    }
-
-    public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
         super(self, elements);
         assert self.hasNoUsages();
     }

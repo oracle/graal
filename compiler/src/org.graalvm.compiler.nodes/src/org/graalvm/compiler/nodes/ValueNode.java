@@ -189,9 +189,14 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
     }
 
+    /* This method is final to ensure that it can be de-virtualized and inlined. */
     @Override
-    public ValueNode asNode() {
+    public final ValueNode asNode() {
         return this;
+    }
+
+    protected void updateUsagesInterface(ValueNodeInterface oldInput, ValueNodeInterface newInput) {
+        updateUsages(oldInput == null ? null : oldInput.asNode(), newInput == null ? null : newInput.asNode());
     }
 
     @Override

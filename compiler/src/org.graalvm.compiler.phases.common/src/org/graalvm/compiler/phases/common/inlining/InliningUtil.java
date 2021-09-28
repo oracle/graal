@@ -372,7 +372,7 @@ public class InliningUtil extends ValueMergeUtil {
     @SuppressWarnings("try")
     public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod, String reason, String phase,
                     InlineeReturnAction returnAction) {
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
         StructuredGraph graph = invokeNode.graph();
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
@@ -553,7 +553,7 @@ public class InliningUtil extends ValueMergeUtil {
 
         List<ReturnNode> processedReturns = inlineeReturnAction.processInlineeReturns(returnNodes);
 
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
         FrameState stateAfter = invoke.stateAfter();
         invokeNode.replaceAtPredecessor(firstNode);
 
@@ -691,7 +691,7 @@ public class InliningUtil extends ValueMergeUtil {
 
     @SuppressWarnings("try")
     private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, UnmodifiableEconomicMap<Node, Node> duplicates, boolean isSub, Mark mark) {
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
         StructuredGraph invokeGraph = invokeNode.graph();
         if (invokeGraph.trackNodeSourcePosition() && invoke.stateAfter() != null) {
             boolean isSubstitution = isSub || inlineGraph.isSubstitution();
@@ -926,7 +926,7 @@ public class InliningUtil extends ValueMergeUtil {
                     workList.add(usage);
                 } else {
                     StateSplit stateSplit = (StateSplit) usage;
-                    FixedNode fixedStateSplit = stateSplit.asNode();
+                    FixedNode fixedStateSplit = stateSplit.asFixedNode();
                     if (fixedStateSplit instanceof AbstractMergeNode) {
                         AbstractMergeNode merge = (AbstractMergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
@@ -1030,7 +1030,7 @@ public class InliningUtil extends ValueMergeUtil {
                     LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
                     FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
                     PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
-                    graph.addBeforeFixed(invoke.asNode(), fixedGuard);
+                    graph.addBeforeFixed(invoke.asFixedNode(), fixedGuard);
                     newReceiver = nonNullReceiver;
                 }
             }
