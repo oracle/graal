@@ -60,10 +60,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     private static final String TARGET_FORMAT = "id=%-5d %-50s ";
     // @formatter:off
     private static final String QUEUED_FORMAT   = "opt queued   " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Count/Thres  %8d/%8d | "    + QUEUE_FORMAT + "| Src %s | Time %d ";
-    private static final String UNQUEUED_FORMAT = "opt unqueued " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Count/Thres  %8d/%8d | "    + QUEUE_FORMAT + "| Src %s | Time %d ";
+    private static final String UNQUEUED_FORMAT = "opt unqueued " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Count/Thres  %8d/%8d | "    + QUEUE_FORMAT + "| Reason: %s | Src %s | Time %d ";
     private static final String START_FORMAT    = "opt start    " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Weight %8d | Rate %.5f | " + QUEUE_FORMAT + "| Src %s | Time %d ";
     private static final String DONE_FORMAT     = "opt done     " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Elapsed %22s | Src %s | Time %d ";
-    private static final String FAILED_FORMAT   = "opt failed   " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Elapsed %22s | Src %s | Time %d ";
+    private static final String FAILED_FORMAT   = "opt failed   " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Elapsed %22s | Reason: %s | Src %s | Time %d ";
     private static final String INV_FORMAT      = "opt inv      " + TARGET_FORMAT + "| Reason %s | Src %s | Time %d ";
     private static final String DEOPT_FORMAT    = "opt deopt    " + TARGET_FORMAT + "| Src %s | Time %d ";
     // @formatter:on
@@ -105,6 +105,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             0,
                             FixedPointMath.toDouble(scale),
                             0,
+                            reason,
                             formatSourceSection(target.getRootNode().getSourceSection()),
                             System.nanoTime()));
         }
@@ -121,6 +122,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                                 target.getName(),
                                 tier,
                                 compilationTime(),
+                                reason,
                                 formatSourceSection(target.getRootNode().getSourceSection()),
                                 System.nanoTime()));
             }
