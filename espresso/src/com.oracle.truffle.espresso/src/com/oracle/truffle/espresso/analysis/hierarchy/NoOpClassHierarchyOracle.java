@@ -34,6 +34,10 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static class LeafTypeAssumptionImpl implements LeafTypeAssumption {
         private final Assumption underlying;
+        static final LeafTypeAssumption AlwaysInvalid = new LeafTypeAssumptionImpl("invalid");
+        static {
+            AlwaysInvalid.getAssumption().invalidate();
+        }
 
         private LeafTypeAssumptionImpl(String assumptionName) {
             underlying = Truffle.getRuntime().createAssumption(assumptionName);
@@ -43,12 +47,6 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
             this(klass.getNameAsString() + " is a leaf type");
         }
 
-        protected static LeafTypeAssumptionImpl createAndInvalidate(String name) {
-            LeafTypeAssumptionImpl instance = new LeafTypeAssumptionImpl(name);
-            instance.getAssumption().invalidate();
-            return instance;
-        }
-
         @Override
         public Assumption getAssumption() {
             return underlying;
@@ -56,7 +54,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl("final class is always a CHA leaf");
-    protected static final LeafTypeAssumption NotLeaf = LeafTypeAssumptionImpl.createAndInvalidate("invalid");
+    protected static final LeafTypeAssumption NotLeaf = LeafTypeAssumptionImpl.AlwaysInvalid;
 
     @Override
     public LeafTypeAssumption createAssumptionForClass(ObjectKlass newKlass) {
