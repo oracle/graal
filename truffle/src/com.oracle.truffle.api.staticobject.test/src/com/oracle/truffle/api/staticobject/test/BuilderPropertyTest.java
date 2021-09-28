@@ -249,6 +249,27 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
+    public void privateClass() throws NoSuchFieldException {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            Class[] types = new Class[]{VisibilityTest.getPrivateClass()};
+            StaticProperty[] properties = new StaticProperty[types.length];
+            for (int i = 0; i < properties.length; i++) {
+                properties[i] = new DefaultStaticProperty("property" + i);
+                builder.property(properties[i], types[i], false);
+            }
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+            for (int i = 0; i < types.length; i++) {
+                Assert.assertEquals(types[i], object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
+            }
+        }
+    }
+
+    @Test
     public void maxProperties() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
