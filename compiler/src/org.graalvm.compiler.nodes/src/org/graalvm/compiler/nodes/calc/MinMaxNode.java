@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,15 +27,17 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(shortName = "MinMax")
@@ -55,6 +57,12 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         }
 
         NodeView view = NodeView.from(tool);
+        // If either value is NaN, then the result is NaN.
+        if (forX.isConstant() && isNaNConstant(forX)) {
+            return forX;
+        } else if (forY.isConstant() && isNaNConstant(forY)) {
+            return forY;
+        }
         return reassociateMatchedValues(this, ValueNode.isConstantPredicate(), forX, forY, view);
     }
 
@@ -73,5 +81,20 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         } else {
             nodeValueMap.setResult(this, gen.emitMathMin(op1, op2));
         }
+    }
+
+    private static boolean isNaNConstant(ValueNode value) {
+        if (value.isJavaConstant()) {
+            JavaConstant constant = value.asJavaConstant();
+            switch (constant.getJavaKind()) {
+                case Float:
+                    return Float.isNaN(constant.asFloat());
+                case Double:
+                    return Double.isNaN(constant.asDouble());
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+        return false;
     }
 }
