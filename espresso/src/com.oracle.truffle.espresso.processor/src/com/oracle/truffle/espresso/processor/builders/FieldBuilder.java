@@ -22,10 +22,48 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class FieldBuilder extends AbstractCodeBuilder {
+    private final String name;
+    private final String type;
+    private QualifierBuilder qualifierBuilder;
+    private final List<String> annotations = new ArrayList<>();
+
+    public FieldBuilder(Object type, Object name) {
+        this.name = name.toString();
+        this.type = type.toString();
+        setIndentLevel(1);
+    }
+
+    public FieldBuilder withAnnotation(String annotation) {
+        annotations.add(annotation);
+        return this;
+    }
+
+    public FieldBuilder withQualifiers(QualifierBuilder qualifiers) {
+        if (qualifierBuilder == null) {
+            qualifierBuilder = qualifiers;
+        } else {
+            qualifierBuilder.combineWith(qualifiers);
+        }
+        return this;
+    }
 
     @Override
     String build() {
-        return null;
+        StringBuilder sb = new StringBuilder();
+        for (String annotation : annotations) {
+            sb.append(baseIndent).append(annotation);
+            sb.append(' ');
+        }
+        sb.append(baseIndent);
+        sb.append(qualifierBuilder.build());
+        sb.append(type);
+        sb.append(' ');
+        sb.append(name);
+        sb.append(SEMICOLON_NEWLINE);
+        return sb.toString();
     }
 }
