@@ -841,7 +841,7 @@ final class SVGSamplerOutput {
             double totalPercent = 100.0 * total / sampleCount;
             title.append(String.format("Self samples: %d (%.2f%%)\n", interpreted + compiled, percent));
             title.append(String.format("total samples:  %d (%.2f%%)\n", total, totalPercent));
-            title.append(String.format("Source location: %s\n", owner.sourceHash.get(sample.getInt("f")), sample.getInt("fl")));
+            title.append(String.format("Source location: %s:%d\n", owner.sourceNames.get(sample.getInt("f")), sample.getInt("fl")));
             groupAttrs.put("title", escape(title.toString()));
             output.append(startGroup(groupAttrs));
 
