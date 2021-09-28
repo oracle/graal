@@ -35,8 +35,13 @@ function s(node) {        // show
     let name = name_for_sample(sample)
     let details = name + " (" + languageNames[sample.l] + ") - ";
     if (sample.hasOwnProperty("h")) {
-        details = details + "(Self:" + (sample.i + sample.c) + " samples " +
-            "Total: " + (sample.h) + " samples)";
+        if (fg_collapsed) {
+            details = details + "(Self:" + (sample.ri + sample.rc) + " samples " +
+                "Total: " + (sample.rh) + " samples)";
+        } else {
+            details = details + "(Self:" + (sample.i + sample.c) + " samples " +
+                "Total: " + (sample.h) + " samples)";
+        }
     } else {
         details = details + "(" + (sample.i + sample.c) + " samples)";
     }
@@ -158,9 +163,33 @@ function depth_for_id_in_tree(tree, id) {
     return -1;
 }
 
+function collapsed_depth_for_id_in_tree(tree, id) {
+    if (tree.id == id) {
+        return 0;
+    } else if (tree.hasOwnProperty('ss')) {
+        let children = tree.rs;
+        for (let i = 0; i < children.length; i++) {
+            if (children[i].id == id) {
+                return 1;
+            } else if(children[i].id > id) {
+                return 1 + depth_for_id_in_tree(children[i - 1], id);
+            }
+        }
+        return 1 + depth_for_id_in_tree(children[children.length - 1], id);
+    }
+    return -1;
+}
+
 function depth_for_sample(sample) {
     if (!sample.hasOwnProperty("depth")) {
         sample.depth = depth_for_id_in_tree(profileData[0], sample.id);
+    }
+    return sample.depth;
+}
+
+function collapsed_depth_for_sample(sample) {
+    if (!sample.hasOwnProperty("rdepth")) {
+        sample.depth = collapsed_depth_for_id_in_tree(profileData[0], sample.id);
     }
     return sample.depth;
 }
@@ -187,10 +216,43 @@ function sample_and_children_depth_first(sample) {
     }
 }
 
+function collapsed_sample_and_children_depth_first(sample) {
+    let stack = [sample];
+    return {
+        next: function() {
+            if (stack.length == 0) {
+                return {value: null, done: true}
+            } else {
+                let result = stack.pop();
+
+                let rdepth = depth_for_sample(result);
+                for(const child of collapsed_children(result).reverse()) {
+                    if (!child.hasOwnProperty("depth")) {
+                        child.depth = rdepth + 1;
+                    }
+                    stack.push(child);
+                }
+                return {value: result, done: false}
+            }
+        }
+    }
+}
+
 function direct_children(sample) {
     let result = [];
     if (sample.hasOwnProperty("s")) {
         for (const childId of sample["s"]) {
+            let child = sample_for_id(childId);
+            result.push(child);
+        }
+    }
+    return result;
+}
+
+function collapsed_children(sample) {
+    let result = [];
+    if (sample.hasOwnProperty("rs")) {
+        for (const childId of sample["rs"]) {
             let child = sample_for_id(childId);
             result.push(child);
         }

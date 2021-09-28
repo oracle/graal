@@ -23,13 +23,14 @@
  * questions.
  */
 
-var flamegraph, flamegraph_details, search_matches, fg_xmin, fg_xmax, fg_zoomed_sample, fg_max_depth, fg_svg;
+var flamegraph, flamegraph_details, search_matches, fg_xmin, fg_xmax, fg_zoomed_sample, fg_max_depth, fg_svg, fg_collapsed;
 function fg_init(evt) {
     flamegraph_details = document.getElementById("details").firstChild;
     searchbtn = document.getElementById("search");
     matchedtxt = document.getElementById("matched");
     flamegraph = document.getElementById("flamegraph");
     search_matches = [];
+    fg_collapsed = true;
     fg_xmin = 0;
     fg_xmax = profileData[0].h;
     fg_zoomed_sample = profileData[0];
@@ -49,7 +50,7 @@ function fg_element_for_sample(sample) {
 }
 
 function fg_create_element_for_sample(sample, width, x) {
-    let y = (depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    let y = fg_y_for_sample(sample);
     let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
     e.className.baseVal = "func_g";
     e.onmouseover = function(e) {s(this)};
@@ -89,10 +90,42 @@ function fg_create_element_for_sample(sample, width, x) {
     return e;
 }
 
+function fg_x_for_sample(sample) {
+    if (fg_collapsed) {
+        return (sample.rx - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    } else {
+        return (sample.x - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    }
+}
+
+function fg_y_for_sample(sample) {
+    if (fg_collapsed) {
+        return (collapsed_depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    } else {
+        return (depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    }
+}
+
+function fg_sample_and_children_depth_first(sample) {
+    if (fg_collapsed) {
+        return collapsed_sample_and_children_depth_first(sample);
+    } else {
+        return sample_and_children_depth_first(sample);
+    }
+}
+
+function fg_width_for_sample(sample) {
+    if (fg_collapsed) {
+        return sample.rh / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
+    } else {
+        return sample.h / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
+    }
+}
+
 // zoom
 function zoom_child(sample) {
-    let width =  sample.h / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
-    let x = (sample.x - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    let width = fg_width_for_sample(sample);
+    let x = fg_x_for_sample(sample);
     let e = fg_element_for_sample(sample);
 
     if (width < fg_min_width) {
@@ -119,9 +152,22 @@ function zoom_child(sample) {
     let name = name_for_sample(sample);
     let source = source_for_sample(sample);
 
+    let compiled = 0;
+    let interpreted = 0;
+    let hits = 0;
+    if (fg_collapsed) {
+        compiled = sample.rc;
+        interpreted = sample.ri;
+        hits = sample.rh;
+    } else {
+        compiled = sample.c;
+        interpreted = sample.i;
+        hits = sample.h;
+    }
+
     title.textContent = name + " (" + languageNames[sample.l] + ")\n" +
-        "Self samples: " + (sample.i + sample.c) + " (" + (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
-        "Total samples: " + (sample.h) + " (" + (100 * (sample.h + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Self samples: " + (interpreted + compiled) + " (" + (100 * (compiled + interpreted) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Total samples: " + (hits) + " (" + (100 * (hits) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
         "Source location: " + source + ":" + sample.fl + "\n";
 
     r.x.baseVal.value = x;
@@ -162,8 +208,13 @@ function zoom(node) {
     let parents = data[1];
     let unrelated = data[2];
     fg_zoomed_sample = sample;
-    fg_xmin = sample.x;
-    fg_xmax = sample.x + sample.h;
+    if (fg_collapsed) {
+        fg_xmin = sample.rx;
+        fg_xmax = sample.rx + sample.rh;
+    } else {
+        fg_xmin = sample.x;
+        fg_xmax = sample.x + sample.h;
+    }
     fg_max_depth = 0;
 
     var unzoombtn = document.getElementById("unzoom");
@@ -191,7 +242,7 @@ function fg_canvas_resize() {
 
 function zoom_internal(sample, parents, unrelated) {
     for (const u of unrelated) {
-        let iter = sample_and_children_depth_first(u);
+        let iter = fg_sample_and_children_depth_first(u);
         let c = iter.next();
         while (!c.done) {
             let e = fg_element_for_sample(c.value);
@@ -204,7 +255,7 @@ function zoom_internal(sample, parents, unrelated) {
     for (const p of parents) {
         zoom_parent(p);
     }
-    let iter = sample_and_children_depth_first(sample);
+    let iter = fg_sample_and_children_depth_first(sample);
     let c = iter.next();
     while (!c.done) {
         zoom_child(c.value);

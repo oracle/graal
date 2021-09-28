@@ -249,10 +249,18 @@ function calculate_histogram_bars(bars, sample) {
     } else {
         bar = bars[sample["n"]];
     }
-    bar["i"] = bar["i"] + sample["i"];
-    bar["c"] = bar["c"] + sample["c"];
-    for (const child of direct_children(sample)) {
-        calculate_histogram_bars(bars, child);
+    if (fg_collapsed) {
+        bar["i"] = bar["i"] + sample["ri"];
+        bar["c"] = bar["c"] + sample["rc"];
+        for (const child of collapsed_children(sample)) {
+            calculate_histogram_bars(bars, child);
+        }
+    } else {
+        bar["i"] = bar["i"] + sample["i"];
+        bar["c"] = bar["c"] + sample["c"];
+        for (const child of direct_children(sample)) {
+            calculate_histogram_bars(bars, child);
+        }
     }
 }
 
