@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(shortName = "MinMax")
@@ -57,11 +58,16 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         }
 
         NodeView view = NodeView.from(tool);
-        // If either value is NaN, then the result is NaN.
-        if (forX.isConstant() && isNaNConstant(forX)) {
-            return forX;
-        } else if (forY.isConstant() && isNaNConstant(forY)) {
-            return forY;
+        if (forX.isConstant()) {
+            ValueNode result = tryCanonicalizeWithConstantInput(forX, forY);
+            if (result != this) {
+                return result;
+            }
+        } else if (forY.isConstant()) {
+            ValueNode result = tryCanonicalizeWithConstantInput(forY, forX);
+            if (result != this) {
+                return result;
+            }
         }
         return reassociateMatchedValues(this, ValueNode.isConstantPredicate(), forX, forY, view);
     }
@@ -78,23 +84,33 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         }
         if (this instanceof MaxNode) {
             nodeValueMap.setResult(this, gen.emitMathMax(op1, op2));
-        } else {
+        } else if (this instanceof MinNode) {
             nodeValueMap.setResult(this, gen.emitMathMin(op1, op2));
+        } else {
+            throw GraalError.shouldNotReachHere();
         }
     }
 
-    private static boolean isNaNConstant(ValueNode value) {
-        if (value.isJavaConstant()) {
-            JavaConstant constant = value.asJavaConstant();
-            switch (constant.getJavaKind()) {
-                case Float:
-                    return Float.isNaN(constant.asFloat());
-                case Double:
-                    return Double.isNaN(constant.asDouble());
-                default:
-                    throw GraalError.shouldNotReachHere();
+    private ValueNode tryCanonicalizeWithConstantInput(ValueNode constantValue, ValueNode otherValue) {
+        if (constantValue.isJavaConstant()) {
+            JavaConstant constant = constantValue.asJavaConstant();
+            JavaKind kind = constant.getJavaKind();
+            assert kind == JavaKind.Float || kind == JavaKind.Double;
+            if ((kind == JavaKind.Float && Float.isNaN(constant.asFloat())) || (kind == JavaKind.Double && Double.isNaN(constant.asDouble()))) {
+                // If either value is NaN, then the result is NaN.
+                return constantValue;
+            } else if (this instanceof MaxNode) {
+                if ((kind == JavaKind.Float && constant.asFloat() == Float.NEGATIVE_INFINITY) || (kind == JavaKind.Double && constant.asDouble() == Double.NEGATIVE_INFINITY)) {
+                    // Math.max/max(-Infinity, other) == other.
+                    return otherValue;
+                }
+            } else if (this instanceof MinNode) {
+                if ((kind == JavaKind.Float && constant.asFloat() == Float.POSITIVE_INFINITY) || (kind == JavaKind.Double && constant.asDouble() == Double.POSITIVE_INFINITY)) {
+                    // Math.min/max(Infinity, other) == other.
+                    return otherValue;
+                }
             }
         }
-        return false;
+        return this;
     }
 }
