@@ -46,11 +46,32 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class FrameInfoDecoder {
 
+    protected static final int BCI_SHIFT = 2;
+    protected static final int DURING_CALL_MASK = 2;
+    protected static final int RETHROW_EXCEPTION_MASK = 1;
+
     protected static final int NO_CALLER_BCI = -1;
     protected static final int NO_LOCAL_INFO_BCI = -2;
 
+    /**
+     * Differentiates between compressed and uncompressed frame slices. See
+     * {@link #isCompressedFrameSlice(int)} for more information.
+     */
+    protected static final int UNCOMPRESSED_FRAME_SLICE_MARKER = -1;
+    /**
+     * Value added to source line to guarantee the value is greater than zero.
+     */
+    protected static final int COMPRESSED_SOURCE_LINE_ADDEND = 2;
+
     protected static boolean isFrameInfoMatch(long frameInfoIndex, NonmovableArray<Byte> frameInfoEncodings, long searchEncodedBci) {
         NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(frameInfoEncodings, frameInfoIndex);
+        int firstValue = readBuffer.getSVInt();
+        if (isCompressedFrameSlice(firstValue)) {
+            /* Compressed frame slices have no local bci information. */
+            return false;
+        }
+
+        /* Read encoded bci from uncompressed frame slice. */
         long actualEncodedBci = readBuffer.getSV();
         assert actualEncodedBci != NO_CALLER_BCI;
 
@@ -138,7 +159,82 @@ public class FrameInfoDecoder {
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
     protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
-                    FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
+                    FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator) {
+        return decodeFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, new CodeInfoAccess.FrameInfoState());
+    }
+
+    protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
+                    FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, CodeInfoAccess.FrameInfoState state) {
+        if (state.isFirstFrame) {
+            state.firstValue = readBuffer.getSVInt();
+        }
+
+        FrameInfoQueryResult result;
+        if (isCompressedFrameSlice(state.firstValue)) {
+            result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, state);
+        } else {
+            result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, state);
+        }
+        state.isFirstFrame = false;
+
+        return result;
+    }
+
+    /*
+     * See (FrameInfoEncoder.CompressedFrameInfoEncodingMedata) for more information about the
+     * compressed encoding format.
+     */
+    private static FrameInfoQueryResult decodeCompressedFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
+                    FrameInfoQueryResultAllocator resultAllocator, CodeInfoAccess.FrameInfoState state) {
+        FrameInfoQueryResult result = null;
+        FrameInfoQueryResult prev = null;
+
+        while (!state.isDone) {
+            FrameInfoQueryResult cur = resultAllocator.newFrameInfoQueryResult();
+            if (cur == null) {
+                return result;
+            }
+
+            assert encodeSourceReferences();
+            cur.encodedBci = NO_LOCAL_INFO_BCI;
+            cur.isDeoptEntry = isDeoptEntry;
+
+            final int sourceClassIndex;
+            if (state.isFirstFrame) {
+                sourceClassIndex = state.firstValue;
+            } else {
+                sourceClassIndex = readBuffer.getSVInt();
+                assert !isDeoptEntry : "Deoptimization entry must not have inlined frames";
+            }
+
+            final int sourceMethodNameIndex = readBuffer.getSVInt();
+            final int encodedSourceLineNumber = readBuffer.getSVInt();
+            final int sourceLineNumber = decodeCompressedSourceLineNumber(encodedSourceLineNumber);
+
+            cur.sourceClassIndex = sourceClassIndex;
+            cur.sourceMethodNameIndex = sourceMethodNameIndex;
+
+            cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
+            cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
+            cur.sourceLineNumber = sourceLineNumber;
+
+            if (prev == null) {
+                // first frame read during this invocation
+                result = cur;
+            } else {
+                prev.caller = cur;
+            }
+            prev = cur;
+
+            state.isDone = encodedSourceLineNumber < 0;
+            state.isFirstFrame = false;
+        }
+
+        return result;
+    }
+
+    private static FrameInfoQueryResult decodeUncompressedFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
+                    FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, CodeInfoAccess.FrameInfoState state) {
         FrameInfoQueryResult result = null;
         FrameInfoQueryResult prev = null;
         ValueInfo[][] virtualObjects = null;
@@ -154,12 +250,12 @@ public class FrameInfoDecoder {
                 return result;
             }
 
+            assert state.isFirstFrame || !isDeoptEntry : "Deoptimization entry must not have inlined frames";
+
             cur.encodedBci = encodedBci;
             cur.isDeoptEntry = isDeoptEntry;
 
             final boolean needLocalValues = encodedBci != NO_LOCAL_INFO_BCI;
-            cur.needLocalValues = needLocalValues;
-            int curValueInfosLenght = 0;
 
             if (needLocalValues) {
                 cur.numLocks = readBuffer.getUVInt();
@@ -181,39 +277,25 @@ public class FrameInfoDecoder {
                     cur.deoptMethodOffset = deoptMethodIndex;
                 }
 
-                curValueInfosLenght = readBuffer.getUVInt();
-                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+                int curValueInfosLength = readBuffer.getUVInt();
+                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLength, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
             }
 
-            if (prev != null) {
-                prev.caller = cur;
-                assert !isDeoptEntry : "Deoptimization entry must not have inlined frames";
-            } else {
-                if (!fetchFirstFrame) {
-                    /* CodeInfoDecoder.nextFrameInfo usecase. First frame was fetched previously. */
-                    result = cur;
-                } else {
-                    /* This is the first frame, i.e., the top frame that will be returned. */
-                    result = cur;
-
-                    if (needLocalValues) {
-                        int numVirtualObjects = readBuffer.getUVInt();
-                        virtualObjects = valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
-                        for (int i = 0; i < numVirtualObjects; i++) {
-                            int numValues = readBuffer.getUVInt();
-                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
-                            if (virtualObjects != null) {
-                                virtualObjects[i] = decodedValues;
-                            }
-                        }
+            if (state.isFirstFrame && needLocalValues) {
+                /* This is the first frame, i.e., the top frame that will be returned. */
+                int numVirtualObjects = readBuffer.getUVInt();
+                virtualObjects = valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
+                for (int i = 0; i < numVirtualObjects; i++) {
+                    int numValues = readBuffer.getUVInt();
+                    ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
+                    if (virtualObjects != null) {
+                        virtualObjects[i] = decodedValues;
                     }
                 }
             }
-            prev = cur;
             cur.virtualObjects = virtualObjects;
 
-            final boolean debugNames = needLocalValues && encodeDebugNames();
-            if (debugNames || encodeSourceReferences()) {
+            if (encodeSourceReferences()) {
                 final int sourceClassIndex = readBuffer.getSVInt();
                 final int sourceMethodNameIndex = readBuffer.getSVInt();
                 final int sourceLineNumber = readBuffer.getSVInt();
@@ -226,15 +308,15 @@ public class FrameInfoDecoder {
                 cur.sourceLineNumber = sourceLineNumber;
             }
 
-            if (debugNames) {
-                for (int i = 0; i < curValueInfosLenght; ++i) {
-                    int nameIndex = readBuffer.getUVInt();
-                    if (cur.valueInfos != null) {
-                        cur.valueInfos[i].nameIndex = nameIndex;
-                        cur.valueInfos[i].name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoNames(info), nameIndex);
-                    }
-                }
+            if (prev == null) {
+                // first frame read during this invocation
+                result = cur;
+            } else {
+                prev.caller = cur;
             }
+            prev = cur;
+
+            state.isFirstFrame = false;
         }
     }
 
@@ -267,17 +349,9 @@ public class FrameInfoDecoder {
         return valueInfos;
     }
 
-    protected static boolean encodeDebugNames() {
-        return false;
-    }
-
     protected static boolean encodeSourceReferences() {
         return SubstrateOptions.StackTrace.getValue();
     }
-
-    protected static final int BCI_SHIFT = 2;
-    protected static final int DURING_CALL_MASK = 2;
-    protected static final int RETHROW_EXCEPTION_MASK = 1;
 
     protected static int decodeBci(long encodedBci) {
         return TypeConversion.asS4(encodedBci >> BCI_SHIFT);
@@ -289,6 +363,21 @@ public class FrameInfoDecoder {
 
     protected static boolean decodeRethrowException(long encodedBci) {
         return (encodedBci & RETHROW_EXCEPTION_MASK) != 0;
+    }
+
+    /**
+     * Complement of (FrameInfoEncode.encodeCompressedSourceLineNumber).
+     */
+    private static int decodeCompressedSourceLineNumber(int sourceLineNumber) {
+        return Math.abs(sourceLineNumber) - COMPRESSED_SOURCE_LINE_ADDEND;
+    }
+
+    /**
+     * Differentiates between compressed and uncompressed frame slice. Uncompressed frame slices are
+     * start with an {@link #UNCOMPRESSED_FRAME_SLICE_MARKER}.
+     */
+    private static boolean isCompressedFrameSlice(int firstValue) {
+        return firstValue != UNCOMPRESSED_FRAME_SLICE_MARKER;
     }
 
     public static String readableBci(long encodedBci) {

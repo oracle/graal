@@ -99,9 +99,6 @@ public class FrameInfoQueryResult {
         protected boolean isEliminatedMonitor;
         protected long data;
         protected JavaConstant value;
-        protected String name;
-        /** Index of {@link #name} in {@link FrameInfoDecoder#decodeFrameInfo frameInfoNames}. */
-        protected int nameIndex = -1;
 
         /**
          * Returns the type of the value, describing how to access the value.
@@ -156,7 +153,6 @@ public class FrameInfoQueryResult {
     protected int deoptMethodOffset;
     protected long encodedBci;
     protected boolean isDeoptEntry;
-    protected boolean needLocalValues;
     protected int numLocals;
     protected int numStack;
     protected int numLocks;
@@ -182,7 +178,6 @@ public class FrameInfoQueryResult {
         deoptMethodOffset = 0;
         encodedBci = 0;
         isDeoptEntry = false;
-        needLocalValues = false;
         numLocals = 0;
         numStack = 0;
         numLocks = 0;
@@ -288,6 +283,13 @@ public class FrameInfoQueryResult {
     }
 
     /**
+     * Returns whether any local value info is present.
+     */
+    public boolean hasLocalValueInfo() {
+        return valueInfos != null;
+    }
+
+    /**
      * Returns the local variables and expression stack values.
      */
     public ValueInfo[] getValueInfos() {
@@ -369,12 +371,5 @@ public class FrameInfoQueryResult {
         log.string(")");
 
         return log;
-    }
-
-    /**
-     * Returns the name of the local variable with the given index, for debugging purposes only.
-     */
-    public String getLocalVariableName(int idx) {
-        return idx < valueInfos.length ? valueInfos[idx].name : null;
     }
 }

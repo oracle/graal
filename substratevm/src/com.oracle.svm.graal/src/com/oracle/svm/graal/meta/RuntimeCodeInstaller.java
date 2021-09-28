@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -241,7 +242,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization());
         codeInfoEncoder.addMethod(method, compilation, 0);
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
@@ -264,6 +265,23 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
             }
+        }
+    }
+
+    private static class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
+        @Override
+        protected boolean storeDeoptTargetMethod() {
+            return true;
+        }
+
+        @Override
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+            return true;
+        }
+
+        @Override
+        protected boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint) {
+            return false;
         }
     }
 }

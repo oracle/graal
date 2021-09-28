@@ -29,8 +29,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 // Checkstyle: stop
 import java.lang.reflect.Executable;
 // Checkstyle: resume
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -367,7 +367,7 @@ public final class CodeInfoDecoder {
         }
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info,
-                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
+                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")

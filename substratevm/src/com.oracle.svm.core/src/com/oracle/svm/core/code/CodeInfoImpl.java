@@ -195,12 +195,6 @@ interface CodeInfoImpl extends CodeInfo {
     void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> frameInfoSourceMethodNames);
 
     @RawField
-    NonmovableObjectArray<String> getFrameInfoNames();
-
-    @RawField
-    void setFrameInfoNames(NonmovableObjectArray<String> frameInfoNames);
-
-    @RawField
     int getState();
 
     @RawField

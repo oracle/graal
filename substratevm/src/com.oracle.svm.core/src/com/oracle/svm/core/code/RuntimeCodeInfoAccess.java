@@ -173,7 +173,6 @@ public final class RuntimeCodeInfoAccess {
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoObjectConstants(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceClasses(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoSourceMethodNames(), visitor);
-        continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getFrameInfoNames(), visitor);
         continueVisiting = continueVisiting && NonmovableArrays.walkUnmanagedObjectArray(impl.getDeoptimizationObjectConstants(), visitor);
         return continueVisiting;
     }
@@ -324,7 +323,6 @@ public final class RuntimeCodeInfoAccess {
         action.apply(impl.getFrameInfoObjectConstants());
         action.apply(impl.getFrameInfoSourceClasses());
         action.apply(impl.getFrameInfoSourceMethodNames());
-        action.apply(impl.getFrameInfoNames());
         action.apply(impl.getDeoptimizationObjectConstants());
     }
 

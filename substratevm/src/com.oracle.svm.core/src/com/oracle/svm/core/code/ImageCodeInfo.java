@@ -65,7 +65,6 @@ public class ImageCodeInfo {
     @UnknownObjectField(types = {Object[].class}) Object[] frameInfoObjectConstants;
     @UnknownObjectField(types = {Class[].class}) Class<?>[] frameInfoSourceClasses;
     @UnknownObjectField(types = {String[].class}) String[] frameInfoSourceMethodNames;
-    @UnknownObjectField(types = {String[].class}) String[] frameInfoNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
@@ -98,7 +97,6 @@ public class ImageCodeInfo {
         info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
         info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
         info.setFrameInfoSourceMethodNames(NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames));
-        info.setFrameInfoNames(NonmovableArrays.fromImageHeap(frameInfoNames));
 
         return info;
     }
@@ -235,16 +233,6 @@ public class ImageCodeInfo {
         @Override
         public void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> array) {
             frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(array);
-        }
-
-        @Override
-        public NonmovableObjectArray<String> getFrameInfoNames() {
-            return NonmovableArrays.fromImageHeap(frameInfoNames);
-        }
-
-        @Override
-        public void setFrameInfoNames(NonmovableObjectArray<String> array) {
-            frameInfoNames = NonmovableArrays.getHostedArray(array);
         }
 
         @Override
