@@ -106,20 +106,15 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             groupInfos = support.groupInfos;
             apiOptions = support.options;
         } else {
-            List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
-            ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader());
-            for (OptionDescriptors optionDescriptors : serviceLoader) {
-                optionDescriptorsList.add(optionDescriptors.getClass());
-            }
             groupInfos = new HashMap<>();
-            apiOptions = extractOptions(optionDescriptorsList, groupInfos);
+            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos);
         }
     }
 
-    static SortedMap<String, OptionInfo> extractOptions(List<Class<? extends OptionDescriptors>> optionsClasses, Map<String, GroupInfo> groupInfos) {
+    static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos) {
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
-        HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
+        HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
         hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances));
@@ -450,9 +445,9 @@ final class APIOptionFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
-        List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class, true);
         Map<String, GroupInfo> groupInfos = new HashMap<>();
-        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionClasses, groupInfos);
+        ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class, accessImpl.getImageClassLoader().getClassLoader());
+        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos);
         ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options));
     }
 }

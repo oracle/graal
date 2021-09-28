@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jdk11;
+package com.oracle.svm.hosted;
 
 import org.graalvm.compiler.options.Option;
 
@@ -31,7 +31,8 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 
 public class NativeImageClassLoaderOptions {
-    static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
+    public static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
+    public static final String AddReadsFormat = "<module>=<target-module>(,<target-module>)*";
 
     @APIOption(name = "add-exports", extra = true)//
     @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to export <package> to <target-module>, regardless of module declaration." +
@@ -41,4 +42,9 @@ public class NativeImageClassLoaderOptions {
     @APIOption(name = "add-opens", extra = true)//
     @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to open <package> to <target-module>, regardless of module declaration.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddOpens = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+    @APIOption(name = "add-reads", extra = true)//
+    @Option(help = "Value " + AddReadsFormat + " updates <module> to read <target-module>, regardless of module declaration." +
+                    " <target-module> can be ALL-UNNAMED to read all unnamed modules.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddReads = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 }

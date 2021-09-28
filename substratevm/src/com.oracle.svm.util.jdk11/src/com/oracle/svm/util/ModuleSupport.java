@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import jdk.internal.module.Modules;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class ModuleSupport {
+public final class ModuleSupport extends ModuleSupportBase {
     private ModuleSupport() {
     }
 
