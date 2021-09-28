@@ -127,7 +127,6 @@ public final class GraalDirectives {
      * effect killing all memory locations.
      */
     public static void sideEffect() {
-
     }
 
     /**
@@ -542,6 +541,7 @@ public final class GraalDirectives {
      */
     @SuppressWarnings("unused")
     public static void log(String value) {
+        System.out.print(value);
     }
 
     /**
@@ -553,6 +553,7 @@ public final class GraalDirectives {
      */
     @SuppressWarnings("unused")
     public static void log(String format, long value) {
+        System.out.printf(format, value);
     }
 
     /**
@@ -565,6 +566,7 @@ public final class GraalDirectives {
      */
     @SuppressWarnings("unused")
     public static void log(String format, long v1, long v2) {
+        System.out.printf(format, v1, v2);
     }
 
     /**
@@ -578,5 +580,6 @@ public final class GraalDirectives {
      */
     @SuppressWarnings("unused")
     public static void log(String format, long v1, long v2, long v3) {
+        System.out.printf(format, v1, v2, v3);
     }
 }
