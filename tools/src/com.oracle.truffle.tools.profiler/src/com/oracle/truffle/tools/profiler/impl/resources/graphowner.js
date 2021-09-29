@@ -146,52 +146,40 @@ function sample_for_id(id) {
     return profileData[id];
 }
 
-function depth_for_id_in_tree(tree, id) {
-    if (tree.id == id) {
-        return 0;
-    } else if (tree.hasOwnProperty('s')) {
-        let children = tree.s;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].id == id) {
-                return 1;
-            } else if(children[i].id > id) {
-                return 1 + depth_for_id_in_tree(children[i - 1], id);
-            }
-        }
-        return 1 + depth_for_id_in_tree(children[children.length - 1], id);
-    }
-    return -1;
-}
-
-function collapsed_depth_for_id_in_tree(tree, id) {
-    if (tree.id == id) {
-        return 0;
-    } else if (tree.hasOwnProperty('ss')) {
-        let children = tree.rs;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].id == id) {
-                return 1;
-            } else if(children[i].id > id) {
-                return 1 + depth_for_id_in_tree(children[i - 1], id);
-            }
-        }
-        return 1 + depth_for_id_in_tree(children[children.length - 1], id);
-    }
-    return -1;
-}
-
 function depth_for_sample(sample) {
     if (!sample.hasOwnProperty("depth")) {
-        sample.depth = depth_for_id_in_tree(profileData[0], sample.id);
+        let parent = profileData[sample.p];
+        let depth = 0;
+        while (parent != null) {
+            if (parent.hasOwnProperty("depth")) {
+                depth += parent.depth + 1;
+                break;
+            } else {
+                depth += 1;
+            }
+            parent = profileData[sample.p];
+        }
+        sample.depth = depth;
     }
     return sample.depth;
 }
 
 function collapsed_depth_for_sample(sample) {
     if (!sample.hasOwnProperty("rdepth")) {
-        sample.depth = collapsed_depth_for_id_in_tree(profileData[0], sample.id);
+        let parent = profileData[sample.rp];
+        let depth = 0;
+        while (parent != null) {
+            if (parent.hasOwnProperty("rdepth")) {
+                depth += parent.rdepth + 1;
+                break;
+            } else {
+                depth += 1;
+            }
+            parent = profileData[sample.rp];
+        }
+        sample.rdepth = depth;
     }
-    return sample.depth;
+    return sample.rdepth;
 }
 
 function sample_and_children_depth_first(sample) {

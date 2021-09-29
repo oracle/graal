@@ -90,6 +90,34 @@ function fg_create_element_for_sample(sample, width, x) {
     return e;
 }
 
+function fg_toggle_collapse() {
+    // Hide all the existing elements
+    let iter = fg_sample_and_children_depth_first(profileData[0]);
+    let c = iter.next();
+    while (!c.done) {
+        let e = fg_element_for_sample(c.value);
+        if (e != null) {
+            e.style["display"] = "none";
+        }
+        c = iter.next();
+    }
+    // Find the correct element to zoom to
+    let sample_to_zoom_to = fg_zoomed_sample;
+    if (!fg_collapsed && fg_zoomed_sample.hasOwnProperty("ro")) {
+        sample_to_zoom_to = profileData[fg_zoomed_sample.ro];
+    }
+
+    // Toggle fg_collapsed
+    fg_collapsed = !fg_collapsed;
+
+    // Zoom to the correct element
+    if (sample_to_zoom_to == profileData[0]) {
+        unzoom();
+    } else {
+        zoom(fg_element_for_sample(sample_to_zoom_to));
+    }
+}
+
 function fg_x_for_sample(sample) {
     if (fg_collapsed) {
         return (sample.rx - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
@@ -126,6 +154,7 @@ function fg_width_for_sample(sample) {
 function zoom_child(sample) {
     let width = fg_width_for_sample(sample);
     let x = fg_x_for_sample(sample);
+    let y = fg_y_for_sample(sample);
     let e = fg_element_for_sample(sample);
 
     if (width < fg_min_width) {
@@ -171,7 +200,9 @@ function zoom_child(sample) {
         "Source location: " + source + ":" + sample.fl + "\n";
 
     r.x.baseVal.value = x;
+    r.y.baseVal.value = y;
     t.x.baseVal[0].value = x + 3;
+    t.y.baseVal[0].value = y - 5 + fg_frameheight;
 
     r.width.baseVal.value = width;
     update_text_parts(e, r, t, width - 3, name);
@@ -180,6 +211,7 @@ function zoom_child(sample) {
 function zoom_parent(sample) {
     let width =  fg_width - 2 * xpad;
     let x = xpad;
+    let y = fg_y_for_sample(sample);
     let e = fg_element_for_sample(sample);
     if (e != null) {
         e.style["display"] = "block";
@@ -194,7 +226,9 @@ function zoom_parent(sample) {
             " Parent of displayed sample range.\n";
 
         r.x.baseVal.value = x;
+        r.y.baseVal.value = y;
         t.x.baseVal[0].value = x + 3;
+        t.y.baseVal[0].value = y - 5 + fg_frameheight;
 
         r.width.baseVal.value = width;
 
@@ -428,3 +462,5 @@ function fg_resize(new_width) {
     document.getElementById("search").setAttribute("x", new_width - xpad);
 
 }
+
+graph_register_handler("r", "Toggle collapse of recursive calls", fg_toggle_collapse);
