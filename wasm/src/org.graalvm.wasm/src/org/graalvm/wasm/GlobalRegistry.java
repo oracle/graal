@@ -88,7 +88,7 @@ public class GlobalRegistry {
     private void ensureExternalGlobalCapacity() {
         if (externalGlobalCount == externalGlobals.length) {
             final WasmGlobal[] nExternalGlobals = new WasmGlobal[externalGlobals.length * 2];
-            System.arraycopy(externalGlobals, 0, nExternalGlobals, 0, nExternalGlobals.length);
+            System.arraycopy(externalGlobals, 0, nExternalGlobals, 0, externalGlobals.length);
             externalGlobals = nExternalGlobals;
         }
     }
