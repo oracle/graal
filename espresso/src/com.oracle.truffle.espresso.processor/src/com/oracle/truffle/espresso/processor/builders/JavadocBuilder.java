@@ -55,13 +55,11 @@ public final class JavadocBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    String build() {
-        StringBuilder sb = new StringBuilder();
+    void buildImpl(StringBuilder sb) {
         sb.append(baseIndent).append(JAVADOC_START);
         for (String line : lines) {
             sb.append(baseIndent).append(JAVADOC_MIDDLE).append(line).append(NEWLINE);
         }
         sb.append(baseIndent).append(JAVADOC_END);
-        return sb.toString();
     }
 }

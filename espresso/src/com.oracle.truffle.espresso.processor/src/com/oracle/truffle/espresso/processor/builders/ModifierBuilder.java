@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
-public final class QualifierBuilder extends AbstractCodeBuilder {
+public final class ModifierBuilder extends AbstractCodeBuilder {
     private boolean qualifiedAsPublic;
     private boolean qualifiedAsPrivate;
     private boolean qualifiedAsStatic;
@@ -32,47 +32,47 @@ public final class QualifierBuilder extends AbstractCodeBuilder {
     private boolean qualifiedAsNative;
     private boolean qualifiedAsOverride;
 
-    public QualifierBuilder asPublic() {
+    public ModifierBuilder asPublic() {
         this.qualifiedAsPublic = true;
         return this;
     }
 
-    public QualifierBuilder asPrivate() {
+    public ModifierBuilder asPrivate() {
         this.qualifiedAsPrivate = true;
         return this;
     }
 
-    public QualifierBuilder asStatic() {
+    public ModifierBuilder asStatic() {
         this.qualifiedAsStatic = true;
         return this;
     }
 
-    public QualifierBuilder asFinal() {
+    public ModifierBuilder asFinal() {
         this.qualifiedAsFinal = true;
         return this;
     }
 
-    public QualifierBuilder asVolatile() {
+    public ModifierBuilder asVolatile() {
         this.qualifiedAsVolatile = true;
         return this;
     }
 
-    public QualifierBuilder asAbstract() {
+    public ModifierBuilder asAbstract() {
         this.qualifiedAsAbstract = true;
         return this;
     }
 
-    public QualifierBuilder asNative() {
+    public ModifierBuilder asNative() {
         this.qualifiedAsNative = true;
         return this;
     }
 
-    public QualifierBuilder asOverride() {
+    public ModifierBuilder asOverride() {
         this.qualifiedAsOverride = true;
         return this;
     }
 
-    public QualifierBuilder combineWith(QualifierBuilder other) {
+    public ModifierBuilder combineWith(ModifierBuilder other) {
         qualifiedAsPublic = qualifiedAsPublic || other.qualifiedAsPublic;
         qualifiedAsPrivate = qualifiedAsPrivate || other.qualifiedAsPrivate;
         qualifiedAsStatic = qualifiedAsStatic || other.qualifiedAsStatic;
@@ -85,9 +85,7 @@ public final class QualifierBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    String build() {
-        StringBuilder sb = new StringBuilder();
-
+    void buildImpl(StringBuilder sb) {
         if (qualifiedAsPublic && qualifiedAsPrivate) {
             throw new IllegalStateException("Cannot qualify as both public and private");
         }
@@ -130,7 +128,5 @@ public final class QualifierBuilder extends AbstractCodeBuilder {
         if (qualifiedAsOverride) {
             sb.append("override ");
         }
-
-        return sb.toString();
     }
 }

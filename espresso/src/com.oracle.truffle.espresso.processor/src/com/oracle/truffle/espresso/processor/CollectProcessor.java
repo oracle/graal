@@ -26,14 +26,11 @@ import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
 import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
 import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.QualifierBuilder;
-
-import static com.oracle.truffle.espresso.processor.ProcessorUtils.imports;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -140,7 +137,7 @@ public class CollectProcessor extends BaseProcessor {
 
         MethodBuilder getInstancesMethod =
                 new MethodBuilder("getInstances")
-                        .withQualifiers(new QualifierBuilder().asPublic().asStatic())
+                        .withModifiers(new ModifierBuilder().asPublic().asStatic())
                         .withReturnType("List<T>")
                         .withTemplateParams("T")
                         .withParams("Class<? extends T> componentClass")
@@ -159,7 +156,7 @@ public class CollectProcessor extends BaseProcessor {
 
         ClassBuilder collectorClass = new ClassBuilder(anchorClass.getSimpleName().toString() + "Collector")
                 .withJavaDoc(javaDocLink)
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withQualifiers(new ModifierBuilder().asPublic().asFinal())
                 .withMethod(getInstancesMethod);
 
         ClassFileBuilder collectorFile = new ClassFileBuilder()
@@ -167,7 +164,7 @@ public class CollectProcessor extends BaseProcessor {
                 .withImportGroup(Arrays.asList("java.util.ArrayList", "java.util.List"))
                 .withClass(collectorClass);
 
-        return collectorFile.toString();
+        return collectorFile.build();
     }
 
     /**

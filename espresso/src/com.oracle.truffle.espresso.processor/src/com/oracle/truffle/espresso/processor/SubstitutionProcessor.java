@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.processor;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.QualifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -576,7 +576,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         SubstitutorHelper h = (SubstitutorHelper) helper;
         MethodBuilder factoryConstructor = new MethodBuilder(FACTORY)
                 .asConstructor()
-                .withQualifiers(new QualifierBuilder().asPublic())
+                .withModifiers(new ModifierBuilder().asPublic())
                 .addBodyLine("super(")
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',')
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',')
@@ -603,7 +603,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
         MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType("String[]")
                 .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");")
                 ;
@@ -614,7 +614,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
         MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType("String[]")
                 .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();")
                 ;
@@ -625,7 +625,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         String versionFilter = h.versionFilter.toString();
         MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType("boolean")
                 .withParams(JAVA_VERSION + " version")
                 .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);")
@@ -638,7 +638,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         SubstitutorHelper h = (SubstitutorHelper) helper;
         MethodBuilder invoke = new MethodBuilder("invoke")
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withParams("Object[] " + ARGS_NAME)
                 .withReturnType("Object");
         int argIndex = 0;

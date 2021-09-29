@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.processor;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.QualifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -441,7 +441,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
         MethodBuilder factoryConstructor = new MethodBuilder(FACTORY)
                 .asConstructor()
-                .withQualifiers(new QualifierBuilder().asPublic())
+                .withModifiers(new ModifierBuilder().asPublic())
                 .addBodyLine("super(")
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',')
                 .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',')
@@ -458,7 +458,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
         MethodBuilder invoke = new MethodBuilder("invoke")
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType("Object")
                 .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
         if (h.needsHandlify || !h.isStatic) {
@@ -485,7 +485,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         if (h.reachableForAutoSubstitution) {
             MethodBuilder invokeDirect = new MethodBuilder("invokeDirect")
                     .withOverrideAnnotation()
-                    .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                    .withModifiers(new ModifierBuilder().asPublic().asFinal())
                     .withReturnType("Object")
                     .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
             if (!h.isStatic) {

@@ -16,11 +16,15 @@ public final class SignatureBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    @Override
-    String build() {
+    public String build() {
         StringBuilder sb = new StringBuilder();
+        buildImpl(sb);
+        return sb.toString();
+    }
+
+    @Override
+    void buildImpl(StringBuilder sb) {
         sb.append(name);
         sb.append(PAREN_OPEN).append(String.join(", ", params)).append(PAREN_CLOSE);
-        return sb.toString();
     }
 }
