@@ -110,7 +110,7 @@ public class LockFreePrefixTree {
 
         private static final int MAX_HASH_SKIPS = 10;
 
-        private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> childrenUpdater = AtomicReferenceFieldUpdater.newUpdater(Node.class, AtomicReferenceArray.class, "children");
+        private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class, AtomicReferenceArray.class, "children");
 
         private final long key;
 
@@ -206,7 +206,7 @@ public class LockFreePrefixTree {
                     addChildToLocalHash(toCopy, newChildrenArray);
                 }
             }
-            childrenUpdater.compareAndSet(this, childrenArray, newChildrenArray);
+            CHILDREN_UPDATER.compareAndSet(this, childrenArray, newChildrenArray);
         }
 
         private Node getOrAddHash(long key, AtomicReferenceArray<Node> hashTable) {
@@ -288,7 +288,7 @@ public class LockFreePrefixTree {
         }
 
         private boolean casChildren(AtomicReferenceArray<Node> expected, AtomicReferenceArray<Node> updated) {
-            return childrenUpdater.compareAndSet(this, expected, updated);
+            return CHILDREN_UPDATER.compareAndSet(this, expected, updated);
         }
 
         private AtomicReferenceArray<Node> readChildren() {
