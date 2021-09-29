@@ -31,7 +31,7 @@ beneath each code example to choose between JavaScript, R, Ruby, and Python.
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
-GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../graalvm-as-a-platform/truffle/README.md).
+GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
 These languages are henceforth referenced as **guest languages**.
 
 Complete the steps in this section to create a sample polyglot

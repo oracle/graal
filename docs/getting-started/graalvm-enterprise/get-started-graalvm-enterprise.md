@@ -335,7 +335,7 @@ native-image --language:js --initialize-at-build-time PrettyPrintJSON
 
 The native image generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
 Additionally, the image building requires large amounts of physical memory, especially if you build an image with
-the [Truffle language implementation framework](../../graalvm-as-a-platform/truffle/README.md) included, which is the case here.
+the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
 The resulting executable can now perform JSON pretty-printing:
 
@@ -406,6 +406,6 @@ If you are mostly interested in GraalVM Enterprise support for a specific langua
 
 If you are looking for the tooling support GraalVM Enterprise offers, proceed to [Debugging and Monitoring Tools](../../tools/tools.md).
 
-If you are considering GraalVM Enterprise as a platform for your future language or tool implementation, go to [GraalVM Enterprise as a Platform](../../graalvm-as-a-platform/truffle/README.md).
+If you are considering GraalVM Enterprise as a platform for your future language or tool implementation, go to [GraalVM Enterprise as a Platform](../../../truffle/docs/README.md).
 
 You can find information on GraalVM Enterprise's security model in the [Security Guide](/security-guide/), and rich API documentation in [GraalVM SDK Javadoc](https://docs.oracle.com/en/graalvm/enterprise/21/sdk/index.html).

@@ -14,7 +14,7 @@ See the [Implementation Details](ImplementationDetails.md) for more information.
 The project name behind this implementation is "Espresso".
 Its open source version is available on [GitHub](https://github.com/oracle/graal/tree/master/espresso).
 
-The Java on Truffle execution mode runs Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../graalvm-as-a-platform/truffle/README.md) – an open-source library for writing interpreters for programming languages.
+The Java on Truffle execution mode runs Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../../truffle/docs/README.md) – an open-source library for writing interpreters for programming languages.
 Now Java can be executed by the same principle as other languages in the GraalVM ecosystem (JavaScript, Ruby, Python, R), directly interoperate with those languages, and pass data back and forth in the same memory space.
 Besides complete language interoperability, with Java on Truffle you can:
 

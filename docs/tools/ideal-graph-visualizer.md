@@ -91,7 +91,7 @@ That one is initially hidden, but you can display the list of opened projects us
 
 ## Dumping Graphs
 
-The IGV tool is developed to allow GraalVM Enterprise language implementers to optimize their languages assembled with the [Language Implentation Framework](../graalvm-as-a-platform/truffle/README.md).
+The IGV tool is developed to allow GraalVM Enterprise language implementers to optimize their languages assembled with the [Language Implentation Framework](../../truffle/docs/README.md).
 As a development tool it should not be installed to production environments.
 
 To dump the GraalVM compiler graphs from an embedded Java application to the IGV, you need to add options to GraalVM-based processes.

@@ -26,7 +26,7 @@ This page provides an architectural overview of GraalVM and its runtime modes, s
 
 GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](https://github.com/oracle/graal/tree/master/compiler), which is written in Java, to the HotSpot Java Virtual Machine.
 
-In addition to running Java and JVM-based languages, [GraalVM's language implementation framework (Truffle)](graalvm-as-a-platform/truffle/README.md) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
+In addition to running Java and JVM-based languages, [GraalVM's language implementation framework (Truffle)](../truffle/docs/README.md) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
 With GraalVM Truffle, Java and other supported languages can directly interoperate with each other and pass data back and forth in the same memory space.
 
 ## Runtime Modes
@@ -37,7 +37,7 @@ GraalVM is unique as a runtime environment offering several modes of operation: 
 When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](reference-manual/compiler.md) as the top-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
-Interpreters for supported languages, written on top of the [Truffle framework](graalvm-as-a-platform/truffle/README.md), are themselves Java programs that run on the JVM.
+Interpreters for supported languages, written on top of the [Truffle framework](../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
 [Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
@@ -45,7 +45,7 @@ The Java bytecode that is processed during the native image build includes all a
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
-[Java on Truffle](reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle language implementation framework](graalvm-as-a-platform/truffle/README.md).
+[Java on Truffle](reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle language implementation framework](../truffle/docs/README.md).
 It is a complete Java VM that includes all core components, implements the same API as the Java Runtime Environment library, and reuses all JARs and native libraries from GraalVM.
 Java on Trufle is an experimental technology in GraalVM, available as of version 21.0.0.
 
@@ -86,7 +86,7 @@ Tools/Utilities:
 
 * [Native Image](reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable.
 * [LLVM toolchain](reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime.
-* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](graalvm-as-a-platform/truffle/README.md) to run Java via a Java bytecode interpreter.
+* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
 
 Runtimes:
 

@@ -37,7 +37,7 @@ A *graph* was selected for this role.
 The graph can represent similar statements of different languages in the same way, like "if" statements or loops, which makes it possible to mix languages in the same program.
 The GraalVM compiler can then perform language-independent optimization and generate machine code on this graph.
 
-GraalVM also includes the [Truffle language implementation framework](../graalvm-as-a-platform/truffle/README.md) -- a library, written in Java -- to build interpreters for programming languages, which then run on GraalVM.
+GraalVM also includes the [Truffle language implementation framework](../../truffle/docs/README.md) -- a library, written in Java -- to build interpreters for programming languages, which then run on GraalVM.
 These languages can consequently benefit from the optimization possibilities of the GraalVM compiler.
 The pipeline for such compilation is:
 
