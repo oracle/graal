@@ -1075,6 +1075,22 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                // check that method is member of the class type or a super class
+                KlassRef declaringKlass = method.getDeclaringKlass();
+                KlassRef checkedKlass = klass;
+                boolean isMember = false;
+                while (checkedKlass != null) {
+                    if (checkedKlass == declaringKlass) {
+                        isMember = true;
+                        break;
+                    }
+                    checkedKlass = checkedKlass.getSuperClass();
+                }
+                if (!isMember) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
+                    return new CommandResult(reply);
+                }
+
                 LOGGER.fine(() -> "trying to invoke static method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
@@ -1254,6 +1270,11 @@ public final class JDWP {
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
+                    return new CommandResult(reply);
+                }
+
+                if (method.getDeclaringKlass() != itf) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
 
@@ -1761,6 +1782,11 @@ public final class JDWP {
                 MethodRef method = verifyMethodRef(methodId, reply, context);
 
                 if (method == null) {
+                    return new CommandResult(reply);
+                }
+
+                if (!context.isMemberOf(callee, method.getDeclaringKlass())) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
 

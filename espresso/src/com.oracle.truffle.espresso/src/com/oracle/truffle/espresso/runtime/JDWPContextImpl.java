@@ -711,6 +711,16 @@ public final class JDWPContextImpl implements JDWPContext {
         return rootNode;
     }
 
+    @Override
+    public boolean isMemberOf(Object guestObject, KlassRef klass) {
+        if (guestObject instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) guestObject;
+            return klass.isAssignable(staticObject.getKlass());
+        } else {
+            return false;
+        }
+    }
+
     public void rerunclinit(ObjectKlass oldKlass) {
         classInitializerActions.add(new ReloadingAction(oldKlass));
     }
