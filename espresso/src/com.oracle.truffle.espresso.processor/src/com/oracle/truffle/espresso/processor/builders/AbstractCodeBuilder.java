@@ -55,24 +55,19 @@ public abstract class AbstractCodeBuilder {
         return sb.toString();
     }
 
-    protected String joinPartsWith(String delimiter, Collection<String> parts) {
-        return joinPartsWith(delimiter, parts.toArray());
+    protected StringBuilder joinPartsWith(StringBuilder sb, String delimiter, Collection<String> parts) {
+        return joinPartsWith(sb, delimiter, parts.toArray());
     }
 
-    protected String joinPartsWith(String delimiter, Object... parts) {
-        StringBuilder sb = new StringBuilder();
+    protected StringBuilder joinPartsWith(StringBuilder sb, String delimiter, Object... parts) {
         for (Object part : parts) {
             sb.append(part).append(delimiter);
         }
         if (parts.length > 0) {
             sb.delete(sb.length() - delimiter.length(), sb.length());
         }
-        return sb.toString();
+        return sb;
     }
 
-    abstract String build();
-
-    public String toString() {
-        return this.build();
-    }
+    abstract void buildImpl(StringBuilder sb);
 }

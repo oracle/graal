@@ -28,7 +28,7 @@ import java.util.List;
 public final class FieldBuilder extends AbstractCodeBuilder {
     private final String name;
     private final String type;
-    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
+    private ModifierBuilder modifierBuilder = new ModifierBuilder();
     private final List<String> annotations = new ArrayList<>();
 
     public FieldBuilder(Object type, Object name) {
@@ -42,28 +42,26 @@ public final class FieldBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public FieldBuilder withQualifiers(QualifierBuilder qualifiers) {
-        if (qualifierBuilder == null) {
-            qualifierBuilder = qualifiers;
+    public FieldBuilder withQualifiers(ModifierBuilder qualifiers) {
+        if (modifierBuilder == null) {
+            modifierBuilder = qualifiers;
         } else {
-            qualifierBuilder.combineWith(qualifiers);
+            modifierBuilder.combineWith(qualifiers);
         }
         return this;
     }
 
     @Override
-    String build() {
-        StringBuilder sb = new StringBuilder();
+    void buildImpl(StringBuilder sb) {
         for (String annotation : annotations) {
             sb.append(baseIndent).append(annotation);
-            sb.append(' ');
+            sb.append(NEWLINE);
         }
         sb.append(baseIndent);
-        sb.append(qualifierBuilder.build());
+        modifierBuilder.buildImpl(sb);
         sb.append(type);
         sb.append(' ');
         sb.append(name);
         sb.append(SEMICOLON_NEWLINE);
-        return sb.toString();
     }
 }

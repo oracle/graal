@@ -27,12 +27,11 @@ import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
 import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
 import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.QualifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 import com.oracle.truffle.espresso.processor.builders.SignatureBuilder;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.time.Year;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -225,33 +224,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     // Global constants
     protected static final String FACTORY = "Factory";
 
-    static final String COPYRIGHT = "/* Copyright (c) " + Year.now() + " Oracle and/or its affiliates. All rights reserved.\n" +
-                    " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
-                    " *\n" +
-                    " * This code is free software; you can redistribute it and/or modify it\n" +
-                    " * under the terms of the GNU General Public License version 2 only, as\n" +
-                    " * published by the Free Software Foundation.\n" +
-                    " *\n" +
-                    " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
-                    " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
-                    " * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License\n" +
-                    " * version 2 for more details (a copy is included in the LICENSE file that\n" +
-                    " * accompanied this code).\n" +
-                    " *\n" +
-                    " * You should have received a copy of the GNU General Public License version\n" +
-                    " * 2 along with this work; if not, write to the Free Software Foundation,\n" +
-                    " * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.\n" +
-                    " *\n" +
-                    " * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n" +
-                    " * or visit www.oracle.com if you need additional information or have any\n" +
-                    " * questions.\n" +
-                    " */\n\n";
-
-    static final String PUBLIC_FINAL_CLASS = "public final class ";
     static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
 
-    static final String PUBLIC_FINAL = "public final";
-    static final String OVERRIDE = "@Override";
     static final String IS_TRIVIAL = "isTrivial";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
@@ -558,7 +532,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             linkSignature.addParam(ESPRESSO_CONTEXT_CLASS);
         }
 
-        javadocBuilder.addLine(JavadocBuilder.link(linkSignature.toString()));
+        javadocBuilder.addLine(JavadocBuilder.link(linkSignature.build()));
         return javadocBuilder;
     }
 
@@ -567,7 +541,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         for (NativeType t : signature) {
             sb.addParam("NativeType." + t);
         }
-        return sb.toString();
+        return sb.build();
     }
 
     // @formatter:off
@@ -597,12 +571,12 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private ClassBuilder generateFactory(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         ClassBuilder factory = new ClassBuilder(FACTORY)
                 .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)")
-                .withQualifiers(new QualifierBuilder().asPublic().asStatic().asFinal())
+                .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal())
                 .withSuperClass(substitutor + "." + FACTORY);
         generateFactoryConstructor(factory, className, targetMethodName, parameterTypeName, helper);
         factory.withMethod(new MethodBuilder(CREATE)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType(substitutor)
                 .withParams(META_CLASS + META_VAR)
                 .addBodyLine("return new ", className, "(", META_VAR, ");"));
@@ -617,7 +591,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static FieldBuilder generateMetaInstanceField(SubstitutionHelper helper) {
         if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR)
-                    .withQualifiers(new QualifierBuilder().asPrivate().asFinal());
+                    .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
             return field;
         }
         return null;
@@ -627,7 +601,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         if (helper.isNodeTarget()) {
             FieldBuilder field = new FieldBuilder(helper.getNodeTarget().getSimpleName(), "node")
                     .withAnnotation("@Child")
-                    .withQualifiers(new QualifierBuilder().asPrivate());
+                    .withQualifiers(new ModifierBuilder().asPrivate());
             return field;
         }
         return null;
@@ -639,7 +613,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static MethodBuilder generateConstructor(String substitutorName, SubstitutionHelper helper) {
         MethodBuilder constructor = new MethodBuilder(substitutorName)
                 .asConstructor()
-                .withQualifiers(new QualifierBuilder().asPrivate())
+                .withModifiers(new ModifierBuilder().asPrivate())
                 .withParams(META_TYPE + " " + META_VAR)
                 ;
 
@@ -669,7 +643,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static MethodBuilder generateIsTrivial(SubstitutionHelper helper) {
         MethodBuilder isTrivialMethod = new MethodBuilder(IS_TRIVIAL)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic())
+                .withModifiers(new ModifierBuilder().asPublic())
                 .withReturnType("boolean")
                 .addBodyLine("return ", isTrivial(helper.getTarget(), helper.getImplAnnotation()), ';');
         return isTrivialMethod;
@@ -725,7 +699,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         ClassBuilder substitutorClass = new ClassBuilder(substitutorName)
                 .withSuperClass(substitutor)
                 .withJavaDoc(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper))
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withQualifiers(new ModifierBuilder().asPublic().asFinal())
                 .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
         if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
@@ -749,7 +723,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         generateInvoke(substitutorClass, className, targetMethodName, parameterTypeName, helper);
 
         substitutorFile.withClass(substitutorClass);
-        return substitutorFile.toString();
+        return substitutorFile.build();
     }
 
     /**
@@ -758,7 +732,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private MethodBuilder generateShouldSplit() {
         MethodBuilder method = new MethodBuilder(SHOULD_SPLIT)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType("boolean")
                 .addBodyLine("return true;");
         return method;
@@ -770,7 +744,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private MethodBuilder generateSplit() {
         MethodBuilder method = new MethodBuilder(SPLIT)
                 .withOverrideAnnotation()
-                .withQualifiers(new QualifierBuilder().asPublic().asFinal())
+                .withModifiers(new ModifierBuilder().asPublic().asFinal())
                 .withReturnType(substitutor)
                 .addBodyLine("return new ", FACTORY, "().", CREATE, "(", META_VAR, ");");
         return method;

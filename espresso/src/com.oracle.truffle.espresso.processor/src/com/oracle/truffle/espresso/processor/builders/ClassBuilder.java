@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public final class ClassBuilder extends AbstractCodeBuilder {
     private final String className;
     private JavadocBuilder javaDoc;
-    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
+    private ModifierBuilder modifierBuilder = new ModifierBuilder();
     private String superClass = null;
     private final List<String> annotations = new ArrayList<>();
     private final Set<String> superInterfaces = new HashSet<>();
@@ -42,11 +42,11 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         this.className = className;
     }
 
-    public ClassBuilder withQualifiers(QualifierBuilder qualifiers) {
-        if (qualifierBuilder == null) {
-            qualifierBuilder = qualifiers;
+    public ClassBuilder withQualifiers(ModifierBuilder qualifiers) {
+        if (modifierBuilder == null) {
+            modifierBuilder = qualifiers;
         } else {
-            qualifierBuilder.combineWith(qualifiers);
+            modifierBuilder.combineWith(qualifiers);
         }
         return this;
     }
@@ -92,11 +92,10 @@ public final class ClassBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    String build() {
-        StringBuilder sb = new StringBuilder();
-
+    void buildImpl(StringBuilder sb) {
         if (javaDoc != null) {
-            sb.append(baseIndent).append(javaDoc.build());
+            sb.append(baseIndent);
+            javaDoc.buildImpl(sb);
         }
 
         for (String annotation : annotations) {
@@ -104,13 +103,15 @@ public final class ClassBuilder extends AbstractCodeBuilder {
             sb.append(NEWLINE);
         }
 
-        sb.append(baseIndent).append(qualifierBuilder.build());
+        sb.append(baseIndent);
+        modifierBuilder.buildImpl(sb);
         sb.append("class ").append(className);
         if (superClass != null) {
             sb.append(" extends ").append(superClass);
         }
         if (superInterfaces.size() > 0) {
-            sb.append(" implements ").append(joinPartsWith(", ", superInterfaces));
+            sb.append(" implements ");
+            joinPartsWith(sb, ", ", superInterfaces);
         }
         sb.append(' ').append(BLOCK_OPEN).append(NEWLINE);
 
@@ -120,14 +121,12 @@ public final class ClassBuilder extends AbstractCodeBuilder {
                 sb.deleteCharAt(sb.length() - 1);
             }
             member.setIndentLevel(tabLevel + 1);
-            sb.append(member.build());
+            member.buildImpl(sb);
             sb.append(NEWLINE);
             prevMember = member;
         }
 
         sb.deleteCharAt(sb.length() - 1);
         sb.append(baseIndent).append(BLOCK_CLOSE).append(NEWLINE);
-
-        return sb.toString();
     }
 }

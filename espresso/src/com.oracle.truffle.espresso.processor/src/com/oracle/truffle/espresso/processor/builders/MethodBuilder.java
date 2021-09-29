@@ -34,7 +34,7 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     private boolean constructor = false;
     private final String methodName;
     private String returnType = "void";
-    private QualifierBuilder qualifierBuilder = new QualifierBuilder();
+    private ModifierBuilder modifierBuilder = new ModifierBuilder();
     private final List<String> annotations = new ArrayList<>();
     private final List<String> body = new ArrayList<>();
     private final List<String> params = new ArrayList<>();
@@ -46,11 +46,11 @@ public final class MethodBuilder extends AbstractCodeBuilder {
         setIndentLevel(1);
     }
 
-    public MethodBuilder withQualifiers(QualifierBuilder qualifiers) {
-        if (qualifierBuilder == null) {
-            qualifierBuilder = qualifiers;
+    public MethodBuilder withModifiers(ModifierBuilder qualifiers) {
+        if (modifierBuilder == null) {
+            modifierBuilder = qualifiers;
         } else {
-            qualifierBuilder.combineWith(qualifiers);
+            modifierBuilder.combineWith(qualifiers);
         }
         return this;
     }
@@ -100,28 +100,30 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    String build() {
-        StringBuilder sb = new StringBuilder();
+    void buildImpl(StringBuilder sb) {
         for (String annotation : annotations) {
             sb.append(baseIndent).append(annotation);
             sb.append(NEWLINE);
         }
         sb.append(baseIndent);
-        sb.append(qualifierBuilder.build());
+        modifierBuilder.buildImpl(sb);
         if (templateParams.size() > 0) {
-            sb.append(TEMPLATE_OPEN).append(joinPartsWith(", ", templateParams)).append(TEMPLATE_CLOSE);
+            sb.append(TEMPLATE_OPEN);
+            joinPartsWith(sb, ", ", templateParams);
+            sb.append(TEMPLATE_CLOSE);
             sb.append(' ');
         }
         if (!constructor) {
             sb.append(returnType).append(' ');
         }
         sb.append(methodName);
-        sb.append(PAREN_OPEN).append(joinPartsWith(", ", params)).append(PAREN_CLOSE).append(' ');
+        sb.append(PAREN_OPEN);
+        joinPartsWith(sb, ", ", params);
+        sb.append(PAREN_CLOSE).append(' ');
         sb.append(BLOCK_OPEN).append(NEWLINE);
         for (String line : body) {
             sb.append(baseIndent).append(TAB_1).append(line).append(NEWLINE);
         }
         sb.append(baseIndent).append(BLOCK_CLOSE).append(NEWLINE);
-        return sb.toString();
     }
 }

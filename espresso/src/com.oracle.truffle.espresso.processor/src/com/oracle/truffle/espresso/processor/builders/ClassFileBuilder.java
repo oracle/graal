@@ -80,13 +80,17 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
         return this;
     }
 
+    public String build() {
+        StringBuilder sb = new StringBuilder();
+        buildImpl(sb);
+        return sb.toString();
+    }
+
     @Override
-    String build() {
+    void buildImpl(StringBuilder sb) {
         if (classes.size() == 0) {
             throw new IllegalStateException("Cannot build a file with no classes defined");
         }
-
-        StringBuilder sb = new StringBuilder();
 
         if (copyright) {
             sb.append(COPYRIGHT);
@@ -107,11 +111,8 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
         }
 
         for (ClassBuilder classBuilder : classes) {
-            sb.append(classBuilder.build());
+            classBuilder.buildImpl(sb);
             sb.append(NEWLINE);
         }
-
-        sb.deleteCharAt(sb.length() - 1);
-        return sb.toString();
     }
 }
