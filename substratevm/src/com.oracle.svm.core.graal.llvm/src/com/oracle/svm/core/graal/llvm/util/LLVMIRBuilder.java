@@ -464,6 +464,11 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMMetadataTypeInContext(context);
     }
 
+    public LLVMTypeRef undefType() {
+        /* Use a non-standard integer size to make sure the value is never used in an instruction */
+        return integerType(42);
+    }
+
     public static boolean compatibleTypes(LLVMTypeRef a, LLVMTypeRef b) {
         int aKind = LLVM.LLVMGetTypeKind(a);
         int bKind = LLVM.LLVMGetTypeKind(b);
@@ -653,6 +658,10 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public void setValueName(LLVMValueRef value, String name) {
         LLVM.LLVMSetValueName(value, name);
+    }
+
+    public LLVMValueRef getUndef() {
+        return LLVM.LLVMGetUndef(undefType());
     }
 
     /* Control flow */
