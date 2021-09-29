@@ -45,6 +45,7 @@ import mx_compiler
 import mx_gate
 import mx_unittest
 import mx_sdk_vm
+import mx_sdk_vm_impl
 import mx_javamodules
 import mx_subst
 import mx_substratevm_benchmark  # pylint: disable=unused-import
@@ -176,6 +177,14 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         primary_suite_dir = config.primary_suite_dir
     else:
         config_args = []
+        if not mx_sdk_vm_impl._jlink_libraries():
+            config_args += ['--no-jlinking']
+        native_images = mx_sdk_vm_impl._parse_cmd_arg('native_images')
+        if native_images:
+            config_args += ['--native-images=' + ','.join(native_images)]
+        components = mx_sdk_vm_impl._components_include_list()
+        if components:
+            config_args += ['--components=' + ','.join(c.name for c in components)]
         dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
         if dynamic_imports:
             config_args += ['--dynamicimports', ','.join(dynamic_imports)]
