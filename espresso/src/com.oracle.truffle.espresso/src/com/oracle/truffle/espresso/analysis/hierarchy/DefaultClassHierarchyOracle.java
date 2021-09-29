@@ -50,7 +50,7 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     @Override
     public void onClassInit(ObjectKlass newClass) {
         ObjectKlass currentParent = newClass.getSuperKlass();
-        while (currentParent.getLeafTypeAssumption().getAssumption().isValid()) {
+        while (currentParent != null && currentParent.getLeafTypeAssumption().getAssumption().isValid()) {
             currentParent.getLeafTypeAssumption().getAssumption().invalidate();
             currentParent = currentParent.getSuperKlass();
         }
