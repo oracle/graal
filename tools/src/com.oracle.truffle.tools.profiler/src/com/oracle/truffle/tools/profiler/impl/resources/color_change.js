@@ -128,8 +128,19 @@ function color_create_legend() {
     t.style.fill = "rgb(0, 0, 0)";
     t.textContent = "Legend";
 
+    let t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    t2.className.baseVal = "title";
+    t2.style.textAnchor = "middle";
+    t2.setAttribute("x", 125);
+    t2.setAttribute("y", fg_frameheight * 3);
+    t2.style.fontSize = fontSize;
+    t2.style.fontFamily = "Verdana";
+    t2.style.fill = "rgb(0, 0, 0)";
+    t2.textContent = "Press \"l\" to toggle legend";
+
     e.appendChild(r);
     e.appendChild(t);
+    e.appendChild(t2);
     e.style.display = "none";
     svg.appendChild(e);
 
@@ -176,7 +187,7 @@ function color_insert_legend(e) {
 }
 
 function color_legend_entry(e, i, color, text) {
-    let y = (fg_frameheight * 2) + (i + 1) * fg_frameheight * 1.5;
+    let y = (fg_frameheight * 2.3) + (i + 1) * fg_frameheight * 1.5;
 
     let box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     box.x.baseVal.value = xpad;

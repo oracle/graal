@@ -26,8 +26,22 @@
 // highlighting and info text
 
 function s(node) {        // show
-    let info = title(node);
-    flamegraph_details.nodeValue = "function: " + info;
+    let sample = null;
+    if (node.getAttribute("class") == "func_g") {
+        sample = sample_for_id(node.getAttribute("id").substring(2));
+    } else if (node.getAttribute("class") == "func_h") {
+        sample = histogram_entry_for_id(node.getAttribute("id").substring(2));
+    }
+    let name = name_for_sample(sample)
+    let details = name + " (" + languageNames[sample.l] + ") - ";
+    if (sample.hasOwnProperty("h")) {
+        details = details + "(Self:" + (sample.i + sample.c) + " samples " +
+            "Total: " + (sample.h) + " samples)";
+    } else {
+        details = details + "(" + (sample.i + sample.c) + " samples)";
+    }
+
+    flamegraph_details.textContent = details;
 }
 
 function c(node) {            // clear
@@ -206,6 +220,10 @@ function title(e) {
 
 function name_for_sample(sample) {
     return profileNames[sample.n];
+}
+
+function source_for_sample(sample) {
+    return sourceNames[sample.f];
 }
 
 function function_name(e) {
@@ -395,8 +413,10 @@ function graph_popup_fix_width(e, right_justify) {
             max_label_end = label_end;
         }
     }
-    let title = e.getElementsByClassName("title")[0];
-    title.x.baseVal.value = max_label_end / 2;
+    let titles = e.getElementsByClassName("title");
+    for (const title of titles) {
+        title.x.baseVal.value = max_label_end / 2;
+    }
     let popup = e.getElementsByClassName("popup")[0];
     popup.width.baseVal.value = max_label_end;
     if (right_justify) {

@@ -218,8 +218,11 @@ final class SVGSamplerOutput {
         private Map<GraphColorMap, Map<String, String>> colorsForNames = new HashMap<>();
         private int sampleId;
         public final Map<String, Integer> nameHash = new HashMap<>();
+        public final Map<String, Integer> sourceHash = new HashMap<>();
         public int nameCounter = 0;
+        public int sourceCounter = 0;
         public final JSONArray sampleNames = new JSONArray();
+        public final JSONArray sourceNames = new JSONArray();
         public final JSONObject sampleData = new JSONObject();
 
         GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
@@ -294,8 +297,12 @@ final class SVGSamplerOutput {
 
         private void buildSampleData() {
             sampleData.put("n", nameCounter);
+            sampleData.put("f", sourceCounter);
+            sampleData.put("fl", 0);
             nameHash.put("<top>", nameCounter++);
             sampleNames.put("<top>");
+            sourceHash.put("<none>", sourceCounter++);
+            sourceNames.put("<none>");
             sampleData.put("id", sampleId++);
             sampleData.put("i", 0);
             sampleData.put("c", 0);
@@ -326,6 +333,11 @@ final class SVGSamplerOutput {
                 sampleNames.put(thread.getName());
                 return nameCounter++;
             }));
+            result.put("f", sourceHash.computeIfAbsent("<none>", k -> {
+                sourceNames.put("<none>");
+                return sourceCounter++;
+            }));
+            result.put("fl", 0);
             result.put("id", sampleId++);
             result.put("i", 0);
             result.put("c", 0);
@@ -349,6 +361,9 @@ final class SVGSamplerOutput {
 
             result.append("var profileNames = ");
             result.append(sampleNames.toString());
+            result.append(";\n");
+            result.append("var sourceNames = ");
+            result.append(sourceNames.toString());
             result.append(";\n");
             result.append("var profileData = ");
             result.append(sampleData.toString());
@@ -392,10 +407,34 @@ final class SVGSamplerOutput {
                 return nameCounter++;
             });
             result.put("n", nameId);
+            final String sourceName;
+            int sourceLine = 0;
+            SourceSection section = sample.getSourceSection();
+            if (section != null && section.isAvailable()) {
+                sourceLine = section.getStartLine();
+                Source source = section.getSource();
+                if (source != null) {
+                    String path = source.getPath();
+                    if (path != null) {
+                        sourceName = path;
+                    } else {
+                        sourceName = source.getName();
+                    }
+                } else {
+                    sourceName = "<none>";
+                }
+            } else {
+                sourceName = "<none>";
+            }
+            result.put("f", sourceHash.computeIfAbsent(sourceName, k -> {
+                sourceNames.put(k);
+                return sourceCounter++;
+            }));
+            result.put("fl", sourceLine);
             result.put("id", sampleId++);
             result.put("i", sample.getPayload().getTierSelfCount(0));
             int compiledSelfHits = 0;
-            for (int i = 0; i < sample.getPayload().getNumberOfTiers(); i++) {
+            for (int i = 1; i < sample.getPayload().getNumberOfTiers(); i++) {
                 compiledSelfHits += sample.getPayload().getTierSelfCount(i);
             }
             result.put("c", compiledSelfHits);
@@ -464,7 +503,7 @@ final class SVGSamplerOutput {
         public String resizeFunction() {
             StringBuilder result = new StringBuilder();
             result.append("function resize() {\n");
-            result.append("owner_resize(window.innerWidth);\n");
+            result.append("owner_resize(document.firstElementChild.clientWidth);\n");
             for (SVGComponent component : components) {
                 result.append(component.resizeFunction());
             }
@@ -751,7 +790,7 @@ final class SVGSamplerOutput {
             output.append(ttfString(black(), owner.fontName(), owner.fontSize() + 5, width() / 2, owner.fontSize() * 2,
                             "Flamegraph", "middle", "id=\"fg_title\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() / 2, owner.fontSize() * 3,
-                            "Press \"?\" for help", "middle", "id=\"fg_help\""));
+                            "Press \"?\" for help, or \"l\" for legend.", "middle", "id=\"fg_help\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), XPAD, owner.fontSize() * 2,
                             "Reset zoom", "", "id=\"unzoom\" onclick=\"unzoom()\" style=\"opacity:0.1;cursor:pointer\""));
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), width() - XPAD, owner.fontSize() * 2,
@@ -793,14 +832,16 @@ final class SVGSamplerOutput {
             groupAttrs.put("onmouseout", "c(this)");
             groupAttrs.put("id", "f_" + Integer.toString(id));
             StringBuilder title = new StringBuilder();
-            title.append("Function: ");
             title.append(fullText);
             title.append("\n");
             int interpreted = sample.getInt("i");
             int compiled = sample.getInt("c");
-            title.append(String.format("%d samples (%d interpreted, %d compiled).\n", interpreted + compiled, interpreted, compiled));
+            int total = sample.getInt("h");
             double percent = 100.0 * (compiled + interpreted) / sampleCount;
-            title.append(String.format("%.2f%% of displayed samples.\n", percent));
+            double totalPercent = 100.0 * total / sampleCount;
+            title.append(String.format("Self samples: %d (%.2f%%)\n", interpreted + compiled, percent));
+            title.append(String.format("total samples:  %d (%.2f%%)\n", total, totalPercent));
+            title.append(String.format("Source location: %s:%d\n", owner.sourceNames.get(sample.getInt("f")), sample.getInt("fl")));
             groupAttrs.put("title", escape(title.toString()));
             output.append(startGroup(groupAttrs));
 
@@ -828,7 +869,7 @@ final class SVGSamplerOutput {
         }
 
         public String resizeFunction() {
-            return "fg_resize(window.innerWidth);\n";
+            return "fg_resize(document.firstElementChild.clientWidth);\n";
         }
 
         public String initFunction(String argName) {
@@ -1018,7 +1059,7 @@ final class SVGSamplerOutput {
         }
 
         public String resizeFunction() {
-            return "h_resize(window.innerWidth);\n";
+            return "h_resize(document.firstElementChild.clientWidth);\n";
         }
 
         public String initFunction(String argName) {

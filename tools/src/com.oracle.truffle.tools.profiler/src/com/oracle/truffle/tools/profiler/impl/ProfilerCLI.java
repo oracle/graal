@@ -312,9 +312,6 @@ abstract class ProfilerCLI {
             if (option.hasBeenSet(env.getOptions())) {
                 final String outputPath = option.getValue(env.getOptions());
                 final File file = new File(outputPath);
-                if (file.exists()) {
-                    throw new IllegalArgumentException("Cannot redirect output to an existing file!");
-                }
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
