@@ -163,7 +163,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                             .forEach(monitorEnter -> {
                                 TypeState monitorEntryState = monitorEnter.getState();
                                 String typesString = monitorEntryState.closeToAllInstantiated(bb) ? "close to all instantiated"
-                                                : StreamSupport.stream(monitorEntryState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                                                : StreamSupport.stream(monitorEntryState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
                                 StringBuilder strb = new StringBuilder();
                                 strb.append("Location: ");
                                 String methodName = method.format("%h.%n(%p)");

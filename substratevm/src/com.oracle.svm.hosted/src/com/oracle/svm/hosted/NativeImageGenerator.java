@@ -1419,8 +1419,8 @@ public class NativeImageGenerator {
         return true;
     }
 
-    private static String format(TypeState state) {
-        return state.typesStream().map(t -> t.toJavaName(true)).collect(Collectors.joining(","));
+    private static String format(BigBang bb, TypeState state) {
+        return state.typesStream(bb).map(t -> t.toJavaName(true)).collect(Collectors.joining(","));
     }
 
     private void checkUniverse() {
@@ -1446,8 +1446,8 @@ public class NativeImageGenerator {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
                                                 "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                                ", with assignable types: " + format(declaredTypeState) +
-                                                                ", which is incompatible with analysis inferred types: " + format(parameterState) + ".");
+                                                                ", with assignable types: " + format(bb, declaredTypeState) +
+                                                                ", which is incompatible with analysis inferred types: " + format(bb, parameterState) + ".");
                             }
                         }
                     }
@@ -1464,8 +1464,8 @@ public class NativeImageGenerator {
                             String fieldKey = field.format("%H.%n");
                             bigbang.getUnsupportedFeatures().addMessage(fieldKey, null,
                                             "Field " + fieldKey + " has declared type " + declaredType.toJavaName(true) +
-                                                            ", with assignable types: " + format(declaredTypeState) +
-                                                            ", which is incompatible with analysis inferred types: " + format(state) + ".");
+                                                            ", with assignable types: " + format(bb, declaredTypeState) +
+                                                            ", which is incompatible with analysis inferred types: " + format(bb, state) + ".");
                         }
                     }
                 }

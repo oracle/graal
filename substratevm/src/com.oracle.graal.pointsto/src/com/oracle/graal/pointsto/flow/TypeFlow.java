@@ -245,7 +245,7 @@ public abstract class TypeFlow<T> {
 
     public void setState(PointsToAnalysis bb, TypeState state) {
         assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
-                        state.verifyDeclaredType(declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
+                        state.verifyDeclaredType(bb, declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
         this.state = state;
     }
 
@@ -335,7 +335,7 @@ public abstract class TypeFlow<T> {
              */
             return true;
         }
-        assert after.verifyDeclaredType(declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
+        assert after.verifyDeclaredType(bb, declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
                         "%nState before: %s. %nState after: %s", format(false, true), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
         return true;
     }
