@@ -5,6 +5,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 ## Version 22.0.0
 
 * Added new `ASCII` encoding that callers can use when compiling a regex to limit the range of code point matches to [0x00, 0x7f].
+* Updated Unicode data (case-folding, character properties) to version 14 of the Unicode standard.
 
 ## Version 21.3.0
 
