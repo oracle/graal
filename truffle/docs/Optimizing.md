@@ -49,16 +49,16 @@ The `--engine.TraceCompilation` command prints a line each time a method is comp
 The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, started, or completed:
 
 ```shell
-[engine] opt queued   BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1725905750
-[engine] opt start    BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1734518023
-[engine] opt queued   OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1743713143
-[engine] opt start    OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1744034479
-[engine] opt queued   Planner.addConstraintsConsumingTo                           |AST   51|Tier      2|Calls/Thres     368/    3|CallsAndLoop/Thres    1001/ 1000|Src octane-deltablue.js:743|QueueSize      1|Time 1791073465
-... more queues ...
-[engine] opt queued   BinaryConstraint.markInputs                                 |AST   13|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:402|QueueSize     27|Time 2813136318
-[engine] opt done     BinaryConstraint.output                                     |AST   19|Tier      2|Time 1146( 851+295 )ms|Inlined   0Y   0N|IR   106/  167|CodeSize    634|Addr 0x7f600586f990|Src octane-deltablue.js:416
-[engine] opt start    Planner.removePropagateFrom                                 |AST  149|Tier      2|Calls/Thres       8/    3|CallsAndLoop/Thres    2052/ 1000|Src octane-deltablue.js:717|QueueSize     26|Time 2903518862
-[engine] opt queued   UnaryConstraint.output                                      |AST    7|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:255|QueueSize     27|Time 3175165217
+[engine] opt queued   id=237   BinaryConstraint.output                            | Tier 1 | Count/Thres        25/      25 | Queue: Size    1 Change +1  Scale  0.06 Elapsed    0us | Src octane-deltablue.js:416 | Time 317044280158387 
+[engine] opt start    id=237   BinaryConstraint.output                            | Tier 1 | Weight       25 | Rate 0.00000 | Queue: Size    0 Change +0  Scale  0.06 Elapsed    0us | Src octane-deltablue.js:416 | Time 317044278139824 
+[engine] opt queued   id=239   OrderedCollection.size                             | Tier 1 | Count/Thres        25/      25 | Queue: Size    1 Change +1  Scale  0.06 Elapsed    0us | Src octane-deltablue.js:71 | Time 317044313989575 
+[engine] opt queued   id=52    Array.prototype.push                               | Tier 1 | Count/Thres        25/      50 | Queue: Size    2 Change +1  Scale  0.13 Elapsed    0us | Src <builtin>:1 | Time 317044336408392 
+[engine] opt start    id=239   OrderedCollection.size                             | Tier 1 | Weight    88875 | Rate 0.00000 | Queue: Size    6 Change -1  Scale  0.31 Elapsed  328us | Src octane-deltablue.js:71 | Time 317045054478062 
+... more log ...
+[engine] opt start    id=237   BinaryConstraint.output                            | Tier 2 | Weight   256510 | Rate 0.00007 | Queue: Size   21 Change -1  Scale  1.00 Elapsed   17us | Src octane-deltablue.js:416 | Time 317056014011223 
+[engine] opt done     id=293   change                                             | Tier 1 | Elapsed       271( 186+86  )ms | Src octane-deltablue.js:867 | Time 317056063627727 
+[engine] opt start    id=271   Plan.size                                          | Tier 2 | Weight   233921 | Rate 0.00008 | Queue: Size   20 Change -1  Scale  1.00 Elapsed   26us | Src octane-deltablue.js:770 | Time 317056067292754 
+[engine] opt done     id=237   BinaryConstraint.output                            | Tier 2 | Elapsed       140( 124+17  )ms | Src octane-deltablue.js:416 | Time 317056154362876 
 ```
 
 The `--engine.TraceCompilationAST` command prints the Truffle AST for each compilation:
