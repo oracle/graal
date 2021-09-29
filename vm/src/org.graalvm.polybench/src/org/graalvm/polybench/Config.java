@@ -27,30 +27,47 @@ package org.graalvm.polybench;
 import org.graalvm.polyglot.Value;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class Config {
+
+    public static final String EVAL_SOURCE_ONLY_OPTION = "--eval-source-only";
+
     String path;
     String className;
     int warmupIterations;
     int iterations;
     Mode mode;
     Metric metric;
-    final Map<String, String> engineOptions = new HashMap<>();
-    boolean evalSourceOnly;
+    boolean evalSourceOnlyDefault;
 
-    int numberOfRuns = 1;
-    boolean sharedEngine;
-    final Map<Integer, Map<String, String>> runOptionsMap = new HashMap<>();
-    final Map<Integer, Boolean> evalSourceOnlyFlagsMap = new HashMap<>();
-
-    List<String> unrecognizedArguments = new ArrayList<>();
+    final List<String> unrecognizedArguments = new ArrayList<>();
 
     private static final int DEFAULT = -1;
     private static final int DEFAULT_WARMUP = 20;
     private static final int DEFAULT_ITERATIONS = 30;
+
+    /**
+     * Multi-context runs related configuration.
+     */
+    int numberOfRuns = 1;
+    boolean sharedEngine;
+    final Map<String, String> engineOptions = new HashMap<>();
+    final Map<Integer, Map<String, String>> polyglotRunOptionsMap = new HashMap<>();
+    final Map<Integer, Map<String, String>> polybenchRunOptionsMap = new HashMap<>();
+
+    /**
+     * Polybench options that can be specified per run.
+     */
+    private static final Set<String> POLYBENCH_RUN_OPTIONS = new HashSet<>();
+    static {
+        POLYBENCH_RUN_OPTIONS.add(EVAL_SOURCE_ONLY_OPTION);
+    }
 
     Config() {
         this.path = null;
@@ -85,7 +102,10 @@ class Config {
         return "execution-mode:    " + mode + "\n" +
                         "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
                         "warmup-iterations: " + (warmupIterations == DEFAULT ? "default" : warmupIterations) + "\n" +
-                        "iterations:        " + (iterations == DEFAULT ? "default" : iterations);
+                        "iterations:        " + (iterations == DEFAULT ? "default"
+                                        : iterations + "\n" +
+                                                        "runs:              " + numberOfRuns + "\n" +
+                                                        "shared engine:     " + sharedEngine);
     }
 
     enum Mode {
@@ -101,6 +121,15 @@ class Config {
             throw new IllegalArgumentException("Unknown execution-mode: " + name);
         }
 
+    }
+
+    static boolean isPolybenchRunOption(String optionName) {
+        return POLYBENCH_RUN_OPTIONS.contains(optionName);
+    }
+
+    boolean isEvalSourceOnly(int run) {
+        String evalSourceOptionValue = polybenchRunOptionsMap.getOrDefault(run, Collections.emptyMap()).get(EVAL_SOURCE_ONLY_OPTION);
+        return evalSourceOptionValue == null ? evalSourceOnlyDefault : Boolean.parseBoolean(evalSourceOptionValue);
     }
 
 }
