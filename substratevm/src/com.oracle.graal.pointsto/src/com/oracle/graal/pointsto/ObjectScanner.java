@@ -60,9 +60,11 @@ public abstract class ObjectScanner {
     private final ReusableSet scannedObjects;
     private final CompletionExecutor executor;
     private final Deque<WorklistEntry> worklist;
+    private final ObjectScanningObserver scanningObserver;
 
-    public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects) {
+    public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
         this.bb = bb;
+        this.scanningObserver = scanningObserver;
         if (executor != null) {
             this.executor = executor;
             this.worklist = null;
@@ -117,27 +119,6 @@ public abstract class ObjectScanner {
         }
     }
 
-    /*
-     * When scanning a field there are three possible cases: the field value is a relocated pointer,
-     * the field value is null or the field value is non-null. The method {@link
-     * ObjectScanner#scanField(AnalysisField, JavaConstant, Object)} will call the appropriated
-     * method during scanning.
-     */
-
-    /**
-     * Hook for relocated pointer scanned field value.
-     *
-     * For relocated pointers the value is only known at runtime after methods are relocated, which
-     * is pretty much the same as a field written at runtime: we do not have a constant value.
-     */
-    public abstract void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
-
-    /** Hook for scanned null field value. */
-    public abstract void forNullFieldValue(JavaConstant receiver, AnalysisField field);
-
-    /** Hook for scanned non-null field value. */
-    public abstract void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
-
     /**
      * Scans the value of a root field.
      *
@@ -168,32 +149,20 @@ public abstract class ObjectScanner {
             }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(constantAsObject(bb, fieldValue))) {
-                forRelocatedPointerFieldValue(receiver, field, fieldValue);
+                scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue);
             } else if (fieldValue.isNull()) {
-                forNullFieldValue(receiver, field);
+                scanningObserver.forNullFieldValue(receiver, field);
             } else if (fieldValue.getJavaKind() == JavaKind.Object) {
                 /* Scan the field value. */
                 scanConstant(fieldValue, reason, previous);
                 /* Process the field value. */
-                forNonNullFieldValue(receiver, field, fieldValue);
+                scanningObserver.forNonNullFieldValue(receiver, field, fieldValue);
             }
 
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeature(field.format("%H.%n"), ex.getMessage(), reason, previous);
         }
     }
-
-    /*
-     * When scanning array elements there are two possible cases: the element value is either null
-     * or the field value is non-null. The method {@link ObjectScanner#scanArray(JavaConstant,
-     * Object)} will call the appropriated method during scanning.
-     */
-
-    /** Hook for scanned null element value. */
-    public abstract void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex);
-
-    /** Hook for scanned non-null element value. */
-    public abstract void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex);
 
     /**
      * Scans constant arrays, one element at the time.
@@ -213,7 +182,7 @@ public abstract class ObjectScanner {
             Object e = arrayObject[idx];
             try {
                 if (e == null) {
-                    forNullArrayElement(array, arrayType, idx);
+                    scanningObserver.forNullArrayElement(array, arrayType, idx);
                 } else {
                     Object element = bb.getUniverse().replaceObject(e);
                     JavaConstant elementConstant = bb.getSnippetReflectionProvider().forObject(element);
@@ -222,19 +191,13 @@ public abstract class ObjectScanner {
                     /* Scan the array element. */
                     scanConstant(elementConstant, reason, previous);
                     /* Process the array element. */
-                    forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
+                    scanningObserver.forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
                 }
             } catch (UnsupportedFeatureException ex) {
                 unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason, previous);
             }
         }
     }
-
-    /**
-     * Hook for scanned constant. The subclasses can provide additional processing for the scanned
-     * constants.
-     */
-    protected abstract void forScannedConstant(JavaConstant scannedValue, ScanReason reason);
 
     public final void scanConstant(JavaConstant value, ScanReason reason) {
         scanConstant(value, reason, null);
@@ -251,7 +214,7 @@ public abstract class ObjectScanner {
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {
             try {
-                forScannedConstant(value, reason);
+                scanningObserver.forScannedConstant(value, reason);
             } finally {
                 scannedObjects.release(valueObj);
                 WorklistEntry worklistEntry = new WorklistEntry(previous, value, reason);
