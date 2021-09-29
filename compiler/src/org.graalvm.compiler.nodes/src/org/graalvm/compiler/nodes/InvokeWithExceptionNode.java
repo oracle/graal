@@ -178,9 +178,12 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         return debugProperties;
     }
 
-    @SuppressWarnings("try")
     public AbstractBeginNode killKillingBegin() {
-        AbstractBeginNode begin = next();
+        return killKillingBegin(next());
+    }
+
+    @SuppressWarnings("try")
+    public AbstractBeginNode killKillingBegin(AbstractBeginNode begin) {
         if (begin instanceof KillingBeginNode) {
             try (DebugCloseable position = begin.withNodeSourcePosition()) {
                 AbstractBeginNode newBegin = new BeginNode();
@@ -256,7 +259,19 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public void simplify(SimplifierTool tool) {
         if (exceptionEdge() instanceof UnreachableBeginNode) {
-            replaceWithInvoke();
+            AbstractBeginNode storedNext = next();
+            InvokeNode replacement = replaceWithInvoke();
+            if (graph().isAfterStage(StructuredGraph.StageFlag.FLOATING_READS)) {
+                if (!tool.allUsagesAvailable()) {
+                    // we don't know about the usages - do nothing
+                    return;
+                }
+                storedNext.replaceAtUsages(replacement, Memory);
+            }
+            // kill the killing begin
+            AbstractBeginNode newBegin = killKillingBegin(storedNext);
+            tool.addToWorkList(newBegin.next());
+            tool.addToWorkList(newBegin);
         }
     }
 }
