@@ -73,7 +73,6 @@ public class HiddenClassGenerator {
         mv.visitCode();
         mv.visitIntInsn(BIPUSH, 42);
         mv.visitInsn(IRETURN);
-        mv.visitInsn(IRETURN);
         mv.visitMaxs(1, 1);
         mv.visitEnd();
 
