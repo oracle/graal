@@ -429,8 +429,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addStorageConstructors(storageWriter, storageClassName, storageSuperClass, storageSuperName);
         addStorageField(storageWriter, "primitive", "[B", true);
         addStorageField(storageWriter, "object", "[Ljava/lang/Object;", true);
-        // Cannot use a more precise descriptor because the class might be loaded by a class loader
-        // that does not find it
+        // The generated class is loaded by a child of the class loader that loaded the factory
+        // class, which might not find classes from the Truffle API. Therefore, we cannot use a more
+        // precise descriptor to store the shape.
         addStorageField(storageWriter, "shape", "Ljava/lang/Object;", true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
             addCloneMethod(storageSuperClass, storageWriter, storageClassName);

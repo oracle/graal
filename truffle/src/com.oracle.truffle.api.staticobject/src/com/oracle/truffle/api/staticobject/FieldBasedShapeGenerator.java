@@ -86,7 +86,8 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
         HashMap<String, Integer> offsets;
         if (PRECISE_TYPES) {
-            // We need to resolve fields without triggering class loading, linking, and initialization
+            // We need to resolve fields without triggering class loading, linking, and
+            // initialization
             Object[] resolvedFields = SomAccessor.RUNTIME.getResolvedFields(generatedStorageClass, true, false);
             offsets = new HashMap<>(resolvedFields.length);
             for (Object resolvedField : resolvedFields) {
