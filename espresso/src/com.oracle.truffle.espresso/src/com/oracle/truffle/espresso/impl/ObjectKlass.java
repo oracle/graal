@@ -343,12 +343,6 @@ public final class ObjectKlass extends Klass {
             }
             initState = INITIALIZING;
             try {
-                if (getContext().isMainThreadCreated()) {
-                    if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                        getContext().reportClassPrepared(this, prepareThread);
-                    }
-                }
                 if (!isInterface()) {
                     /*
                      * Next, if C is a class rather than an interface, then let SC be its superclass
@@ -460,6 +454,12 @@ public final class ObjectKlass extends Klass {
                     }
                 }
                 initState = PREPARED;
+                if (getContext().isMainThreadCreated()) {
+                    if (getContext().shouldReportVMEvents()) {
+                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        getContext().reportClassPrepared(this, prepareThread);
+                    }
+                }
             }
         }
     }
