@@ -128,6 +128,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
+import com.oracle.truffle.espresso.overlay.ReferenceSupport;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -138,6 +139,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -3432,19 +3434,21 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getContext().hasReferencePendingList();
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
-    public boolean JVM_PhantomReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject object,
+    public boolean JVM_PhantomReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        assert InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
-        // At this point, we would need to call the host's PhantomReference.refersTo() method, but
-        // it is not available in Java 8 or 11.
-        return false;
+        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+        assert host instanceof Reference;
+        // Call host's refersTo. Not available in 8 or 11.
+        return ReferenceSupport.phantomReferenceRefersTo((Reference) host, object);
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
     public boolean JVM_ReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
                     @Inject SubstitutionProfiler profiler) {
@@ -3452,8 +3456,10 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        assert !InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
-        return Target_java_lang_ref_Reference.get(ref, getMeta()) == object;
+        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+        assert host instanceof Reference;
+        // Call host's refersTo. Not available in 8 or 11.
+        return ReferenceSupport.referenceRefersTo((Reference) host, object);
     }
 
     @VmImpl(isJni = true)
