@@ -168,8 +168,13 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return MathUtil.mul(graph(), newBase.valueNode(), scale, gvn);
+    }
+
+    @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return MathUtil.mul(graph(), newBase.valueNode(), scale);
+        return copyValue(newBase, true);
     }
 
     @Override
