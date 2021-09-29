@@ -94,11 +94,33 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         } else {
             assert checkShape(receiverObject);
         }
+        /*
+         * The safety of the unsafeCasts below is based on the fact that those 2 fields are final,
+         * initialized in the constructor:
+         *
+         * * the object array is exactly an Object[] (see
+         * ArrayBasedShapeGenerator.addStorageConstructors)
+         *
+         * * the byte[] is exact because there are no byte[] subclasses
+         *
+         * * the fields are final (see ArrayBasedShapeGenerator.generateStorage)
+         *
+         * * Any access of these fields after the constructor must remain after the final fields are
+         * stored (because of the barrier at the end of the constructor for final fields) and thus
+         * must see the initialized, non-null array of the correct type.
+         *
+         * * This getStorage access is not reachable inside the constructor (see the code of the
+         * constructor).
+         */
         if (primitive) {
             Object storage = UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getByteArrayOffset());
+            assert storage != null;
+            assert storage.getClass() == byte[].class;
             return SomAccessor.RUNTIME.unsafeCast(storage, byte[].class, true, true, true);
         } else {
             Object storage = UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getObjectArrayOffset());
+            assert storage != null;
+            assert storage.getClass() == Object[].class;
             return SomAccessor.RUNTIME.unsafeCast(storage, Object[].class, true, true, true);
         }
     }
