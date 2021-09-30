@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.aarch64;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -665,6 +666,22 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         }
         assert op != null;
         return emitBinaryShift(op, a, (ShiftNode<?>) shift);
+    }
+
+    @MatchRule("(Negate (UnsignedRightShift=shift a Constant=b))")
+    @MatchRule("(Negate (RightShift=shift a Constant=b))")
+    @MatchRule("(Negate (LeftShift=shift a Constant=b))")
+    public ComplexMatchResult negShift(BinaryNode shift, ValueNode a, ConstantNode b) {
+        assert b.getStackKind().isNumericInteger();
+        assert a.getStackKind().isNumericInteger();
+        int shiftAmt = b.asJavaConstant().asInt();
+        AArch64Assembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
+        return builder -> {
+            AllocatableValue src = moveSp(gen.asAllocatable(operand(a)));
+            Variable result = gen.newVariable(LIRKind.combine(operand(a)));
+            gen.append(new AArch64ArithmeticOp.NegShiftOp(result, src, shiftType, shiftAmt));
+            return result;
+        };
     }
 
     /**

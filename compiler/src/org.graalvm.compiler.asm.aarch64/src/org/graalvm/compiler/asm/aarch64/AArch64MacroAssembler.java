@@ -965,7 +965,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 + shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
+     * dst = src1 - shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -986,7 +986,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = -src1.
+     * dst = -src.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -994,6 +994,19 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void neg(int size, Register dst, Register src) {
         sub(size, dst, zr, src);
+    }
+
+    /**
+     * dst = -(shiftType(src, shiftAmt & (size - 1))).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src general purpose register. May not be null or stackpointer.
+     * @param shiftType right or left shift, arithmetic or logical.
+     * @param shiftAmt number of shift bits. Has to be between 0 and (size - 1).
+     */
+    public void neg(int size, Register dst, Register src, ShiftType shiftType, int shiftAmt) {
+        sub(size, dst, zr, src, shiftType, shiftAmt);
     }
 
     /**
