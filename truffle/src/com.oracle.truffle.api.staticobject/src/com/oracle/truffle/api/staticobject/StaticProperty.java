@@ -78,7 +78,7 @@ public abstract class StaticProperty {
     @CompilationFinal //
     private byte flags;
     @CompilationFinal //
-    private String descriptor;
+    private Class<?> type;
     @CompilationFinal //
     private StaticShape<?> shape;
     // The offset is the actual position in the field array of an actual instance.
@@ -93,8 +93,8 @@ public abstract class StaticProperty {
     protected StaticProperty() {
     }
 
-    void init(String desc, StaticPropertyKind kind, boolean storeAsFinal) {
-        this.descriptor = desc;
+    void init(Class<?> clazz, StaticPropertyKind kind, boolean storeAsFinal) {
+        type = clazz;
         byte internalKind = getInternalKind(kind);
         assert (internalKind & STORE_AS_FINAL) == 0;
         flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
@@ -114,8 +114,8 @@ public abstract class StaticProperty {
         return (flags & STORE_AS_FINAL) == STORE_AS_FINAL;
     }
 
-    final String getDescriptor() {
-        return descriptor;
+    final Class<?> getPropertyType() {
+        return type;
     }
 
     private static byte getInternalKind(StaticPropertyKind kind) {
