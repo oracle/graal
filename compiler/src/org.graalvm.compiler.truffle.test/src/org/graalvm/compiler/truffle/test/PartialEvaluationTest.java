@@ -54,7 +54,6 @@ import org.junit.Assert;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -92,7 +91,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) root.getCallTarget();
         CompilationIdentifier compilationId = getCompilationId(compilable);
         StructuredGraph graph = partialEval(compilable, arguments, compilationId);
         this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
@@ -120,8 +119,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments, boolean checkConstants) {
-        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(expected);
-        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(actual);
+        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) expected.getCallTarget();
+        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) actual.getCallTarget();
 
         BailoutException lastBailout = null;
         for (int i = 0; i < 10; i++) {
@@ -184,8 +183,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
-        assertPartialEvalNoInvokes(callTarget, arguments);
+        assertPartialEvalNoInvokes(root.getCallTarget(), arguments);
     }
 
     protected void assertPartialEvalNoInvokes(CallTarget callTarget, Object[] arguments) {
@@ -196,7 +194,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected StructuredGraph partialEval(RootNode root, Object... arguments) {
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         return partialEval(target, arguments);
     }
 

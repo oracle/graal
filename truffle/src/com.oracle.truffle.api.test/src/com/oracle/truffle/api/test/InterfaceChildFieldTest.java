@@ -47,8 +47,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
@@ -62,12 +60,11 @@ public class InterfaceChildFieldTest {
 
     @Test
     public void testChild() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildInterface leftChild = new TestLeafNode();
         TestChildInterface rightChild = new TestLeafNode();
         TestChildNode parent = new TestChildNode(leftChild, rightChild);
         TestRootNode rootNode = new TestRootNode(parent);
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         Iterator<Node> iterator = parent.getChildren().iterator();
         Assert.assertEquals(leftChild, iterator.next());
         Assert.assertEquals(rightChild, iterator.next());
@@ -81,14 +78,13 @@ public class InterfaceChildFieldTest {
 
     @Test
     public void testChildren() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildInterface[] children = new TestChildInterface[5];
         for (int i = 0; i < children.length; i++) {
             children[i] = new TestLeafNode();
         }
         TestChildrenNode parent = new TestChildrenNode(children);
         TestRootNode rootNode = new TestRootNode(parent);
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         Iterator<Node> iterator = parent.getChildren().iterator();
         for (int i = 0; i < children.length; i++) {
             Assert.assertEquals(children[i], iterator.next());

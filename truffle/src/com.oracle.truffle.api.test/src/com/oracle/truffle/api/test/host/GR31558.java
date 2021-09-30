@@ -60,7 +60,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -97,7 +96,7 @@ public class GR31558 extends AbstractPolyglotTest {
                 String src = request.getSource().getCharacters().toString();
                 RootCallTarget invokeTestApi;
                 if ("testFunction".equals(src)) {
-                    invokeTestApi = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                    invokeTestApi = new RootNode(ProxyLanguage.get(null)) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             try {
@@ -128,11 +127,11 @@ public class GR31558 extends AbstractPolyglotTest {
                                 throw new AssertionError(e);
                             }
                         }
-                    });
+                    }.getCallTarget();
                 } else {
                     throw new IllegalArgumentException(src);
                 }
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new HostExceptionTest.CatcherObject(invokeTestApi)));
+                return RootNode.createConstantNode(new HostExceptionTest.CatcherObject(invokeTestApi)).getCallTarget();
             }
         });
     }

@@ -45,7 +45,6 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -136,7 +135,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        this.execCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(execNode.getRegexLanguage(), execNode));
+        this.execCallTarget = new RegexRootNode(execNode.getRegexLanguage(), execNode).getCallTarget();
         this.backtracking = execNode.isBacktracking();
     }
 

@@ -48,7 +48,6 @@ import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -83,12 +82,12 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final byte[] data = source.getBytes().toByteArray();
         final WasmModule module = context.readModule(moduleName, data, null, source);
         final WasmInstance instance = context.readInstance(module);
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public WasmInstance execute(VirtualFrame frame) {
                 return instance;
             }
-        });
+        }.getCallTarget();
     }
 
     @Override

@@ -24,16 +24,16 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.utilities.AssumedValue;
 
 public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
 
@@ -73,7 +73,7 @@ public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
         AssumedValue<Integer> value = new AssumedValue<>(42);
 
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "assumedValue", new ReadDynamicAssumedValueNode());
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
 
         StructuredGraph graph = partialEval(target, new Object[]{value});
         compile(target, graph);
@@ -87,7 +87,7 @@ public class AssumedValuePartialEvaluationTest extends PartialEvaluationTest {
         AssumedValue<Integer> value = new AssumedValue<>(42);
 
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "assumedValue", new ReadDynamicAssumedValueNode());
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
 
         StructuredGraph graph = partialEval(target, new Object[]{value});
         compile(target, graph);

@@ -92,7 +92,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -1280,7 +1279,7 @@ public class TruffleSafepointTest {
 
         @TruffleBoundary
         private void initialize() {
-            target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            target = RootNode.createConstantNode(42).getCallTarget();
             try {
                 awaitSubmit.acquire();
             } catch (InterruptedException e) {
@@ -1659,7 +1658,7 @@ public class TruffleSafepointTest {
 
             TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped);
             setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
-            setup.target = Truffle.getRuntime().createCallTarget(setup.root);
+            setup.target = setup.root.getCallTarget();
             env.getContext().leave(null, targetEnter);
             setup.futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {

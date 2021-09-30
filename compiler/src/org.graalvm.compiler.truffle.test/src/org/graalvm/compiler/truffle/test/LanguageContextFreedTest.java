@@ -40,11 +40,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
@@ -154,8 +152,7 @@ public class LanguageContextFreedTest {
 
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            TruffleRuntime runtime = Truffle.getRuntime();
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(this) {
+            OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(this) {
 
                 @SuppressWarnings("unchecked")
                 @Override
@@ -163,7 +160,7 @@ public class LanguageContextFreedTest {
                     getContextReference0().get(this).currentTarget = (OptimizedCallTarget) getCallTarget();
                     return true;
                 }
-            });
+            }.getCallTarget();
             getContextReference0().get(null).currentTarget = target;
 
             assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));

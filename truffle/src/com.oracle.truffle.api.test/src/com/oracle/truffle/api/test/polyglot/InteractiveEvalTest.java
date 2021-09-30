@@ -58,7 +58,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -148,13 +147,13 @@ public class InteractiveEvalTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return CONTEXT_REF.get(this).getValue();
                 }
-            });
+            }.getCallTarget();
         }
 
         private static final ContextReference<InteractiveContext> CONTEXT_REF = ContextReference.create(DefaultInteractiveLanguage.class);
@@ -172,7 +171,7 @@ public class InteractiveEvalTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             boolean interactive = request.getSource().isInteractive();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -192,7 +191,7 @@ public class InteractiveEvalTest {
                 private void write(InteractiveContext ic, Object value) throws IOException {
                     ic.env.out().write(("\"" + value + "\"").getBytes(StandardCharsets.UTF_8));
                 }
-            });
+            }.getCallTarget();
         }
 
         private static final ContextReference<InteractiveContext> CONTEXT_REF = ContextReference.create(SpecialInteractiveLanguage.class);

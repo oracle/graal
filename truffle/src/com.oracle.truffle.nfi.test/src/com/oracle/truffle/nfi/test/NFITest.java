@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -47,14 +48,12 @@ import org.junit.ClassRule;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Context;
 
 public class NFITest {
 
@@ -85,7 +84,7 @@ public class NFITest {
     public static void loadLibraries() {
         defaultLibrary = loadLibrary("default");
         testLibrary = loadLibrary("load '" + System.getProperty("native.test.lib") + "'");
-        lookupAndBind = Truffle.getRuntime().createCallTarget(new LookupAndBindNode());
+        lookupAndBind = new LookupAndBindNode().getCallTarget();
     }
 
     private static final class LookupAndBindNode extends RootNode {

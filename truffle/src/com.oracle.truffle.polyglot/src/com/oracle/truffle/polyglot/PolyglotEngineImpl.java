@@ -355,7 +355,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static UncachedLocationNode createUncachedLocation(TruffleLanguage<?> hostLanguage) {
         UncachedLocationNode location = new UncachedLocationNode(hostLanguage);
         // this is intended to trigger Truffle runtime initialization in the background
-        Truffle.getRuntime().createCallTarget(location);
+        location.getCallTarget();
         return location;
     }
 

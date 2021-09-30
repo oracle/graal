@@ -38,7 +38,6 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -89,7 +88,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
     private void testCommon(AbstractTestNode testNode, String testName, Object... args) {
         FrameDescriptor fd = new FrameDescriptor();
         RootNode rootNode = new RootTestNode(fd, testName, testNode);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         Assert.assertEquals(42, callTarget.call(args));
         assertPartialEvalNoInvokes(callTarget, args);
     }

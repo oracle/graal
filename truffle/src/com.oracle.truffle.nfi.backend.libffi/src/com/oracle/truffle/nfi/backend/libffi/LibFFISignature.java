@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -244,7 +243,7 @@ final class LibFFISignature {
             this.objectCount = objectCount;
             this.allowedCallDirection = allowedCallDirection;
 
-            this.callTarget = Truffle.getRuntime().createCallTarget(new SignatureExecuteNode(language, this));
+            this.callTarget = new SignatureExecuteNode(language, this).getCallTarget();
         }
 
         NativeArgumentBuffer.Array prepareBuffer() {

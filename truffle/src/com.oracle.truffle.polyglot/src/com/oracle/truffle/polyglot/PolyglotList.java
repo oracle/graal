@@ -158,15 +158,11 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.get = initializeCall(PolyglotListFactory.CacheFactory.GetNodeGen.create(this));
-            this.size = initializeCall(SizeNodeGen.create(this));
-            this.set = initializeCall(SetNodeGen.create(this));
-            this.remove = initializeCall(RemoveNodeGen.create(this));
-            this.apply = initializeCall(new Apply(this));
-        }
-
-        private static CallTarget initializeCall(PolyglotListNode node) {
-            return HostToGuestRootNode.createTarget(node);
+            this.get = PolyglotListFactory.CacheFactory.GetNodeGen.create(this).getCallTarget();
+            this.size = SizeNodeGen.create(this).getCallTarget();
+            this.set = SetNodeGen.create(this).getCallTarget();
+            this.remove = RemoveNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {

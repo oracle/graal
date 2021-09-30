@@ -29,7 +29,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -45,7 +44,7 @@ public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompilin
      */
     @Test
     public void testBlockDuplication() {
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new ObjectCacheTestRootNode());
+        OptimizedCallTarget target = (OptimizedCallTarget) new ObjectCacheTestRootNode().getCallTarget();
         AbstractType value1 = new ConcreteType1();
         AbstractType value2 = new ConcreteType2();
         target.call(value1);

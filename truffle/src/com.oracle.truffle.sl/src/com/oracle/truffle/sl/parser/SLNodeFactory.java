@@ -50,7 +50,6 @@ import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -189,7 +188,7 @@ public class SLNodeFactory {
             functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
             final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
-            allFunctions.put(functionName, Truffle.getRuntime().createCallTarget(rootNode));
+            allFunctions.put(functionName, rootNode.getCallTarget());
         }
 
         functionStartPos = 0;

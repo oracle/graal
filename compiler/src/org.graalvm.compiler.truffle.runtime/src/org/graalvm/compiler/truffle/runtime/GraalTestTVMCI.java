@@ -109,7 +109,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
 
     @Override
     public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
-        OptimizedCallTarget target = (OptimizedCallTarget) truffleRuntime.createCallTarget(testNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) testNode.getCallTarget();
         testContext.init(target);
         return target;
     }

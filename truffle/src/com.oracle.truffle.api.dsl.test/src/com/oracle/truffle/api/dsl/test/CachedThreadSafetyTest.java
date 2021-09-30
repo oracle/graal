@@ -54,7 +54,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -119,7 +118,7 @@ public class CachedThreadSafetyTest {
         for (int nodeIndex = 0; nodeIndex < nodes.length; nodeIndex++) {
             SingleCachedFieldNode node = SingleCachedFieldNodeGen.create();
             TestRootNode root = new TestRootNode(null, node);
-            Truffle.getRuntime().createCallTarget(root);
+            root.getCallTarget();
             nodes[nodeIndex] = node;
             assertNotNull(node.getParent());
         }

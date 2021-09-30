@@ -51,16 +51,12 @@ import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.dsl.test.CachedTestFactory.ProfileNodeGen;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -89,6 +85,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption5Fact
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullLiteralNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ProfileNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -106,6 +103,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -332,12 +331,12 @@ public class CachedTest {
     }
 
     private static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        CallTarget target = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return CompilerDirectives.inCompiledCode();
             }
-        });
+        }.getCallTarget();
         return (boolean) target.call();
     }
 

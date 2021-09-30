@@ -151,7 +151,7 @@ final class ParserDriver {
             TruffleFile file = createNativeTruffleFile(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
             if (file == null) {
-                return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+                return RootNode.createConstantNode(0).getCallTarget();
             }
             return createNativeLibraryCallTarget(file);
         }
@@ -543,12 +543,12 @@ final class ParserDriver {
      */
     private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+            return RootNode.createConstantNode(0).getCallTarget();
         } else {
             // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
-            return LLVMLanguage.createCallTarget(loadModules);
+            return loadModules.getCallTarget();
         }
     }
 
@@ -559,11 +559,11 @@ final class ParserDriver {
      */
     private CallTarget createNativeLibraryCallTarget(TruffleFile file) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+            return RootNode.createConstantNode(0).getCallTarget();
         } else {
-            // check if the functions should be resolved eagerly or lazyly.
+            // check if the functions should be resolved eagerly or lazily.
             LoadNativeNode loadNative = LoadNativeNode.create(new FrameDescriptor(), language, file);
-            return LLVMLanguage.createCallTarget(loadNative);
+            return loadNative.getCallTarget();
         }
     }
 }

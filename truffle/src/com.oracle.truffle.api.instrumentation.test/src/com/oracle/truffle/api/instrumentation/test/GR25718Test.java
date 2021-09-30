@@ -54,7 +54,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
@@ -182,14 +181,14 @@ public class GR25718Test {
             final CharSequence codeCharacters = code.getCharacters();
             if (CODE_LATCHES.equals(codeCharacters)) {
                 ((InstrumentationThread) Thread.currentThread()).setExecutionLatches(executionLatchList);
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return Boolean.TRUE;
                     }
-                });
+                }.getCallTarget();
             }
-            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            return new RootNode(languageInstance) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -213,7 +212,7 @@ public class GR25718Test {
                         }
 
                     };
-                    CallTarget codeExec = Truffle.getRuntime().createCallTarget(codeExecRoot);
+                    CallTarget codeExec = codeExecRoot.getCallTarget();
                     codeExec.call();
                     // Resume instrumentation thread
                     executionLatches.next().countDown();
@@ -231,7 +230,7 @@ public class GR25718Test {
                     return Source.newBuilder(ID, "test", "name").build().createSection(1);
                 }
 
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper

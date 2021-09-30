@@ -168,7 +168,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
             ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+                target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);
             }
             return target;
         }

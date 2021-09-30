@@ -212,7 +212,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return LLVMLanguage.createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
+        return LLVMIntrinsicExpressionNodeGen.create(language, functionName, node).getCallTarget();
     }
 
     protected final LLVMLanguage language;

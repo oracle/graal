@@ -58,7 +58,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.source.Source;
 
 public class LanguageSPIOrderTest {
@@ -292,7 +291,7 @@ public class LanguageSPIOrderTest {
 
         @Override
         protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
 
         @Override

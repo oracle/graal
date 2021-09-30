@@ -57,7 +57,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -85,13 +84,13 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * <h4>Execution</h4>
  *
- * In order to execute a root node, a call target needs to be created using
- * {@link TruffleRuntime#createCallTarget(RootNode)}. This allows the runtime system to optimize the
- * execution of the AST. The {@link CallTarget} can either be {@link CallTarget#call(Object...)
- * called} directly from runtime code or {@link DirectCallNode direct} and {@link IndirectCallNode
- * indirect} call nodes can be created, inserted in a child field and
- * {@link DirectCallNode#call(Object[]) called}. The use of direct call nodes allows the framework
- * to automatically inline and further optimize call sites based on heuristics.
+ * In order to execute a root node, its call target is lazily created and can be accessed via
+ * {@link RootNode#getCallTarget()}. This allows the runtime system to optimize the execution of the
+ * AST. The {@link CallTarget} can either be {@link CallTarget#call(Object...) called} directly from
+ * runtime code or {@link DirectCallNode direct} and {@link IndirectCallNode indirect} call nodes
+ * can be created, inserted in a child field and {@link DirectCallNode#call(Object[]) called}. The
+ * use of direct call nodes allows the framework to automatically inline and further optimize call
+ * sites based on heuristics.
  * <p>
  * After several calls to a call target or call node, the root node might get compiled using partial
  * evaluation. The details of the compilation heuristic are unspecified, therefore the Truffle

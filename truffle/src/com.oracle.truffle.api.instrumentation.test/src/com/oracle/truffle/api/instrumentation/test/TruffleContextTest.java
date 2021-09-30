@@ -77,7 +77,6 @@ import org.junit.rules.TestName;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -356,7 +355,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                     default:
                         throw CompilerDirectives.shouldNotReachHere("Unknown request: " + command);
                 }
-                return Truffle.getRuntime().createCallTarget(rootNode);
+                return rootNode.getCallTarget();
             }
         });
         context.eval(Source.newBuilder(ProxyLanguage.ID, "controller", "test").buildLiteral());
@@ -643,7 +642,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
 
             @Override
@@ -669,7 +668,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
 
             @Override
@@ -690,7 +689,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return get();
@@ -700,7 +699,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                     private Object get() {
                         return supplier.get();
                     }
-                });
+                }.getCallTarget();
             }
         });
     }

@@ -90,7 +90,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -325,7 +324,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                     throw new SyntaxError(request.getSource().createSection(0, 5));
                 }
 
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
                     private final com.oracle.truffle.api.source.Source source = request.getSource();
 
                     @Override
@@ -337,7 +336,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         }
                         return source.getCharacters();
                     }
-                });
+                }.getCallTarget();
             }
         });
     }
@@ -905,7 +904,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                                return new RootNode(ProxyLanguage.get(null)) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         try {
@@ -921,7 +920,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                                                         "test");
                                         return InteropLibrary.getUncached().execute(o);
                                     }
-                                });
+                                }.getCallTarget();
                             }
                         });
         context.enter();
@@ -1229,14 +1228,14 @@ public class ContextAPITest extends AbstractPolyglotTest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(this.languageInstance) {
+                return new RootNode(this.languageInstance) {
                     @Override
                     @TruffleBoundary
                     public Object execute(VirtualFrame frame) {
                         assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
                         return true;
                     }
-                });
+                }.getCallTarget();
             }
         });
         context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());

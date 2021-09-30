@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
@@ -195,7 +194,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     private static Object registerRoot(String path, FunctionType newFunctionType, DecoratedRoot decoratedRoot) {
-        LLVMIRFunction function = new LLVMIRFunction(LLVMLanguage.createCallTarget(decoratedRoot), null);
+        LLVMIRFunction function = new LLVMIRFunction(decoratedRoot.getCallTarget(), null);
         LLVMFunction functionDetail = LLVMFunction.create("<wrapper>", function, newFunctionType, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, false, path, false);
         LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
         return LLVMManagedPointer.create(wrappedFunction);

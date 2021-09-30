@@ -41,7 +41,6 @@
 package com.oracle.truffle.host;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
@@ -92,10 +91,6 @@ abstract class GuestToHostRootNode extends RootNode {
     }
 
     protected abstract Object executeImpl(Object receiver, Object[] arguments) throws InteropException;
-
-    static CallTarget createGuestToHost(GuestToHostRootNode rootNode) {
-        return Truffle.getRuntime().createCallTarget(rootNode);
-    }
 
     static Object guestToHostCall(Node node, CallTarget target, Object... arguments) {
         Node encapsulatingNode;

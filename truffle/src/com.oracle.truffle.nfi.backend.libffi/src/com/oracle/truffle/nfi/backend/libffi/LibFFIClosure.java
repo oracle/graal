@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi.backend.libffi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -115,7 +114,7 @@ final class LibFFIClosure implements TruffleObject {
         final CallTarget closureCallTarget;
 
         CachedClosureInfo(RootNode rootNode) {
-            this.closureCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+            this.closureCallTarget = rootNode.getCallTarget();
         }
     }
 

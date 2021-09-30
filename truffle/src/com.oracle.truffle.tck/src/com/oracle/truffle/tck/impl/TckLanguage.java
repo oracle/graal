@@ -78,7 +78,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             final double value = Double.parseDouble(txt);
             root = RootNode.createConstantNode(value);
         }
-        return Truffle.getRuntime().createCallTarget(root);
+        return root.getCallTarget();
     }
 
     @ExportLibrary(InteropLibrary.class)

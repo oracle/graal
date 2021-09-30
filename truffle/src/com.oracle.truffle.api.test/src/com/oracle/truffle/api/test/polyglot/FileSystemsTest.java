@@ -106,7 +106,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -2157,13 +2156,13 @@ public class FileSystemsTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     languageAction.accept(CONTEXT_REF.get(this).env());
                     return result;
                 }
-            });
+            }.getCallTarget();
         }
 
         private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(VirtualizedFileSystemTestLanguage.class);

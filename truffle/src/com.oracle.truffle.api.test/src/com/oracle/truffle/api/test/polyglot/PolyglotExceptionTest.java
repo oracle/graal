@@ -74,7 +74,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -354,7 +353,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -375,7 +374,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         return "testRootName";
                     }
 
-                });
+                }.getCallTarget();
             }
         });
 
@@ -404,7 +403,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     @TruffleBoundary
@@ -417,7 +416,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         return "testRootName";
                     }
 
-                });
+                }.getCallTarget();
             }
         });
         assertFails(() -> context.eval(ProxyLanguage.ID, "test"), PolyglotException.class, (e) -> {
@@ -487,7 +486,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 Source source = request.getSource();
                 SizeNode callHost = PolyglotExceptionTestFactory.SizeNodeGen.create(
                                 PolyglotExceptionTestFactory.ReadBindingsNodeGen.create());
-                return Truffle.getRuntime().createCallTarget(new CallHostRootNode(languageInstance, source, callHost));
+                return new CallHostRootNode(languageInstance, source, callHost).getCallTarget();
             }
         });
         context.getPolyglotBindings().putMember("receiver", new BrokenList<>());
@@ -538,7 +537,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -568,7 +567,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         return "testRootName";
                     }
 
-                });
+                }.getCallTarget();
             }
         });
 

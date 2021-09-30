@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -211,7 +210,7 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
                         /* 12: */Bytecode.POP,
                         /* 13: */Bytecode.RETURN};
 
-        CallTarget callee = Truffle.getRuntime().createCallTarget(new LoopControlVariableProxy("simpleLoopProgram", bytecodes, 1, 3));
+        CallTarget callee = new LoopControlVariableProxy("simpleLoopProgram", bytecodes, 1, 3).getCallTarget();
         callee.call();
         callee.call();
         callee.call();
@@ -394,13 +393,13 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
                         /* 12: */Bytecode.POP,
                         /* 13: */Bytecode.RETURN};
 
-        CallTarget callee = Truffle.getRuntime().createCallTarget(new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3));
+        CallTarget callee = new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3).getCallTarget();
         callee.call();
         callee.call();
         callee.call();
         callee.call();
 
-        CallTarget caller = Truffle.getRuntime().createCallTarget(new Caller(callee));
+        CallTarget caller = new Caller(callee).getCallTarget();
         caller.call();
         caller.call();
         caller.call();
@@ -432,7 +431,7 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
                         /* 12: */Bytecode.POP,
                         /* 13: */Bytecode.RETURN};
 
-        CallTarget callee = Truffle.getRuntime().createCallTarget(new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3));
+        CallTarget callee = new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3).getCallTarget();
         callee.call();
         callee.call();
         callee.call();
@@ -653,8 +652,7 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
                         /* 23: */Bytecode.POP,
                         /* 24: */Bytecode.RETURN};
 
-        CallTarget callee = Truffle.getRuntime().createCallTarget(
-                        new ProxySameValueOnce("proxyAtStateProgram", bytecodes, 0, 6));
+        CallTarget callee = new ProxySameValueOnce("proxyAtStateProgram", bytecodes, 0, 6).getCallTarget();
         ProxySameValueOnce.SideEffect = -1;
         callee.call();
         ProxySameValueOnce.SideEffect = 0;
@@ -883,8 +881,7 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
                         /* 23: */Bytecode.POP,
                         /* 24: */Bytecode.RETURN};
 
-        CallTarget callee = Truffle.getRuntime().createCallTarget(
-                        new NoneLiveNoProxyTest("proxyAtStateProgram", bytecodes, 0, 6));
+        CallTarget callee = new NoneLiveNoProxyTest("proxyAtStateProgram", bytecodes, 0, 6).getCallTarget();
         ProxySameValueOnce.SideEffect = -1;
         callee.call();
         ProxySameValueOnce.SideEffect = 0;

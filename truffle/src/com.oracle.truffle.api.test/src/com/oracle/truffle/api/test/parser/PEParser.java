@@ -201,7 +201,7 @@ final class Rule<T> extends Element<T> {
 
     public CallTarget getCallTarget() {
         if (target == null) {
-            target = Truffle.getRuntime().createCallTarget(new RuleRootNode(this));
+            target = new RuleRootNode(this).getCallTarget();
         }
         return target;
     }

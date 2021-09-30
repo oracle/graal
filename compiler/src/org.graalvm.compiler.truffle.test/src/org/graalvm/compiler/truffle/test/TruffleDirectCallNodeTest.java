@@ -49,7 +49,7 @@ public class TruffleDirectCallNodeTest {
                 return true;
             }
         };
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        final CallTarget callTarget = rootNode.getCallTarget();
         final DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
 
         assertTrue(callNode.isCallTargetCloningAllowed());

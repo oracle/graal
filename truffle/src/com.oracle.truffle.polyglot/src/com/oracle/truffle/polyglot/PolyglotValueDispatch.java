@@ -67,7 +67,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -1601,7 +1600,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     static CallTarget createTarget(InteropNode root) {
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
+        CallTarget target = root.getCallTarget();
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
             RUNTIME.initializeProfile(target, types);

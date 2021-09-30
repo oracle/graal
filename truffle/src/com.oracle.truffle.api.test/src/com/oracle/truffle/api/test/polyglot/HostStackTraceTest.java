@@ -55,7 +55,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -79,7 +78,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         final CallTarget callTarget;
 
         HostStackTraceExecutable(String name, SourceSection rootSection, SourceSection callSection) {
-            this.callTarget = Truffle.getRuntime().createCallTarget(new ExecuteRootNode(name, rootSection, callSection));
+            this.callTarget = new ExecuteRootNode(name, rootSection, callSection).getCallTarget();
         }
 
         @ExportMessage

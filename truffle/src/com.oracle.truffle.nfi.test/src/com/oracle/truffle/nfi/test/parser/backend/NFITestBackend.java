@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi.test.parser.backend;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -84,7 +83,7 @@ public class NFITestBackend extends TruffleLanguage<Env> {
 
         @Override
         public CallTarget parse(NativeLibraryDescriptor descriptor) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new TestLibrary(descriptor)));
+            return RootNode.createConstantNode(new TestLibrary(descriptor)).getCallTarget();
         }
 
         @ExportMessage
@@ -129,14 +128,13 @@ public class NFITestBackend extends TruffleLanguage<Env> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
-
+        return new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
                 CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
-        });
+        }.getCallTarget();
     }
 
     private static final LanguageReference<NFITestBackend> REFERENCE = LanguageReference.create(NFITestBackend.class);

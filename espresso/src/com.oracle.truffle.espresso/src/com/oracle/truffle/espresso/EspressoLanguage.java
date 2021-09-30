@@ -32,7 +32,6 @@ import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -180,15 +179,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         if (ExitCodeNode.EVAL_NAME.equals(contents)) {
             RootNode node = new ExitCodeNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         if (GetBindingsNode.EVAL_NAME.equals(contents)) {
             RootNode node = new GetBindingsNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }

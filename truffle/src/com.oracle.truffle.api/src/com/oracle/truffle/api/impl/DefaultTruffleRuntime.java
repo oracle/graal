@@ -89,7 +89,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @Override
         public CallTarget createTestCallTarget(Closeable testContext, RootNode testNode) {
-            return createCallTarget(testNode);
+            return testNode.getCallTarget();
         }
 
         @Override

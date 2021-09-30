@@ -41,8 +41,6 @@
 package org.graalvm.wasm.predefined;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.ReferenceTypes;
@@ -99,8 +97,7 @@ public abstract class BuiltinModule {
         // since predefined modules have a relatively small size.
         final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes);
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        instance.setTarget(function.index(), callTarget);
+        instance.setTarget(function.index(), rootNode.getCallTarget());
     }
 
     protected int defineExternalGlobal(WasmInstance instance, String globalName, WasmGlobal global) {

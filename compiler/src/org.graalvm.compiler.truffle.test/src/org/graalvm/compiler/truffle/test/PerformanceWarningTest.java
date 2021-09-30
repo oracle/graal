@@ -130,9 +130,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         // Compile and capture output to logger's stream.
         boolean seenException = false;
         try {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-            DebugContext debug = new Builder(runtime.getGraalOptions(OptionValues.class)).build();
+            OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+            DebugContext debug = new Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
@@ -444,13 +443,12 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
         public TrivialCallsInnerNode() {
             super(null);
-            final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(new RootNode(null) {
+            this.callNode = (OptimizedDirectCallNode) GraalTruffleRuntime.getRuntime().createDirectCallNode(new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
                 }
-            }));
+            }.getCallTarget());
         }
 
         @Override

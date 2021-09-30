@@ -63,7 +63,7 @@ public class AssumptionInvalidationTest {
         Assumption assumption = runtime.createAssumption("propagated assumption invalidation");
         CountingNode countingNode = new CountingNode(assumption);
         TestRootNode countingRootNode = new TestRootNode(countingNode);
-        final CallTarget countingTarget = runtime.createCallTarget(countingRootNode);
+        final CallTarget countingTarget = countingRootNode.getCallTarget();
 
         Thread thread = new Thread(new Runnable() {
             public void run() {

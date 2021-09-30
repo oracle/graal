@@ -45,13 +45,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -79,7 +79,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-import org.graalvm.polyglot.PolyglotException;
 
 public class TagsTest {
 
@@ -189,7 +188,7 @@ public class TagsTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Child private TaggedNode child = new TaggedNode(request.getSource().getCharacters().toString());
 
@@ -202,7 +201,7 @@ public class TagsTest {
                 public Object execute(VirtualFrame frame) {
                     return child.execute(frame);
                 }
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper
@@ -299,7 +298,7 @@ public class TagsTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Child private RWTaggedNode child = new RWTaggedNode(request.getSource());
 
@@ -312,7 +311,7 @@ public class TagsTest {
                 public Object execute(VirtualFrame frame) {
                     return child.execute(frame);
                 }
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper

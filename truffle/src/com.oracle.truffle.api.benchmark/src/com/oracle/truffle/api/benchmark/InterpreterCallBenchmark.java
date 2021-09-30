@@ -86,7 +86,7 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
             for (int i = 0; i < ROOT_CLASSES.length; i++) {
                 Class<?> rootClass = ROOT_CLASSES[i];
                 rootNodes[i] = createRootNode(rootClass);
-                callTargets[i] = Truffle.getRuntime().createCallTarget(rootNodes[i]);
+                callTargets[i] = rootNodes[i].getCallTarget();
                 directCallNodes[i] = Truffle.getRuntime().createDirectCallNode(callTargets[i]);
             }
 
@@ -138,7 +138,7 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
         public void setup() {
             for (int i = 0; i < TARGETS; i++) {
                 AbstractRootNode rootNode = createRootNode(ROOT_CLASSES[i % ROOT_CLASSES_LENGTH]);
-                callTargets[i] = Truffle.getRuntime().createCallTarget(rootNode);
+                callTargets[i] = rootNode.getCallTarget();
             }
         }
 
@@ -186,8 +186,8 @@ public class InterpreterCallBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public Object callTargetCreate() {
-        return Truffle.getRuntime().createCallTarget(new RootNode1());
+    public Object callTargetCreation() {
+        return new RootNode1().getCallTarget();
     }
 
     @Benchmark

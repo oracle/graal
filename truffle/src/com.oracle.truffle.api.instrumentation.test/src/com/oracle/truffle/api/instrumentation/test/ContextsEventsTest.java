@@ -61,7 +61,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -493,12 +492,12 @@ public class ContextsEventsTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            return new RootNode(languageInstance) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return null;
                 }
-            });
+            }.getCallTarget();
         }
 
         @Override

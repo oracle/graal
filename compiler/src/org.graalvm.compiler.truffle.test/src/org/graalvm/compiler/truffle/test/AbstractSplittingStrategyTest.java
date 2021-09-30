@@ -134,7 +134,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
     protected static void createDummyTargetsToBoostGrowingSplitLimit() {
         for (int i = 0; i < 10; i++) {
-            runtime.createCallTarget(new DummyRootNode());
+            new DummyRootNode().getCallTarget();
         }
     }
 
