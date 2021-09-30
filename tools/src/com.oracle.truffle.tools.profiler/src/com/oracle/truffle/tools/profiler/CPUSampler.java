@@ -528,6 +528,9 @@ public final class CPUSampler implements Closeable {
                 return Collections.emptyMap();
             }
             TruffleContext context = activeContexts.keySet().iterator().next();
+            if (context.isActive()) {
+                throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+            }
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
             List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
             for (StackSample stackSample : sample) {
