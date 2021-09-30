@@ -38,8 +38,10 @@ public class RuntimeReflectionConstructorsImpl implements RuntimeReflectionConst
                     byte[] annotations, byte[] parameterAnnotations, byte[] annotationDefault, byte[] typeAnnotations, String[] reflectParameterNames, int[] reflectParameterModifiers) {
         Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
         method.constructor(declaringClass, name, parameterTypes, returnType, checkedExceptions, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
-        fillReflectParameters(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class), reflectParameterNames, reflectParameterModifiers);
-        SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).typeAnnotations = typeAnnotations;
+        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
+            fillReflectParameters(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class), reflectParameterNames, reflectParameterModifiers);
+            SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).typeAnnotations = typeAnnotations;
+        }
         return SubstrateUtil.cast(method, Method.class);
     }
 
@@ -48,8 +50,10 @@ public class RuntimeReflectionConstructorsImpl implements RuntimeReflectionConst
                     byte[] annotations, byte[] parameterAnnotations, byte[] typeAnnotations, String[] reflectParameterNames, int[] reflectParameterModifiers) {
         Target_java_lang_reflect_Constructor cons = new Target_java_lang_reflect_Constructor();
         cons.constructor(declaringClass, parameterTypes, checkedExceptions, modifiers, -1, signature, annotations, parameterAnnotations);
-        fillReflectParameters(SubstrateUtil.cast(cons, Target_java_lang_reflect_Executable.class), reflectParameterNames, reflectParameterModifiers);
-        SubstrateUtil.cast(cons, Target_java_lang_reflect_Executable.class).typeAnnotations = typeAnnotations;
+        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
+            fillReflectParameters(SubstrateUtil.cast(cons, Target_java_lang_reflect_Executable.class), reflectParameterNames, reflectParameterModifiers);
+            SubstrateUtil.cast(cons, Target_java_lang_reflect_Executable.class).typeAnnotations = typeAnnotations;
+        }
         return SubstrateUtil.cast(cons, Constructor.class);
     }
 

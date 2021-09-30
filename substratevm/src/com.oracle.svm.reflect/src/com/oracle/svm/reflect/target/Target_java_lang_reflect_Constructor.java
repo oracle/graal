@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.code.CodeInfoDecoder;
+import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
@@ -113,7 +114,7 @@ public final class Target_java_lang_reflect_Constructor {
         Target_java_lang_reflect_Constructor holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReceiverType != null) {
             return holder.annotatedReceiverType;
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             Class<?> thisDeclClass = getDeclaringClass();
             Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
 
@@ -142,6 +143,7 @@ public final class Target_java_lang_reflect_Constructor {
                             enclosingClass,
                             TypeAnnotation.TypeAnnotationTarget.METHOD_RECEIVER);
         }
+        throw VMError.shouldNotReachHere();
     }
 
     /**

@@ -29,6 +29,7 @@ package com.oracle.svm.reflect.target;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 
 /**
  * These substitutions are needed to set the genericInfo field on Method, Field, Constructor. The
@@ -71,7 +72,9 @@ public final class Target_java_lang_reflect_ReflectAccess {
 
 class Util_java_lang_reflect_ReflectAccess {
     static void copyExecutable(Target_java_lang_reflect_Executable copy, Target_java_lang_reflect_Executable executable) {
-        copy.parameters = executable.parameters;
+        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
+            copy.parameters = executable.parameters;
+        }
         copy.declaredAnnotations = executable.declaredAnnotations;
         copy.parameterAnnotations = executable.parameterAnnotations;
         copy.typeAnnotations = executable.typeAnnotations;
