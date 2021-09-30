@@ -82,7 +82,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -496,7 +495,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
-            for (AnalysisType typeStateType : nodeTypeState.types()) {
+            for (AnalysisType typeStateType : nodeTypeState.types(bb)) {
                 if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }

@@ -207,7 +207,7 @@ public class HostedConfiguration {
     /** Process the types that the analysis found as needing synchronization. */
     protected void processedSynchronizedTypes(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
         TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-        for (AnalysisType type : allSynchronizedTypeState.types()) {
+        for (AnalysisType type : allSynchronizedTypeState.types(bb)) {
             maybeSetMonitorField(hUniverse, immutableTypes, type);
         }
     }

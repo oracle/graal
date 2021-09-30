@@ -106,7 +106,7 @@ public class SingleTypeState extends TypeState {
     }
 
     @Override
-    protected Iterator<AnalysisType> typesIterator() {
+    protected Iterator<AnalysisType> typesIterator(BigBang bb) {
         return new Iterator<AnalysisType>() {
 
             boolean hasNext = true;

@@ -43,10 +43,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ValueNode;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
@@ -628,7 +628,7 @@ public class PointsToStats {
     }
 
     @SuppressWarnings("unused")
-    private static String asDetailedString(TypeState s) {
+    private static String asDetailedString(BigBang bb, TypeState s) {
         if (s.isEmpty()) {
             return "<Empty>";
         }
@@ -637,7 +637,7 @@ public class PointsToStats {
         }
 
         String canBeNull = s.canBeNull() ? "null" : "!null";
-        String types = s.typesStream().map(JavaType::getUnqualifiedName).sorted().collect(Collectors.joining(", "));
+        String types = s.typesStream(bb).map(JavaType::getUnqualifiedName).sorted().collect(Collectors.joining(", "));
 
         return canBeNull + ", " + types;
     }
