@@ -679,34 +679,6 @@ public enum AArch64ArithmeticOp {
         }
     }
 
-    public static class NegShiftOp extends AArch64LIRInstruction {
-        private static final LIRInstructionClass<NegShiftOp> TYPE = LIRInstructionClass.create(NegShiftOp.class);
-        @Def(REG) protected AllocatableValue result;
-        @Use(REG) protected AllocatableValue src;
-        private final AArch64Assembler.ShiftType shiftType;
-        private final int shiftAmt;
-
-        /**
-         * Computes <code>result = - shiftType(src, shiftAmt)</code>.
-         *
-         * @param shiftType defines left shift, right shift, arithmetic, logical.
-         * @param shiftAmt must be in range 0 to 31 for ints (63 for longs).
-         */
-        public NegShiftOp(AllocatableValue result, AllocatableValue src, AArch64Assembler.ShiftType shiftType, int shiftAmt) {
-            super(TYPE);
-            this.result = result;
-            this.src = src;
-            this.shiftType = shiftType;
-            this.shiftAmt = shiftAmt;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            masm.neg(size, asRegister(result), asRegister(src), shiftType, shiftAmt);
-        }
-    }
-
     public static class MultiplyAddSubOp extends AArch64LIRInstruction {
         private static final LIRInstructionClass<MultiplyAddSubOp> TYPE = LIRInstructionClass.create(MultiplyAddSubOp.class);
 

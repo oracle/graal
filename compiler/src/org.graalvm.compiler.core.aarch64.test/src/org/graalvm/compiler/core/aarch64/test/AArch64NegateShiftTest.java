@@ -32,7 +32,7 @@ import org.junit.Test;
 import java.util.function.Predicate;
 
 public class AArch64NegateShiftTest extends AArch64MatchRuleTest {
-    private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64ArithmeticOp.NegShiftOp);
+    private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64ArithmeticOp.BinaryShiftOp);
 
     /**
      * negateShift match rule tests for shift operations with int type.
