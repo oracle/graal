@@ -816,7 +816,6 @@ public abstract class LLVMCMathsIntrinsics {
     abstract static class LLVMUnsignedVectorMinMaxNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
 
-        @SuppressWarnings("unused")
         protected boolean compare(boolean a, boolean b) {
             throw CompilerDirectives.shouldNotReachHere();
         }
@@ -829,22 +828,18 @@ public abstract class LLVMCMathsIntrinsics {
             return (short) compare((int) a, (int) b);
         }
 
-        @SuppressWarnings("unused")
         protected int compare(int a, int b) {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
-        @SuppressWarnings("unused")
         protected long compare(long a, long b) {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
-        @SuppressWarnings("unused")
         protected float compare(float a, float b) {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
-        @SuppressWarnings("unused")
         protected double compare(double a, double b) {
             throw CompilerDirectives.shouldNotReachHere();
         }
