@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.jdwp.api.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -462,6 +463,21 @@ public final class JDWP {
 
             static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                return new CommandResult(reply);
+            }
+        }
+
+        static class ALL_MODULES {
+            public static final int ID = 22;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                ModuleRef[] moduleRefs = context.getAllModulesRefs();
+                reply.writeInt(moduleRefs.length);
+                for (ModuleRef moduleRef : moduleRefs) {
+                    reply.writeLong(context.getIds().getIdAsLong(moduleRef));
+                }
                 return new CommandResult(reply);
             }
         }
@@ -972,6 +988,35 @@ public final class JDWP {
                 byte[] poolBytes = constantPool.getBytes();
                 reply.writeInt(poolBytes.length);
                 reply.writeByteArray(poolBytes);
+
+                return new CommandResult(reply);
+            }
+        }
+
+        static class MODULE {
+
+            public static final int ID = 19;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long typeId = input.readLong();
+                KlassRef klass = verifyRefType(typeId, reply, context);
+
+                if (klass == null) {
+                    // input could be a classObjectId
+                    Object object = context.getIds().fromId((int) typeId);
+                    klass = context.getReflectedType(object);
+                }
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                ModuleRef module = klass.getModule();
+                long moduleID = context.getIds().getIdAsLong(module);
+                reply.writeLong(moduleID);
 
                 return new CommandResult(reply);
             }
@@ -2866,6 +2911,55 @@ public final class JDWP {
         }
     }
 
+    static class ModuleReference {
+        public static final int ID = 18;
+
+        static class NAME {
+
+            public static final int ID = 1;
+
+            public static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long moduleId = input.readLong();
+                ModuleRef module = verifyModule(moduleId, reply, context);
+
+                if (module == null) {
+                    return new CommandResult(reply);
+                }
+
+                reply.writeString(module.name());
+                return new CommandResult(reply);
+            }
+        }
+
+        static class CLASSLOADER {
+
+            public static final int ID = 2;
+
+            public static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long moduleId = input.readLong();
+                ModuleRef module = verifyModule(moduleId, reply, context);
+
+                if (module == null) {
+                    return new CommandResult(reply);
+                }
+
+                Object loader = module.classLoader();
+                if (loader == null || loader == context.getNullObject()) { // system class loader
+                    reply.writeLong(0);
+                } else {
+                    reply.writeLong(context.getIds().getIdAsLong(loader));
+                }
+                return new CommandResult(reply);
+            }
+        }
+    }
+
     static class Event {
         public static final int ID = 64;
 
@@ -3098,6 +3192,17 @@ public final class JDWP {
             return null;
         }
         return klass;
+    }
+
+    private static ModuleRef verifyModule(long moduleId, PacketStream reply, JDWPContext context) {
+        ModuleRef module;
+        try {
+            module = (ModuleRef) context.getIds().fromId((int) moduleId);
+        } catch (ClassCastException ex) {
+            reply.errorCode(ErrorCodes.INVALID_MODULE);
+            return null;
+        }
+        return module;
     }
 
     private static FieldRef verifyFieldRef(long fieldId, PacketStream reply, JDWPContext context) {

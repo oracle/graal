@@ -505,4 +505,11 @@ public interface JDWPContext {
      * @return true is guest object is a member of the klass
      */
     boolean isMemberOf(Object guestObject, KlassRef klass);
+
+    /**
+     * Returns all defined modules.
+     * @return all modules
+     */
+    ModuleRef[] getAllModulesRefs();
+
 }
