@@ -55,6 +55,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.CodeInfoDecoder;
+import com.oracle.svm.core.code.CodeInfoDecoder.MethodDescriptor;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
@@ -1098,6 +1100,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.rd = rd;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Executable[] hostedGetDeclaredMethods() {
+        return rd.declaredMethods;
+    }
+
     @KeepOriginal
     private native Field[] getFields();
 
@@ -1197,7 +1204,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     ReflectionData loadReflectionMetadata() {
-        Executable[] data = CodeInfoDecoder.getMethodMetadata(this);
+        Pair<Executable[], MethodDescriptor[]> data = CodeInfoDecoder.getMethodMetadata(this);
+        Executable[] methodData = data.getLeft();
+        MethodDescriptor[] hiddenMethodData = data.getRight();
 
         List<Method> newDeclaredMethods = new ArrayList<>(Arrays.asList(rd.declaredMethods));
         List<Method> newPublicMethods = new ArrayList<>(Arrays.asList(rd.publicMethods));
@@ -1205,7 +1214,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         List<Constructor<?>> newPublicConstructors = new ArrayList<>(Arrays.asList(rd.publicConstructors));
         List<Method> newDeclaredPublicMethods = new ArrayList<>(Arrays.asList(rd.declaredPublicMethods));
 
-        outer: for (Executable method : data) {
+        outer: for (Executable method : methodData) {
             if (method instanceof Constructor<?>) {
                 Constructor<?> c = (Constructor<?>) method;
                 for (Constructor<?> c2 : rd.declaredConstructors) {
@@ -1234,10 +1243,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
         /* Recursively add public superclass methods to the public methods list */
         if (superHub != null) {
-            addInheritedPublicMethods(newPublicMethods, superHub);
+            addInheritedPublicMethods(newPublicMethods, superHub, hiddenMethodData);
         }
         for (DynamicHub superintfc : getInterfaces()) {
-            addInheritedPublicMethods(newPublicMethods, superintfc);
+            addInheritedPublicMethods(newPublicMethods, superintfc, hiddenMethodData);
         }
 
         return new ReflectionData(rd.declaredFields, rd.publicFields, rd.publicUnhiddenFields, newDeclaredMethods.toArray(new Method[0]), newPublicMethods.toArray(new Method[0]),
@@ -1245,7 +1254,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                         newDeclaredPublicMethods.toArray(new Method[0]), rd.declaredClasses, rd.publicClasses, rd.enclosingMethodOrConstructor, rd.recordComponents);
     }
 
-    private void addInheritedPublicMethods(List<Method> newPublicMethods, DynamicHub parentHub) {
+    private void addInheritedPublicMethods(List<Method> newPublicMethods, DynamicHub parentHub, MethodDescriptor[] hiddenMethods) {
         outer: for (Method m : parentHub.companion.get().getCompleteReflectionData().publicMethods) {
             if (!isInterface() && parentHub.isInterface() && Modifier.isStatic(m.getModifiers())) {
                 continue;
@@ -1257,6 +1266,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                         newPublicMethods.remove(m2);
                         newPublicMethods.add(m);
                     }
+                    continue outer;
+                }
+            }
+            for (MethodDescriptor hiddenMethod : hiddenMethods) {
+                if (m.getName().equals(hiddenMethod.getName()) && Arrays.equals(m.getParameterTypes(), hiddenMethod.getParameterTypes())) {
                     continue outer;
                 }
             }

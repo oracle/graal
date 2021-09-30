@@ -575,7 +575,6 @@ public class AnalysisUniverse implements Universe {
 
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
-
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
@@ -613,14 +612,25 @@ public class AnalysisUniverse implements Universe {
          * method. The method cannot be marked as invoked.
          */
         if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
-            AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
-            if (aResolved != null) {
+            try {
+                AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
+                if (aResolved != null) {
+                    /*
+                     * aResolved == null means that the method in the base class was called, but
+                     * never with this holder.
+                     */
+                    if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
+                        implementations.add(aResolved);
+                    }
+                }
+            } catch (UnsupportedFeatureException e) {
                 /*
-                 * aResolved == null means that the method in the base class was called, but never
-                 * with this holder.
+                 * Failing the lookup for subclass implementations is acceptable when the method is
+                 * never called. This happens because an AnalysisMethod object can be created during
+                 * any lookup for a method, including when it is not reachable.
                  */
-                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
-                    implementations.add(aResolved);
+                if (method.isReachable()) {
+                    throw e;
                 }
             }
         }

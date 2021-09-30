@@ -234,8 +234,12 @@ public class CodeInfoEncoder {
         methodMetadataEncoder.prepareMetadataForClass(clazz);
     }
 
-    public void prepareMetadataForMethod(SharedMethod method, Executable reflectMethod) {
-        methodMetadataEncoder.prepareMetadataForMethod(method, reflectMethod);
+    public void prepareMetadataForMethod(SharedMethod method, Executable reflectMethod, boolean complete) {
+        methodMetadataEncoder.prepareMetadataForMethod(method, reflectMethod, complete);
+    }
+
+    public void prepareHiddenMethodMetadata(SharedType type, String name, Class<?>[] parameterTypes) {
+        methodMetadataEncoder.prepareHiddenMethodMetadata(type, name, parameterTypes);
     }
 
     private IPData makeEntry(long ip) {

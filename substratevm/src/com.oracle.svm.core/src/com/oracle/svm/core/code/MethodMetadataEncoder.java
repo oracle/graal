@@ -37,12 +37,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -52,6 +54,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.CodeInfoDecoder.MethodDescriptor;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -69,14 +73,24 @@ public class MethodMetadataEncoder {
     public static final int NO_METHOD_METADATA = -1;
 
     private CodeInfoEncoder.Encoders encoders;
-    private TreeMap<SharedType, Set<Pair<SharedMethod, Executable>>> methodData;
+    private TreeSet<SharedType> sortedTypes;
+    private Map<SharedType, Set<Pair<SharedMethod, Executable>>> queriedMethodData;
+    private Map<SharedType, Set<SharedMethod>> reachableMethodData;
+    private Map<SharedType, Set<MethodDescriptor>> hiddenMethodData;
 
     private byte[] methodDataEncoding;
     private byte[] methodDataIndexEncoding;
 
     MethodMetadataEncoder(CodeInfoEncoder.Encoders encoders) {
         this.encoders = encoders;
-        this.methodData = new TreeMap<>(Comparator.comparingLong(t -> t.getHub().getTypeID()));
+        this.sortedTypes = new TreeSet<>(Comparator.comparingLong(t -> t.getHub().getTypeID()));
+        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            this.queriedMethodData = new HashMap<>();
+            this.hiddenMethodData = new HashMap<>();
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
+            this.reachableMethodData = new HashMap<>();
+        }
     }
 
     void encodeAllAndInstall() {
@@ -101,34 +115,48 @@ public class MethodMetadataEncoder {
 
     private static final Method parseAllTypeAnnotations = ReflectionUtil.lookupMethod(TypeAnnotationParser.class, "parseAllTypeAnnotations", AnnotatedElement.class);
 
-    public void prepareMetadataForMethod(SharedMethod method, Executable reflectMethod) {
+    public void prepareMetadataForMethod(SharedMethod method, Executable reflectMethod, boolean complete) {
         if (reflectMethod instanceof Constructor<?>) {
             encoders.sourceMethodNames.addObject("<init>");
         } else {
             encoders.sourceMethodNames.addObject(reflectMethod.getName());
         }
-        encoders.sourceMethodNames.addObject(getSignature(reflectMethod));
-        for (Parameter parameter : reflectMethod.getParameters()) {
-            encoders.sourceMethodNames.addObject(parameter.getName());
-        }
 
-        /* Register string values in annotations */
-        registerStrings(GuardedAnnotationAccess.getDeclaredAnnotations(method));
-        for (Annotation[] annotations : reflectMethod.getParameterAnnotations()) {
-            registerStrings(annotations);
-        }
-        try {
-            for (TypeAnnotation typeAnnotation : (TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod)) {
-                // Checkstyle: allow direct annotation access
-                registerStrings(typeAnnotation.getAnnotation());
-                // Checkstyle: disallow direct annotation access
+        if (complete) {
+            encoders.sourceMethodNames.addObject(getSignature(reflectMethod));
+            for (Parameter parameter : reflectMethod.getParameters()) {
+                encoders.sourceMethodNames.addObject(parameter.getName());
             }
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw shouldNotReachHere();
+
+            /* Register string values in annotations */
+            registerStrings(GuardedAnnotationAccess.getDeclaredAnnotations(method));
+            for (Annotation[] annotations : reflectMethod.getParameterAnnotations()) {
+                registerStrings(annotations);
+            }
+            try {
+                for (TypeAnnotation typeAnnotation : (TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod)) {
+                    // Checkstyle: allow direct annotation access
+                    registerStrings(typeAnnotation.getAnnotation());
+                    // Checkstyle: disallow direct annotation access
+                }
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw shouldNotReachHere();
+            }
         }
 
         SharedType declaringType = (SharedType) method.getDeclaringClass();
-        methodData.computeIfAbsent(declaringType, t -> new HashSet<>()).add(Pair.create(method, reflectMethod));
+        sortedTypes.add(declaringType);
+        if (complete) {
+            queriedMethodData.computeIfAbsent(declaringType, t -> new HashSet<>()).add(Pair.create(method, reflectMethod));
+        } else {
+            reachableMethodData.computeIfAbsent(declaringType, t -> new HashSet<>()).add(method);
+        }
+    }
+
+    public void prepareHiddenMethodMetadata(SharedType type, String name, Class<?>[] parameterTypes) {
+        encoders.sourceMethodNames.addObject(name);
+        sortedTypes.add(type);
+        hiddenMethodData.computeIfAbsent(type, t -> new HashSet<>()).add(new MethodDescriptor(name, parameterTypes));
     }
 
     private static final Method hasRealParameterData = ReflectionUtil.lookupMethod(Executable.class, "hasRealParameterData");
@@ -137,9 +165,7 @@ public class MethodMetadataEncoder {
         UnsafeArrayTypeWriter dataEncodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         UnsafeArrayTypeWriter indexEncodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         long lastTypeID = -1;
-        for (Map.Entry<SharedType, Set<Pair<SharedMethod, Executable>>> entry : methodData.entrySet()) {
-            SharedType declaringType = entry.getKey();
-            Set<Pair<SharedMethod, Executable>> methods = entry.getValue();
+        for (SharedType declaringType : sortedTypes) {
             long typeID = declaringType.getHub().getTypeID();
             assert typeID > lastTypeID;
             lastTypeID++;
@@ -149,80 +175,123 @@ public class MethodMetadataEncoder {
             }
             long index = dataEncodingBuffer.getBytesWritten();
             indexEncodingBuffer.putS4(index);
-            dataEncodingBuffer.putUV(methods.size());
-            for (Pair<SharedMethod, Executable> method : methods) {
-                SharedMethod hostedMethod = method.getLeft();
-                Executable reflectMethod = method.getRight();
+            if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+                Set<Pair<SharedMethod, Executable>> completeMethods = queriedMethodData.getOrDefault(declaringType, Collections.emptySet());
+                dataEncodingBuffer.putUV(completeMethods.size());
+                for (Pair<SharedMethod, Executable> method : completeMethods) {
+                    SharedMethod hostedMethod = method.getLeft();
+                    Executable reflectMethod = method.getRight();
 
-                Class<?> declaringClass = getJavaClass((SharedType) hostedMethod.getDeclaringClass());
-                final int classIndex = encoders.sourceClasses.getIndex(declaringClass);
-                dataEncodingBuffer.putSV(classIndex);
+                    Class<?> declaringClass = getJavaClass((SharedType) hostedMethod.getDeclaringClass());
+                    final int classIndex = encoders.sourceClasses.getIndex(declaringClass);
+                    dataEncodingBuffer.putSV(classIndex);
 
-                String name = hostedMethod.isConstructor() ? "<init>" : hostedMethod.getName();
-                final int nameIndex = encoders.sourceMethodNames.getIndex(name);
-                dataEncodingBuffer.putSV(nameIndex);
+                    String name = hostedMethod.isConstructor() ? "<init>" : hostedMethod.getName();
+                    final int nameIndex = encoders.sourceMethodNames.getIndex(name);
+                    dataEncodingBuffer.putSV(nameIndex);
 
-                dataEncodingBuffer.putUV(reflectMethod.getModifiers());
+                    dataEncodingBuffer.putUV(reflectMethod.getModifiers());
 
-                /* Parameter types do not include the receiver */
-                JavaType[] parameterTypes = hostedMethod.getSignature().toParameterTypes(null);
-                dataEncodingBuffer.putUV(parameterTypes.length);
-                for (JavaType parameterType : parameterTypes) {
-                    Class<?> parameterClass = getJavaClass((SharedType) parameterType);
-                    final int paramClassIndex = encoders.sourceClasses.getIndex(parameterClass);
-                    dataEncodingBuffer.putSV(paramClassIndex);
-                }
-
-                Class<?> returnType = void.class;
-                if (!hostedMethod.isConstructor()) {
-                    returnType = getJavaClass((SharedType) hostedMethod.getSignature().getReturnType(null));
-                }
-                final int returnTypeIndex = encoders.sourceClasses.getIndex(returnType);
-                dataEncodingBuffer.putSV(returnTypeIndex);
-
-                /* Only include types that are in the image (i.e. that can actually be thrown) */
-                Class<?>[] exceptionTypes = filterTypes(reflectMethod.getExceptionTypes());
-                dataEncodingBuffer.putUV(exceptionTypes.length);
-                for (Class<?> exceptionClazz : exceptionTypes) {
-                    final int exceptionClassIndex = encoders.sourceClasses.getIndex(exceptionClazz);
-                    dataEncodingBuffer.putSV(exceptionClassIndex);
-                }
-
-                final int signatureIndex = encoders.sourceMethodNames.getIndex(getSignature(reflectMethod));
-                dataEncodingBuffer.putSV(signatureIndex);
-
-                try {
-                    byte[] annotations = encodeAnnotations(GuardedAnnotationAccess.getDeclaredAnnotations(hostedMethod));
-                    dataEncodingBuffer.putUV(annotations.length);
-                    for (byte b : annotations) {
-                        dataEncodingBuffer.putS1(b);
+                    /* Parameter types do not include the receiver */
+                    JavaType[] parameterTypes = hostedMethod.getSignature().toParameterTypes(null);
+                    dataEncodingBuffer.putUV(parameterTypes.length);
+                    for (JavaType parameterType : parameterTypes) {
+                        Class<?> parameterClass = getJavaClass((SharedType) parameterType);
+                        final int paramClassIndex = encoders.sourceClasses.getIndex(parameterClass);
+                        dataEncodingBuffer.putSV(paramClassIndex);
                     }
 
-                    byte[] parameterAnnotations = encodeParameterAnnotations(reflectMethod.getParameterAnnotations());
-                    dataEncodingBuffer.putUV(parameterAnnotations.length);
-                    for (byte b : parameterAnnotations) {
-                        dataEncodingBuffer.putS1(b);
+                    Class<?> returnType = void.class;
+                    if (!hostedMethod.isConstructor()) {
+                        returnType = getJavaClass((SharedType) hostedMethod.getSignature().getReturnType(null));
+                    }
+                    final int returnTypeIndex = encoders.sourceClasses.getIndex(returnType);
+                    dataEncodingBuffer.putSV(returnTypeIndex);
+
+                    /*
+                     * Only include types that are in the image (i.e. that can actually be thrown)
+                     */
+                    Class<?>[] exceptionTypes = filterTypes(reflectMethod.getExceptionTypes());
+                    dataEncodingBuffer.putUV(exceptionTypes.length);
+                    for (Class<?> exceptionClazz : exceptionTypes) {
+                        final int exceptionClassIndex = encoders.sourceClasses.getIndex(exceptionClazz);
+                        dataEncodingBuffer.putSV(exceptionClassIndex);
                     }
 
-                    byte[] typeAnnotations = encodeTypeAnnotations((TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod));
-                    dataEncodingBuffer.putUV(typeAnnotations.length);
-                    for (byte b : typeAnnotations) {
-                        dataEncodingBuffer.putS1(b);
-                    }
+                    final int signatureIndex = encoders.sourceMethodNames.getIndex(getSignature(reflectMethod));
+                    dataEncodingBuffer.putSV(signatureIndex);
 
-                    boolean parameterDataPresent = (boolean) hasRealParameterData.invoke(reflectMethod);
-                    dataEncodingBuffer.putU1(parameterDataPresent ? 1 : 0);
-                    if (parameterDataPresent) {
-                        Parameter[] parameters = reflectMethod.getParameters();
-                        dataEncodingBuffer.putUV(parameters.length);
-                        for (Parameter parameter : parameters) {
-                            final int parameterNameIndex = encoders.sourceMethodNames.getIndex(parameter.getName());
-                            dataEncodingBuffer.putSV(parameterNameIndex);
-                            dataEncodingBuffer.putS4(parameter.getModifiers());
+                    try {
+                        byte[] annotations = encodeAnnotations(GuardedAnnotationAccess.getDeclaredAnnotations(hostedMethod));
+                        dataEncodingBuffer.putUV(annotations.length);
+                        for (byte b : annotations) {
+                            dataEncodingBuffer.putS1(b);
                         }
+
+                        byte[] parameterAnnotations = encodeParameterAnnotations(reflectMethod.getParameterAnnotations());
+                        dataEncodingBuffer.putUV(parameterAnnotations.length);
+                        for (byte b : parameterAnnotations) {
+                            dataEncodingBuffer.putS1(b);
+                        }
+
+                        byte[] typeAnnotations = encodeTypeAnnotations((TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod));
+                        dataEncodingBuffer.putUV(typeAnnotations.length);
+                        for (byte b : typeAnnotations) {
+                            dataEncodingBuffer.putS1(b);
+                        }
+
+                        boolean parameterDataPresent = (boolean) hasRealParameterData.invoke(reflectMethod);
+                        dataEncodingBuffer.putU1(parameterDataPresent ? 1 : 0);
+                        if (parameterDataPresent) {
+                            Parameter[] parameters = reflectMethod.getParameters();
+                            dataEncodingBuffer.putUV(parameters.length);
+                            for (Parameter parameter : parameters) {
+                                final int parameterNameIndex = encoders.sourceMethodNames.getIndex(parameter.getName());
+                                dataEncodingBuffer.putSV(parameterNameIndex);
+                                dataEncodingBuffer.putS4(parameter.getModifiers());
+                            }
+                        }
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw shouldNotReachHere();
                     }
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw shouldNotReachHere();
+                }
+
+                Set<MethodDescriptor> hiddenMethods = hiddenMethodData.getOrDefault(declaringType, Collections.emptySet());
+                dataEncodingBuffer.putUV(hiddenMethods.size());
+                for (MethodDescriptor hiddenMethod : hiddenMethods) {
+                    String name = hiddenMethod.getName();
+                    final int nameIndex = encoders.sourceMethodNames.getIndex(name);
+                    dataEncodingBuffer.putSV(nameIndex);
+
+                    /* Parameter types do not include the receiver */
+                    Class<?>[] parameterTypes = hiddenMethod.getParameterTypes();
+                    dataEncodingBuffer.putUV(parameterTypes.length);
+                    for (Class<?> parameterType : parameterTypes) {
+                        final int paramTypeIndex = encoders.sourceClasses.getIndex(parameterType);
+                        dataEncodingBuffer.putSV(paramTypeIndex);
+                    }
+                }
+            }
+            if (SubstrateOptions.IncludeMethodData.getValue()) {
+                Set<SharedMethod> partialMethods = reachableMethodData.getOrDefault(declaringType, Collections.emptySet());
+                dataEncodingBuffer.putUV(partialMethods.size());
+                for (SharedMethod hostedMethod : partialMethods) {
+                    Class<?> declaringClass = getJavaClass((SharedType) hostedMethod.getDeclaringClass());
+                    final int classIndex = encoders.sourceClasses.getIndex(declaringClass);
+                    dataEncodingBuffer.putSV(classIndex);
+
+                    String name = hostedMethod.isConstructor() ? "<init>" : hostedMethod.getName();
+                    final int nameIndex = encoders.sourceMethodNames.getIndex(name);
+                    dataEncodingBuffer.putSV(nameIndex);
+
+                    /* Parameter types do not include the receiver */
+                    JavaType[] parameterTypes = hostedMethod.getSignature().toParameterTypes(null);
+                    dataEncodingBuffer.putUV(parameterTypes.length);
+                    for (JavaType parameterType : parameterTypes) {
+                        Class<?> parameterClass = getJavaClass((SharedType) parameterType);
+                        final int paramClassIndex = encoders.sourceClasses.getIndex(parameterClass);
+                        dataEncodingBuffer.putSV(paramClassIndex);
+                    }
                 }
             }
         }
