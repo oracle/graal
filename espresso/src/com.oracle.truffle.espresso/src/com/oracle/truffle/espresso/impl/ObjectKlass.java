@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -46,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.LeafTypeAssumptionAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -1406,12 +1408,15 @@ public final class ObjectKlass extends Klass {
     }
 
     /**
-     * @return the assumption, indicating if this class is a leaf in class hierarchy. This
-     *         assumption must only be used by {@link ClassHierarchyOracle}, other users must use
-     *         {@link ClassHierarchyOracle#isLeafClass(ObjectKlass)}. The assumption is stored in
-     *         ObjectKlass for easy mapping between classes and corresponding assumptions.
+     * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
+     * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
+     * classes and corresponding assumptions.
+     *
+     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
+     * @return the assumption, indicating if this class is a leaf in class hierarchy.
      */
-    public LeafTypeAssumption getLeafTypeAssumption() {
+    public LeafTypeAssumption getLeafTypeAssumption(LeafTypeAssumptionAccessor assumptionAccessor) {
+        Objects.requireNonNull(assumptionAccessor);
         return leafTypeAssumption;
     }
 

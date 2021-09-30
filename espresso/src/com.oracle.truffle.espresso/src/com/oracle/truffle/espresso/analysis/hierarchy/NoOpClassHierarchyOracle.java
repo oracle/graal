@@ -53,6 +53,8 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
         }
     }
 
+    protected static final LeafTypeAssumptionAccessor assumptionAccessor = new LeafTypeAssumptionAccessor();
+
     protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl("final class is always a CHA leaf");
     protected static final LeafTypeAssumption NotLeaf = LeafTypeAssumptionImpl.AlwaysInvalid;
 
@@ -70,6 +72,6 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
 
     @Override
     public LeafTypeAssumption isLeafClass(ObjectKlass klass) {
-        return klass.getLeafTypeAssumption();
+        return klass.getLeafTypeAssumption(assumptionAccessor);
     }
 }
