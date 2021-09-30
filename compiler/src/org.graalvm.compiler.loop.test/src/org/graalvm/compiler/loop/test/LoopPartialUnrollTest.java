@@ -252,6 +252,29 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         test("testSignExtensionSnippet", 9L);
     }
 
+    public static long deoptExitSnippet(long arg) {
+        long r = 1;
+        int i = 0;
+        while (true) {
+            if (injectBranchProbability(0.99, i >= arg)) {
+                GraalDirectives.deoptimizeAndInvalidate();
+                GraalDirectives.sideEffect(i);
+                if (i == 123) {
+                    continue;
+                }
+                break;
+            }
+            r *= i;
+            i++;
+        }
+        return r;
+    }
+
+    @Test
+    public void deoptExitTest() {
+        test("deoptExitSnippet", 9L);
+    }
+
     public static Object objectPhi(int n) {
         Integer v = Integer.valueOf(200);
         GraalDirectives.blackhole(v); // Prevents PEA
