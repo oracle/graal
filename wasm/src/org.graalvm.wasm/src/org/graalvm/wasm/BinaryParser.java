@@ -95,12 +95,14 @@ public class BinaryParser extends BinaryStreamParser {
     private static final int VERSION = 0x00000001;
 
     private final WasmModule module;
+    private final WasmContext wasmContext;
     private final int[] limitsResult;
 
     @CompilerDirectives.TruffleBoundary
-    public BinaryParser(WasmModule module) {
+    public BinaryParser(WasmModule module, WasmContext context) {
         super(module.data());
         this.module = module;
+        this.wasmContext = context;
         this.limitsResult = new int[2];
     }
 
@@ -961,10 +963,51 @@ public class BinaryParser extends BinaryStreamParser {
                 state.popChecked(I64_TYPE);
                 state.push(F64_TYPE);
                 break;
+            case Instructions.MISC:
+                int miscOpcode = read1() & 0xFF;
+                switch (miscOpcode) {
+                    case Instructions.I32_TRUNC_SAT_F32_S:
+                    case Instructions.I32_TRUNC_SAT_F32_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F32_TYPE);
+                        state.push(I32_TYPE);
+                        break;
+                    case Instructions.I32_TRUNC_SAT_F64_S:
+                    case Instructions.I32_TRUNC_SAT_F64_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F64_TYPE);
+                        state.push(I32_TYPE);
+                        break;
+                    case Instructions.I64_TRUNC_SAT_F32_S:
+                    case Instructions.I64_TRUNC_SAT_F32_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F32_TYPE);
+                        state.push(I64_TYPE);
+                        break;
+                    case Instructions.I64_TRUNC_SAT_F64_S:
+                    case Instructions.I64_TRUNC_SAT_F64_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F64_TYPE);
+                        state.push(I64_TYPE);
+                        break;
+                    default:
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFC 0x%02x", miscOpcode);
+                }
+                break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
                 break;
         }
+    }
+
+    private static void checkContextOption(boolean option, String message, Object... args) {
+        if (!option) {
+            fail(Failure.UNSPECIFIED_MALFORMED, message, args);
+        }
+    }
+
+    private void checkSaturatingFloatToIntSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().isSaturatingFloatToInt(), "Saturating float-to-int conversion is not enabled (opcode: 0xFC 0x%02x)", opcode);
     }
 
     private void store(ValidationState state, byte type, int n) {
