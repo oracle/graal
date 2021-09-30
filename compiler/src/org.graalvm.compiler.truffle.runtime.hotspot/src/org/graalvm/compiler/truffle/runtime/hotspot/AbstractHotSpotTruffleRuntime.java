@@ -181,9 +181,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             installReservedOopMethods(null);
 
             try {
-                setReservedReference0 = MethodHandles.publicLookup().findVirtual(HotSpotJVMCIRuntime.class,
+                setReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
                                 "setThreadLocalObject", MethodType.methodType(void.class, int.class, Object.class));
-                getReservedReference0 = MethodHandles.publicLookup().findVirtual(HotSpotJVMCIRuntime.class,
+                getReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
                                 "getThreadLocalObject", MethodType.methodType(Object.class, int.class));
             } catch (NoSuchMethodException | IllegalAccessException e) {
                 /*
@@ -266,6 +266,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         } else {
             assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
         }
+    }
+
+    @Override
+    public boolean isLatestJVMCI() {
+        if (getJVMCIReservedReference0 == null) {
+            return false;
+        }
+        if (getJVMCIReservedLongOffset0() == -1) {
+            return false;
+        }
+        return true;
     }
 
     /*
