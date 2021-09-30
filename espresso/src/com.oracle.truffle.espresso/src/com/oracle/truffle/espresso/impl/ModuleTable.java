@@ -71,7 +71,6 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         }
 
         public Object classLoader() {
-            getNameAsString()
             return registry.getClassLoader();
         }
 
