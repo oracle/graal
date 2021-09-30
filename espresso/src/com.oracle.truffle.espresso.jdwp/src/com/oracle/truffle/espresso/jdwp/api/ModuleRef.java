@@ -34,7 +34,7 @@ public interface ModuleRef {
      *
      * @return module name
      */
-    String name();
+    String jdwpName();
 
     /**
      * Returns the guest object representing the defining classloader of the module.

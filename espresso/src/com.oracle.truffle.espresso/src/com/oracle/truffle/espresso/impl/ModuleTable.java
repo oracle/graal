@@ -61,8 +61,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             this.registry = data;
         }
 
-        public String name() {
-            Symbol<Name> name = getName();
+        public String jdwpName() {
             if (name == null) {
                 // JDWP expects the unnamed module to return empty string
                 return "";
@@ -72,6 +71,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         }
 
         public Object classLoader() {
+            getNameAsString()
             return registry.getClassLoader();
         }
 

@@ -2929,7 +2929,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                reply.writeString(module.name());
+                reply.writeString(module.jdwpName());
                 return new CommandResult(reply);
             }
         }
