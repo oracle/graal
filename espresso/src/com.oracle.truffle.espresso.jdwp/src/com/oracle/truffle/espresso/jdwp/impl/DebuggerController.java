@@ -467,7 +467,7 @@ public final class DebuggerController implements ContextsListener {
         if (!prepareReconnect) {
             // OK, we're closing down the context which is equivalent
             // to a dead VM from a JDWP client point of view
-            if(eventListener.vmDied()) {
+            if (eventListener.vmDied()) {
                 // we're asked to suspend
                 suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, false);
             }

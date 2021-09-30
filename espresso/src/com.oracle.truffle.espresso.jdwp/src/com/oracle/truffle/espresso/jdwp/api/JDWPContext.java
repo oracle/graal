@@ -508,6 +508,7 @@ public interface JDWPContext {
 
     /**
      * Returns all defined modules.
+     *
      * @return all modules
      */
     ModuleRef[] getAllModulesRefs();
