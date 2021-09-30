@@ -198,12 +198,12 @@ public final class ClassRegistries {
     public ModuleRef[] getAllModuleRefs() {
         ArrayList<ModuleRef> list = new ArrayList<>();
         // add modules from boot registry
-        list.addAll(bootClassRegistry.modules().entries());
+        list.addAll(bootClassRegistry.modules().values());
 
         // add modules from all other registries
         synchronized (weakClassLoaderSet) {
             for (StaticObject classLoader : weakClassLoaderSet) {
-                list.addAll(getClassRegistry(classLoader).modules().entries());
+                list.addAll(getClassRegistry(classLoader).modules().values());
             }
         }
         return list.toArray(ModuleRef.EMPTY_ARRAY);

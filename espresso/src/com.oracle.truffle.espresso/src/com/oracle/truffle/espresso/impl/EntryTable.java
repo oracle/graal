@@ -44,8 +44,11 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         this.writeBlock = new BlockLock(lock.writeLock());
     }
 
-    public Collection<T> entries() {
-        return Collections.unmodifiableCollection(entries.values());
+    @SuppressWarnings("try")
+    public Collection<T> values() {
+        try (BlockLock block = read()) {
+            return Collections.unmodifiableCollection(entries.values());
+        }
     }
 
     public static final class BlockLock implements AutoCloseable {
