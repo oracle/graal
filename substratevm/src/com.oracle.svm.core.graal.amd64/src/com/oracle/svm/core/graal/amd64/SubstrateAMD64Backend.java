@@ -40,7 +40,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
-import com.oracle.svm.core.meta.SubstrateVMConstant;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -922,8 +922,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
-            } else if (src instanceof SubstrateVMConstant) {
-                return new LoadVMConstantOp(dst, (SubstrateVMConstant) src);
+            } else if (src instanceof SubstrateMethodVMConstant) {
+                return new LoadMethodVMConstantOp(dst, (SubstrateMethodVMConstant) src);
             }
             return super.createLoad(dst, src);
         }
@@ -934,8 +934,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
-            } else if (src instanceof SubstrateVMConstant) {
-                return new LoadVMConstantOp(dst, (SubstrateVMConstant) src);
+            } else if (src instanceof SubstrateMethodVMConstant) {
+                return new LoadMethodVMConstantOp(dst, (SubstrateMethodVMConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
@@ -948,12 +948,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return new MoveFromConstOp(dst, constant);
         }
 
-        public static final class LoadVMConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
-            public static final LIRInstructionClass<LoadVMConstantOp> TYPE = LIRInstructionClass.create(LoadVMConstantOp.class);
-            private final SubstrateVMConstant constant;
-            @Def({REG, HINT}) private final AllocatableValue result;
+        public static final class LoadMethodVMConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
+            public static final LIRInstructionClass<LoadMethodVMConstantOp> TYPE = LIRInstructionClass.create(LoadMethodVMConstantOp.class);
+            private final SubstrateMethodVMConstant constant;
+            @Def({REG, HINT}) protected AllocatableValue result;
 
-            protected LoadVMConstantOp(AllocatableValue result, SubstrateVMConstant constant) {
+            protected LoadMethodVMConstantOp(AllocatableValue result, SubstrateMethodVMConstant constant) {
                 super(TYPE);
                 this.constant = constant;
                 this.result = result;
@@ -987,7 +987,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             @Override
-            public SubstrateVMConstant getConstant() {
+            public SubstrateMethodVMConstant getConstant() {
                 return constant;
             }
         }

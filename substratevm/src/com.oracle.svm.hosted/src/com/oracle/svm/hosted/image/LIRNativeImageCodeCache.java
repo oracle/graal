@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.meta.SubstrateVMConstant;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
@@ -210,8 +210,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
                 if (ref instanceof ConstantReference) {
                     VMConstant constant = ((ConstantReference) ref).getConstant();
-                    if (constant instanceof SubstrateVMConstant) {
-                        addNonDataRelocation(dataPatch, relocs, ((SubstrateVMConstant) constant).pointer());
+                    if (constant instanceof SubstrateMethodVMConstant) {
+                        CFunctionPointer pointer = ((SubstrateMethodVMConstant) constant).pointer();
+                        addNonDataRelocation(dataPatch, relocs, pointer);
                         continue;
                     }
                 }

@@ -4,11 +4,11 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import jdk.vm.ci.meta.VMConstant;
 
-public class SubstrateVMConstant implements VMConstant {
+public class SubstrateMethodVMConstant implements VMConstant {
 
     private final CFunctionPointer pointer;
 
-    public SubstrateVMConstant(CFunctionPointer pointer) {
+    public SubstrateMethodVMConstant(CFunctionPointer pointer) {
         this.pointer = pointer;
     }
 

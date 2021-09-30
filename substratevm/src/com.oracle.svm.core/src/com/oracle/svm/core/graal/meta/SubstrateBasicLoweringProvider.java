@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -152,17 +153,17 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
         StructuredGraph graph = loadMethodNode.graph();
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
-        ReadNode metaspaceMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
-        graph.replaceFixed(loadMethodNode, metaspaceMethod);
+        ReadNode svmMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
+        graph.replaceFixed(loadMethodNode, svmMethod);
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method, ResolvedJavaType receiverType) {
         int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
         assert vtableEntryOffset > 0;
-        Stamp methodStamp = MethodPointerStamp.methodNonNull();
+        Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        ReadNode metaspaceMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
-        return metaspaceMethod;
+        ReadNode svmMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        return svmMethod;
     }
 
     @Override

@@ -34,6 +34,8 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,8 +52,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.SubstrateVMConstant;
-import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -59,6 +59,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -99,6 +100,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
@@ -128,6 +130,7 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImage extends AbstractImage {
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
@@ -569,6 +572,22 @@ public abstract class NativeImage extends AbstractImage {
         }
     }
 
+    private static String hexView(ByteBuffer buffer) {
+        StringBuilder result = new StringBuilder();
+        byte[] array = buffer.array();
+        for (int i = 0; i < array.length; i++) {
+            if (i % 16 == 0) {
+                result.append(System.lineSeparator());
+                result.append(String.format("%08X", i));
+            }
+            if (i % 2 == 0) {
+                result.append(" ");
+            }
+            result.append(String.format("%02X", array[i]));
+        }
+        return result.toString();
+    }
+
     private static boolean checkEmbeddedOffset(ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         final ByteBuffer dataBuf = ByteBuffer.wrap(sectionImpl.getContent()).order(sectionImpl.getElement().getOwner().getByteOrder());
         if (info.getRelocationSize() == Long.BYTES) {
@@ -658,10 +677,6 @@ public abstract class NativeImage extends AbstractImage {
             }
         } else if (target instanceof ConstantReference) {
             VMConstant constant = ((ConstantReference) target).getConstant();
-            if (constant instanceof SubstrateVMConstant) {
-                // TODO
-                return;
-            }
             // Direct object reference in code that must be patched (not a linker relocation)
 
             Object object = SubstrateObjectConstant.asObject(constant);

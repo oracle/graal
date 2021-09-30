@@ -41,7 +41,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.SubstrateVMConstant;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -197,7 +197,7 @@ public abstract class NativeImageCodeCache {
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
-        if (constant instanceof SubstrateVMConstant) {
+        if (constant instanceof SubstrateMethodVMConstant) {
             return;
         }
         Object obj = SubstrateObjectConstant.asObject(constant);

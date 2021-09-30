@@ -47,7 +47,7 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateVMConstant;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 
@@ -428,9 +428,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
          * This method is used by Graal to decide if method-based inlining guards are possible. As
          * long as getEncoding() is unimplemented, this method needs to return false.
          */
-        if (getDeclaringClass().getName().contains("Thread") || resolved.getName().contains("Thread")) {
-            System.out.println(this);
-        }
         if (resolved instanceof HostedType) {
             HostedMethod[] vTable = ((HostedType) resolved).getVTable();
             for (HostedMethod method : vTable) {
@@ -453,7 +450,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public Constant getEncoding() {
-        return new SubstrateVMConstant(MethodPointer.factory(this));
+        return new SubstrateMethodVMConstant(MethodPointer.factory(this));
     }
 
     @Override
