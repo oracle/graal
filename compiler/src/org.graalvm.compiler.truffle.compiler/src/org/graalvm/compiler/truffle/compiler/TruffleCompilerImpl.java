@@ -947,6 +947,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         public String toString() {
             return delegate.toString();
         }
+
+        public TruffleCompilationTask getDelegate() {
+            return delegate;
+        }
     }
 
     private static final class TTYToPolyglotLoggerBridge implements Consumer<String> {

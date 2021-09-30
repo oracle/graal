@@ -43,6 +43,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.nativebridge.jni.HSObject;
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
 import org.graalvm.nativebridge.jni.JNI.JObject;
@@ -105,7 +106,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @Override
     public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
+        JObject hsTask = ((HSTruffleCompilationTask) ((TruffleCompilerImpl.CancellableTruffleCompilationTask) task).getDelegate()).getHandle();
         JNIEnv env = JNIMethodScope.env();
         callOnCompilationRetry(env, getHandle(), hsCompilable, hsTask);
     }
