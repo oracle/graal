@@ -181,7 +181,7 @@ public interface TruffleCompilerListener {
      * compilation problem.
      *
      * @param compilable the Truffle AST which is going to be re-compiled.
-     * @param tier Which compilation tier is in question.
+     * @param task Which compilation task is in question.
      */
     default void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
         onCompilationRetry(compilable, task.tier());
