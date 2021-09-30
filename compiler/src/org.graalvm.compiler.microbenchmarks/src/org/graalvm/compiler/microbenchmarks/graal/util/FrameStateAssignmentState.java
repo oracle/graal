@@ -34,7 +34,7 @@ public class FrameStateAssignmentState extends GraphState {
 
     @Override
     protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
-        new GuardLoweringPhase().apply(structuredGraph, null);
+        new GuardLoweringPhase().apply(structuredGraph, graal.providers);
         return structuredGraph;
     }
 
