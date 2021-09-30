@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -48,11 +49,24 @@ import com.oracle.svm.core.util.VMError;
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
     public static final class Options {
+        static final class HeapSizeOptionKey<T> extends RuntimeOptionKey<T> {
+            HeapSizeOptionKey(T defaultValue) {
+                super(defaultValue);
+            }
+
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
+                if (!SubstrateUtil.HOSTED) {
+                    Heap.getHeap().updateSizeParameters();
+                }
+            }
+        }
+
         @Option(help = "The maximum heap size as percent of physical memory") //
-        public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
+        public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new HeapSizeOptionKey<>(80);
 
         @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size") //
-        public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new RuntimeOptionKey<>(10);
+        public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new HeapSizeOptionKey<>(10);
 
         @Option(help = "The size of an aligned chunk.") //
         public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<Long>(1L * 1024L * 1024L) {

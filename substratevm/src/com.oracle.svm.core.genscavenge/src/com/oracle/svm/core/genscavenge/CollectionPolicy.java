@@ -102,9 +102,9 @@ public interface CollectionPolicy {
 
     /**
      * (Re)computes minimum/maximum/initial sizes of space based on the available
-     * {@linkplain PhysicalMemory physical memory} and current runtime option values. This method is
-     * called after slow-path allocation (of a TLAB or a large object) and so allocation is allowed,
-     * but can trigger a collection.
+     * {@linkplain PhysicalMemory physical memory} and current runtime option values. This method
+     * can be called directly or after a slow-path allocation (of a TLAB or a large object) and so
+     * allocation is allowed, but may trigger a collection.
      */
     void updateSizeParameters();
 

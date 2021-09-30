@@ -638,6 +638,11 @@ public final class HeapImpl extends Heap {
         return false;
     }
 
+    @Override
+    public void updateSizeParameters() {
+        GCImpl.getPolicy().updateSizeParameters();
+    }
+
     static Pointer getImageHeapStart() {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         if (imageHeapOffsetInAddressSpace > 0) {
@@ -846,7 +851,7 @@ final class Target_java_lang_Runtime {
     @Substitute
     private long maxMemory() {
         PhysicalMemory.size(); // ensure physical memory size is set correctly and not estimated
-        GCImpl.getPolicy().updateSizeParameters();
+        Heap.getHeap().updateSizeParameters();
         return GCImpl.getPolicy().getMaximumHeapSize().rawValue();
     }
 
