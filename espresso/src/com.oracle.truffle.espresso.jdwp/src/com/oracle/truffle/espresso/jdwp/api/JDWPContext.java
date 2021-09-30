@@ -500,6 +500,7 @@ public interface JDWPContext {
 
     /**
      * Tests if the guest object is a member of the klass.
+     *
      * @param guestObject the guest object
      * @param klass the class
      * @return true is guest object is a member of the klass
