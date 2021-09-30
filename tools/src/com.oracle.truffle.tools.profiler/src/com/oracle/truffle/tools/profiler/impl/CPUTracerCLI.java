@@ -24,22 +24,23 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.CPUTracer;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionType;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
+
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tools.profiler.CPUTracer;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 @Option.Group(CPUTracerInstrument.ID)
 class CPUTracerCLI extends ProfilerCLI {
@@ -95,15 +96,14 @@ class CPUTracerCLI extends ProfilerCLI {
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
     public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
-        try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
-            switch (env.getOptions().get(OUTPUT)) {
-                case HISTOGRAM:
-                    printTracerHistogram(out, tracer);
-                    break;
-                case JSON:
-                    printTracerJson(out, tracer);
-                    break;
-            }
+        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+        switch (env.getOptions().get(OUTPUT)) {
+            case HISTOGRAM:
+                printTracerHistogram(out, tracer);
+                break;
+            case JSON:
+                printTracerJson(out, tracer);
+                break;
         }
     }
 
