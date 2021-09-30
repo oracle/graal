@@ -130,21 +130,10 @@ function color_create_legend() {
     t.style.fontSize = fontSize * 1.5;
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
-    t.textContent = "Legend";
-
-    let t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    t2.className.baseVal = "title";
-    t2.style.textAnchor = "middle";
-    t2.setAttribute("x", 125);
-    t2.setAttribute("y", fg_frameheight * 3);
-    t2.style.fontSize = fontSize;
-    t2.style.fontFamily = "Verdana";
-    t2.style.fill = "rgb(0, 0, 0)";
-    t2.textContent = "Press \"l\" to toggle legend";
+    t.textContent = "Legend & Help";
 
     e.appendChild(r);
     e.appendChild(t);
-    e.appendChild(t2);
     e.style.display = "none";
     svg.appendChild(e);
 
@@ -177,6 +166,15 @@ function color_create_legend() {
         entry_count = 12;
     }
 
+    let help_entry_count = 0;
+
+    for (; help_entry_count < help_strings.length; help_entry_count++) {
+        graph_help_entry(e, entry_count + help_entry_count + 1, help_strings[help_entry_count][0], help_strings[help_entry_count][1]);
+    }
+
+    if (help_entry_count > 0) {
+        entry_count = entry_count + help_entry_count + 1;
+    }
     r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
     color_insert_legend(svg);
     return e;
@@ -238,4 +236,4 @@ function color_legend() {
 
 // C for color cycle.
 graph_register_handler("c", "Cycle through graph colorings", color_cycle);
-graph_register_handler("l", "Toggle legend display", color_legend);
+graph_register_handler("?", "Toggle legend & help display", color_legend);

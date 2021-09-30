@@ -370,52 +370,6 @@ function owner_resize(new_width) {
 }
 
 var help_strings = [];
-var help_state = false;
-
-function graph_create_help() {
-    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    e.id = "help";
-
-    let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    svg.y.baseVal.value = 50;
-    r.className.baseVal = "popup";
-    r.x.baseVal.value = 0;
-    r.y.baseVal.value = 0;
-    r.width.baseVal.value = 250;
-    r.style.fill = "white";
-    r.style.stroke = "black";
-    r.style["stroke-width"] = 2;
-    r.rx.baseVal.value = 2;
-    r.ry.baseVal.vlaue = 2;
-
-    let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    t.className.baseVal = "title";
-    t.style.textAnchor = "middle";
-    t.setAttribute("y", fg_frameheight * 2);
-    t.style.fontSize = fontSize * 1.5;
-    t.style.fontFamily = "Verdana";
-    t.style.fill = "rgb(0, 0, 0)";
-    t.textContent = "Keyboard shortcut";
-
-    e.appendChild(r);
-    e.appendChild(t);
-    e.style.display = "none";
-    svg.appendChild(e);
-
-    let entry_count = 0;
-
-    for (; entry_count < help_strings.length; entry_count++) {
-        graph_help_entry(e, entry_count, help_strings[entry_count][0], help_strings[entry_count][1]);
-    }
-
-    svg.x.baseVal.value = document.firstElementChild.width.baseVal.value - 250 - xpad;
-    t.setAttribute("x", 250 / 2);
-    r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
-    document.firstElementChild.appendChild(svg);
-    return e;
-
-}
 
 function graph_help_entry(e, i, key, description) {
     let y = (fg_frameheight * 2) + (i + 1) * fg_frameheight * 1.5;
@@ -475,22 +429,6 @@ function graph_popup_fix_width(e, right_justify) {
     }
 };
 
-function graph_help() {
-    let e = document.getElementById("help");
-    if (e == null) {
-        e = graph_create_help();
-    }
-    if (e != null) {
-        if (e.style["display"] == "none") {
-            e.style["display"] = "block";
-            graph_popup_fix_width(e, true);
-        } else {
-            e.style["display"] = "none";
-        }
-    }
-    help_state = !help_state;
-}
-
 function graph_register_handler(key, description, action) {
     window.addEventListener("keydown", function (e) {
         if (e.key == key && !e.isComposing && !e.altKey && !e.ctrlKey && !e.metaKey) {
@@ -500,5 +438,3 @@ function graph_register_handler(key, description, action) {
     });
     help_strings.push([key, description]);
 }
-
-graph_register_handler("?", "Display keyboard shortcuts", graph_help);
