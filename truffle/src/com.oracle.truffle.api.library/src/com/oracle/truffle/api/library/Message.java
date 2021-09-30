@@ -72,6 +72,7 @@ public abstract class Message {
 
     private final String simpleName;
     private final String qualifiedName;
+    private final int id;
     private final int hash;
     private final Class<?> returnType;
     private final Class<? extends Library> libraryClass;
@@ -82,9 +83,24 @@ public abstract class Message {
 
     /**
      * @since 19.0
+     * @deprecated Use {@link #Message(Class, String, int, Class, Class[])}.
      */
-    @SuppressWarnings("unchecked")
+    @Deprecated
     protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
+        this(libraryClass, -1, messageName, returnType, parameterTypes);
+    }
+
+    /**
+     * @since 22.0
+     */
+    protected Message(Class<? extends Library> libraryClass, String messageName, int id, Class<?> returnType, Class<?>... parameterTypes) {
+        this(libraryClass, id, messageName, returnType, parameterTypes);
+        if (id < 0) {
+            throw new IllegalArgumentException("Id must be non-negative.");
+        }
+    }
+
+    private Message(Class<? extends Library> libraryClass, int id, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
         Objects.requireNonNull(libraryClass);
         Objects.requireNonNull(messageName);
         Objects.requireNonNull(returnType);
@@ -94,8 +110,19 @@ public abstract class Message {
         this.parameterTypesArray = parameterTypes;
         this.parameterTypes = Collections.unmodifiableList(Arrays.asList(parameterTypes));
         this.qualifiedName = (getLibraryName() + "." + simpleName).intern();
+        this.id = id;
         this.parameterCount = parameterTypes.length;
         this.hash = qualifiedName.hashCode();
+    }
+
+    /**
+     * Returns a unique message id within a library.
+     *
+     * @return a non-negative message id or {@code -1} if the message is not assigned a unique id.
+     * @since 22.0
+     */
+    public final int getId() {
+        return id;
     }
 
     /**

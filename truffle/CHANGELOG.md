@@ -4,6 +4,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
+* Added a [Message#getId()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/Message.html#getId--) method returning a unique message id within a library.
+* Added a [LibraryFactory#getMessages()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/LibraryFactory.html#getMessages--) method returning a list of messages that the library provides.
 
 *  Changed behavior of `RootNode#getCallTarget()` such that it lazily initializes its call target. This enforces a one-to-one relationship between root nodes and call targets, which avoids several problems, for example, with regard to instrumentation. As a consequence, `RootNode.setCallTarget()` is deprecated and so will be `TruffleRuntime#createCallTarget()` soon. Please use `RootNode#getCallTarget()` to access the call target of a root node from now on.
 

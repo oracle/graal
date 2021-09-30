@@ -148,12 +148,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeTreeBuilder statics = staticsMethod.createBuilder();
 
         List<MessageObjects> methods = new ArrayList<>();
-        for (int messageIndex = 0; messageIndex < model.getMethods().size(); messageIndex++) {
-            LibraryMessage message = model.getMethods().get(messageIndex);
+        int messageIndex = 0;
+        for (LibraryMessage message : model.getMethods()) {
             if (message.hasErrors()) {
                 continue;
             }
-            MessageObjects objects = new MessageObjects(message, messageIndex);
+            int useIndex = message.getName().equals(ACCEPTS) ? -1 : messageIndex++;
+            MessageObjects objects = new MessageObjects(message, useIndex);
             methods.add(objects);
         }
 
@@ -208,7 +209,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         messageConstructor.addParameter(new CodeVariableElement(context.getType(Class[].class), "parameters"));
         messageConstructor.setVarArgs(true);
         builder = messageConstructor.createBuilder();
-        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("returnType").string("parameters").end().end();
+        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("index").string("returnType").string("parameters").end().end();
         builder.statement("this.index = index");
         messageClass.add(messageConstructor);
         genClass.add(messageClass);
