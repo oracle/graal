@@ -536,7 +536,7 @@ public final class CPUSampler implements Closeable {
         }
         this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
         this.samplerTask = new SamplingTimerTask();
-        this.samplerThread.schedule(samplerTask, delay, period);
+        this.samplerThread.scheduleAtFixedRate(samplerTask, delay, period);
     }
 
     private void cleanup() {
