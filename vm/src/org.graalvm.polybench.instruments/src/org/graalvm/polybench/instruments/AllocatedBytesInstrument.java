@@ -34,12 +34,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -51,20 +51,12 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
     public static final String ID = "allocated-bytes";
     @Option(name = "", help = "Enable the Allocated Bytes Instrument (default: false).", category = OptionCategory.EXPERT) static final OptionKey<Boolean> enabled = new OptionKey<>(false);
     public final List<ThreadContext> threads = new ArrayList<>();
-    final ContextThreadLocal<ThreadContext> sandboxThreadContext = createContextThreadLocal(this::createThreadContext);
     private ServerSocket serverSocket;
     private Thread socketThread;
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new AllocatedBytesInstrumentOptionDescriptors();
-    }
-
-    @SuppressWarnings("unused")
-    private synchronized ThreadContext createThreadContext(TruffleContext context, Thread thread) {
-        ThreadContext threadContext = new ThreadContext(thread);
-        threads.add(threadContext);
-        return threadContext;
     }
 
     public synchronized double getAllocated() {
@@ -78,6 +70,17 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
 
     @Override
     protected synchronized void onCreate(Env env) {
+        env.getInstrumenter().attachThreadsListener(new ThreadsListener() {
+            @Override
+            public void onThreadInitialized(TruffleContext context, Thread thread) {
+                threads.add(new ThreadContext(thread));
+            }
+
+            @Override
+            public void onThreadDisposed(TruffleContext context, Thread thread) {
+                threads.removeIf(e -> e.thread.equals(thread));
+            }
+        }, true);
         socketThread = new Thread(() -> {
             try {
                 serverSocket = new ServerSocket(8877);
