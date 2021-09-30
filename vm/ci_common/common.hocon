@@ -128,6 +128,7 @@ fastr_linux: ${fastr} {
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include"
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+    FASTR_CC: "/cm/shared/apps/gcc/4.8.5/bin/gcc"
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc4.8.5-pcre2/lib64/R"
   }
   downloads: {
@@ -142,6 +143,7 @@ fastr_darwin: ${fastr} {
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
+    FASTR_CC: "/cm/shared/apps/gcc/8.3.0/bin/gcc"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
     PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
