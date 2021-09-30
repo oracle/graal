@@ -326,16 +326,6 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public boolean closeToAllInstantiated(PointsToAnalysis bb) {
-        if (typesCount > 200) {
-            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
-            return typesCount * 100L / allInstState.typesCount > 75;
-        }
-
-        return false;
-    }
-
-    @Override
     public int hashCode() {
         int result = 1;
         result = 31 * result + Arrays.hashCode(objects);

@@ -251,14 +251,6 @@ public abstract class TypeState {
         return true;
     }
 
-    /**
-     * The {@link MultiTypeState} overrides this method and provides the proper test. All the other
-     * type states have only 0 or 1 types.
-     */
-    public boolean closeToAllInstantiated(@SuppressWarnings("unused") PointsToAnalysis bb) {
-        return false;
-    }
-
     @Override
     public int hashCode() {
         return super.hashCode();

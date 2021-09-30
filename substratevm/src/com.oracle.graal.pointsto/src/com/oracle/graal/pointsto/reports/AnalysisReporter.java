@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 
 public class AnalysisReporter {
     public static void printAnalysisReports(String imageName, OptionValues options, String reportsPath, BigBang bb) {
@@ -59,7 +60,7 @@ public class AnalysisReporter {
 
             if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
                 TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-                String typesString = allSynchronizedTypeState.closeToAllInstantiated((PointsToAnalysis) bb) ? "close to all instantiated" : //
+                String typesString = TypeStateUtils.closeToAllInstantiated((PointsToAnalysis) bb, allSynchronizedTypeState) ? "close to all instantiated" : //
                                 StreamSupport.stream(allSynchronizedTypeState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
                 System.out.println();
                 System.out.println("AllSynchronizedTypes");

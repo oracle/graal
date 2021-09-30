@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
@@ -239,10 +240,6 @@ public abstract class TypeFlow<T> {
         return this instanceof AllInstantiatedTypeFlow;
     }
 
-    public boolean isCloseToAllInstantiated(PointsToAnalysis bb) {
-        return this.getState().closeToAllInstantiated(bb);
-    }
-
     public void setState(PointsToAnalysis bb, TypeState state) {
         assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
                         state.verifyDeclaredType(bb, declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
@@ -341,7 +338,7 @@ public abstract class TypeFlow<T> {
     }
 
     private static String formatState(PointsToAnalysis bb, TypeState typeState) {
-        if (typeState.closeToAllInstantiated(bb)) {
+        if (TypeStateUtils.closeToAllInstantiated(bb, typeState)) {
             return "close to AllInstantiated";
         }
         return typeState.toString();
