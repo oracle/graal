@@ -48,7 +48,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerCLITest {
 
-    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms.";
+    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
     public static final int EXEC_COUNT = 10;
     public static final String NAME_REGEX = " [a-z]* +";
     public static final String SEPARATOR_REGEX = "\\|";

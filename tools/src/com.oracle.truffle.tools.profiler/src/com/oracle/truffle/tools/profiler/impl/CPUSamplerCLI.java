@@ -284,8 +284,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static void printLegend(PrintStream out, String type, long samples, long period, int[] showTiers, Integer[] tiers) {
-        out.printf("Sampling %s. Recorded %s samples with period %dms.%n", type, samples, period);
+    private static void printLegend(PrintStream out, String type, long samples, long period, long missed, int[] showTiers, Integer[] tiers) {
+        out.printf("Sampling %s. Recorded %s samples with period %dms. Missed %s samples.%n", type, samples, period, missed);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
         if (showTiers == null) {
@@ -370,6 +370,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
+        private final long samplesMissed;
         private Set<Integer> tiers = new HashSet<>();
         private Integer[] sortedTiers;
         private int maxNameLength = 10;
@@ -383,6 +384,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
             Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads = new HashMap<>();
+            this.samplesMissed = data.missedSamples();
             for (Thread thread : data.getThreadData().keySet()) {
                 perThreadSourceLocationPayloads.put(thread, computeSourceLocationPayloads(data.getThreadData().get(thread)));
             }
@@ -469,7 +471,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, sortedTiers);
+            printLegend(out, "Histogram", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
             out.println(sep);
             for (Map.Entry<Thread, List<OutputEntry>> threadListEntry : histogram.entrySet()) {
                 out.println(threadListEntry.getKey());
@@ -565,6 +567,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
+        private final long samplesMissed;
         private final String title;
         private final String format;
         private final Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
@@ -578,6 +581,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.showTiers = options.get(ShowTiers);
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
+            this.samplesMissed = data.missedSamples();
             Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData = data.getThreadData();
             makeEntries(threadData);
             calculateMaxValues(threadData);
@@ -656,7 +660,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, sortedTiers);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
             out.println(sep);
             out.println(title);
             out.println(sep);
