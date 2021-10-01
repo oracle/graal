@@ -25,7 +25,9 @@
 package com.oracle.graal.reachability;
 
 import com.oracle.graal.pointsto.AbstractReachabilityAnalysis;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -33,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.Indent;
@@ -99,11 +102,18 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!method.isStatic()) {
             markTypeInstantiated(method.getDeclaringClass());
         }
+        method.registerAsInvoked(null);
         markMethodImplementationInvoked(method, new RuntimeException().getStackTrace());
         return method;
     }
 
-    private void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
+    @Override
+    public void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
+        if (method == null) {
+            System.err.println("Null method received");
+            new RuntimeException().printStackTrace();
+            return;
+        }
         if (!method.registerAsImplementationInvoked(null)) {
             return;
         }
@@ -124,7 +134,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             return;
         }
         if (method.isNative()) {
-            return;
+            System.err.println("native method " + method);
+//            return;
         }
         try {
             MethodSummary summary = methodSummaryProvider.getSummary(this, method);
@@ -132,10 +143,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 markMethodInvoked(invokedMethod);
             }
             for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
+                markMethodInvoked(invokedMethod);
                 markMethodImplementationInvoked(invokedMethod, method);
             }
             for (AnalysisType type : summary.accessedTypes) {
-                markTypeAccessed(type);
+                markTypeReachable(type);
             }
             for (AnalysisType type : summary.instantiatedTypes) {
                 markTypeInstantiated(type);
@@ -146,7 +158,15 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             for (JavaConstant constant : summary.embeddedConstants) {
                 if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
                     // todo heap initiate scanning
-                    markTypeInstantiated(metaAccess.lookupJavaType(constant.getClass()));
+                    // track the constant
+                    if (this.scanningPolicy().trackConstant(this, constant)) {
+                        BytecodePosition position = new BytecodePosition(null, method, 0);
+                        getUniverse().registerEmbeddedRoot(constant, position);
+
+                        Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
+                        AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
+                        markTypeInHeap(type);
+                    }
                 }
             }
         } catch (Throwable ex) {
@@ -155,18 +175,29 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             System.err.println("Parsing reason: " + method.getReason());
             ex.printStackTrace();
         }
+        if (method.getName().contains("VTable")) {
+            System.out.println("Successfully parsed " + method);
+        }
     }
 
-    private void markFieldAccessed(AnalysisField field) {
+    @Override
+    public void markFieldAccessed(AnalysisField field) {
         field.registerAsAccessed();
     }
 
-    private void markTypeAccessed(AnalysisType type) {
+    @Override
+    public void markTypeReachable(AnalysisType type) {
         // todo double check whether all necessary logic is in
         type.registerAsReachable();
     }
 
-    private void markTypeInstantiated(AnalysisType type) {
+    @Override
+    public void markTypeInHeap(AnalysisType type) {
+        markTypeInstantiated(type);
+        type.registerAsInHeap();
+    }
+
+    public void markTypeInstantiated(AnalysisType type) {
         if (!type.registerAsAllocated(null)) {
             return;
         }
@@ -200,10 +231,16 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @Override
     public boolean finish() throws InterruptedException {
-        if (!executor.isStarted()) {
-            executor.start();
+        for (int i = 0; i < 10; i++) {
+            if (!executor.isStarted()) {
+                executor.start();
+            }
+            executor.complete();
+            executor.shutdown();
+            executor.init();
+
+            checkObjectGraph();
         }
-        executor.complete();
         return true;
 // while (true) {
 // boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
@@ -212,6 +249,26 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 // }
 // }
 // return false;
+    }
+
+    private ObjectScanner.ReusableSet scannedObjects = new ObjectScanner.ReusableSet();
+
+    @SuppressWarnings("try")
+    private void checkObjectGraph() throws InterruptedException {
+        scannedObjects.reset();
+        // scan constants
+        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
+        ObjectScanner objectScanner = new ReachabilityObjectScanner(this, isParallel ? executor : null, scannedObjects, metaAccess);
+// checkObjectGraph(objectScanner);
+        if (isParallel) {
+            executor.start();
+            objectScanner.scanBootImageHeapRoots(null, null);
+            executor.complete();
+            executor.shutdown();
+            executor.init(null);
+        } else {
+            objectScanner.scanBootImageHeapRoots(null, null);
+        }
     }
 
     @Override

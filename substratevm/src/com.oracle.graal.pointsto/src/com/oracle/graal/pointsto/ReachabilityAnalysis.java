@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import java.lang.reflect.Executable;
 
@@ -71,6 +72,44 @@ public interface ReachabilityAnalysis {
      * Marks given method as reachable.
      */
     AnalysisMethod addRootMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes);
+
+    void markTypeReachable(AnalysisType type);
+
+    void markTypeInHeap(AnalysisType type);
+
+    void markFieldAccessed(AnalysisField field);
+
+    default boolean markFieldUnsafeAccessed(AnalysisField field) {
+        if (!field.isUnsafeAccessed()) {
+            /* Register the field as unsafe accessed. */
+            field.registerAsAccessed();
+            field.registerAsUnsafeAccessed(getUniverse());
+            /* Force the update of registered unsafe loads and stores. */
+            forceUnsafeUpdate(field);
+            return true;
+        }
+        return false;
+    }
+
+    default void registerAsFrozenUnsafeAccessed(AnalysisField field) {
+        field.setUnsafeFrozenTypeState(true);
+    }
+
+    default void registerAsUnsafeAccessed(AnalysisField field, UnsafePartitionKind partitionKind) {
+        if (!field.isUnsafeAccessed()) {
+            /* Register the field as unsafe accessed. */
+            field.registerAsAccessed();
+            field.registerAsUnsafeAccessed(getUniverse(), partitionKind);
+            /* Force the update of registered unsafe loads and stores. */
+            forceUnsafeUpdate(field);
+        }
+    }
+
+    default void markFieldRead(AnalysisField field) {
+        markFieldAccessed(field);
+    }
+
+    void markMethodImplementationInvoked(AnalysisMethod method, Object reason);
 
     /**
      * Waits until the analysis is done.

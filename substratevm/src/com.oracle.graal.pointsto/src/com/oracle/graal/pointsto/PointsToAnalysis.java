@@ -636,6 +636,27 @@ public abstract class PointsToAnalysis implements BigBang {
         }
     }
 
+    @Override
+    public void markTypeReachable(AnalysisType type) {
+        type.registerAsReachable();
+    }
+
+    @Override
+    public void markTypeInHeap(AnalysisType type) {
+        type.registerAsInHeap();
+    }
+
+    @Override
+    public void markFieldAccessed(AnalysisField field) {
+        field.registerAsAccessed();
+    }
+
+    @Override
+    public void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
+        addRootMethod(method).registerAsImplementationInvoked(null);
+
+    }
+
     @SuppressWarnings("try")
     public boolean doTypeflow() throws InterruptedException {
         boolean didSomeWork;

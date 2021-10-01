@@ -880,7 +880,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
         if (resolvedMethod == null) {
-            ResolvedJavaMethod substMethod = universe.substitutions.resolve(((AnalysisMethod) method).wrapped);
+            ResolvedJavaMethod current = method;
+            while (current instanceof AnalysisMethod) {
+                current = ((AnalysisMethod) current).wrapped;
+            }
+            ResolvedJavaMethod substMethod = universe.substitutions.resolve(current);
+            while (substMethod instanceof AnalysisMethod) {
+                substMethod = ((AnalysisMethod) substMethod).wrapped;
+            }
             /*
              * We do not want any access checks to be performed, so we use the method's declaring
              * class as the caller type.

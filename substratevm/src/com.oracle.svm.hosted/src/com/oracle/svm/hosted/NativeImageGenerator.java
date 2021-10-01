@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysis;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -974,6 +975,8 @@ public class NativeImageGenerator {
             bb.addRootClass(Object[].class, false, false).registerAsInHeap();
             bb.addRootClass(CFunctionPointer[].class, false, false).registerAsInHeap();
             bb.addRootClass(PointerBase[].class, false, false).registerAsInHeap();
+
+            bb.addRootField(ImageCodeInfo.class, "codeStart");
 
             try {
                 bb.addRootMethod(SubstrateArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));

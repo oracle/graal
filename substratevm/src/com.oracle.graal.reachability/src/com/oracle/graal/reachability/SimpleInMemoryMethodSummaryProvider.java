@@ -33,6 +33,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -64,7 +66,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 // System.out.println("1 Analyzed graph: " + method.getAnalyzedGraph());
         if (method.isIntrinsicMethod()) {
             System.err.println("this is intrinsic: " + method);
-            return MethodSummary.EMPTY;
+//            return MethodSummary.EMPTY;
         }
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.getEncodedGraph() == null) {
@@ -73,7 +75,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(method, Node.NodeIntrinsic.class)) {
             System.err.println("parsing an intrinsic: " + method);
-            return MethodSummary.EMPTY;
+//            return MethodSummary.EMPTY;
         }
 // System.out.println("2 Analyzed graph: " + method.getAnalyzedGraph());
 // System.out.println("analysis parsed graph " + analysisParsedGraph);
@@ -84,6 +86,10 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         if (decoded == null) {
             throw AnalysisError.shouldNotReachHere("Failed to decode a graph for " + method.format("%H.%n(%p)"));
         }
+
+        // to preserve the graphs for compilation
+        method.setAnalyzedGraph(decoded);
+
         List<AnalysisType> accessedTypes = new ArrayList<>();
         List<AnalysisType> instantiatedTypes = new ArrayList<>();
         List<AnalysisField> accessedFields = new ArrayList<>();
@@ -93,15 +99,15 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         for (Node n : decoded.getNodes()) {
             if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
-                instantiatedTypes.add(universe.lookup(node.instanceClass()));
+                instantiatedTypes.add(analysisType(node.instanceClass()));
             } else if (n instanceof NewArrayNode) {
                 NewArrayNode node = (NewArrayNode) n;
-                instantiatedTypes.add(universe.lookup(node.elementType()).getArrayClass());
+                instantiatedTypes.add(analysisType(node.elementType()).getArrayClass());
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 ResolvedJavaType type = node.type();
                 for (int i = 0; i < node.dimensionCount(); i++) {
-                    instantiatedTypes.add(universe.lookup(type));
+                    instantiatedTypes.add(analysisType(type));
                     type = type.getComponentType();
                 }
             } else if (n instanceof ConstantNode) {
@@ -118,17 +124,20 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 embeddedConstants.add(((JavaConstant) node.getValue()));
             } else if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
-                accessedTypes.add(universe.lookup(node.type().getType()));
+                accessedTypes.add(analysisType(node.type().getType()));
             } else if (n instanceof AccessFieldNode) {
                 AccessFieldNode node = (AccessFieldNode) n;
-                accessedFields.add(universe.lookup(node.field()));
+                accessedFields.add(analysisField(node.field()));
             } else if (n instanceof Invoke) {
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
+                AnalysisMethod targetMethod = analysisMethod(node.getTargetMethod());
+                if (targetMethod == null)
+                    continue;
                 if (kind.isDirect()) {
-                    implementationInvokedMethods.add(universe.lookup(node.getTargetMethod()));
+                    implementationInvokedMethods.add(targetMethod);
                 } else {
-                    invokedMethods.add(universe.lookup(node.getTargetMethod()));
+                    invokedMethods.add(targetMethod);
                 }
             }
         }
@@ -137,5 +146,17 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                         instantiatedTypes.toArray(new AnalysisType[0]), accessedFields.toArray(new AnalysisField[0]), embeddedConstants.toArray(new JavaConstant[0]));
 // System.out.println("Made a summary " + summary);
         return summary;
+    }
+
+    private AnalysisType analysisType(ResolvedJavaType type) {
+        return type instanceof AnalysisType ? ((AnalysisType) type) : universe.lookup(type);
+    }
+
+    private AnalysisMethod analysisMethod(ResolvedJavaMethod method) {
+        return method instanceof AnalysisMethod ? ((AnalysisMethod) method) : universe.lookup(method);
+    }
+
+    private AnalysisField analysisField(ResolvedJavaField field) {
+        return field instanceof AnalysisField ? ((AnalysisField) field) : universe.lookup(field);
     }
 }

@@ -337,7 +337,8 @@ public class FeatureImpl {
         }
 
         public void registerAsUsed(AnalysisType aType) {
-            aType.registerAsReachable();
+            bb.markTypeReachable(aType);
+// aType.registerAsReachable();
         }
 
         @Override
@@ -346,17 +347,20 @@ public class FeatureImpl {
         }
 
         public void registerAsInHeap(AnalysisType aType) {
-            aType.registerAsInHeap();
+            bb.markTypeInHeap(aType);
+// aType.registerAsInHeap();
         }
 
         @Override
         public void registerAsAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
+// getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public void registerAsAccessed(AnalysisField aField) {
-            aField.registerAsAccessed();
+            bb.markFieldAccessed(aField);
+// aField.registerAsAccessed();
         }
 
         public void registerAsRead(Field field) {
@@ -365,12 +369,14 @@ public class FeatureImpl {
         }
 
         public void registerAsRead(AnalysisField aField) {
-            aField.registerAsRead(null);
+            bb.markFieldRead(aField);
+// aField.registerAsRead(null);
         }
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
+// getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
@@ -384,15 +390,26 @@ public class FeatureImpl {
                 return true;
             }
             return false;
+// if (!field.isUnsafeAccessed()) {
+// /* Register the field as unsafe accessed. */
+// field.registerAsAccessed();
+// field.registerAsUnsafeAccessed(bb.getUniverse());
+// /* Force the update of registered unsafe loads and stores. */
+// bb.forceUnsafeUpdate(field);
+// return true;
+// }
+            return bb.markFieldUnsafeAccessed(aField);
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
+            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
+// getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
-            aField.setUnsafeFrozenTypeState(true);
+            bb.registerAsFrozenUnsafeAccessed(aField);
+// aField.setUnsafeFrozenTypeState(true);
             registerAsUnsafeAccessed(aField);
         }
 
@@ -408,6 +425,14 @@ public class FeatureImpl {
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
             }
+            bb.registerAsUnsafeAccessed(aField, partitionKind);
+// if (!aField.isUnsafeAccessed()) {
+// /* Register the field as unsafe accessed. */
+// aField.registerAsAccessed();
+// aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
+// /* Force the update of registered unsafe loads and stores. */
+// bb.forceUnsafeUpdate(aField);
+// }
         }
 
         public void registerAsInvoked(Executable method) {
@@ -415,7 +440,9 @@ public class FeatureImpl {
         }
 
         public void registerAsInvoked(AnalysisMethod aMethod) {
-            bb.addRootMethod(aMethod).registerAsImplementationInvoked();
+// bb.addRootMethod(aMethod).registerAsImplementationInvoked(null);
+            bb.addRootMethod(aMethod);
+            bb.markMethodImplementationInvoked(aMethod, null);
         }
 
         public void registerAsCompiled(Executable method) {
@@ -428,6 +455,7 @@ public class FeatureImpl {
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {
+            // todo intercept this as well?
             getMetaAccess().lookupJavaType(clazz).registerUnsafeFieldsRecomputed();
         }
 
