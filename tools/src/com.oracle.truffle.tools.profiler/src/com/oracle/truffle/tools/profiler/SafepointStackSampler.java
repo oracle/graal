@@ -98,7 +98,7 @@ final class SafepointStackSampler {
             return Collections.emptyList();
         }
         try {
-            future.get(period * 10, TimeUnit.MILLISECONDS);
+            future.get(period, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException e) {
             env.getLogger(getClass()).log(Level.SEVERE, "Sampling failed", e);
             return null;
