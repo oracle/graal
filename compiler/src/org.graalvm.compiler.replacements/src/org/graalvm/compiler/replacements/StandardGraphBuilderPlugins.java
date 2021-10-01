@@ -1738,11 +1738,12 @@ public class StandardGraphBuilderPlugins {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode format, ValueNode l1, ValueNode l2, ValueNode l3) {
-                String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
-                if (formatConst != null) {
+                if (format.isJavaConstant()) {
+                    String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
                     b.add(new LogNode(formatConst, l1, l2, l3));
+                    return true;
                 }
-                return true;
+                return false;
             }
         };
         r.register1("log", String.class, logPlugin);
