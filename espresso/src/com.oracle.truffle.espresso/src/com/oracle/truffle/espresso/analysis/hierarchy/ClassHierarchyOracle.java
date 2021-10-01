@@ -40,25 +40,19 @@ public interface ClassHierarchyOracle {
     }
 
     /**
-     * Must be called to initialize {@code leafTypeAssumption} of {@code newKlass}.
+     * Must be called to initialize {@code leafTypeAssumption} of {@code newKlass}. In addition, it
+     * communicates to the oracle that a new klass has been created and its ancestors are no longer
+     * leaves.
      *
      * @param newKlass -- newly created class
      * @return the assumption, indicating whether the class is a leaf in class hierarchy.
      */
-    LeafTypeAssumption createAssumptionForClass(ObjectKlass newKlass);
-
-    /**
-     * Must be called when {@code newKlass} is initialized. Communicates to the oracle that
-     * instances of this class might exist, which changes the class hierarchy.
-     *
-     * @param newKlass -- newly initialized class
-     */
-    void onClassInit(ObjectKlass newKlass);
+    LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
 
     /**
      * @return the assumption, valid iff {@code klass} is a leaf in class hierarchy. Automatically
-     *         invalidated in {@link #onClassInit(ObjectKlass)} when a child of {@code klass} is
-     *         initialized.
+     *         invalidated in {@link #createAssumptionForNewKlass(ObjectKlass)} when a child of
+     *         {@code klass} is created.
      */
     LeafTypeAssumption isLeafClass(ObjectKlass klass);
 }

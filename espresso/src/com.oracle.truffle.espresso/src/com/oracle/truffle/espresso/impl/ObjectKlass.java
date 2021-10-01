@@ -235,7 +235,7 @@ public final class ObjectKlass extends Klass {
             initSelfReferenceInPool();
         }
 
-        this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForClass(this);
+        this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -397,7 +397,6 @@ public final class ObjectKlass extends Klass {
                 throw e;
             }
             checkErroneousInitialization();
-            getContext().getClassHierarchyOracle().onClassInit(this);
             initState = INITIALIZED;
             assert isInitialized();
         }

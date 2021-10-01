@@ -59,15 +59,11 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final LeafTypeAssumption NotLeaf = LeafTypeAssumptionImpl.AlwaysInvalid;
 
     @Override
-    public LeafTypeAssumption createAssumptionForClass(ObjectKlass newKlass) {
+    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return FinalIsAlwaysLeaf;
         }
         return NotLeaf;
-    }
-
-    @Override
-    public void onClassInit(ObjectKlass newKlass) {
     }
 
     @Override
