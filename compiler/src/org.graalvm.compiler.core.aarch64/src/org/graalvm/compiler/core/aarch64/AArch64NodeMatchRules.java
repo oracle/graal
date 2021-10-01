@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.aarch64;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -72,6 +73,7 @@ import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -665,6 +667,25 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         }
         assert op != null;
         return emitBinaryShift(op, a, (ShiftNode<?>) shift);
+    }
+
+    /**
+     * Goal: fold shift into negate operation using AArch64's sub (shifted register) instruction.
+     */
+    @MatchRule("(Negate (UnsignedRightShift=shift a Constant=b))")
+    @MatchRule("(Negate (RightShift=shift a Constant=b))")
+    @MatchRule("(Negate (LeftShift=shift a Constant=b))")
+    public ComplexMatchResult negShift(BinaryNode shift, ValueNode a, ConstantNode b) {
+        assert isNumericInteger(a, b);
+        int shiftAmt = getClampedShiftAmt((ShiftNode<?>) shift);
+        AArch64Assembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
+        return builder -> {
+            AllocatableValue src = moveSp(gen.asAllocatable(operand(a)));
+            LIRKind kind = LIRKind.combine(operand(a));
+            Variable result = gen.newVariable(kind);
+            gen.append(new AArch64ArithmeticOp.BinaryShiftOp(AArch64ArithmeticOp.SUB, result, AArch64.zr.asValue(kind), src, shiftType, shiftAmt));
+            return result;
+        };
     }
 
     /**
