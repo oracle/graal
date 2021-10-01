@@ -24,8 +24,6 @@
  */
 package org.graalvm.polybench;
 
-import org.graalvm.polyglot.Value;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +31,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.graalvm.polyglot.Value;
 
 class Config {
 
@@ -55,11 +55,16 @@ class Config {
     /**
      * Multi-context runs related configuration.
      */
-    int numberOfRuns = 1;
-    boolean sharedEngine;
-    final Map<String, String> engineOptions = new HashMap<>();
-    final Map<Integer, Map<String, String>> polyglotRunOptionsMap = new HashMap<>();
-    final Map<Integer, Map<String, String>> polybenchRunOptionsMap = new HashMap<>();
+    MultiEngineConfig multiEngine;
+
+    Config() {
+        this.path = null;
+        this.className = null;
+        this.warmupIterations = DEFAULT;
+        this.iterations = DEFAULT;
+        this.mode = Mode.standard;
+        this.metric = new PeakTimeMetric();
+    }
 
     /**
      * Polybench options that can be specified per run.
@@ -69,13 +74,11 @@ class Config {
         POLYBENCH_RUN_OPTIONS.add(EVAL_SOURCE_ONLY_OPTION);
     }
 
-    Config() {
-        this.path = null;
-        this.className = null;
-        this.warmupIterations = DEFAULT;
-        this.iterations = DEFAULT;
-        this.mode = Mode.standard;
-        this.metric = new PeakTimeMetric();
+    public MultiEngineConfig initMultiEngine() {
+        if (multiEngine == null) {
+            multiEngine = new MultiEngineConfig();
+        }
+        return multiEngine;
     }
 
     public void parseBenchSpecificDefaults(Value benchmark) {
@@ -99,13 +102,34 @@ class Config {
 
     @Override
     public String toString() {
-        return "execution-mode:    " + mode + "\n" +
+        String config = "execution-mode:    " + mode + "\n" +
                         "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
                         "warmup-iterations: " + (warmupIterations == DEFAULT ? "default" : warmupIterations) + "\n" +
-                        "iterations:        " + (iterations == DEFAULT ? "default"
-                                        : iterations + "\n" +
-                                                        "runs:              " + numberOfRuns + "\n" +
-                                                        "shared engine:     " + sharedEngine);
+                        "iterations:        " + (iterations == DEFAULT ? "default" : iterations + "\n");
+        if (multiEngine != null) {
+            config += "runs:              " + multiEngine.numberOfRuns + "\n" +
+                            "shared engine:     " + multiEngine.sharedEngine;
+        }
+        return config;
+    }
+
+    boolean isSingleEngine() {
+        return multiEngine == null;
+    }
+
+    String compilation() {
+        String compilationOptionValue;
+        switch (mode) {
+            case interpreter:
+                compilationOptionValue = "false";
+                break;
+            case standard:
+                compilationOptionValue = "true";
+                break;
+            default:
+                throw new AssertionError("Unknown execution-mode: " + mode);
+        }
+        return compilationOptionValue;
     }
 
     enum Mode {
@@ -128,8 +152,20 @@ class Config {
     }
 
     boolean isEvalSourceOnly(int run) {
-        String evalSourceOptionValue = polybenchRunOptionsMap.getOrDefault(run, Collections.emptyMap()).get(EVAL_SOURCE_ONLY_OPTION);
+        if (multiEngine == null) {
+            return evalSourceOnlyDefault;
+        }
+        String evalSourceOptionValue = multiEngine.polybenchRunOptionsMap.getOrDefault(run, Collections.emptyMap()).get(EVAL_SOURCE_ONLY_OPTION);
         return evalSourceOptionValue == null ? evalSourceOnlyDefault : Boolean.parseBoolean(evalSourceOptionValue);
+    }
+
+    static final class MultiEngineConfig {
+        final Map<String, String> engineOptions = new HashMap<>();
+        final Map<Integer, Map<String, String>> polyglotRunOptionsMap = new HashMap<>();
+        final Map<Integer, Map<String, String>> polybenchRunOptionsMap = new HashMap<>();
+        int numberOfRuns = 1;
+        boolean sharedEngine;
+
     }
 
 }
