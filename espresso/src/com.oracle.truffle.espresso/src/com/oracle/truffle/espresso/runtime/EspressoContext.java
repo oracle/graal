@@ -44,6 +44,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -67,7 +69,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
-import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -171,6 +172,7 @@ public final class EspressoContext {
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
     public final boolean livenessAnalysis;
+    public final boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -272,6 +274,7 @@ public final class EspressoContext {
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.EnableClassHierarchyAnalysis = env.getOptions().get(EspressoOptions.EnableCHA);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
@@ -296,7 +299,11 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
-        this.classHierarchyOracle = new NoOpClassHierarchyOracle();
+        if (this.EnableClassHierarchyAnalysis) {
+            this.classHierarchyOracle = new DefaultClassHierarchyOracle();
+        } else {
+            this.classHierarchyOracle = new NoOpClassHierarchyOracle();
+        }
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
