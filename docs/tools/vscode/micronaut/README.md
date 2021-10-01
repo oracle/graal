@@ -112,8 +112,6 @@ For more details, continue reading to the [Micronaut documentation](https://guid
 The Micronaut support in VSCode also allows to build and deploy Docker image to a Docker Registry.
 Use action View > Command Palette > Micronaut: Deploy... and select **dockerPush** to deploy dockerized Micronaut application or **dockerPushNative** to build and push docker with a native executable of Micronaut application.
 
-![Micronaut Deploy Commands](images/micronaut-deploy-commands.png)
-
 Besides that, you can also push a Micronaut application or a native executable to a Docker Registry from the VS Code terminal window. A particular Docker Registry can be configured in the build, see the [Micronaut Deploying Application](https://micronaut-projects.github.io/micronaut-maven-plugin/latest/examples/deploy.html) documentation.
 
 ### Feedback
