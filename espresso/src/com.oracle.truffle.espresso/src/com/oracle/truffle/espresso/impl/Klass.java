@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1562,6 +1563,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public String getSourceDebugExtension() {
         return null;
+    }
+
+    @Override
+    public final ModuleRef getModule() {
+        return module();
     }
 
     // endregion jdwp-specific

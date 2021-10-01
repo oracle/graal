@@ -286,6 +286,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.INSTANCE_COUNTS.ID:
                                     result = JDWP.VirtualMachine.INSTANCE_COUNTS.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.ALL_MODULES.ID:
+                                    result = JDWP.VirtualMachine.ALL_MODULES.createReply(packet, context);
+                                    break;
                                 default:
                                     break;
                             }
@@ -346,6 +349,9 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 case JDWP.ReferenceType.CONSTANT_POOL.ID:
                                     result = JDWP.ReferenceType.CONSTANT_POOL.createReply(packet, context);
+                                    break;
+                                case JDWP.ReferenceType.MODULE.ID:
+                                    result = JDWP.ReferenceType.MODULE.createReply(packet, context);
                                     break;
                             }
                             break;
@@ -565,6 +571,19 @@ public final class DebuggerConnection implements Commands {
                             switch (packet.cmd) {
                                 case JDWP.ClassObjectReference.REFLECTED_TYPE.ID:
                                     result = JDWP.ClassObjectReference.REFLECTED_TYPE.createReply(packet, context);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
+                        case JDWP.ModuleReference.ID: {
+                            switch (packet.cmd) {
+                                case JDWP.ModuleReference.NAME.ID:
+                                    result = JDWP.ModuleReference.NAME.createReply(packet, context);
+                                    break;
+                                case JDWP.ModuleReference.CLASSLOADER.ID:
+                                    result = JDWP.ModuleReference.CLASSLOADER.createReply(packet, context);
                                     break;
                                 default:
                                     break;

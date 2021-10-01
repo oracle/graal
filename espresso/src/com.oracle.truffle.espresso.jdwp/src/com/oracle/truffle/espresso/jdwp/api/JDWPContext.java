@@ -497,4 +497,21 @@ public interface JDWPContext {
      * @return the instrumentable delegate node
      */
     Node getInstrumentableNode(RootNode rootNode);
+
+    /**
+     * Tests if the guest object is a member of the klass.
+     *
+     * @param guestObject the guest object
+     * @param klass the class
+     * @return true is guest object is a member of the klass
+     */
+    boolean isMemberOf(Object guestObject, KlassRef klass);
+
+    /**
+     * Returns all defined modules.
+     *
+     * @return all modules
+     */
+    ModuleRef[] getAllModulesRefs();
+
 }
