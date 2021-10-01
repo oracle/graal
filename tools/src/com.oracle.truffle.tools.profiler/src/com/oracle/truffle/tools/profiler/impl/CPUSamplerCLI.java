@@ -382,12 +382,12 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.showTiers = options.get(ShowTiers);
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
-            Map<Thread, SourceLocationPayloads> perThreadSourceLocationPayloads = new HashMap<>();
+            Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads = new HashMap<>();
             for (Thread thread : data.getThreadData().keySet()) {
                 perThreadSourceLocationPayloads.put(thread, computeSourceLocationPayloads(data.getThreadData().get(thread)));
             }
             maybeSummarizeThreads(perThreadSourceLocationPayloads);
-            for (Map.Entry<Thread, SourceLocationPayloads> threadEntry : perThreadSourceLocationPayloads.entrySet()) {
+            for (Map.Entry<Thread, SourceLocationNodes> threadEntry : perThreadSourceLocationPayloads.entrySet()) {
                 histogram.put(threadEntry.getKey(), histogramEntries(threadEntry));
             }
             sortedTiers = sortedArray(tiers);
@@ -396,19 +396,21 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.format = titleAndFormat[1];
         }
 
-        private ArrayList<OutputEntry> histogramEntries(Map.Entry<Thread, SourceLocationPayloads> threadEntry) {
+        private ArrayList<OutputEntry> histogramEntries(Map.Entry<Thread, SourceLocationNodes> threadEntry) {
             ArrayList<OutputEntry> histogramEntries = new ArrayList<>();
-            for (Map.Entry<SourceLocation, List<CPUSampler.Payload>> sourceLocationEntry : threadEntry.getValue().locations.entrySet()) {
+            for (Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> sourceLocationEntry : threadEntry.getValue().locations.entrySet()) {
                 histogramEntries.add(histogramEntry(sourceLocationEntry));
             }
             histogramEntries.sort((o1, o2) -> Integer.compare(o2.totalSelfSamples, o1.totalSelfSamples));
             return histogramEntries;
         }
 
-        private OutputEntry histogramEntry(Map.Entry<SourceLocation, List<CPUSampler.Payload>> sourceLocationEntry) {
-            OutputEntry outputEntry = new OutputEntry(sourceLocationEntry.getKey());
-            maxNameLength = Math.max(maxNameLength, sourceLocationEntry.getKey().getRootName().length());
-            for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
+        private OutputEntry histogramEntry(Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> sourceLocationEntry) {
+            SourceLocation location = sourceLocationEntry.getKey();
+            OutputEntry outputEntry = new OutputEntry(location);
+            maxNameLength = Math.max(maxNameLength, location.getRootName().length());
+            for (ProfilerNode<CPUSampler.Payload> node : sourceLocationEntry.getValue()) {
+                CPUSampler.Payload payload = node.getPayload();
                 for (int i = 0; i < payload.getNumberOfTiers(); i++) {
                     int selfHitCountsValue = payload.getTierSelfCount(i);
                     outputEntry.totalSelfSamples += selfHitCountsValue;
@@ -419,7 +421,11 @@ class CPUSamplerCLI extends ProfilerCLI {
                     tiers.add(i);
                 }
             }
-            for (CPUSampler.Payload payload : sourceLocationEntry.getValue()) {
+            for (ProfilerNode<CPUSampler.Payload> node : sourceLocationEntry.getValue()) {
+                if (node.isRecursive()) {
+                    continue;
+                }
+                CPUSampler.Payload payload = node.getPayload();
                 for (int i = 0; i < payload.getNumberOfTiers(); i++) {
                     int hitCountsValue = payload.getTierTotalCount(i);
                     outputEntry.totalSamples += hitCountsValue;
@@ -433,11 +439,11 @@ class CPUSamplerCLI extends ProfilerCLI {
             return outputEntry;
         }
 
-        private void maybeSummarizeThreads(Map<Thread, SourceLocationPayloads> perThreadSourceLocationPayloads) {
+        private void maybeSummarizeThreads(Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads) {
             if (summariseThreads) {
-                SourceLocationPayloads summary = new SourceLocationPayloads(new HashMap<>());
-                for (SourceLocationPayloads sourceLocationPayloads : perThreadSourceLocationPayloads.values()) {
-                    for (Map.Entry<SourceLocation, List<CPUSampler.Payload>> entry : sourceLocationPayloads.locations.entrySet()) {
+                SourceLocationNodes summary = new SourceLocationNodes(new HashMap<>());
+                for (SourceLocationNodes sourceLocationNodes : perThreadSourceLocationPayloads.values()) {
+                    for (Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> entry : sourceLocationNodes.locations.entrySet()) {
                         summary.locations.computeIfAbsent(entry.getKey(), s -> new ArrayList<>()).addAll(entry.getValue());
                     }
                 }
@@ -446,22 +452,16 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        private static SourceLocationPayloads computeSourceLocationPayloads(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
-            Map<SourceLocation, List<CPUSampler.Payload>> histogram = new HashMap<>();
+        private static SourceLocationNodes computeSourceLocationPayloads(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
+            Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
             computeSourceLocationPayloadsImpl(profilerNodes, histogram);
-            return new SourceLocationPayloads(histogram);
+            return new SourceLocationNodes(histogram);
         }
 
-        private static void computeSourceLocationPayloadsImpl(Collection<ProfilerNode<CPUSampler.Payload>> children, Map<SourceLocation, List<CPUSampler.Payload>> histogram) {
+        private static void computeSourceLocationPayloadsImpl(Collection<ProfilerNode<CPUSampler.Payload>> children, Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram) {
             for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
-                List<CPUSampler.Payload> nodes = histogram.computeIfAbsent(new SourceLocation(treeNode.getSourceSection(), treeNode.getRootName()),
-                                new Function<SourceLocation, List<CPUSampler.Payload>>() {
-                                    @Override
-                                    public List<CPUSampler.Payload> apply(SourceLocation s) {
-                                        return new ArrayList<>();
-                                    }
-                                });
-                nodes.add(treeNode.getPayload());
+                List<ProfilerNode<CPUSampler.Payload>> nodes = histogram.computeIfAbsent(new SourceLocation(treeNode.getSourceSection(), treeNode.getRootName()), s -> new ArrayList<>());
+                nodes.add(treeNode);
                 computeSourceLocationPayloadsImpl(treeNode.getChildren(), histogram);
             }
         }
@@ -485,10 +485,10 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        private static final class SourceLocationPayloads {
-            final Map<SourceLocation, List<CPUSampler.Payload>> locations;
+        private static final class SourceLocationNodes {
+            final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> locations;
 
-            SourceLocationPayloads(Map<SourceLocation, List<CPUSampler.Payload>> locations) {
+            SourceLocationNodes(Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> locations) {
                 this.locations = locations;
             }
         }
@@ -600,7 +600,9 @@ class CPUSamplerCLI extends ProfilerCLI {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
             tiers.add(node.getPayload().getNumberOfTiers() - 1);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
-                calculateMaxValuesRec(child, depth + 1);
+                if (!child.isRecursive()) {
+                    calculateMaxValuesRec(child, depth + 1);
+                }
             }
         }
 
