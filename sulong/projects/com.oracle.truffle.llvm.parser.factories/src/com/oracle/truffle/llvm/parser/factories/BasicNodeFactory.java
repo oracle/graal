@@ -123,11 +123,14 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMUnsignedVectorMinMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgCountNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
@@ -1374,14 +1377,24 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    // matches the type suffix of an LLVM intrinsic function, including the dot
-    private static final Pattern INTRINSIC_TYPE_SUFFIX_PATTERN = Pattern.compile("\\S+(?<suffix>\\.(?:[vp]\\d+)?[if]\\d+)$");
+    static final class TypeSuffix {
+        final String suffix;
+        final String length;
 
-    private static String getTypeSuffix(String intrinsicName) {
+        TypeSuffix(String suffix, String length) {
+            this.suffix = suffix;
+            this.length = length;
+        }
+    }
+
+    // matches the type suffix of an LLVM intrinsic function, including the dot
+    private static final Pattern INTRINSIC_TYPE_SUFFIX_PATTERN = Pattern.compile("\\S+(?<suffix>\\.(?:[vp](?<length>\\d+))?[if]\\d+)$");
+
+    private static TypeSuffix getTypeSuffix(String intrinsicName) {
         assert intrinsicName != null;
         final Matcher typeSuffixMatcher = INTRINSIC_TYPE_SUFFIX_PATTERN.matcher(intrinsicName);
         if (typeSuffixMatcher.matches()) {
-            return typeSuffixMatcher.group("suffix");
+            return new TypeSuffix(typeSuffixMatcher.group("suffix"), typeSuffixMatcher.group("length"));
         }
         return null;
     }
@@ -1719,9 +1732,9 @@ public class BasicNodeFactory implements NodeFactory {
         // strip the type suffix for intrinsics that are supported for more than one data type. If
         // we do not implement the corresponding data type the node will just report a missing
         // specialization at run-time
-        String typeSuffix = getTypeSuffix(intrinsicName);
+        TypeSuffix typeSuffix = getTypeSuffix(intrinsicName);
         if (typeSuffix != null) {
-            intrinsicName = intrinsicName.substring(0, intrinsicName.length() - typeSuffix.length());
+            intrinsicName = intrinsicName.substring(0, intrinsicName.length() - typeSuffix.suffix.length());
         }
 
         if ("llvm.prefetch".equals(intrinsicName)) {
@@ -1730,6 +1743,24 @@ public class BasicNodeFactory implements NodeFactory {
 
         if ("llvm.is.constant".equals(intrinsicName)) {
             return LLVMIsConstantNodeGen.create(args[1]);
+        }
+
+        if ("llvm.umax".equals(intrinsicName) && typeSuffix != null && typeSuffix.length != null) {
+            try {
+                int vectorLength = Integer.parseInt(typeSuffix.length);
+                return LLVMUnsignedVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUmaxOperator.INSTANCE);
+            } catch (NumberFormatException e) {
+                // fall through
+            }
+        }
+
+        if ("llvm.umin".equals(intrinsicName) && typeSuffix != null && typeSuffix.length != null) {
+            try {
+                int vectorLength = Integer.parseInt(typeSuffix.length);
+                return LLVMUnsignedVectorMinMaxNodeGen.create(args[1], args[2], vectorLength, LLVMUminOperator.INSTANCE);
+            } catch (NumberFormatException e) {
+                // fall through
+            }
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());
