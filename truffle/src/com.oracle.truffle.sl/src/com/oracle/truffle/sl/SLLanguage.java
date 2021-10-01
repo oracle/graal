@@ -421,4 +421,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         EXTERNAL_BUILTINS.add(builtin);
     }
 
+    @Override
+    protected void exitContext(SLContext context, ExitMode exitMode, int exitCode) {
+        /*
+         * Runs shutdown hooks during explicit exit triggered by TruffleContext#closeExit(Node, int)
+         * or natural exit triggered during natural context close.
+         */
+        context.runShutdownHooks();
+    }
 }

@@ -297,7 +297,8 @@ public final class TruffleContext implements AutoCloseable {
 
     /**
      * Returns <code>true</code> if the context was closed else <code>false</code>. A context may be
-     * closed if {@link #close()} or {@link #closeCancelled(Node, String)} was called previously.
+     * closed if {@link #close()}, {@link #closeCancelled(Node, String)}, or
+     * {@link #closeExited(Node, int)} was called previously.
      *
      * @since 20.3
      */
@@ -321,6 +322,22 @@ public final class TruffleContext implements AutoCloseable {
     public boolean isCancelling() {
         try {
             return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the context is being hard-exited else <code>false</code>. A
+     * context may be in the process of exit if {@link #closeExited(Node, int)} was called
+     * previously.
+     *
+     * @since 22.0
+     */
+    @TruffleBoundary
+    public boolean isExiting() {
+        try {
+            return LanguageAccessor.engineAccess().isContextExiting(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -494,18 +511,25 @@ public final class TruffleContext implements AutoCloseable {
 
     /**
      * Force closes the context as cancelled and stops all the execution on all active threads using
-     * a {@link ThreadDeath} exception. If this context is not currently {@link #isEntered()
-     * entered} on the current thread then this method waits until the close operation is complete
-     * and {@link #isClosed()} returns <code>true</code>, else it throws the cancelled exception
-     * upon its completion of this method. If an attempt to close a context was successful then
-     * consecutive calls to close have no effect.
+     * a special {@link ThreadDeath} cancel exception. If this context is not currently
+     * {@link #isEntered() entered} on the current thread then this method waits until the close
+     * operation is complete and {@link #isClosed()} returns <code>true</code>, else it throws the
+     * cancelled exception upon its completion of this method. If an attempt to close a context was
+     * successful then consecutive calls to close have no effect.
+     * <p>
+     * The throwing of the special {@link ThreadDeath} cancel exception also applies to any guest
+     * code run during {@link TruffleLanguage#finalizeContext(Object)} which means that
+     * {@link TruffleLanguage#finalizeContext(Object)} cannot run guest code during the cancel
+     * operation.
      * <p>
      * If forced and this context currently {@link #isEntered() entered} on the current thread and
      * no other context is entered on the current thread then this method directly throws a
      * {@link ThreadDeath} error instead of completing to indicate that the current thread should be
      * stopped. The thrown {@link ThreadDeath} must not be caught by the guest language and freely
-     * propagated to the guest application to cancel the execution on the current thread. If a
-     * context is {@link #isActive() active} on the current thread, but not {@link #isEntered()
+     * propagated to the guest application to cancel the execution on the current thread. Please
+     * note that this means that the guest language's finally blocks must not be executed.
+     * <p>
+     * If a context is {@link #isActive() active} on the current thread, but not {@link #isEntered()
      * entered}, then an {@link IllegalStateException} is thrown, as parent contexts that are active
      * on the current thread cannot be cancelled.
      *
@@ -529,6 +553,60 @@ public final class TruffleContext implements AutoCloseable {
         }
         try {
             LanguageAccessor.engineAccess().closeContext(polyglotContext, true, closeLocation, false, message);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Initiates force close of the context as exited -
+     * {@link com.oracle.truffle.api.TruffleLanguage.ExitMode#HARD hard exit}. Requires the context
+     * to be entered on the current thread. Languages are first notified by calling
+     * {@link TruffleLanguage#exitContext(Object, TruffleLanguage.ExitMode, int)} and then the
+     * closing of the context is initiated. Execution on all active threads including the current
+     * thread is stopped by throwing a special {@link ThreadDeath} exit exception. This method does
+     * not wait for the execution on other threads to be stopped, it throws the {@link ThreadDeath}
+     * exception as soon as possible. To exit threads reliably, guest languages need to ensure that
+     * the {@link ThreadDeath} is always immediately rethrown and guest language exception handlers
+     * and finally blocks are not run.
+     * <p>
+     * The throwing of the special {@link ThreadDeath} exit exception also applies to any guest code
+     * run during {@link TruffleLanguage#finalizeContext(Object)} which means that
+     * {@link TruffleLanguage#finalizeContext(Object)} cannot run guest code during hard exit.
+     * <p>
+     * The exit code can be specified only once and the first call to this method also executes the
+     * {@link TruffleLanguage#exitContext(Object, TruffleLanguage.ExitMode, int) exit notifications}
+     * on the same thread. Further calls to this method will ensure that the following guest code on
+     * the calling thread is not executed by throwing the {@link ThreadDeath} exit exception, and
+     * the exit location is used as the stopping point of the thread, but the passed exit code is
+     * ignored and exit notifications are not run.
+     * <p>
+     * In case the context is in one of the following states
+     * <ul>
+     * <li>the context is being closed
+     * <li>the context is already closed
+     * <li>the context threads are being unwound as a part of the cancelling process
+     * <li>the context threads are being unwound as a part of the hard exit process that comes after
+     * exit notifications
+     * </ul>
+     * then calling this method has no effect.
+     *
+     * @param exitLocation the node where the exit occurred.
+     * @param exitCode exitCode provided to the embedder and tools that observe the exit.
+     * @throws IllegalStateException if the context is not {@link #isEntered() entered} on the
+     *             current thread.
+     * @see <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context
+     *      Exit</a>
+     *
+     * @since 22.0
+     */
+    @TruffleBoundary
+    public void closeExited(Node exitLocation, int exitCode) {
+        if (!isEntered()) {
+            throw new IllegalStateException("Exit cannot be initiated for this context because it is not currently entered.");
+        }
+        try {
+            LanguageAccessor.engineAccess().exitContext(polyglotContext, exitLocation, exitCode);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }

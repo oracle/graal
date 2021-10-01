@@ -40,6 +40,28 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
+
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -64,28 +86,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
-
-import java.nio.ByteOrder;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.zone.ZoneRules;
-
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validScope;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -1852,7 +1852,6 @@ public abstract class InteropLibrary extends Library {
      * @since 19.3
      */
     @Abstract(ifExported = {"throwException"})
-    @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
         // A workaround for missing inheritance feature for default exports.
         return InteropAccessor.EXCEPTION.isException(receiver) ||
@@ -1936,9 +1935,11 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
      * when the receiver is not an {@link #isException(Object) exception} of the
-     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
-     * application was successful, a non-zero value that it failed. The individual interpretation of
-     * non-zero values depends on the application.
+     * {@link ExceptionType#EXIT exit type}. See
+     * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context Exit</a>
+     * for further information. A return value zero indicates that the execution of the application
+     * was successful, a non-zero value that it failed. The individual interpretation of non-zero
+     * values depends on the application.
      *
      * @see #isException(Object)
      * @see #getExceptionType(Object)

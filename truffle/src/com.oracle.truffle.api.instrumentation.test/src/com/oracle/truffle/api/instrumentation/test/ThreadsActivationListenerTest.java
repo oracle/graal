@@ -85,6 +85,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         c0.enter();
         TruffleContext ic0 = this.languageEnv.newContextBuilder().build();
+        TruffleContext ic0CreatorHandle = ic0;
         Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as
         // the creator handle. The creator handle can be closed.
@@ -148,6 +149,8 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
+
+        ic0CreatorHandle.close();
     }
 
     @Test

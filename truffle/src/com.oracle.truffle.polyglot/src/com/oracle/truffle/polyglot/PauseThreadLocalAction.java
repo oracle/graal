@@ -72,7 +72,7 @@ final class PauseThreadLocalAction extends ThreadLocalAction {
                 public void apply(Object waitObject) throws InterruptedException {
                     synchronized (waitObject) {
                         PolyglotContextImpl.State localContextState = context.state;
-                        while (pause && !localContextState.isClosed() && !localContextState.isCancelling()) {
+                        while (pause && !localContextState.isClosed() && !localContextState.isCancelling() && !localContextState.isExiting()) {
                             waitObject.wait();
                         }
                     }
