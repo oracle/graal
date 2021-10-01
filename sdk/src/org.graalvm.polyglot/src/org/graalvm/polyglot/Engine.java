@@ -90,7 +90,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.management.ExecutionEvent;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -907,65 +906,6 @@ public final class Engine implements AutoCloseable {
         @Override
         public AbstractHostAccess createHostAccess() {
             throw noPolyglotImplementationFound();
-        }
-
-        @Override
-        public AbstractManagementDispatch getManagementDispatch() {
-            return new AbstractManagementDispatch(this) {
-
-                @Override
-                public boolean isExecutionEventStatement(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public boolean isExecutionEventRoot(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public boolean isExecutionEventExpression(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public String getExecutionEventRootName(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public PolyglotException getExecutionEventException(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public Value getExecutionEventReturnValue(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public SourceSection getExecutionEventLocation(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public List<Value> getExecutionEventInputValues(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public void closeExecutionListener(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
-                                boolean roots,
-                                Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
-                    throw noPolyglotImplementationFound();
-                }
-
-            };
         }
 
         private static RuntimeException noPolyglotImplementationFound() {
