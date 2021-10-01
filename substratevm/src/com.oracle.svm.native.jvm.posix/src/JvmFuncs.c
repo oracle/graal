@@ -257,19 +257,19 @@ JNIEXPORT jlong JNICALL JVM_NanoTime(void *env, void * ignored) {
 }
 
 JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
-    long maxDiffSecs = 0x0100000000L;
-    long minDiffSecs = -maxDiffSecs;
+    int64_t maxDiffSecs = 0x0100000000LL;
+    int64_t minDiffSecs = -maxDiffSecs;
     struct timeval time;
     int status = gettimeofday(&time, NULL);
 
-    long seconds = time.tv_sec;
-    long nanos = time.tv_usec * 1000;
+    int64_t seconds = time.tv_sec;
+    int64_t nanos = time.tv_usec * 1000;
 
-    long diff = seconds - offset_secs;
+    int64_t diff = seconds - offset_secs;
     if (diff >= maxDiffSecs || diff <= minDiffSecs) {
         return -1;
     }
-    return diff * 1000000000 + nanos;
+    return diff * 1000000000LL + nanos;
 }
 
 JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
