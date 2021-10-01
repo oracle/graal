@@ -427,12 +427,18 @@ class CPUSamplerCLI extends ProfilerCLI {
                     int selfHitCountsValue = payload.getTierSelfCount(i);
                     outputEntry.totalSelfSamples += selfHitCountsValue;
                     outputEntry.tierToSelfSamples[i] += selfHitCountsValue;
+                    tiers.add(i);
+
+                    // if there is a recursive parent summed up for total time we must not sum up
+                    // again
+                    if (node.isRecursive()) {
+                        continue;
+                    }
 
                     int hitCountsValue = payload.getTierTotalCount(i);
                     outputEntry.totalSamples += hitCountsValue;
                     outputEntry.tierToSamples[i] += hitCountsValue;
 
-                    tiers.add(i);
                 }
             }
             return outputEntry;
