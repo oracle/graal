@@ -263,13 +263,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         initRefKind();
         this.proxy = null;
 
-        if (getDeclaringKlass().isInterface() || isAbstract()) {
-            /*
-             * TODO(peterssen): GR-33781 Leaf method assumption cannot be trusted for default
-             * methods.
-             *
-             * Also disabled for abstract methods to reduce footprint.
-             */
+        if (isAbstract()) {
+            // Disabled for abstract methods to reduce footprint.
             this.isLeaf = NeverValidAssumption.INSTANCE;
         } else if (isStatic() || isPrivate() || isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet()) {
             // Nothing to assume, spare an assumption.
