@@ -497,6 +497,8 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static class OutputEntry {
+        // break after 128 depth spaces to handle deep recursions
+        private static final int DEPTH_BREAK = 128;
         final SourceLocation location;
         int[] tierToSamples = new int[0];
         int[] tierToSelfSamples = new int[0];
@@ -522,9 +524,26 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        String format(String format, int[] showTiers, long samplePeriod, int indent, long globalTotalSamples, Integer[] tiers) {
+        static int computeIndentSize(int depth) {
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                indent += formatIndentBreakLabel(depth - indent).length();
+            }
+            return indent;
+        }
+
+        private static String formatIndentBreakLabel(int skippedDepth) {
+            return String.format("(\u21B3%s) ", skippedDepth);
+        }
+
+        String format(String format, int[] showTiers, long samplePeriod, int depth, long globalTotalSamples, Integer[] tiers) {
             List<Object> args = new ArrayList<>();
-            args.add(repeat(" ", indent) + location.getRootName());
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                args.add(formatIndentBreakLabel(depth - indent) + repeat(" ", indent) + location.getRootName());
+            } else {
+                args.add(repeat(" ", indent) + location.getRootName());
+            }
             args.add(totalSamples * samplePeriod);
             args.add(percent(totalSamples, globalTotalSamples));
             maybeAddTiers(args, tierToSamples, totalSamples, showTiers, tiers);
@@ -601,7 +620,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
-            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
             tiers.add(node.getPayload().getNumberOfTiers() - 1);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 if (!child.isRecursive()) {
@@ -644,15 +663,11 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
-            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
             tiers.add(node.getPayload().getNumberOfTiers() - 1);
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
-                if (child.isRecursive()) {
-                    entry.merge(child.getPayload());
-                } else {
-                    entry.children.add(makeEntry(child, depth + 1));
-                }
+                entry.children.add(makeEntry(child, depth + 1));
             }
             return entry;
         }

@@ -91,17 +91,13 @@ public final class ProfilerNode<T> {
      * @since 0.30
      */
     public boolean isRecursive() {
-        return isRecursiveImpl(this);
-    }
-
-    private boolean isRecursiveImpl(ProfilerNode<T> source) {
         if (parent.sourceLocation == null) {
             return false;
         }
-        if (parent.sourceLocation.equals(source.sourceLocation)) {
+        if (parent.sourceLocation.equals(this.sourceLocation)) {
             return true;
         }
-        return parent.isRecursiveImpl(source);
+        return false;
     }
 
     /**
