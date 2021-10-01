@@ -33,5 +33,5 @@ This mode allows you to [debug the GraalVM compiler with a Java debugger](Operat
 
 ## Interoperability
 
-In addition to running JVM-based languages on GraalVM, you can also call any other language implemented with the [Truffle language implementation framework](../truffle-framework/README.md) directly from Java.
-See the [Polyglot Programming](../polyglot-programming.md) and [Embedding Languages](../embed-languages.md) guides for more information about interoperability with other programming languages.
+In addition to running JVM-based languages on GraalVM, you can also call any other language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md) directly from Java.
+See the [Polyglot Programming](../polyglot-programming.md) and [Embedding Languages](../embedding/embed-languages.md) guides for more information about interoperability with other programming languages.
