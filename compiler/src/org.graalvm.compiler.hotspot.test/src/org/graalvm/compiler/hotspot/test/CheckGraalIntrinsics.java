@@ -353,11 +353,16 @@ public class CheckGraalIntrinsics extends GraalTest {
             if (arch instanceof AMD64) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J",
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
+                                "java/lang/Math.abs(J)J");
+
+                if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                    add(toBeInvestigated,
+                                    "java/lang/Math.max(DD)D",
+                                    "java/lang/Math.max(FF)F",
+                                    "java/lang/Math.min(DD)D",
+                                    "java/lang/Math.min(FF)F");
+                }
+
                 if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX512VL)) {
                     add(ignore,
                                     "java/lang/Math.copySign(DD)D",
@@ -380,11 +385,15 @@ public class CheckGraalIntrinsics extends GraalTest {
             if (!(arch instanceof AArch64)) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J",
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
+                                "java/lang/Math.abs(J)J");
+
+                if (!(arch instanceof AMD64) || !((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                    add(toBeInvestigated,
+                                    "java/lang/Math.max(DD)D",
+                                    "java/lang/Math.max(FF)F",
+                                    "java/lang/Math.min(DD)D",
+                                    "java/lang/Math.min(FF)F");
+                }
             }
         }
 
