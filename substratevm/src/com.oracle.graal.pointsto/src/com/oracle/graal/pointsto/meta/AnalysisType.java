@@ -835,7 +835,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean hasSubTypes() {
-        return subTypes.size() > 0;
+        /* subTypes always includes this type itself. */
+        return subTypes.size() > 1;
     }
 
     @Override
