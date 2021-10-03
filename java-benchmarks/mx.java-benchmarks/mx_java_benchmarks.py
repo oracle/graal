@@ -1870,7 +1870,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return super(RenaissanceBenchmarkSuite, self).version()
 
     def defaultSuiteVersion(self):
-        return self.availableSuiteVersions()[-1]
+        #  return self.availableSuiteVersions()[-1]
+        return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
 
     def availableSuiteVersions(self):
         return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
