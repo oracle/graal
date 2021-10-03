@@ -1843,7 +1843,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
         if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
             # JDK17 support for Spark benchmarks was added in 0.13.0
-            # See: https://github.com/renaissance-benchmarks/renaissance/issues/295
+            # See: renaissance-benchmarks/renaissance #295
             del benchmarks["als"]
             del benchmarks["chi-square"]
             del benchmarks["dec-tree"]
@@ -1855,7 +1855,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
         if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance >= '11':
             # GR-33879
-            # JNA libraries needed are currently limited to amd64: https://github.com/renaissance-benchmarks/renaissance/issues/153
+            # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
 
         if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
