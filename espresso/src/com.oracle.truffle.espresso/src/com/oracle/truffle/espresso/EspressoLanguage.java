@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
@@ -90,10 +91,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    // Multiple caches are necessary depending of the Java version (8 or 11)
-    private final EspressoKlassCache cache8;
-    private final EspressoKlassCache cache11;
-
     private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
@@ -123,9 +120,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.names = new Names(symbols);
         this.types = new Types(symbols);
         this.signatures = new Signatures(symbols, types);
-
-        this.cache8 = new EspressoKlassCache();
-        this.cache11 = new EspressoKlassCache();
     }
 
     @Override
@@ -257,16 +251,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return signatures;
     }
 
-    public EspressoKlassCache getV8Cache() {
-        return cache8;
-    }
-
-    public EspressoKlassCache getV11Cache() {
-        return cache11;
-    }
-
-    public static EspressoContext getCurrentContext() {
-        return getCurrentContext(EspressoLanguage.class);
+    public EspressoKlassCache getKlassCache(JavaVersion version) {
+        return EspressoKlassCache.forVersion(version);
     }
 
     @Override

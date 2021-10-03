@@ -61,13 +61,18 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.FinalizationSupport;
-import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
-import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
-import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -77,11 +82,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.EspressoKlassCache;
 import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
@@ -137,20 +139,14 @@ public final class EspressoContext {
 
     // region Runtime
     @CompilationFinal private ClassRegistries registries;
-<<<<<<< HEAD
-    private final StringTable strings;
-    private final Substitutions substitutions;
-    private final MethodHandleIntrinsics methodHandleIntrinsics;
-=======
     @CompilationFinal private StringTable strings;
     @CompilationFinal private Substitutions substitutions;
     @CompilationFinal private MethodHandleIntrinsics methodHandleIntrinsics;
->>>>>>> Implement VM boot during pre-initialization
     @CompilationFinal private ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
     // region Helpers
-    @CompilationFinal private EspressoThreadRegistry threadManager;
+    @CompilationFinal private EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     @CompilationFinal private EspressoReferenceDrainer referenceDrainer;
@@ -378,7 +374,7 @@ public final class EspressoContext {
 
     public EspressoKlassCache getCache() {
         if (languageCache == null) {
-            languageCache = getJavaVersion().java8OrEarlier() ? language.getV8Cache() : language.getV11Cache();
+            languageCache = getLanguage().getKlassCache(getJavaVersion());
         }
         return languageCache;
     }
@@ -481,7 +477,6 @@ public final class EspressoContext {
             if (JDWPOptions != null) {
                 jdwpContext.jdwpInit(env, getMainThread(), eventListener);
             }
-            referenceDrainer.startReferenceDrain();
         }
     }
 
@@ -582,7 +577,7 @@ public final class EspressoContext {
         } catch (InterruptedException e) {
             getLogger().log(Level.FINE, "An error occurred while joining reference drainer");
         }
-        this.threadManager.stopThreads();
+        this.threadRegistry.stopThreads();
         this.bootClasspath.closeEntries();
 
         getJNI().dispose();
@@ -594,7 +589,8 @@ public final class EspressoContext {
         this.jimageLibrary = null;
         this.vm = null;
 
-        this.threadManager = null;
+        this.threadRegistry = null;
+        this.threads = null;
         this.shutdownManager = null;
         this.referenceDrainer = null;
         this.stackOverflow = null;
@@ -616,18 +612,15 @@ public final class EspressoContext {
         this.modulesInitialized = false;
         this.metaInitialized = false;
 
-
-        // FIXME (ivan-ristovic) Make sure GC collects WeakRefs
-        for (int i = 0; i < 15; i++) {
+        // "Force" GC to collect weak caches
+        for (int i = 0; i < 10; i++) {
             System.gc();
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                throw EspressoError.shouldNotReachHere(e);
+                e.printStackTrace();
             }
         }
-
-        // FIXME (ivan-ristovic) Ensure that Truffle WeakReferences are cleared
 
         getLogger().log(Level.FINE, "Finished post-initialization cleanup");
     }
@@ -1029,7 +1022,7 @@ public final class EspressoContext {
     }
 
     public void unregisterThread(StaticObject self) {
-        if (threadManager != null) {
+        if (threadRegistry != null) {
             threadRegistry.unregisterThread(self);
         }
         if (shouldReportVMEvents) {

@@ -120,6 +120,10 @@ public final class JavaVersion {
         return java9OrLater();
     }
 
+    public int klassCacheId() {
+        return version;
+    }
+
     public int classFileVersion() {
         return version + 44;
     }

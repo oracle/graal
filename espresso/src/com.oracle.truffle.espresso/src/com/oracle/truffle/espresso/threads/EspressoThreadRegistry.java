@@ -35,13 +35,10 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.VM;
 
 public final class EspressoThreadRegistry implements ContextAccess {
@@ -340,15 +337,17 @@ public final class EspressoThreadRegistry implements ContextAccess {
     public void stopThreads() {
         synchronized (activeThreadLock) {
             activeThreads.forEach(t -> {
-                try {
-                    Target_java_lang_Thread.terminate(t, getMeta());
-                } catch (Exception e) {
-                    logger.warning(() -> {
-                        String guestName = Target_java_lang_Thread.getThreadName(getMeta(), t);
-                        long guestId = Target_java_lang_Thread.getThreadId(getMeta(), t);
-                        return String.format("Failed to stop thread: [GUEST:%s, %d]", guestName, guestId);
-                    });
-                }
+//                if (context.getCurrentThread().equals(t))
+//                    return;
+//                try {
+//                    context.getThreadAccess().terminate(t);
+//                } catch (Exception e) {
+//                    logger.warning(() -> {
+//                        String guestName = context.getThreadAccess().getThreadName(t);
+//                        long guestId = context.getThreadAccess().getThreadId(t);
+//                        return String.format("Failed to stop thread: [GUEST:%s, %d]", guestName, guestId);
+//                    });
+//                }
             });
         }
     }

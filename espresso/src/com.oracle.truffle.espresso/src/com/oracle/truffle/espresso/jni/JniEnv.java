@@ -378,21 +378,6 @@ public final class JniEnv extends NativeEnv {
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
-            this.nespressoLibrary = null;
-            this.initializeNativeContext = null;
-            this.disposeNativeContext = null;
-            this.popBoolean = null;
-            this.popByte = null;
-            this.popChar = null;
-            this.popShort = null;
-            this.popInt = null;
-            this.popFloat = null;
-            this.popDouble = null;
-            this.popLong = null;
-            this.popObject = null;
-            this.getSizeMax = null;
-            threadLocalPendingException.dispose();
-            this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }

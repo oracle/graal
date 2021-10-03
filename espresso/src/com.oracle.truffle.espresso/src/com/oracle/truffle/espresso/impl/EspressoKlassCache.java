@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +55,12 @@ import java.util.logging.Level;
  * a composite key needs to be used (see {@link LinkedKlassCacheKey}).
  */
 public final class EspressoKlassCache {
+    private static final Map<Integer, EspressoKlassCache> instances = new HashMap<>();
+
+    public static EspressoKlassCache forVersion(JavaVersion version) {
+        int id = version.klassCacheId();
+        return instances.computeIfAbsent(id, k -> new EspressoKlassCache());
+    }
 
     private boolean isParserKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
     private boolean shouldReportParserKlassCacheMisses = EspressoOptions.ReportParserKlassCacheMisses.getDefaultValue();
@@ -65,6 +72,9 @@ public final class EspressoKlassCache {
     private final Map<LinkedKlassCacheKey, LinkedKlass> linkedKlassCache = new ConcurrentHashMap<>();
 
     private boolean sealed = false;
+
+    private EspressoKlassCache() {
+    }
 
     public void updateEnv(final TruffleLanguage.Env env) {
         shouldReportParserKlassCacheMisses = env.getOptions().get(EspressoOptions.ReportParserKlassCacheMisses);

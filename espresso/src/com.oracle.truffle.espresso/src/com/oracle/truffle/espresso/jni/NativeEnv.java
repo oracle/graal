@@ -190,7 +190,7 @@ public abstract class NativeEnv implements ContextAccess {
         });
 
         try {
-            TruffleObject closure = getNativeAccess().createNativeClosure(callback, NativeSignature.create(NativeType.POINTER, NativeType.POINTER));
+            TruffleObject closure = getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
             return RawPointer.create(getUncached().asPointer(closure));
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere();
