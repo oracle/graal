@@ -1623,41 +1623,47 @@ public abstract class Launcher {
         Path usedPath = path;
         Path fileNamePath = path.getFileName();
         String fileName = fileNamePath == null ? "" : fileNamePath.toString();
-        Path lockFile = null;
-        FileChannel lockFileChannel = null;
-        for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
-            if (unique > 0) {
-                lockFileNameBuilder.append(unique);
-                usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+        OutputStream outputStream;
+        if (Files.exists(path) && !Files.isRegularFile(path)) {
+            // Don't try to lock device or named pipe.
+            outputStream = new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND));
+        } else {
+            Path lockFile = null;
+            FileChannel lockFileChannel = null;
+            for (int unique = 0;; unique++) {
+                StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
+                if (unique > 0) {
+                    lockFileNameBuilder.append(unique);
+                    usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+                }
+                lockFileNameBuilder.append(".lck");
+                lockFile = path.resolveSibling(lockFileNameBuilder.toString());
+                Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
+                if (openResult != null) {
+                    lockFileChannel = openResult.getLeft();
+                    if (lock(lockFileChannel, openResult.getRight())) {
+                        break;
+                    } else {
+                        // Close and try next name
+                        lockFileChannel.close();
+                    }
+                }
             }
-            lockFileNameBuilder.append(".lck");
-            lockFile = path.resolveSibling(lockFileNameBuilder.toString());
-            Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
-            if (openResult != null) {
-                lockFileChannel = openResult.getLeft();
-                if (lock(lockFileChannel, openResult.getRight())) {
-                    break;
-                } else {
-                    // Close and try next name
-                    lockFileChannel.close();
+            assert lockFile != null && lockFileChannel != null;
+            boolean success = false;
+            try {
+                outputStream = new LockableOutputStream(
+                                new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
+                                lockFile,
+                                lockFileChannel);
+                success = true;
+            } finally {
+                if (!success) {
+                    LockableOutputStream.unlock(lockFile, lockFileChannel);
                 }
             }
         }
-        assert lockFile != null && lockFileChannel != null;
-        boolean success = false;
-        try {
-            OutputStream stream = new LockableOutputStream(
-                            new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
-                            lockFile,
-                            lockFileChannel);
-            success = true;
-            return stream;
-        } finally {
-            if (!success) {
-                LockableOutputStream.unlock(lockFile, lockFileChannel);
-            }
-        }
+        return outputStream;
     }
 
     private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {
