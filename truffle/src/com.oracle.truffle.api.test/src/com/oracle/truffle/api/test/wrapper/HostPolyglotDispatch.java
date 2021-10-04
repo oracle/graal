@@ -120,11 +120,6 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     }
 
     @Override
-    public AbstractManagementDispatch getManagementDispatch() {
-        return getNext().getManagementDispatch();
-    }
-
-    @Override
     public Class<?> loadLanguageClass(String className) {
         return getNext().loadLanguageClass(className);
     }

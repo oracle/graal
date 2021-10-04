@@ -93,6 +93,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 
 /**
  * This class is intended to be used by polyglot implementations. Methods in this class are not
@@ -114,8 +115,17 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract ExecutionEvent newExecutionEvent(Object event);
+        public abstract ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver);
 
+        public abstract ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event);
+
+        public abstract Object getReceiver(ExecutionListener executionListener);
+
+        public abstract AbstractManagementDispatch getDispatch(ExecutionListener executionListener);
+
+        public abstract Object getReceiver(ExecutionEvent executionEvent);
+
+        public abstract AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent);
     }
 
     public abstract static class IOAccess {
@@ -288,8 +298,6 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract AbstractSourceSectionDispatch getSourceSectionDispatch();
 
-    public abstract AbstractManagementDispatch getManagementDispatch();
-
     /**
      * Returns the default host dispatch of this polyglot abstraction.
      */
@@ -323,13 +331,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isExecutionEventRoot(Object impl);
 
         public abstract void closeExecutionListener(Object impl);
-
-        public abstract Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter,
-                        Consumer<ExecutionEvent> onReturn,
-                        boolean expressions,
-                        boolean statements,
-                        boolean roots,
-                        Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
         public abstract PolyglotException getExecutionEventException(Object impl);
 
@@ -514,6 +515,13 @@ public abstract class AbstractPolyglotImpl {
         public abstract Set<Source> getCachedSources(Object receiver);
 
         public abstract String getVersion(Object receiver);
+
+        public abstract ExecutionListener attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter,
+                        Consumer<ExecutionEvent> onReturn,
+                        boolean expressions,
+                        boolean statements,
+                        boolean roots,
+                        Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
     }
 

@@ -45,6 +45,7 @@ import java.io.OutputStream;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
@@ -60,6 +61,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 
 public class HostEngineDispatch extends AbstractEngineDispatch {
 
@@ -145,4 +148,9 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public ExecutionListener attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements, boolean roots,
+                    Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
+        throw new UnsupportedOperationException();
+    }
 }

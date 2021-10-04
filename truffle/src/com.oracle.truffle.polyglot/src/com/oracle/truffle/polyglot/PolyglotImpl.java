@@ -178,8 +178,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Internal method do not use.
      */
-    @Override
-    public AbstractManagementDispatch getManagementDispatch() {
+    AbstractManagementDispatch getManagementDispatch() {
         return executionListenerDispatch;
     }
 
