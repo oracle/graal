@@ -56,6 +56,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -152,6 +153,20 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
 
     protected AArch64Kind getMemoryKind(MemoryAccess access) {
         return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
+    }
+
+    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?, ?> node, int clampedShiftAmt) {
+        assert clampedShiftAmt >= 0;
+        if (clampedShiftAmt <= 4) {
+            switch (node.getInputBits()) {
+                case Byte.SIZE:
+                case Short.SIZE:
+                case Integer.SIZE:
+                case Long.SIZE:
+                    return true;
+            }
+        }
+        return false;
     }
 
     private static ExtendType getZeroExtendType(int fromBits) {
@@ -302,7 +317,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, LeftShiftNode lshift, ValueNode ext, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift);
         int shiftAmt = getClampedShiftAmt(lshift);
-        if (shiftAmt > 4) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, shiftAmt)) {
             return null;
         }
         ExtendType extType;
@@ -392,7 +407,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             zeroExtend = (ZeroExtendNode) shift.getX();
             shiftAmt = getClampedShiftAmt(shift);
         }
-        if (shiftAmt > 4) {
+        if (!isSupportedExtendedAddSubShift(zeroExtend, shiftAmt)) {
             return null;
         }
 
@@ -870,6 +885,10 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op x (ZeroExtend=ext y))")
     @MatchRule("(Sub=op x (ZeroExtend=ext y))")
     public ComplexMatchResult mergeSignExtendIntoAddSub(BinaryNode op, UnaryNode ext, ValueNode x, ValueNode y) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, 0)) {
+            return null;
+        }
+
         ExtendType extType;
         if (ext instanceof SignExtendNode) {
             extType = getSignExtendType(((SignExtendNode) ext).getInputBits());
