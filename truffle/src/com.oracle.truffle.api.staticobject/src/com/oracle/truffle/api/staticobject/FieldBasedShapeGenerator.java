@@ -47,7 +47,6 @@ import com.oracle.truffle.api.impl.asm.Type;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -84,30 +83,9 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
         Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties, storageClassName);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
-        HashMap<String, Integer> offsets;
-        if (PRECISE_TYPES) {
-            // We need to resolve fields without triggering class loading, linking, and
-            // initialization
-            Object[] resolvedFields = SomAccessor.RUNTIME.getResolvedFields(generatedStorageClass, true, false);
-            offsets = new HashMap<>(resolvedFields.length);
-            for (Object resolvedField : resolvedFields) {
-                offsets.put(SomAccessor.RUNTIME.getFieldName(resolvedField), SomAccessor.RUNTIME.getFieldOffset(resolvedField));
-            }
-        } else {
-            offsets = null;
-        }
-
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
-            int offset;
-            if (PRECISE_TYPES) {
-                Integer o = offsets.get(entry.getKey());
-                if (o == null) {
-                    throw new RuntimeException("Cannot find offset. Class: " + generatedStorageClass.getName() + "\tfield: " + entry.getValue().getId());
-                }
-                offset = o;
-            } else {
-                offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
-            }
+            // We need to resolve field types so that loads are stamped with the proper type
+            int offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
             entry.getValue().initOffset(offset);
         }
         return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, safetyChecks);
