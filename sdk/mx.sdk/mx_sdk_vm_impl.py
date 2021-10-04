@@ -2912,65 +2912,68 @@ def graalvm_enter(args):
     mx.run(args.cmd, env=env)
 
 
-def graalvm_show(args, graalvm_dist=None):
+def graalvm_show(args, forced_graalvm_dist=None):
     """print the GraalVM config
 
-    :param graalvm_dist: the GraalVM distribution whose config is printed. If None, then the
+    :param forced_graalvm_dist: the GraalVM distribution whose config is printed. If None, then the
                          config of the global stage1 or final GraalVM distribution is printed.
     """
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     args = parser.parse_args(args)
 
-    graalvm_dist = graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
+    graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
     print("GraalVM distribution: {}".format(graalvm_dist))
     print("Version: {}".format(_suite.release_version()))
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
-    for component in registered_graalvm_components(stage1=args.stage1):
+    for component in graalvm_dist.components:
         print(" - {} ('{}', /{})".format(component.name, component.short_name, component.dir_name))
 
-    launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
-    if launchers:
-        print("Launchers:")
-        for launcher in launchers:
-            suffix = ''
-            profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
-            if profile_cnt > 0:
-                suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
-            print(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
-    else:
-        print("No launcher")
+    if forced_graalvm_dist is None:
+        # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.
+        # No installable or standalone is derived from them.
+        launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
+        if launchers:
+            print("Launchers:")
+            for launcher in launchers:
+                suffix = ''
+                profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
+                if profile_cnt > 0:
+                    suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+                print(" - {} ({}){}".format(launcher.native_image_name, "native" if launcher.is_native() else "bash", suffix))
+        else:
+            print("No launcher")
 
-    libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
-    if libraries and not args.stage1:
-        print("Libraries:")
-        for library in libraries:
-            suffix = ''
-            if library.is_skipped():
-                suffix += " (skipped)"
-            profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
-            if profile_cnt > 0:
-                suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
-            print(" - {}{}".format(library.native_image_name, suffix))
-    else:
-        print("No library")
+        libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
+        if libraries and not args.stage1:
+            print("Libraries:")
+            for library in libraries:
+                suffix = ''
+                if library.is_skipped():
+                    suffix += " (skipped)"
+                profile_cnt = len(_image_profile(GraalVmNativeProperties.canonical_image_name(library.native_image_config)))
+                if profile_cnt > 0:
+                    suffix += " ({} pgo profile file{})".format(profile_cnt, 's' if profile_cnt > 1 else '')
+                print(" - {}{}".format(library.native_image_name, suffix))
+        else:
+            print("No library")
 
-    installables = _get_dists(GraalVmInstallableComponent)
-    if installables and not args.stage1:
-        print("Installables:")
-        for i in installables:
-            print(" - {}".format(i))
-    else:
-        print("No installable")
+        installables = _get_dists(GraalVmInstallableComponent)
+        if installables and not args.stage1:
+            print("Installables:")
+            for i in installables:
+                print(" - {}".format(i))
+        else:
+            print("No installable")
 
-    standalones = _get_dists(GraalVmStandaloneComponent)
-    if standalones and not args.stage1:
-        print("Standalones:")
-        for s in standalones:
-            print(" - {}".format(s))
-    else:
-        print("No standalone")
+        standalones = _get_dists(GraalVmStandaloneComponent)
+        if standalones and not args.stage1:
+            print("Standalones:")
+            for s in standalones:
+                print(" - {}".format(s))
+        else:
+            print("No standalone")
 
 
 def _get_dists(dist_class):
