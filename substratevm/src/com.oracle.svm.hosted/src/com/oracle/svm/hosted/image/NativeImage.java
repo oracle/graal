@@ -34,8 +34,6 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.ShortBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -59,7 +57,6 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -570,22 +567,6 @@ public abstract class NativeImage extends AbstractImage {
                 }
             }
         }
-    }
-
-    private static String hexView(ByteBuffer buffer) {
-        StringBuilder result = new StringBuilder();
-        byte[] array = buffer.array();
-        for (int i = 0; i < array.length; i++) {
-            if (i % 16 == 0) {
-                result.append(System.lineSeparator());
-                result.append(String.format("%08X", i));
-            }
-            if (i % 2 == 0) {
-                result.append(" ");
-            }
-            result.append(String.format("%02X", array[i]));
-        }
-        return result.toString();
     }
 
     private static boolean checkEmbeddedOffset(ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {

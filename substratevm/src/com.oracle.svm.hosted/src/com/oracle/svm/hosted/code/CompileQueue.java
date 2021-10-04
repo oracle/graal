@@ -152,6 +152,7 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -162,6 +163,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
@@ -175,13 +177,17 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.VMConstant;
 
 public class CompileQueue {
 
@@ -1337,6 +1343,18 @@ public class CompileQueue {
                     for (HostedMethod impl : callTarget.getImplementations()) {
                         ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
                     }
+                }
+            }
+        }
+        for (DataPatch dataPatch : result.getDataPatches()) {
+            Reference reference = dataPatch.reference;
+            if (reference instanceof ConstantReference) {
+                VMConstant constant = ((ConstantReference) reference).getConstant();
+                if (constant instanceof SubstrateMethodVMConstant) {
+                    MethodPointer pointer = (MethodPointer) ((SubstrateMethodVMConstant) constant).pointer();
+                    final ResolvedJavaMethod method1 = pointer.getMethod();
+                    HostedMethod hMethod = (HostedMethod) method1;
+                    ensureCompiled(hMethod, new DirectCallReason(method, reason));
                 }
             }
         }

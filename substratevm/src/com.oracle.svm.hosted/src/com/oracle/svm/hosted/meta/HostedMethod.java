@@ -63,6 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, Comparable<HostedMethod>, OriginalMethodProvider {
 
@@ -76,6 +77,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
     protected int vtableIndex = -1;
+    private CFunctionPointer methodPointer;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -104,6 +106,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
+        this.methodPointer = MethodPointer.factory(this);
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -437,20 +440,11 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             }
         }
         return false;
-
-        // if (getDeclaringClass().isInterface()) {
-        // return !resolved.isAbstract() && getDeclaringClass().isSubType((HostedType) resolved) &&
-        // hasVTableIndex();
-        // } else {
-        // return getDeclaringClass().isSubType((HostedType) resolved) && hasVTableIndex();
-        // }
-        // doesnt work
-        // return hasVTableIndex();
     }
 
     @Override
     public Constant getEncoding() {
-        return new SubstrateMethodVMConstant(MethodPointer.factory(this));
+        return new SubstrateMethodVMConstant(methodPointer);
     }
 
     @Override
