@@ -291,4 +291,24 @@ public class PropertyAccessTest extends StaticObjectModelTest {
             }
         }
     }
+
+    @Test
+    @SuppressWarnings("unused")
+    public void wrongType() {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, String.class, false);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object staticObject = shape.getFactory().create();
+            Object wrongValue = new Object();
+
+            try {
+                property.setObject(staticObject, wrongValue);
+                Assert.fail();
+            } catch (IllegalArgumentException e) {
+                Assert.assertEquals("Static property 'property' of type 'java.lang.String' cannot be accessed as 'java.lang.Object'", e.getMessage());
+            }
+        }
+    }
 }
