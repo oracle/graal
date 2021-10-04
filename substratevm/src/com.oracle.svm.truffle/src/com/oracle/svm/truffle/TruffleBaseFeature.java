@@ -641,11 +641,11 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
          * We have to use reflection to access private members instead of aliasing them in the
          * substitution class since substitutions are present only at runtime
          */
-        private static final Method GET_INTERNAL_KIND;
+        private static final Method GET_PROPERTY_TYPE;
 
         static {
             // Checkstyle: stop
-            GET_INTERNAL_KIND = ReflectionUtil.lookupMethod(StaticProperty.class, "getInternalKind");
+            GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
             // Checkstyle: resume
         }
 
@@ -663,10 +663,10 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
             StaticProperty receiverStaticProperty = (StaticProperty) receiver;
 
-            byte internalKind;
+            Class<?> propertyType;
             try {
                 // Checkstyle: stop
-                internalKind = (byte) GET_INTERNAL_KIND.invoke(receiverStaticProperty);
+                propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
                 // Checkstyle: resume
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
@@ -675,14 +675,14 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
             int baseOffset;
             int indexScale;
             JavaKind javaKind;
-            if (internalKind == 8) {
-                javaKind = JavaKind.Object;
-                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            } else {
+            if (propertyType.isPrimitive()) {
                 javaKind = JavaKind.Byte;
                 baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
                 indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            } else {
+                javaKind = JavaKind.Object;
+                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
             }
 
             assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;

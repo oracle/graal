@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.asm.Type;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -255,17 +254,12 @@ public abstract class StaticShape<T> {
          * @since 21.3.0
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
+            CompilerAsserts.neverPartOfCompilation();
             if (type.isAnonymousClass()) {
                 throw new IllegalArgumentException("Cannot use an anonymous class as type of a static property");
             }
-            StaticPropertyKind kind = type.isPrimitive() ? StaticPropertyKind.valueOf(type) : StaticPropertyKind.Object;
-            return property(property, type, kind, storeAsFinal);
-        }
-
-        private Builder property(StaticProperty property, Class<?> type, StaticPropertyKind kind, boolean storeAsFinal) {
-            CompilerAsserts.neverPartOfCompilation();
             checkStatus();
-            property.init(type, kind, storeAsFinal);
+            property.init(type, storeAsFinal);
             staticProperties.put(validateAndGetId(property), property);
             return this;
         }
