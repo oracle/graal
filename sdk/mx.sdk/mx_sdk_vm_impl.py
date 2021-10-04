@@ -881,6 +881,11 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
     def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
         self.base_name = base_name
         components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
+        if components is not None:
+            for c in components:
+                if c.launcher_configs or c.library_configs:
+                    mx.abort('Cannot define a GraalVM layout distribution with a forced list of components that includes launcher or library configs. '
+                    'The corresponding projects refer to the global stage1 and final GraalVM distributions.')
         name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
 
         super(GraalVmLayoutDistribution, self).__init__(
@@ -2909,9 +2914,9 @@ def graalvm_enter(args):
 
 def graalvm_show(args, graalvm_dist=None):
     """print the GraalVM config
-    
+
     :param graalvm_dist: the GraalVM distribution whose config is printed. If None, then the
-                         GraalVM configured by the current environment variables is printed.
+                         config of the global stage1 or final GraalVM distribution is printed.
     """
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
