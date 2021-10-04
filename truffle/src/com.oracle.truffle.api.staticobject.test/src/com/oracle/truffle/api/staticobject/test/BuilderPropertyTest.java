@@ -270,6 +270,22 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Test
+    public void packagePrivateClass() throws NoSuchFieldException, ClassNotFoundException {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.isFieldBased());
+            Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            Class<?> propertyType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, propertyType, false);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+
+            Assert.assertEquals(propertyType, object.getClass().getField(guessGeneratedFieldName(property)).getType());
+        }
+    }
+
+    @Test
     public void maxProperties() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
