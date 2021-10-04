@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
+import static jdk.vm.ci.aarch64.AArch64.r18;
 import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r20;
@@ -68,6 +69,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
@@ -138,6 +140,13 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
+        /*
+         * Darwin specifies that r18 is a platform-reserved register:
+         * https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms
+         */
+        if (OS.getCurrent() == OS.DARWIN) {
+            regs.remove(r18);
+        }
         allocatableRegs = new RegisterArray(regs);
 
         switch (config) {
