@@ -2023,7 +2023,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexFloatCompareOp VCMPPS_AVX512 = new VexFloatCompareOp("VCMPPS", P_,   M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W0);
         public static final VexFloatCompareOp VCMPPD        = new VexFloatCompareOp("VCMPPD", P_66, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPPD_AVX512 = new VexFloatCompareOp("VCMPPD", P_66, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W1);
-        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F2, M_0F, WIG, 0xC2);
+        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSS_AVX512 = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, W0);
         public static final VexFloatCompareOp VCMPSD        = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSD_AVX512 = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, W1);
