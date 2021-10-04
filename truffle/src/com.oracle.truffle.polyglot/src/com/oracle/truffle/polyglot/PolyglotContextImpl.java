@@ -2616,6 +2616,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    void initializeInstrumentContextThreadLocals() {
+        for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
+            if (instrument.isCreated()) {
+                invokeContextThreadLocalFactory(instrument.contextThreadLocalLocations);
+            }
+        }
+    }
+
     /**
      * Updates the current thread locals from {@link PolyglotThreadInfo#contextThreadLocals}.
      */
@@ -2758,6 +2766,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     void replayInstrumentationEvents() {
         notifyContextCreated();
+        EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, creatorTruffleContext, Thread.currentThread());
         for (PolyglotLanguageContext lc : contexts) {
             LanguageInfo language = lc.language.info;
             if (lc.eventsEnabled && lc.env != null) {
