@@ -880,13 +880,14 @@ else:
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
     def __init__(self, base_name, theLicense=None, stage1=False, components=None, **kw_args):
         self.base_name = base_name
-        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components, stage1=stage1)
+        components_with_dependencies = [] if components is None else GraalVmLayoutDistribution._add_dependencies(components)
+        name, base_dir, self.vm_config_name = _get_graalvm_configuration(base_name, components=components_with_dependencies, stage1=stage1)
 
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
             name=name,
             deps=[],
-            components=components,
+            components=components_with_dependencies,
             is_graalvm=True,
             exclLibs=[],
             platformDependent=True,
@@ -897,6 +898,17 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             path=None,
             stage1=stage1,
             **kw_args)
+
+    @staticmethod
+    def _add_dependencies(components):
+        components_with_repetitions = components[:]
+        components_with_dependencies = []
+        while components_with_repetitions:
+            component = components_with_repetitions.pop(0)
+            if component not in components_with_dependencies:
+                components_with_dependencies.append(component)
+                components_with_repetitions.extend(component.direct_dependencies())
+        return components_with_dependencies
 
     def extra_suite_revisions_data(self):
         base_jdk_info = _base_jdk_info()
