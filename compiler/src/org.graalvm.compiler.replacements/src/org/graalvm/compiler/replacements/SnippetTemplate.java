@@ -98,8 +98,10 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -109,6 +111,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -139,6 +142,8 @@ import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
@@ -1057,10 +1062,34 @@ public class SnippetTemplate {
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate after fixing memory anchoring");
             List<ReturnNode> returnNodes = snippet.getNodes(ReturnNode.TYPE).snapshot();
             if (returnNodes.isEmpty()) {
-                this.returnNode = null;
+                /*
+                 * The snippet does not have a return node. That can cause issues for subsequent
+                 * lowerings if the replacee gets killed, because killCFG might kill a MergeNode
+                 * that is still referenced by the LoweringTool. To solve this, we create an
+                 * artificial return node and insert it into a temporary branch right after the
+                 * start node. That way, the next node of the replacee will be attached to the
+                 * artificial branch and killing the replacee will not affect its successor. The
+                 * branch will fold away after snippet instantiation during canonicalization,
+                 * together with the original successor.
+                 */
+                this.returnNode = snippet.add(new ReturnNode(getDefaultReturnValue(snippet, replacee)));
+                // insert empty memory map
+                MemoryMapImpl mmap = new MemoryMapImpl();
+                MemoryMapNode memoryMap = snippet.unique(new MemoryMapNode(mmap.getMap()));
+                returnNode.setMemoryMap(memoryMap);
+                // this is the condition that controls the lifetime of the branch
+                this.artificialReturnCondition = snippet.unique(new PlaceholderLogicNode());
+                // insert the temporary branch
+                FixedWithNextNode insertAfter = snippet.start();
+                FixedNode next = insertAfter.next();
+                insertAfter.setNext(null);
+                IfNode branch = snippet.add(new IfNode(artificialReturnCondition, next, this.returnNode, ProfileData.BranchProbabilityData.unknown()));
+                insertAfter.setNext(branch);
             } else if (returnNodes.size() == 1) {
+                this.artificialReturnCondition = null;
                 this.returnNode = returnNodes.get(0);
             } else {
+                this.artificialReturnCondition = null;
                 AbstractMergeNode merge = snippet.add(new MergeNode());
                 List<MemoryMapNode> memMaps = new ArrayList<>();
                 for (ReturnNode retNode : returnNodes) {
@@ -1123,6 +1152,19 @@ public class SnippetTemplate {
         } catch (Throwable ex) {
             throw debug.handle(ex);
         }
+    }
+
+    /**
+     * Gets a default return value that is compatible with {@code replacee}.
+     */
+    private static ValueNode getDefaultReturnValue(StructuredGraph snippet, Node replacee) {
+        if (replacee instanceof ValueNode) {
+            JavaKind javaKind = ((ValueNode) replacee).stamp(NodeView.DEFAULT).getStackKind();
+            if (javaKind != JavaKind.Void) {
+                return ConstantNode.defaultForKind(javaKind, snippet);
+            }
+        }
+        return null;
     }
 
     private static boolean verifyIntrinsicsProcessed(StructuredGraph snippetCopy) {
@@ -1243,6 +1285,14 @@ public class SnippetTemplate {
      * The return node (if any) of the snippet.
      */
     private final ReturnNode returnNode;
+
+    /**
+     * The condition that keeps an artificial return node alive or {@code null} if no such return
+     * node has been added. During {@link SnippetTemplate#instantiate},
+     * {@link PlaceholderLogicNode#markForDeletion()} will be called which cause the branch with the
+     * artificial return to fold away.
+     */
+    private final PlaceholderLogicNode artificialReturnCondition;
 
     /**
      * The node that will be replaced with the exception handler of the replacee node, or null if
@@ -1718,6 +1768,10 @@ public class SnippetTemplate {
                 }
             }
 
+            if (artificialReturnCondition != null) {
+                ((PlaceholderLogicNode) duplicates.get(artificialReturnCondition)).markForDeletion();
+            }
+
             if (fallbackInvoke != null) {
                 GraalError.guarantee(replacee instanceof MacroWithExceptionNode, "%s can only be used in snippets replacing %s", FallbackInvokeWithExceptionNode.class.getSimpleName(),
                                 MacroWithExceptionNode.class.getSimpleName());
@@ -2185,5 +2239,28 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
             killExceptionEdge();
         }
         graph().removeSplit(this, next());
+    }
+}
+
+@NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
+final class PlaceholderLogicNode extends LogicNode implements Canonicalizable {
+    static final NodeClass<PlaceholderLogicNode> TYPE = NodeClass.create(PlaceholderLogicNode.class);
+    private boolean delete;
+
+    protected PlaceholderLogicNode() {
+        super(TYPE);
+        delete = false;
+    }
+
+    public void markForDeletion() {
+        delete = true;
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (delete) {
+            return LogicConstantNode.tautology();
+        }
+        return this;
     }
 }
