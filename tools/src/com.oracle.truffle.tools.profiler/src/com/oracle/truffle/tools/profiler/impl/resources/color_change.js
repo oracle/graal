@@ -166,14 +166,15 @@ function color_create_legend() {
             }
         }
     } else if (color_type == "bc") {
+        color_legend_entry(e, 0, color_for_compilation(0, 0), "No self samples");
         for (let i = 0; i <= 10; i++) {
             let color = color_for_compilation(10 - i, i);
             let text = (i * 10) + "% samples were compiled.";
 
-            color_legend_entry(e, i, color, text);
+            color_legend_entry(e, i + 1, color, text);
         }
 
-        entry_count = 11;
+        entry_count = 12;
     }
 
     r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
