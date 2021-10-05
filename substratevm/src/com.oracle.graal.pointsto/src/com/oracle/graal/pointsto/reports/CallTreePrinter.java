@@ -339,13 +339,14 @@ public final class CallTreePrinter {
             walkNodes(node, directEdges, virtualEdges, overridenByEdges, virtualNodes, nonVirtualNodes, virtualNodeId);
         }
 
-        toCsvFile("call tree for vm entry point", reportsPath, "csv_call_tree_vm", reportName, CallTreePrinter::printVMEntryPoint);
-        toCsvFile("call tree for methods", reportsPath, "csv_call_tree_methods", reportName, writer -> printMethodNodes(methodToNode.values(), writer));
-        toCsvFile("call tree for virtual methods", reportsPath, "csv_call_tree_virtual_methods", reportName, writer -> printVirtualNodes(virtualNodes, writer));
-        toCsvFile("call tree for entry points", reportsPath, "csv_call_tree_entry_points", reportName, writer -> printEntryPointIds(entryPointIds, writer));
-        toCsvFile("call tree for direct edges", reportsPath, "csv_call_tree_direct_edges", reportName, writer -> printBciEdges(directEdges, writer));
-        toCsvFile("call tree for overriden by edges", reportsPath, "csv_call_tree_override_by_edges", reportName, writer -> printNonBciEdges(overridenByEdges, writer));
-        toCsvFile("call tree for virtual edges", reportsPath, "csv_call_tree_virtual_edges", reportName, writer -> printBciEdges(virtualEdges, writer));
+        String msgPrefix = "call tree csv file for ";
+        toCsvFile(msgPrefix + "vm entry point", reportsPath, "call_tree_vm", reportName, CallTreePrinter::printVMEntryPoint);
+        toCsvFile(msgPrefix + "methods", reportsPath, "call_tree_methods", reportName, writer -> printMethodNodes(methodToNode.values(), writer));
+        toCsvFile(msgPrefix + "virtual methods", reportsPath, "call_tree_virtual_methods", reportName, writer -> printVirtualNodes(virtualNodes, writer));
+        toCsvFile(msgPrefix + "entry points", reportsPath, "call_tree_entry_points", reportName, writer -> printEntryPointIds(entryPointIds, writer));
+        toCsvFile(msgPrefix + "direct edges", reportsPath, "call_tree_direct_edges", reportName, writer -> printBciEdges(directEdges, writer));
+        toCsvFile(msgPrefix + "overriden by edges", reportsPath, "call_tree_override_by_edges", reportName, writer -> printNonBciEdges(overridenByEdges, writer));
+        toCsvFile(msgPrefix + "virtual edges", reportsPath, "call_tree_virtual_edges", reportName, writer -> printBciEdges(virtualEdges, writer));
     }
 
     private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, Consumer<PrintWriter> reporter) {
