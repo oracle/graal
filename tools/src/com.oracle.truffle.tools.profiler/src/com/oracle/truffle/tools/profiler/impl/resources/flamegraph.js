@@ -116,6 +116,7 @@ function fg_toggle_collapse() {
     } else {
         zoom(fg_element_for_sample(sample_to_zoom_to));
     }
+    fg_update_color(color_type)
 }
 
 function fg_x_for_sample(sample) {
@@ -417,7 +418,7 @@ function fg_reset_search() {
 }
 
 function fg_update_color(color_type) {
-    let iter = sample_and_children_depth_first(profileData[0]);
+    let iter = fg_sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
@@ -440,7 +441,11 @@ function fg_color_for_sample(color_type, sample) {
     } else if (color_type == "bl") {
         return color_for_name(sample.l, name_for_sample(sample));
     } else if (color_type = "bc") {
-        return color_for_compilation(sample.i, sample.c);
+        if (fg_collapsed) {
+            return color_for_compilation(sample.ri, sample.rc);
+        } else {
+            return color_for_compilation(sample.i, sample.c);
+        }
     }
 }
 
