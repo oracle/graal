@@ -67,7 +67,10 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
     @Override
     public void lower(Node n, LoweringTool tool) {
         if (n instanceof IntegerDivRemNode) {
-            integerArithmeticSnippets.lower((IntegerDivRemNode) n, tool);
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+                // wait more precise stamp information
+                integerArithmeticSnippets.lower((IntegerDivRemNode) n, tool);
+            }
         } else if (n instanceof FloatConvertNode) {
             // AMD64 has custom lowerings for ConvertNodes, HotSpotLoweringProvider does not expect
             // to see a ConvertNode and throws an error, just do nothing here.
