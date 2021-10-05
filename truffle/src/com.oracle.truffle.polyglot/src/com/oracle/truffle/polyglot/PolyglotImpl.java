@@ -88,6 +88,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final String OPTION_GROUP_ENGINE = "engine";
     static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
 
+    private final PolyglotSourceFactory sourceFactory = new PolyglotSourceFactory(this);
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
@@ -163,15 +164,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public AbstractSourceDispatch getSourceDispatch() {
+    public AbstractSourceFactory getSourceFactory() {
+        return sourceFactory;
+    }
+
+    /**
+     * Internal method do not use.
+     */
+    AbstractSourceDispatch getSourceDispatch() {
         return sourceDispatch;
     }
 
     /**
      * Internal method do not use.
      */
-    @Override
-    public AbstractSourceSectionDispatch getSourceSectionDispatch() {
+    AbstractSourceSectionDispatch getSourceSectionDispatch() {
         return sourceSectionDispatch;
     }
 
@@ -437,16 +444,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return new PolyglotHostAccess(this);
     }
 
-    static org.graalvm.polyglot.Source getOrCreatePolyglotSource(AbstractPolyglotImpl polyglot, Source source) {
-        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, (t) -> polyglot.getAPIAccess().newSource(t));
+    static org.graalvm.polyglot.Source getOrCreatePolyglotSource(PolyglotImpl polyglot, Source source) {
+        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, (t) -> polyglot.getAPIAccess().newSource(polyglot.sourceDispatch, t));
     }
 
-    static org.graalvm.polyglot.SourceSection getPolyglotSourceSection(AbstractPolyglotImpl polyglot, com.oracle.truffle.api.source.SourceSection sourceSection) {
+    static org.graalvm.polyglot.SourceSection getPolyglotSourceSection(PolyglotImpl polyglot, com.oracle.truffle.api.source.SourceSection sourceSection) {
         if (sourceSection == null) {
             return null;
         }
         org.graalvm.polyglot.Source polyglotSource = getOrCreatePolyglotSource(polyglot, sourceSection.getSource());
-        return polyglot.getAPIAccess().newSourceSection(polyglotSource, sourceSection);
+        return polyglot.getAPIAccess().newSourceSection(polyglotSource, polyglot.sourceSectionDispatch, sourceSection);
     }
 
     /**

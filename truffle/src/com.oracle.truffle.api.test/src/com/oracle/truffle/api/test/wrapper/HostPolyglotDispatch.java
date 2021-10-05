@@ -110,13 +110,8 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     }
 
     @Override
-    public AbstractSourceDispatch getSourceDispatch() {
-        return getNext().getSourceDispatch();
-    }
-
-    @Override
-    public AbstractSourceSectionDispatch getSourceSectionDispatch() {
-        return getNext().getSourceSectionDispatch();
+    public AbstractSourceFactory getSourceFactory() {
+        return getNext().getSourceFactory();
     }
 
     @Override
