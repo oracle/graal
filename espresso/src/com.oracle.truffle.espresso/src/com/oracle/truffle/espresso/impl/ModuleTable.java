@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -52,7 +53,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         return moduleEntry;
     }
 
-    public static class ModuleEntry extends EntryTable.NamedEntry {
+    public static class ModuleEntry extends EntryTable.NamedEntry implements ModuleRef {
 
         // TODO: module versions.
         ModuleEntry(Symbol<Name> name, ClassRegistry data) {
@@ -68,6 +69,19 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             }
             result.isOpen = true;
             return result;
+        }
+
+        public String jdwpName() {
+            if (name == null) {
+                // JDWP expects the unnamed module to return empty string
+                return "";
+            } else {
+                return name.toString();
+            }
+        }
+
+        public Object classLoader() {
+            return registry.getClassLoader();
         }
 
         private final ClassRegistry registry;

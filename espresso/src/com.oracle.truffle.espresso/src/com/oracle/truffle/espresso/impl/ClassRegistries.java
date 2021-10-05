@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -192,6 +193,20 @@ public final class ClassRegistries {
             }
         }
         return list.toArray(Klass.EMPTY_ARRAY);
+    }
+
+    public ModuleRef[] getAllModuleRefs() {
+        ArrayList<ModuleRef> list = new ArrayList<>();
+        // add modules from boot registry
+        list.addAll(bootClassRegistry.modules().values());
+
+        // add modules from all other registries
+        synchronized (weakClassLoaderSet) {
+            for (StaticObject classLoader : weakClassLoaderSet) {
+                list.addAll(getClassRegistry(classLoader).modules().values());
+            }
+        }
+        return list.toArray(ModuleRef.EMPTY_ARRAY);
     }
 
     /**
