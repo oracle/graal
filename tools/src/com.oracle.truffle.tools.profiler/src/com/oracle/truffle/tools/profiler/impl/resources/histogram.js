@@ -70,7 +70,7 @@ function h_reset_search() {
             if (e != null) {
                 let color = bar.currentColor;
                 if (color == undefined) {
-                    color = fg_color_for_sample(color_type, bar);
+                    color = h_color_for_sample(color_type, bar);
                 }
                 let r = e.children[1];
                 r.style.fill = color;
@@ -126,7 +126,7 @@ function h_create_element_for_id(id, bar, width) {
     r.width.baseVal.value = width;
     r.height.baseVal.value = fg_frameheight
 
-    r.style.fill = fg_color_for_sample(color_type, bar);
+    r.style.fill = h_color_for_sample(color_type, bar);
     r.rx.baseVal.value = 2;
     r.ry.baseVal.vlaue = 2;
 
@@ -168,7 +168,7 @@ function h_update_bar(id, bar) {
             (100 * (bar.c + bar.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
 
         r.width.baseVal.value = width;
-        r.style.fill = fg_color_for_sample(color_type, bar);
+        r.style.fill = h_color_for_sample(color_type, bar);
         t.textContent = name;
         let t_width = t.textLength.baseVal.value;
         if (t_width < width - 6) {
@@ -267,7 +267,7 @@ function calculate_histogram_bars(bars, sample) {
 function h_update_color(color_type) {
     for (let i = 0; i < histogramData.length; i++) {
         let bar = histogramData[i];
-        let color = fg_color_for_sample(color_type, bar);
+        let color = h_color_for_sample(color_type, bar);
         bar.currentColor = color;
         if (bar.searchMatch != true) {
             let e = h_element_for_id(i);
@@ -276,6 +276,16 @@ function h_update_color(color_type) {
                 r.style.fill = color;
             }
         }
+    }
+}
+
+function h_color_for_sample(color_type, sample) {
+    if (color_type == "fg") {
+        return color_for_name(0, name_for_sample(sample));
+    } else if (color_type == "bl") {
+        return color_for_name(sample.l, name_for_sample(sample));
+    } else if (color_type = "bc") {
+        return color_for_compilation(sample.i, sample.c);
     }
 }
 
