@@ -64,6 +64,7 @@ import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
+import jdk.nashorn.internal.runtime.regexp.joni.Regex;
 
 import java.util.Arrays;
 
@@ -113,9 +114,14 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
+    private static final RegexResult SIMPLE_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
 
     public static RegexResult getNoMatchInstance() {
         return NO_MATCH_RESULT;
+    }
+
+    public static RegexResult getSimpleMatchInstance() {
+        return SIMPLE_MATCH_RESULT;
     }
 
     public static RegexResult create(int start, int end) {

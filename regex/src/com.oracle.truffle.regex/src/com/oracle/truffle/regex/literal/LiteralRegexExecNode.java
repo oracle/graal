@@ -98,8 +98,8 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
-            return resultFactory.createFromStart(fromIndex);
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
+            return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(fromIndex);
         }
     }
 
@@ -115,8 +115,8 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
-            return fromIndex == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
+            return fromIndex == 0 ? (simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(0)) : RegexResult.getNoMatchInstance();
         }
     }
 
@@ -135,9 +135,12 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             assert fromIndex <= inputLength(input);
             if (!sticky || fromIndex == inputLength(input)) {
+                if (simpleMatch) {
+                    return RegexResult.getSimpleMatchInstance();
+                }
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
                 return RegexResult.getNoMatchInstance();
@@ -157,9 +160,9 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             assert fromIndex <= inputLength(input);
-            return inputLength(input) == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
+            return inputLength(input) == 0 ? (simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(0)) : RegexResult.getNoMatchInstance();
         }
     }
 
@@ -202,12 +205,12 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             int start = indexOfStringNode.execute(input, fromIndex, inputLength(input), literalContent(), maskContent());
             if (start == -1) {
                 return RegexResult.getNoMatchInstance();
             }
-            return resultFactory.createFromStart(start);
+            return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(start);
         }
     }
 
@@ -225,9 +228,9 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             if (fromIndex == 0 && startsWithNode.execute(input, literalContent(), maskContent())) {
-                return resultFactory.createFromStart(0);
+                return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(0);
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -250,10 +253,10 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             int matchStart = inputLength(input) - literal.encodedLength();
             if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literalContent(), maskContent())) {
-                return resultFactory.createFromEnd(inputLength(input));
+                return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromEnd(inputLength(input));
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -274,9 +277,9 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             if (fromIndex == 0 && equalsNode.execute(input, literalContent(), maskContent())) {
-                return resultFactory.createFromStart(0);
+                return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(0);
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -297,9 +300,9 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
 
         @Override
-        protected RegexResult execute(Object input, int fromIndex) {
+        protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
             if (regionMatchesNode.execute(input, fromIndex, literalContent(), 0, literal.encodedLength(), maskContent())) {
-                return resultFactory.createFromStart(fromIndex);
+                return simpleMatch ? RegexResult.getSimpleMatchInstance() : resultFactory.createFromStart(fromIndex);
             } else {
                 return RegexResult.getNoMatchInstance();
             }

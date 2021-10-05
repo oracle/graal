@@ -106,7 +106,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     @Override
-    public final RegexResult execute(Object input, int fromIndex) {
+    public final RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
         final int inputLength = inputLength(input);
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
@@ -126,11 +126,11 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        final RegexResult result = runnerNode.run(input, fromIndex, inputLength, stickyCheckNode);
-        assert !regressionTestMode || backtrackerProducesSameResult(input, fromIndex, result);
-        assert !regressionTestMode || nfaProducesSameResult(input, fromIndex, result);
-        assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(input, fromIndex, result);
-        assert !regressionTestMode || eagerAndLazyDFAProduceSameResult(input, fromIndex, result);
+        final RegexResult result = runnerNode.run(input, fromIndex, simpleMatch, inputLength, stickyCheckNode);
+        assert !regressionTestMode || backtrackerProducesSameResult(input, fromIndex, simpleMatch, result);
+        assert !regressionTestMode || nfaProducesSameResult(input, fromIndex, simpleMatch, result);
+        assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(input, fromIndex, simpleMatch, result);
+        assert !regressionTestMode || eagerAndLazyDFAProduceSameResult(input, fromIndex, simpleMatch, result);
         assert validResult(input, fromIndex, result);
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
@@ -171,7 +171,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     private static int charactersProcessedDuringSearch(RegexResult result, int fromIndex, int inputLength) {
-        if (result == RegexResult.getNoMatchInstance()) {
+        if (result == RegexResult.getNoMatchInstance() || result == RegexResult.getSimpleMatchInstance()) {
             return inputLength - fromIndex;
         } else {
             return result.getEnd(0) + 1 - fromIndex;
@@ -194,8 +194,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return true;
     }
 
-    private boolean backtrackerProducesSameResult(Object input, int fromIndex, RegexResult result) {
-        RegexResult btResult = regressTestBacktrackingNode.run(input, fromIndex, inputLength(input), stickyCheckNode);
+    private boolean backtrackerProducesSameResult(Object input, int fromIndex, boolean simpleMatch, RegexResult result) {
+        RegexResult btResult = regressTestBacktrackingNode.run(input, fromIndex, simpleMatch, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -204,12 +204,12 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean nfaProducesSameResult(Object input, int fromIndex, RegexResult result) {
+    private boolean nfaProducesSameResult(Object input, int fromIndex, boolean simpleMatch, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
         assert !(runnerNode instanceof NFARegexSearchNode);
-        RegexResult btResult = nfaNode.run(input, fromIndex, inputLength(input), stickyCheckNode);
+        RegexResult btResult = nfaNode.run(input, fromIndex, simpleMatch, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -218,12 +218,12 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean noSimpleCGLazyDFAProducesSameResult(Object input, int fromIndex, RegexResult result) {
+    private boolean noSimpleCGLazyDFAProducesSameResult(Object input, int fromIndex, boolean simpleMatch, RegexResult result) {
         if (lazyDFANode == LAZY_DFA_BAILED_OUT || !lazyDFANode.isSimpleCG() || regressTestNoSimpleCGLazyDFANode == LAZY_DFA_BAILED_OUT) {
             return true;
         }
         assert !regressTestNoSimpleCGLazyDFANode.isSimpleCG();
-        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
+        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, simpleMatch, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, noSimpleCGResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -233,7 +233,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return false;
     }
 
-    private boolean eagerAndLazyDFAProduceSameResult(Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
+    private boolean eagerAndLazyDFAProduceSameResult(Object input, int fromIndex, boolean simpleMatch, RegexResult resultOfCurrentSearchNode) {
         if (lazyDFANode.captureGroupEntryNode == null || eagerDFANode == EAGER_DFA_BAILED_OUT) {
             return true;
         }
@@ -241,11 +241,13 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         RegexResult eagerResult;
         if (runnerNode == lazyDFANode) {
             lazyResult = resultOfCurrentSearchNode;
-            eagerResult = eagerDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
+            eagerResult = eagerDFANode.run(input, fromIndex, simpleMatch, inputLength(input), stickyCheckNode);
         } else {
-            lazyResult = lazyDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
+            lazyResult = lazyDFANode.run(input, fromIndex, simpleMatch, inputLength(input), stickyCheckNode);
             eagerResult = resultOfCurrentSearchNode;
         }
+
+        
         boolean equal = resultsEqual(lazyResult, eagerResult, getNumberOfCaptureGroups());
         if (!equal) {
             Loggers.LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nLazy Result: %s\nEager Result: %s", getSource(), input, fromIndex, lazyResult, eagerResult));
@@ -353,8 +355,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
     public abstract static class RunRegexSearchNode extends Node {
 
-        public RegexResult run(Object input, int fromIndexArg, int inputLength, RegexResult.RegexResultGetStartNode stickyCheckNode) {
-            RegexResult result = runInternal(input, fromIndexArg, inputLength);
+        public RegexResult run(Object input, int fromIndexArg, boolean simpleMatch, int inputLength, RegexResult.RegexResultGetStartNode stickyCheckNode) {
+            RegexResult result = runInternal(input, fromIndexArg, simpleMatch, inputLength);
             if (stickyCheckNode != null) {
                 if (result == RegexResult.getNoMatchInstance() || stickyCheckNode.execute(result, 0) != fromIndexArg) {
                     return RegexResult.getNoMatchInstance();
@@ -363,7 +365,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return result;
         }
 
-        protected abstract RegexResult runInternal(Object input, int fromIndexArg, int inputLength);
+        protected abstract RegexResult runInternal(Object input, int fromIndexArg, boolean simpleMatch, int inputLength);
     }
 
     public static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
@@ -436,15 +438,15 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, boolean simpleMatch, int inputLength) {
             if (backwardEntryNode != null && getBackwardExecutor().isAnchored()) {
-                return executeBackwardAnchored(input, fromIndexArg, inputLength);
+                return executeBackwardAnchored(input, fromIndexArg, simpleMatch, inputLength);
             } else {
-                return executeForward(input, fromIndexArg, inputLength);
+                return executeForward(input, fromIndexArg, simpleMatch, inputLength);
             }
         }
 
-        private RegexResult executeForward(Object input, int fromIndexArg, int inputLength) {
+        private RegexResult executeForward(Object input, int fromIndexArg, boolean simpleMatch, int inputLength) {
             if (getForwardExecutor().isSimpleCG()) {
                 int[] result = (int[]) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
                 return result == null ? RegexResult.getNoMatchInstance() : RegexResult.create(result);
@@ -452,6 +454,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             final int end = (int) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
                 return RegexResult.getNoMatchInstance();
+            }
+            if (simpleMatch) {
+                return RegexResult.getSimpleMatchInstance();
             }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromEnd(end);
@@ -473,7 +478,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
+        private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, boolean simpleMatch, int inputLength) {
             if (getBackwardExecutor().isSimpleCG()) {
                 int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
                 return result == null ? RegexResult.getNoMatchInstance() : RegexResult.create(result);
@@ -481,6 +486,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return RegexResult.getNoMatchInstance();
+            }
+            if (simpleMatch) {
+                return RegexResult.getSimpleMatchInstance();
             }
             if (multiplePreCalcResults()) { // traceFinder
                 return preCalculatedResults[backwardResult].createFromEnd(inputLength);
@@ -518,10 +526,13 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, boolean simpleMatch, int inputLength) {
             final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (resultArray == null) {
                 return RegexResult.getNoMatchInstance();
+            }
+            if (simpleMatch) {
+                return RegexResult.getSimpleMatchInstance();
             }
             return RegexResult.create(input, resultArray);
         }
@@ -540,10 +551,13 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, boolean simpleMatch, int inputLength) {
             final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (resultArray == null) {
                 return RegexResult.getNoMatchInstance();
+            }
+            if (simpleMatch) {
+                return RegexResult.getSimpleMatchInstance();
             }
             return RegexResult.create(resultArray);
         }

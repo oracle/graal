@@ -56,7 +56,7 @@ public final class DeadRegexExecNode extends RegexExecNode {
     }
 
     @Override
-    protected RegexResult execute(Object input, int fromIndex) {
+    protected RegexResult execute(Object input, int fromIndex, boolean simpleMatch) {
         return RegexResult.getNoMatchInstance();
     }
 

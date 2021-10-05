@@ -60,8 +60,9 @@ public abstract class RegexExecNode extends RegexBodyNode {
     @Override
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        assert args.length == 2;
-        return executeDirect(args[0], (int) args[1]);
+        assert args.length == 2 || args.length == 3;
+        boolean simpleMatch = args.length == 3 ? (boolean) args[2] : false;
+        return executeDirect(args[0], (int) args[1], simpleMatch);
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
@@ -89,17 +90,17 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return charAtNode.execute(input, i);
     }
 
-    public RegexResult executeDirect(Object input, int fromIndex) {
+    public RegexResult executeDirect(Object input, int fromIndex, boolean simpleMatch) {
         if (fromIndex < 0 || fromIndex > inputLength(input)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
         }
-        return execute(input, adjustFromIndex(fromIndex, input));
+        return execute(input, adjustFromIndex(fromIndex, input), simpleMatch);
     }
 
     public boolean isBacktracking() {
         return false;
     }
 
-    protected abstract RegexResult execute(Object input, int fromIndex);
+    protected abstract RegexResult execute(Object input, int fromIndex, boolean simpleMatch);
 }

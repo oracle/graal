@@ -242,74 +242,75 @@ public final class RegexObject extends AbstractConstantKeysObject {
                     @Cached ToLongNode toLongNode,
                     @Cached InvokeCacheNode invokeCache)
                     throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
-        if (args.length != 2) {
+        if (args.length != 2 && args.length != 3) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(2, 2, args.length);
+            throw ArityException.create(2, 3, args.length);
         }
         Object input = args[0];
         long fromIndex = toLongNode.execute(args[1]);
         if (fromIndex > Integer.MAX_VALUE) {
             return RegexResult.getNoMatchInstance();
         }
-        return invokeCache.execute(member, getExecCallTarget(), input, (int) fromIndex);
+        boolean simpleMatch = args.length == 3 ? (boolean) args[2] : false;
+        return invokeCache.execute(member, getExecCallTarget(), input, (int) fromIndex, simpleMatch);
     }
 
     @ImportStatic(RegexObject.class)
     @GenerateUncached
     abstract static class InvokeCacheNode extends Node {
 
-        abstract Object execute(String symbol, CallTarget receiver, Object input, int fromIndex)
+        abstract Object execute(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch)
                         throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS)
-        Object execIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execIdentity(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex);
+            return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex, simpleMatch);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC)"}, limit = N_METHODS, replaces = "execIdentity")
-        Object execEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execEquals(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex);
+            return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex, simpleMatch);
         }
 
         // EXPERIMENTAL
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS)
-        Object execBytesIdentity(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execBytesIdentity(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex);
+            return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex, simpleMatch);
         }
 
         // EXPERIMENTAL
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_EXEC_BYTES)"}, limit = N_METHODS, replaces = "execBytesIdentity")
-        Object execBytesEquals(String symbol, CallTarget receiver, Object input, int fromIndex,
+        Object execBytesEquals(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached("symbol") String cachedSymbol,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-            return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex);
+            return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex, simpleMatch);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"execEquals", "execBytesEquals"})
-        static Object invokeGeneric(String symbol, CallTarget receiver, Object input, int fromIndex,
+        static Object invokeGeneric(String symbol, CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ExpectByteArrayHostObjectNode expectByteArrayHostObjectNode,
                         @Cached ExecCompiledRegexNode execNode) throws UnsupportedMessageException, ArityException, UnsupportedTypeException, UnknownIdentifierException {
             switch (symbol) {
                 case PROP_EXEC:
-                    return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex);
+                    return execNode.execute(receiver, expectStringOrTruffleObjectNode.execute(input), fromIndex, simpleMatch);
                 case PROP_EXEC_BYTES:
-                    return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex);
+                    return execNode.execute(receiver, expectByteArrayHostObjectNode.execute(input), fromIndex, simpleMatch);
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -341,16 +342,17 @@ public final class RegexObject extends AbstractConstantKeysObject {
                         @Cached ExpectStringOrTruffleObjectNode expectStringOrTruffleObjectNode,
                         @Cached ToLongNode toLongNode,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            if (args.length != 2) {
+            if (args.length != 2 && args.length != 3) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, 2, args.length);
+                throw ArityException.create(2, 3, args.length);
             }
             Object input = expectStringOrTruffleObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
                 return RegexResult.getNoMatchInstance();
             }
-            return execNode.execute(getRegexObject().getExecCallTarget(), input, (int) fromIndex);
+            boolean simpleMatch = args.length == 3 ? (boolean) args[2] : false;
+            return execNode.execute(getRegexObject().getExecCallTarget(), input, (int) fromIndex, simpleMatch);
         }
 
         @TruffleBoundary
@@ -390,16 +392,17 @@ public final class RegexObject extends AbstractConstantKeysObject {
                         @Cached ToLongNode toLongNode,
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             RegexObject regexObj = getRegexObject();
-            if (args.length != 2) {
+            if (args.length != 2 && args.length == 3) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, 2, args.length);
+                throw ArityException.create(2, 3, args.length);
             }
             byte[] input = expectByteArrayHostObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
             if (fromIndex > Integer.MAX_VALUE) {
                 return RegexResult.getNoMatchInstance();
             }
-            return execNode.execute(regexObj.getExecCallTarget(), input, (int) fromIndex);
+            boolean simpleMatch = args.length == 3 ? (boolean) args[2] : false;
+            return execNode.execute(regexObj.getExecCallTarget(), input, (int) fromIndex, simpleMatch);
         }
 
         @TruffleBoundary
@@ -413,21 +416,21 @@ public final class RegexObject extends AbstractConstantKeysObject {
     @GenerateUncached
     abstract static class ExecCompiledRegexNode extends Node {
 
-        abstract Object execute(CallTarget receiver, Object input, int fromIndex) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
+        abstract Object execute(CallTarget receiver, Object input, int fromIndex, boolean simpleMatch) throws UnsupportedMessageException, ArityException, UnsupportedTypeException;
 
         @SuppressWarnings("unused")
         @Specialization(guards = "receiver == cachedCallTarget", limit = "4")
-        static Object executeDirectCall(CallTarget receiver, Object input, int fromIndex,
+        static Object executeDirectCall(CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached("receiver") CallTarget cachedCallTarget,
                         @Cached("create(cachedCallTarget)") DirectCallNode directCallNode) {
-            return directCallNode.call(input, fromIndex);
+            return directCallNode.call(input, fromIndex, simpleMatch);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "executeDirectCall")
-        static Object executeIndirectCall(CallTarget receiver, Object input, int fromIndex,
+        static Object executeIndirectCall(CallTarget receiver, Object input, int fromIndex, boolean simpleMatch,
                         @Cached IndirectCallNode indirectCallNode) {
-            return indirectCallNode.call(receiver, input, fromIndex);
+            return indirectCallNode.call(receiver, input, fromIndex, simpleMatch);
         }
     }
 
