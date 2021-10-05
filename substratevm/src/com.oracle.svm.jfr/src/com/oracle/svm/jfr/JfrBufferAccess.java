@@ -58,6 +58,7 @@ public final class JfrBufferAccess {
         JfrBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
         if (result.isNonNull()) {
             result.setSize(dataSize);
+            result.setTempBuffer(false); // by default, it is not a temproary buffer
             reinitialize(result);
         }
         return result;
@@ -87,8 +88,11 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void release(JfrBuffer buffer) {
-        assert buffer.getAcquired() == ACQUIRED;
-        buffer.setAcquired(NOT_ACQUIRED);
+        // Allows globalMemory to free temporary buffer ASAP
+        if (!SubstrateJVM.getGlobalMemory().release(buffer)) {
+            assert buffer.getAcquired() == ACQUIRED;
+            buffer.setAcquired(NOT_ACQUIRED);
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

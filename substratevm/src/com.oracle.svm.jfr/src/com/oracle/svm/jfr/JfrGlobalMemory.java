@@ -24,15 +24,18 @@
  */
 package com.oracle.svm.jfr;
 
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Manages the global JFR memory. A lot of the methods must be uninterruptible to ensure that we can
@@ -45,6 +48,7 @@ public class JfrGlobalMemory {
     private long bufferCount;
     private long bufferSize;
     private JfrBuffers buffers;
+    private JfrBuffers tmpBuffers;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGlobalMemory() {
@@ -60,6 +64,8 @@ public class JfrGlobalMemory {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize));
             buffers.addressOf(i).write(buffer);
         }
+
+        tmpBuffers = UnmanagedMemory.calloc(SizeOf.unsigned(JfrBuffers.class).multiply(WordFactory.unsigned(bufferCount)));
     }
 
     public void teardown() {
@@ -71,6 +77,17 @@ public class JfrGlobalMemory {
             UnmanagedMemory.free(buffers);
             buffers = WordFactory.nullPointer();
         }
+
+        if (tmpBuffers.isNonNull()) {
+            for (int i = 0; i < bufferCount; i++) {
+                JfrBuffer buffer = tmpBuffers.addressOf(i).read();
+                if (buffer.isNonNull()) {
+                    JfrBufferAccess.free(buffer);
+                }
+            }
+            UnmanagedMemory.free(tmpBuffers);
+            tmpBuffers = WordFactory.nullPointer();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -80,8 +97,58 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public JfrBuffers getTempBuffers() {
+        assert tmpBuffers.isNonNull();
+        return tmpBuffers;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getBufferCount() {
         return bufferCount;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public JfrBuffer provisionTempBuffer(UnsignedWord size) {
+       assert tmpBuffers.isNonNull();
+       JfrBuffer tmpBuffer = JfrBufferAccess.allocate(size);
+       if (tmpBuffer.isNull()) {
+           return WordFactory.nullPointer();
+       }
+
+       tmpBuffer.setTempBuffer(true);
+        for (int i = 0; i < bufferCount; i++) {
+            JfrBuffers bufferLocation = tmpBuffers.addressOf(i);
+            JfrBuffer buffer = bufferLocation.read();
+            if (buffer.isNull() &&
+                ((Pointer) bufferLocation).logicCompareAndSwapWord(0, WordFactory.nullPointer(), tmpBuffer, NamedLocationIdentity.OFF_HEAP_LOCATION)) {
+                return tmpBuffer;
+            }
+        }
+        JfrBufferAccess.free(tmpBuffer);
+        return WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean release(JfrBuffer buffer) {
+        if (!buffer.isTempBuffer()) {
+            return false;
+        }
+
+        if (!JfrBufferAccess.isEmpty(buffer)) {
+            VMError.shouldNotReachHere("No empty temp buffer");
+            return false;
+        }
+
+        // Find location of tmpBuffers
+        for (int i = 0; i < bufferCount; i++) {
+            if (buffer.equal(tmpBuffers.addressOf(i).read())) {
+                tmpBuffers.addressOf(i).write(WordFactory.nullPointer());
+                JfrBufferAccess.free(buffer);
+                return true;
+            }
+        }
+        VMError.shouldNotReachHere("Temporary buffer is not in the list");
+        return false;
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")

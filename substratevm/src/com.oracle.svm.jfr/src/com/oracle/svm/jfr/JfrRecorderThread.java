@@ -107,6 +107,23 @@ public class JfrRecorderThread extends Thread {
                 }
             }
         }
+
+        // Flush temp buffers
+        buffers = globalMemory.getTempBuffers();
+        for (int i = 0; i < globalMemory.getBufferCount(); i++) {
+            JfrBuffer buffer = buffers.addressOf(i).read();
+            if (buffer.isNonNull()) {
+                assert buffer.isTempBuffer();
+                boolean shouldNotify = persistBuffer(chunkWriter, buffer);
+                if (shouldNotify) {
+                    // Checkstyle: stop
+                    synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
+                        Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
+                    }
+                    // Checkstyle: resume
+                }
+            }
+        }
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
