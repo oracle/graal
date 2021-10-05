@@ -29,7 +29,7 @@ import org.junit.Test;
 
 public class MulNegateTest extends GraalCompilerTest {
 
-    public static final int[] INT_TEST_CASES = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE};
+    public static final int[] INT_TEST_VALUES = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE};
 
     public static int mulInt(int x, int y) {
         return -x * -y;
@@ -39,27 +39,62 @@ public class MulNegateTest extends GraalCompilerTest {
     public void testInt() {
         assertTrue(getFinalGraph("mulInt").getNodes().filter(NegateNode.class).count() == 0);
 
-        for (int i : INT_TEST_CASES) {
-            for (int j : INT_TEST_CASES) {
+        for (int i : INT_TEST_VALUES) {
+            for (int j : INT_TEST_VALUES) {
                 test("mulInt", i, j);
             }
         }
     }
 
-    public static final float[] FLOAT_TEST_CASES = {0.0f, -0.0f, 1.0f, -1.0f, Float.MIN_VALUE, Float.MIN_NORMAL,
+    public static final long[] LONG_TEST_VALUES = {0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE};
+
+    public static long mulLong(long x, long y) {
+        return -x * -y;
+    }
+
+    @Test
+    public void testLong() {
+        assertTrue(getFinalGraph("mulLong").getNodes().filter(NegateNode.class).count() == 0);
+
+        for (long i : LONG_TEST_VALUES) {
+            for (long j : LONG_TEST_VALUES) {
+                test("mulLong", i, j);
+            }
+        }
+    }
+
+    public static final float[] FLOAT_TEST_VALUES = {0.0f, -0.0f, 1.0f, -1.0f, Float.MIN_VALUE, Float.MIN_NORMAL,
                     Float.MAX_VALUE, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, Float.NaN};
 
-    public static float mulFlt(float x, float y) {
+    public static float mulFloat(float x, float y) {
         return -x * -y;
     }
 
     @Test
     public void testFloat() {
-        assertTrue(getFinalGraph("mulFlt").getNodes().filter(NegateNode.class).count() == 0);
+        assertTrue(getFinalGraph("mulFloat").getNodes().filter(NegateNode.class).count() == 0);
 
-        for (float i : FLOAT_TEST_CASES) {
-            for (float j : FLOAT_TEST_CASES) {
-                test("mulFlt", i, j);
+        for (float i : FLOAT_TEST_VALUES) {
+            for (float j : FLOAT_TEST_VALUES) {
+                test("mulFloat", i, j);
+            }
+        }
+    }
+
+    public static final double[] DOUBLE_TEST_VALUES = {0.0d, -0.0d, 1.0d, -1.0d, Double.MIN_VALUE, Double.MIN_NORMAL,
+                    Double.MAX_VALUE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, Double.NaN};
+
+    public static double mulDouble(double x, double y) {
+        return -x * -y;
+    }
+
+    @Test
+    public void testDouble() {
+        assertTrue(getFinalGraph("mulDouble").getNodes().filter(NegateNode.class).count() == 0);
+
+        for (double i : DOUBLE_TEST_VALUES) {
+            for (double j : DOUBLE_TEST_VALUES) {
+                test("mulDouble", i, j);
             }
         }
     }
