@@ -30,9 +30,9 @@ custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
 
-non-product-vm-components: "nju,nic,dis,pbm,llmulrl,elau"
+non-product-vm-components: "nju,dis,pbm,llmulrl,elau"
 non-product-vm-components-windows: ${non-product-vm-components}",llp"
-non-product-native-launchers: "RMain,polybench"
+non-product-native-launchers: "RMain,polybench,native-image-configure"
 
 vm_setup: {
   short_name: ce
