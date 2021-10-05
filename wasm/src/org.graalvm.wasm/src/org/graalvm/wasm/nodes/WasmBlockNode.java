@@ -120,6 +120,8 @@ import static org.graalvm.wasm.constants.Instructions.I32_DIV_S;
 import static org.graalvm.wasm.constants.Instructions.I32_DIV_U;
 import static org.graalvm.wasm.constants.Instructions.I32_EQ;
 import static org.graalvm.wasm.constants.Instructions.I32_EQZ;
+import static org.graalvm.wasm.constants.Instructions.I32_EXTEND16_S;
+import static org.graalvm.wasm.constants.Instructions.I32_EXTEND8_S;
 import static org.graalvm.wasm.constants.Instructions.I32_GE_S;
 import static org.graalvm.wasm.constants.Instructions.I32_GE_U;
 import static org.graalvm.wasm.constants.Instructions.I32_GT_S;
@@ -168,6 +170,9 @@ import static org.graalvm.wasm.constants.Instructions.I64_DIV_S;
 import static org.graalvm.wasm.constants.Instructions.I64_DIV_U;
 import static org.graalvm.wasm.constants.Instructions.I64_EQ;
 import static org.graalvm.wasm.constants.Instructions.I64_EQZ;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND16_S;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND32_S;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND8_S;
 import static org.graalvm.wasm.constants.Instructions.I64_EXTEND_I32_S;
 import static org.graalvm.wasm.constants.Instructions.I64_EXTEND_I32_U;
 import static org.graalvm.wasm.constants.Instructions.I64_GE_S;
@@ -1440,6 +1445,21 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
+                    break;
+                case I32_EXTEND8_S:
+                    i32_extend8_s(stacklocals, stackPointer);
+                    break;
+                case I32_EXTEND16_S:
+                    i32_extend16_s(stacklocals, stackPointer);
+                    break;
+                case I64_EXTEND8_S:
+                    i64_extend8_s(stacklocals, stackPointer);
+                    break;
+                case I64_EXTEND16_S:
+                    i64_extend16_s(stacklocals, stackPointer);
+                    break;
+                case I64_EXTEND32_S:
+                    i64_extend32_s(stacklocals, stackPointer);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -3009,6 +3029,36 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         float x = popAsFloat(stack, stackPointer - 1);
         double result = x;
         pushDouble(stack, stackPointer - 1, result);
+    }
+
+    private void i32_extend8_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int result = x << 24 >> 24;
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_extend16_s(long[] stack, int stackPointer) {
+        int x = popInt(stack, stackPointer - 1);
+        int result = x << 16 >> 16;
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i64_extend8_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = x << 56 >> 56;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_extend16_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = x << 48 >> 48;
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_extend32_s(long[] stack, int stackPointer) {
+        long x = pop(stack, stackPointer - 1);
+        long result = x << 32 >> 32;
+        push(stack, stackPointer - 1, result);
     }
 
     // Checkstyle: resume method name check

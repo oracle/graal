@@ -1,6 +1,10 @@
-# Wasm (GraalWasm (GraalVM Implementation of WebAssembly) Changelog
+# GraalVM WebAssembly (GraalWasm) Changelog
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
+
+## Version 22.0.0
+
+* Implemented the [Sign-Extension-Ops](https://github.com/WebAssembly/sign-extension-ops) proposal. It is available behind the experimental option `--wasm.sign-extension-ops`.
 
 ## Version 21.3.0
 

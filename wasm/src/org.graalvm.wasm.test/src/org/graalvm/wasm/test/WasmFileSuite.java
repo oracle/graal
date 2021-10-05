@@ -303,6 +303,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option(saturatingFloatToIntProperty, saturatingFloatToIntValue);
             }
 
+            final String signExtensionOpsProperty = "wasm." + WasmOptions.SIGN_EXTENSION_OPS_NAME;
+            final String signExtensionOpsValue = testCase.options().getProperty(signExtensionOpsProperty);
+            if (signExtensionOpsValue != null) {
+                contextBuilder.option(signExtensionOpsProperty, signExtensionOpsValue);
+            }
+
             final String envString = testCase.options().getProperty("env");
             if (envString != null) {
                 for (String var : envString.split(" ")) {
