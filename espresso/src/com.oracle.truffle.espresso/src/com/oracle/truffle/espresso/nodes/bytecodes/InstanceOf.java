@@ -30,6 +30,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -222,11 +223,13 @@ public abstract class InstanceOf extends Node {
     abstract static class ConstantClass extends InstanceOf {
 
         private final ObjectKlass superType;
-        protected final Assumption superTypeIsLeaf;
 
         ConstantClass(ObjectKlass superType) {
             this.superType = superType;
-            this.superTypeIsLeaf = EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(this.superType).getAssumption();
+        }
+
+        protected LeafTypeAssumption getLeafAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType);
         }
 
         /**
@@ -234,11 +237,12 @@ public abstract class InstanceOf extends Node {
          * {@code superType} iff it is equal to {@code superType}.
          */
         @Specialization(assumptions = "superTypeIsLeaf")
-        public boolean doLeaf(ObjectKlass maybeSubtype) {
+        public boolean doLeaf(ObjectKlass maybeSubtype,
+                        @SuppressWarnings("unused") @Cached("getLeafAssumption().getAssumption()") Assumption superTypeIsLeaf) {
             return superType == maybeSubtype;
         }
 
-        @Specialization(guards = "!superTypeIsLeaf.isValid()")
+        @Specialization(replaces = "doLeaf")
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             return superType == maybeSubtype || superType.checkOrdinaryClassSubclassing(maybeSubtype);
         }
