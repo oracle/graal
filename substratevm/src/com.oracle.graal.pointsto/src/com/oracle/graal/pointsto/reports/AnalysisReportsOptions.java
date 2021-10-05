@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
@@ -37,6 +39,15 @@ public class AnalysisReportsOptions {
 
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
+
+    @Option(help = "Change the output format of the analysis call tree. See: Reports.md.")//
+    public static final EnumOptionKey<CallTreeType> PrintAnalysisCallTreeType = new EnumOptionKey<CallTreeType>(CallTreeType.TXT) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, CallTreeType oldValue, CallTreeType newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            PrintAnalysisCallTree.update(values, true);
+        }
+    };
 
     @Option(help = "Print image object hierarchy.")//
     public static final OptionKey<Boolean> PrintImageObjectTree = new OptionKey<>(false);
@@ -52,4 +63,9 @@ public class AnalysisReportsOptions {
 
     @Option(help = "Suppress the expansion of specified types. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressTypes = new OptionKey<>("");
+
+    enum CallTreeType {
+        TXT,
+        CSV;
+    }
 }
