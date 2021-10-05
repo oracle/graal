@@ -94,7 +94,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
     private static final Object GRAPH_CACHE_CLEARED = "cleared by cleanupAfterAnalysis";
 
-    private StructuredGraph analyzedGraph;
+    private volatile StructuredGraph analyzedGraph;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all

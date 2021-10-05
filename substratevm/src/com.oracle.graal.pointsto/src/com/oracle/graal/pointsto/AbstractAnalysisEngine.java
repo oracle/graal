@@ -62,11 +62,12 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final UnsupportedFeatures unsupportedFeatures;
     protected final DebugContext debug;
     protected final OptionValues options;
-    private final AnalysisUniverse universe;
+    protected final AnalysisUniverse universe;
     private final List<DebugHandlersFactory> debugHandlerFactories;
     private final HeapScanningPolicy heapScanningPolicy;
     private final Replacements replacements;
     protected final CompletionExecutor executor;
+    protected final AnalysisTiming timing;
 
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
@@ -79,7 +80,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.hostVM = hostVM;
         this.executorService = executorService;
         this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.executor.init(null);
+        this.timing = new AnalysisTiming();
+        this.executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;
         this.replacements = providers.getReplacements();
@@ -208,5 +210,20 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public Replacements getReplacements() {
         return replacements;
+    }
+
+    private class AnalysisTiming extends PointsToAnalysis.BucketTiming {
+
+        @Override
+        public void printHeader() {
+            super.printHeader();
+            System.out.println();
+        }
+
+        @Override
+        public void print() {
+            super.print();
+            System.out.println();
+        }
     }
 }

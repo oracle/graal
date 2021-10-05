@@ -66,7 +66,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 // System.out.println("1 Analyzed graph: " + method.getAnalyzedGraph());
         if (method.isIntrinsicMethod()) {
             System.err.println("this is intrinsic: " + method);
-//            return MethodSummary.EMPTY;
+// return MethodSummary.EMPTY;
         }
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.getEncodedGraph() == null) {
@@ -75,7 +75,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(method, Node.NodeIntrinsic.class)) {
             System.err.println("parsing an intrinsic: " + method);
-//            return MethodSummary.EMPTY;
+// return MethodSummary.EMPTY;
         }
 // System.out.println("2 Analyzed graph: " + method.getAnalyzedGraph());
 // System.out.println("analysis parsed graph " + analysisParsedGraph);
@@ -89,6 +89,11 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
         // to preserve the graphs for compilation
         method.setAnalyzedGraph(decoded);
+        ResolvedJavaMethod wrapped = method.wrapped;
+        while (wrapped instanceof AnalysisMethod) {
+            wrapped = ((AnalysisMethod) wrapped).wrapped;
+        }
+        AnalysisUniverse.graphs.put(wrapped, decoded);
 
         List<AnalysisType> accessedTypes = new ArrayList<>();
         List<AnalysisType> instantiatedTypes = new ArrayList<>();
@@ -132,8 +137,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
                 AnalysisMethod targetMethod = analysisMethod(node.getTargetMethod());
-                if (targetMethod == null)
+                if (targetMethod == null) {
                     continue;
+                }
                 if (kind.isDirect()) {
                     implementationInvokedMethods.add(targetMethod);
                 } else {

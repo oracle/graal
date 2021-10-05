@@ -126,16 +126,16 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void onMethodImplementationInvoked(AnalysisMethod method) {
         if (!processed.add(method)) {
-// System.err.println("Method " + method + " has already been processed");
-            return;
+            System.err.println("Method " + method + " has already been processed");
+//            return;
         }
         if (!processed2.add(method.getQualifiedName())) {
-// System.err.println("Method " + method + " has already been processed");
-            return;
+            System.err.println("Method " + method + " has already been processed");
+//            return;
         }
         if (method.isNative()) {
             System.err.println("native method " + method);
-//            return;
+// return;
         }
         try {
             MethodSummary summary = methodSummaryProvider.getSummary(this, method);
@@ -143,7 +143,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 markMethodInvoked(invokedMethod);
             }
             for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-                markMethodInvoked(invokedMethod);
+// markMethodInvoked(invokedMethod);
                 markMethodImplementationInvoked(invokedMethod, method);
             }
             for (AnalysisType type : summary.accessedTypes) {
@@ -175,7 +175,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             System.err.println("Parsing reason: " + method.getReason());
             ex.printStackTrace();
         }
-        if (method.getName().contains("VTable")) {
+        if (method.getName().contains("VTable") || method.getName().equals("getMutexes") || method.getName().equals("position")) {
             System.out.println("Successfully parsed " + method);
         }
     }
@@ -231,16 +231,18 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     @Override
     public boolean finish() throws InterruptedException {
+        universe.setAnalysisDataValid(false);
         for (int i = 0; i < 10; i++) {
             if (!executor.isStarted()) {
                 executor.start();
             }
             executor.complete();
             executor.shutdown();
-            executor.init();
+            executor.init(timing);
 
             checkObjectGraph();
         }
+        universe.setAnalysisDataValid(true);
         return true;
 // while (true) {
 // boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
