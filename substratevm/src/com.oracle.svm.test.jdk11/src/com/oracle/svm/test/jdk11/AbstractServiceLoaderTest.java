@@ -27,6 +27,7 @@ package com.oracle.svm.test.jdk11;
 import java.util.HashSet;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.ServiceLoader.Provider;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -41,8 +42,8 @@ import org.junit.Test;
  * Tests a corner case with respect to an abstract class being registered as a
  * {@linkplain ServiceLoader service}. Although abstract service class cannot be instantiated, it is
  * possible to get its {@link Class} because {@link ServiceLoader#stream()} does not force
- * instantiation as it is a {@link java.util.stream.Stream} of {@link ServiceLoader.Provider}. This
- * is in contrast to {@link ServiceLoader#iterator()}, which iterates the instances.
+ * instantiation as it is a {@link java.util.stream.Stream} of {@link Provider}. This is in contrast
+ * to {@link ServiceLoader#iterator()}, which iterates the instances.
  */
 public class AbstractServiceLoaderTest {
 

@@ -93,6 +93,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // security.checkPermission deprecated on JDK 17.
     public void close() throws IOException {
         SecurityManager security = System.getSecurityManager();
         if (security != null) {

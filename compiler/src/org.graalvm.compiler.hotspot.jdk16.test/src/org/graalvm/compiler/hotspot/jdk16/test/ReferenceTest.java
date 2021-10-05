@@ -62,10 +62,10 @@ public class ReferenceTest extends GraalCompilerTest {
     @Test
     public void testPhantomReference() {
         Object referent = new Object();
-        test("snippet2", new PhantomReference<Object>(referent, new ReferenceQueue<>()), referent);
-        test("snippet2", new PhantomReference<Object>(referent, new ReferenceQueue<>()), null);
-        test("snippet2", new PhantomReference<Object>(null, new ReferenceQueue<>()), referent);
-        test("snippet2", new PhantomReference<Object>(null, new ReferenceQueue<>()), null);
+        test("snippet2", new PhantomReference<>(referent, new ReferenceQueue<>()), referent);
+        test("snippet2", new PhantomReference<>(referent, new ReferenceQueue<>()), null);
+        test("snippet2", new PhantomReference<>(null, new ReferenceQueue<>()), referent);
+        test("snippet2", new PhantomReference<>(null, new ReferenceQueue<>()), null);
     }
 
     @Override

@@ -125,7 +125,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         return 1;
     }
 
-    private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) {
+    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) {
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
         byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);
@@ -136,7 +136,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         writer.writeBytes(value);
     }
 
-    private void replaceDotWithSlash(byte[] utf8String) {
+    private static void replaceDotWithSlash(byte[] utf8String) {
         for (int i = 0; i < utf8String.length; i++) {
             if (utf8String[i] == '.') {
                 utf8String[i] = '/';

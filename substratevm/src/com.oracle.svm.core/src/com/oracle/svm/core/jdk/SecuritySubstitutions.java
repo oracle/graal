@@ -532,30 +532,33 @@ final class AllPermissionsPolicy extends Policy {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public PermissionCollection getPermissions(CodeSource codesource) {
         return allPermissions();
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public PermissionCollection getPermissions(ProtectionDomain domain) {
         return allPermissions();
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
     }
 }
 
 /**
- * This class is instantiated indirectly from the {@link Policy#getInstance} methods via the
+ * This class is instantiated indirectly from the {@code Policy#getInstance} methods via the
  * {@link java.security.Security#getProviders security provider} abstractions. We could just
- * substitute the {@link Policy#getInstance} methods to return
- * {@link AllPermissionsPolicy#SINGLETON}, this version is more fool-proof in case someone manually
- * registers security providers for reflective instantiation.
+ * substitute the Policy.getInstance methods to return {@link AllPermissionsPolicy#SINGLETON}, this
+ * version is more fool-proof in case someone manually registers security providers for reflective
+ * instantiation.
  */
 @TargetClass(className = "sun.security.provider.PolicySpiFile")
-@SuppressWarnings({"unused", "static-method"})
+@SuppressWarnings({"unused", "static-method", "deprecation"})
 final class Target_sun_security_provider_PolicySpiFile {
 
     @Substitute
@@ -563,16 +566,19 @@ final class Target_sun_security_provider_PolicySpiFile {
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private PermissionCollection engineGetPermissions(CodeSource codesource) {
         return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private PermissionCollection engineGetPermissions(ProtectionDomain d) {
         return AllPermissionsPolicy.SINGLETON.getPermissions(d);
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private boolean engineImplies(ProtectionDomain d, Permission p) {
         return AllPermissionsPolicy.SINGLETON.implies(d, p);
     }

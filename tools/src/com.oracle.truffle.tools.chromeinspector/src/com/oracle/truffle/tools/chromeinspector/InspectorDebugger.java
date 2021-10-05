@@ -1270,6 +1270,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
         private final ThreadGroup group;
 
+        @SuppressWarnings("deprecation")
         SchedulerThreadFactory() {
             SecurityManager s = System.getSecurityManager();
             this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();

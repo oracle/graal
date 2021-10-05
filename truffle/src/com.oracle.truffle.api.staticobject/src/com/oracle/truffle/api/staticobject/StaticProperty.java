@@ -71,6 +71,7 @@ import sun.misc.Unsafe;
  * @see StaticShape.Builder#property(StaticProperty, Class, boolean).
  * @since 21.3.0
  */
+@SuppressWarnings("cast") // make ecj happy
 public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
     private static final byte STORE_AS_FINAL = (byte) (1 << 7);
@@ -84,7 +85,7 @@ public abstract class StaticProperty {
 
     /**
      * Constructor for subclasses.
-     * 
+     *
      * @since 21.3.0
      */
     protected StaticProperty() {
