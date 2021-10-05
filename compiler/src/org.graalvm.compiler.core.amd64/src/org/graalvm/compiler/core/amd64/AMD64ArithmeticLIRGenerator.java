@@ -1470,10 +1470,10 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     /**
-     * Emits code for a branchless floating-point Math.max/Math.min operation. Requires AVX.
+     * Emits code for a branchless floating-point Math.min/Math.max operation. Requires AVX.
      *
-     * Supports (scalarReg,scalarReg) and (vectorReg,vectorReg) operands. Vector registers can be
-     * XMM and YMM (128 and 256 bit), but not ZMM (512 bit) registers.
+     * Supports (scalarReg,scalarReg), (scalarReg,scalarConst), and (vectorReg,vectorReg) operands.
+     * Vector registers can be XMM and YMM (128 and 256 bit), but not ZMM (512 bit) registers.
      *
      * @see Math#max(double, double)
      * @see Math#max(float, float)
@@ -1515,20 +1515,62 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         // so that if one is -0.0 and the other is +0.0, the correct result is in b', i.e.:
         // min: a' = +0.0, b' = -0.0 (negative values in a are moved to b').
         // max: a' = -0.0, b' = +0.0 (negative values in b are moved to a').
-        AllocatableValue signVector = asAllocatable(min ? a : b);
-        AllocatableValue selectMask = signVector;
-        AllocatableValue atmp = emitVectorBlend(a, b, selectMask);
-        AllocatableValue btmp = emitVectorBlend(b, a, selectMask);
+        AllocatableValue atmp;
+        AllocatableValue btmp;
+        boolean checkAndMergeNaN = true;
+        if (kind.getVectorLength() == 1 && isJavaConstant(b)) {
+            // Optimized case for scalar constants (only).
+            JavaConstant constant = asJavaConstant(b);
+            if (kind == AMD64Kind.DOUBLE && Double.isNaN(constant.asDouble()) ||
+                            kind == AMD64Kind.SINGLE && Float.isNaN(constant.asFloat())) {
+                // The result is always NaN.
+                return b;
+            }
+
+            // Ensure the correct order if the constant is -0.0/+0.0.
+            // If the constant is in src1, we can skip the NaN check, too.
+            boolean reorder = true;
+            if (min) {
+                // min: If const is -0.0, order registers so that if a is +0.0, the result is -0.0.
+                if ((kind == AMD64Kind.DOUBLE && Double.doubleToRawLongBits(constant.asDouble()) == Double.doubleToRawLongBits(-0.0)) ||
+                                (kind == AMD64Kind.SINGLE && Float.floatToRawIntBits(constant.asFloat()) == Float.floatToRawIntBits(-0.0f))) {
+                    reorder = false;
+                }
+            } else {
+                // max: If const is +0.0, order registers so that if a is -0.0, the result is +0.0.
+                if (((kind == AMD64Kind.DOUBLE && Double.doubleToRawLongBits(constant.asDouble()) == Double.doubleToRawLongBits(0.0)) ||
+                                (kind == AMD64Kind.SINGLE && Float.floatToRawIntBits(constant.asFloat()) == Float.floatToRawIntBits(0.0f)))) {
+                    reorder = false;
+                }
+            }
+
+            if (reorder) {
+                atmp = asAllocatable(b);
+                btmp = asAllocatable(a);
+                // Because a is already in src2 (and b is not NaN), no NaN check is required.
+                checkAndMergeNaN = false;
+            } else {
+                atmp = asAllocatable(a);
+                btmp = asAllocatable(b);
+            }
+        } else {
+            AllocatableValue signVector = asAllocatable(min ? a : b);
+            AllocatableValue selectMask = signVector;
+            atmp = emitVectorBlend(a, b, selectMask);
+            btmp = emitVectorBlend(b, a, selectMask);
+        }
 
         // vmaxps/vmaxpd/vminps/vminpd result, a', b'
         AllocatableValue result = emitBinary(resultKind, minmaxop, atmp, btmp);
 
-        // move NaN elements in a to result (result' = isNaN(a) ? a : result)
-        // maskNaN = vcmpunordps/vcmpunordpd a', a'
-        AllocatableValue maskNaN = getLIRGen().newVariable(LIRKind.value(kind));
-        getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, maskNaN, atmp, atmp, VexFloatCompareOp.Predicate.UNORD_Q));
-        // vblendvps/vblendvpd result', result, atmp, maskNaN
-        result = emitVectorBlend(result, atmp, maskNaN);
+        if (checkAndMergeNaN) {
+            // move NaN elements in a to result (result' = isNaN(a) ? a : result)
+            // maskNaN = vcmpunordps/vcmpunordpd a', a'
+            AllocatableValue maskNaN = getLIRGen().newVariable(LIRKind.value(kind));
+            getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, maskNaN, atmp, atmp, VexFloatCompareOp.Predicate.UNORD_Q));
+            // vblendvps/vblendvpd result', result, atmp, maskNaN
+            result = emitVectorBlend(result, atmp, maskNaN);
+        }
         return result;
     }
 
