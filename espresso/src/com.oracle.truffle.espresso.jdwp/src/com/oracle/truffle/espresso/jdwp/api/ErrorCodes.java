@@ -35,6 +35,7 @@ public final class ErrorCodes {
     public static final int INVALID_FRAMEID = 30;
     public static final int OPAQUE_FRAME = 32;
     public static final int INVALID_SLOT = 35;
+    public static final int INVALID_MODULE = 42;
     public static final int INVALID_CLASS_FORMAT = 60;
     public static final int FAILS_VERIFICATION = 62;
     public static final int ADD_METHOD_NOT_IMPLEMENTED = 63;

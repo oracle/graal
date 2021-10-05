@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
@@ -40,6 +42,13 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     protected EntryTable(ReadWriteLock lock) {
         this.readBlock = new BlockLock(lock.readLock());
         this.writeBlock = new BlockLock(lock.writeLock());
+    }
+
+    @SuppressWarnings("try")
+    public Collection<T> values() {
+        try (BlockLock block = read()) {
+            return Collections.unmodifiableCollection(entries.values());
+        }
     }
 
     public static final class BlockLock implements AutoCloseable {

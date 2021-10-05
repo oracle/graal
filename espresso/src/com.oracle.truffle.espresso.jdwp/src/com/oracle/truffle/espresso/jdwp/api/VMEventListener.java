@@ -37,7 +37,7 @@ public interface VMEventListener extends VMListener {
 
     void breakpointHit(BreakpointInfo info, CallFrame frame, Object currentThread);
 
-    void vmDied();
+    boolean vmDied();
 
     void addClassUnloadRequestId(int id);
 
@@ -47,7 +47,7 @@ public interface VMEventListener extends VMListener {
 
     void addVMStartRequest(int id);
 
-    void addVMDeathRequest(int id);
+    void addVMDeathRequest(int id, byte suspendPolicy);
 
     void addClassPrepareRequest(ClassPrepareRequest request);
 

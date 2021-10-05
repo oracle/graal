@@ -65,6 +65,7 @@ import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -1565,4 +1566,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     // endregion jdwp-specific
+
+    @Override
+    public final ModuleRef getModule() {
+        return module();
+    }
 }
