@@ -243,7 +243,6 @@ import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.bytecode.Bytecodes.TABLESWITCH;
 import static org.graalvm.compiler.bytecode.Bytecodes.nameOf;
 import static org.graalvm.compiler.core.common.GraalOptions.DeoptALot;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
@@ -409,9 +408,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvokeDynamicPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.ProfilingPlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
@@ -1122,12 +1119,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     genMonitorEnter(methodSynchronizedObject, bci());
                 }
 
-                ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
-                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                    FrameState stateBefore = createCurrentFrameState();
-                    profilingPlugin.profileInvoke(this, method, stateBefore);
-                }
-
                 genInfoPointNode(InfopointReason.METHOD_START, null);
             }
 
@@ -1487,12 +1478,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genGoto() {
-        ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
-        if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-            FrameState stateBefore = createCurrentFrameState();
-            int targetBci = currentBlock.getSuccessor(0).startBci;
-            profilingPlugin.profileGoto(this, method, bci(), targetBci, stateBefore);
-        }
         appendGoto(currentBlock.getSuccessor(0));
         assert currentBlock.numNormalSuccessors() == 1;
     }
@@ -1742,40 +1727,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
         assert opcode == INVOKEDYNAMIC || opcode == INVOKEVIRTUAL;
 
-        InvokeDynamicPlugin invokeDynamicPlugin = graphBuilderConfig.getPlugins().getInvokeDynamicPlugin();
-
-        if (opcode == INVOKEVIRTUAL && invokeDynamicPlugin != null && !invokeDynamicPlugin.isResolvedDynamicInvoke(this, cpi, opcode)) {
-            // regular invokevirtual, let caller handle it
-            return false;
-        }
-
-        if (GeneratePIC.getValue(options) && (invokeDynamicPlugin == null || !invokeDynamicPlugin.supportsDynamicInvoke(this, cpi, opcode))) {
-            // bail out if static compiler and no dynamic type support
-            append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-            return true;
-        }
-
         JavaConstant appendix = constantPool.lookupAppendix(cpi, opcode);
         ValueNode appendixNode = null;
 
         if (appendix != null) {
-            if (invokeDynamicPlugin != null) {
-                invokeDynamicPlugin.recordDynamicMethod(this, cpi, opcode, target);
-
-                // Will perform runtime type checks and static initialization
-                FrameState stateBefore = createCurrentFrameState();
-                appendixNode = invokeDynamicPlugin.genAppendixNode(this, cpi, opcode, appendix, stateBefore);
-            } else {
-                appendixNode = ConstantNode.forConstant(appendix, getMetaAccess(), graph);
-            }
+            appendixNode = ConstantNode.forConstant(appendix, getMetaAccess(), graph);
 
             frameState.push(JavaKind.Object, appendixNode);
 
-        } else if (GeneratePIC.getValue(options)) {
-            // Need to emit runtime guard and perform static initialization.
-            // Not implemented yet.
-            append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-            return true;
         }
 
         boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
@@ -3672,11 +3631,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         BciBlock falseBlock = falseBlockInput;
         LogicNode condition = conditionInput;
         BranchProbabilityData profileData = originalProfileData;
-        FrameState stateBefore = null;
-        ProfilingPlugin profilingPlugin = this.graphBuilderConfig.getPlugins().getProfilingPlugin();
-        if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-            stateBefore = createCurrentFrameState();
-        }
 
         // Remove a logic negation node.
         if (condition instanceof LogicNegationNode) {
@@ -3714,9 +3668,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 }
                 boolean negated = deoptBlock == trueBlock;
                 if (!isPotentialCountedLoopExit(condition, deoptBlock)) {
-                    if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                        profilingPlugin.profileGoto(this, method, bci(), noDeoptBlock.startBci, stateBefore);
-                    }
                     append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, negated, survivingSuccessorPosition));
                     appendGoto(noDeoptBlock);
                 } else {
@@ -3736,10 +3687,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     append(ifNode);
                 }
                 return;
-            }
-
-            if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                profilingPlugin.profileIf(this, method, bci(), condition, trueBlock.startBci, falseBlock.startBci, stateBefore);
             }
 
             int oldBci = stream.currentBCI();
@@ -3862,19 +3809,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         if (targetAtStart == Bytecodes.GOTO && nextBlock.getPredecessorCount() == 1) {
             // This is an empty block. Skip it.
             BciBlock successorBlock = nextBlock.successors.get(0);
-            ProfilingPlugin profilingPlugin = graphBuilderConfig.getPlugins().getProfilingPlugin();
-            if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                FrameState stateBefore = createCurrentFrameState();
-                profilingPlugin.profileGoto(this, method, bci(), successorBlock.startBci, stateBefore);
-            }
             appendGoto(successorBlock);
             assert nextBlock.numNormalSuccessors() == 1;
         } else {
-            ProfilingPlugin profilingPlugin = graphBuilderConfig.getPlugins().getProfilingPlugin();
-            if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                FrameState stateBefore = createCurrentFrameState();
-                profilingPlugin.profileGoto(this, method, bci(), nextBlock.startBci, stateBefore);
-            }
             appendGoto(nextBlock);
         }
     }
@@ -4789,10 +4726,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     private void genGetField(ResolvedJavaField resolvedField, ValueNode receiver) {
-        if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-            graph.recordField(resolvedField);
-        }
-
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleLoadField(this, receiver, resolvedField)) {
                 return;
@@ -4886,10 +4819,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             ValueNode receiver = maybeEmitExplicitNullCheck(receiverInput);
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
 
-            if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-                graph.recordField(resolvedField);
-            }
-
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 if (plugin.handleStoreField(this, receiver, resolvedField, value)) {
                     return;
@@ -4914,10 +4843,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, null);
         if (resolvedField == null) {
             return;
-        }
-
-        if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-            graph.recordField(resolvedField);
         }
 
         /*
@@ -5008,10 +4933,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, value);
         if (resolvedField == null) {
             return;
-        }
-
-        if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-            graph.recordField(resolvedField);
         }
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();

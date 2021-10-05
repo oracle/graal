@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -93,12 +91,10 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-        if (!ImmutableCode.getValue(b.getOptions()) || b.parsingIntrinsic()) {
-            if (object.isConstant()) {
-                JavaConstant asJavaConstant = object.asJavaConstant();
-                if (tryReadField(b, field, asJavaConstant)) {
-                    return true;
-                }
+        if (object.isConstant()) {
+            JavaConstant asJavaConstant = object.asJavaConstant();
+            if (tryReadField(b, field, asJavaConstant)) {
+                return true;
             }
         }
         if (b.parsingIntrinsic() && wordOperationPlugin.handleLoadField(b, object, field)) {
@@ -109,10 +105,8 @@ public final class HotSpotNodePlugin implements NodePlugin, TypePlugin {
 
     @Override
     public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
-        if (!ImmutableCode.getValue(b.getOptions()) || b.parsingIntrinsic()) {
-            if (tryReadField(b, field, null)) {
-                return true;
-            }
+        if (tryReadField(b, field, null)) {
+            return true;
         }
         if (b.parsingIntrinsic() && wordOperationPlugin.handleLoadStaticField(b, field)) {
             return true;

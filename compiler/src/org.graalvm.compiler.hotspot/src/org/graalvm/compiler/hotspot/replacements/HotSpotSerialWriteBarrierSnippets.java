@@ -28,7 +28,6 @@ import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFI
 
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -50,7 +49,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
     @Override
     public Word cardTableAddress() {
-        return WordFactory.unsigned(GraalHotSpotVMConfigNode.cardTableAddress());
+        return WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
     }
 
     @Override

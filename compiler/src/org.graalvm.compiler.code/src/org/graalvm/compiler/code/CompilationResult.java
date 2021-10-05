@@ -37,7 +37,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -58,7 +57,6 @@ import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.code.site.Site;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -239,33 +237,17 @@ public class CompilationResult {
      */
     private SpeculationLog speculationLog;
 
-    /**
-     * The list of fields that were accessed from the bytecodes.
-     */
-    private ResolvedJavaField[] fields;
-
     private int bytecodeSize;
 
     private boolean hasUnsafeAccess;
 
-    private boolean isImmutablePIC;
-
     public CompilationResult(CompilationIdentifier compilationId) {
-        this(compilationId, null, false);
+        this(compilationId, null);
     }
 
     public CompilationResult(CompilationIdentifier compilationId, String name) {
-        this(compilationId, name, false);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, boolean isImmutablePIC) {
-        this(compilationId, null, isImmutablePIC);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, String name, boolean isImmutablePIC) {
         this.compilationId = compilationId;
         this.name = name;
-        this.isImmutablePIC = isImmutablePIC;
     }
 
     public CompilationResult(String name) {
@@ -406,31 +388,6 @@ public class CompilationResult {
         return speculationLog;
     }
 
-    /**
-     * Sets the fields that were referenced from the bytecodes that were used as input to the
-     * compilation.
-     *
-     * @param accessedFields the collected set of fields accessed during compilation
-     */
-    public void setFields(EconomicSet<ResolvedJavaField> accessedFields) {
-        if (accessedFields != null) {
-            fields = accessedFields.toArray(new ResolvedJavaField[accessedFields.size()]);
-        }
-    }
-
-    /**
-     * Gets the fields that were referenced from bytecodes that were used as input to the
-     * compilation.
-     *
-     * The caller must not modify the contents of the returned array.
-     *
-     * @return {@code null} if the compilation did not record fields dependencies otherwise the
-     *         fields that were accessed from bytecodes were used as input to the compilation.
-     */
-    public ResolvedJavaField[] getFields() {
-        return fields;
-    }
-
     public void setBytecodeSize(int bytecodeSize) {
         checkOpen();
         this.bytecodeSize = bytecodeSize;
@@ -473,10 +430,6 @@ public class CompilationResult {
     public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
         checkOpen();
         this.maxInterpreterFrameSize = maxInterpreterFrameSize;
-    }
-
-    public boolean isImmutablePIC() {
-        return this.isImmutablePIC;
     }
 
     /**

@@ -38,7 +38,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.gc.G1ArrayRangePostWriteBarrier;
@@ -129,14 +128,14 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
     @Override
     protected Word cardTableAddress(Pointer oop) {
-        Word cardTable = WordFactory.unsigned(GraalHotSpotVMConfigNode.cardTableAddress());
+        Word cardTable = WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
         return cardTable.add(oop.unsignedShiftRight(cardTableShift));
     }
 
     @Override
     protected int logOfHeapRegionGrainBytes() {
-        return GraalHotSpotVMConfigNode.logOfHeapRegionGrainBytes();
+        return HotSpotReplacementsUtil.logOfHeapRegionGrainBytes(INJECTED_VMCONFIG);
     }
 
     @Override
@@ -151,7 +150,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
     @Override
     protected boolean verifyOops() {
-        return GraalHotSpotVMConfigNode.verifyOops();
+        return HotSpotReplacementsUtil.verifyOops(INJECTED_VMCONFIG);
     }
 
     @Override

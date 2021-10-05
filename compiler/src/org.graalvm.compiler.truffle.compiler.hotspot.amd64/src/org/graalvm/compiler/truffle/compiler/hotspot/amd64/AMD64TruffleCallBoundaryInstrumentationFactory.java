@@ -80,7 +80,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                             masm.movl(spillRegister, new AMD64Address(thisRegister, installedCodeOffset), true);
                             assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                             CompressEncoding encoding = config.getOopEncoding();
-                            Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(options, encoding) ? registers.getHeapBaseRegister() : Register.None;
+                            Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(encoding) ? registers.getHeapBaseRegister() : Register.None;
                             AMD64Move.UncompressPointerOp.emitUncompressCode(masm, spillRegister, encoding.getShift(), heapBaseRegister, true);
                         } else {
                             // First instruction must be at least 5 bytes long to be safe for

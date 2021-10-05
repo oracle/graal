@@ -737,13 +737,9 @@ public class CompilationResultBuilder {
         }
     }
 
-    public CallContext openCallContext(boolean direct) {
+    public CallContext openCallContext() {
         if (currentCallContext != null) {
             throw GraalError.shouldNotReachHere("Call context already open");
-        }
-        // Currently only AOT requires call context information and only for direct calls.
-        if (compilationResult.isImmutablePIC() && direct) {
-            currentCallContext = new CallContext();
         }
         return currentCallContext;
     }

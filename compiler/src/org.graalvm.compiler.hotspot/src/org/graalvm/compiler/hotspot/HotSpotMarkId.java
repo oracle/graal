@@ -72,6 +72,10 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
         this.value = value;
     }
 
+    public int getValue() {
+        return value;
+    }
+
     @Override
     public String getName() {
         return name();

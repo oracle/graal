@@ -25,20 +25,14 @@
 
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotMarkId;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
-import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -57,10 +51,8 @@ import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
-import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.JavaKind;
 
 public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
@@ -69,14 +61,10 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
 
     private final long heapBase;
     private final Register heapBaseRegister;
-    private final GraalHotSpotVMConfig config;
-    private final boolean generatePIC;
 
-    public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister, OptionValues options) {
+    public AMD64HotSpotAddressLowering(GraalHotSpotVMConfig config, Register heapBaseRegister) {
         this.heapBase = config.getOopEncoding().getBase();
-        this.config = config;
-        this.generatePIC = GeneratePIC.getValue(options);
-        if (heapBase == 0 && !generatePIC) {
+        if (heapBase == 0) {
             this.heapBaseRegister = null;
         } else {
             this.heapBaseRegister = heapBaseRegister;
@@ -91,28 +79,17 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
         }
 
         if (heapBaseRegister != null && encoding.getBase() == heapBase) {
-            if ((!generatePIC || compression.stamp(NodeView.DEFAULT) instanceof ObjectStamp) && other == null) {
-                // With PIC it is only legal to do for oops since the base value may be
-                // different at runtime.
+            if (other == null) {
                 ValueNode base = compression.graph().unique(new HeapBaseNode(heapBaseRegister));
                 addr.setBase(base);
             } else {
                 return false;
             }
-        } else if (encoding.getBase() != 0 || (generatePIC && compression.stamp(NodeView.DEFAULT) instanceof KlassPointerStamp)) {
-            if (generatePIC) {
-                if (other == null) {
-                    ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
-                    addr.setBase(base);
-                } else {
-                    return false;
-                }
+        } else if (encoding.getBase() != 0) {
+            if (updateDisplacement(addr, encoding.getBase(), false)) {
+                addr.setBase(other);
             } else {
-                if (updateDisplacement(addr, encoding.getBase(), false)) {
-                    addr.setBase(other);
-                } else {
-                    return false;
-                }
+                return false;
             }
         } else {
             addr.setBase(other);

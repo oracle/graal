@@ -67,7 +67,7 @@ final class AArch64IndirectCallOp extends IndirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext()) {
             crb.recordMark(HotSpotMarkId.INLINE_INVOKE);
             Register callReg = asRegister(targetAddress);
             assert !callReg.equals(METHOD);

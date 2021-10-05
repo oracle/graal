@@ -25,14 +25,12 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
-import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -60,9 +58,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
@@ -189,36 +185,25 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendTypePlugin(nodePlugin);
             plugins.appendNodePlugin(nodePlugin);
         }
-        if (!GeneratePIC.getValue(options)) {
-            plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), !config.supportsMethodHandleDeoptimizationEntry()));
-        }
+        plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), !config.supportsMethodHandleDeoptimizationEntry()));
         plugins.appendInlineInvokePlugin(replacements);
         if (InlineDuringParsing.getValue(options)) {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        if (GeneratePIC.getValue(options)) {
-            plugins.setClassInitializationPlugin(new HotSpotAOTClassInitializationPlugin());
-            if (TieredAOT.getValue(options)) {
-                plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
-            }
-        } else {
-            if (config.instanceKlassInitThreadOffset != -1) {
-                plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
-            }
+        if (config.instanceKlassInitThreadOffset != -1) {
+            plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
         }
 
         invocationPlugins.defer(new Runnable() {
 
             @Override
             public void run() {
-                registerObjectPlugins(invocationPlugins, options, config, replacements);
+                registerObjectPlugins(invocationPlugins, config, replacements);
                 registerClassPlugins(plugins, config, replacements);
                 registerSystemPlugins(invocationPlugins);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacements);
-                if (!GeneratePIC.getValue(options)) {
-                    registerCallSitePlugins(invocationPlugins);
-                }
+                registerCallSitePlugins(invocationPlugins);
                 registerReflectionPlugins(invocationPlugins, replacements);
                 registerAESPlugins(invocationPlugins, config, replacements);
                 registerCRC32Plugins(invocationPlugins, config, replacements);
@@ -287,29 +272,21 @@ public class HotSpotGraphBuilderPlugins {
 
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerObjectPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Object.class, replacements);
-        if (!GeneratePIC.getValue(options)) {
-            // FIXME: clone() requires speculation and requires a fix in here (to check that
-            // b.getAssumptions() != null), and in ReplacementImpl.getSubstitution() where there is
-            // an instantiation of IntrinsicGraphBuilder using a constructor that sets
-            // AllowAssumptions to YES automatically. The former has to inherit the assumptions
-            // settings from the root compile instead. So, for now, I'm disabling it for
-            // GeneratePIC.
-            r.register1("clone", Receiver.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode object = receiver.get();
-                    b.addPush(JavaKind.Object, new ObjectCloneNode(MacroParams.of(b, targetMethod, object)));
-                    return true;
-                }
+        r.register1("clone", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                b.addPush(JavaKind.Object, new ObjectCloneNode(MacroParams.of(b, targetMethod, object)));
+                return true;
+            }
 
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
         r.register1("hashCode", Receiver.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -995,7 +972,7 @@ public class HotSpotGraphBuilderPlugins {
             r.register2("update", int.class, int.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode arg) {
-                    final ValueNode crcTableRawAddress = b.add(new GraalHotSpotVMConfigNode(config, HotSpotMarkId.CRC_TABLE_ADDRESS, JavaKind.Long));
+                    final ValueNode crcTableRawAddress = ConstantNode.forLong(config.crcTableAddress);
                     ValueNode c = new XorNode(crc, ConstantNode.forInt(-1));
                     ValueNode index = new AndNode(new XorNode(arg, c), ConstantNode.forInt(0xff));
                     ValueNode offset = new LeftShiftNode(index, ConstantNode.forInt(2));

@@ -160,7 +160,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         ResolvedJavaMethod rootMethod = graph.method();
         if (rootMethod != null) {
             result.setMethods(rootMethod, graph.getMethods());
-            result.setFields(graph.getFields());
         }
 
         result.setHasUnsafeAccess(graph.hasUnsafeAccess());
