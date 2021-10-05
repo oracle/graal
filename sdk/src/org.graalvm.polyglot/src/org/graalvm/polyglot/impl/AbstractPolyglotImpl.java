@@ -302,7 +302,18 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract void resetPreInitializedEngine();
 
-    public abstract AbstractSourceFactory getSourceFactory();
+    public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException;
+
+    public abstract String findLanguage(File file) throws IOException;
+
+    public abstract String findLanguage(URL url) throws IOException;
+
+    public abstract String findLanguage(String mimeType);
+
+    public abstract String findMimeType(File file) throws IOException;
+
+    public abstract String findMimeType(URL url) throws IOException;
 
     /**
      * Returns the default host dispatch of this polyglot abstraction.
@@ -339,30 +350,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract void closeExecutionListener(Object impl);
 
         public abstract PolyglotException getExecutionEventException(Object impl);
-
-    }
-
-    public abstract static class AbstractSourceFactory {
-
-        protected final AbstractPolyglotImpl engineImpl;
-
-        protected AbstractSourceFactory(AbstractPolyglotImpl engineImpl) {
-            Objects.requireNonNull(engineImpl);
-            this.engineImpl = engineImpl;
-        }
-
-        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                        throws IOException;
-
-        public abstract String findLanguage(File file) throws IOException;
-
-        public abstract String findLanguage(URL url) throws IOException;
-
-        public abstract String findLanguage(String mimeType);
-
-        public abstract String findMimeType(File file) throws IOException;
-
-        public abstract String findMimeType(URL url) throws IOException;
 
     }
 

@@ -40,14 +40,22 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Reader;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -55,6 +63,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 
+import com.oracle.truffle.api.TruffleFile;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -63,6 +72,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -88,7 +98,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final String OPTION_GROUP_ENGINE = "engine";
     static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
 
-    private final PolyglotSourceFactory sourceFactory = new PolyglotSourceFactory(this);
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
@@ -103,6 +112,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
     private PolyglotValueDispatch disconnectedHostValue;
+    private volatile Object defaultFileSystemContext;
 
     private static volatile PolyglotImpl polyglotImpl;
 
@@ -158,14 +168,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
-    }
-
-    /**
-     * Internal method do not use.
-     */
-    @Override
-    public AbstractSourceFactory getSourceFactory() {
-        return sourceFactory;
     }
 
     /**
@@ -442,6 +444,122 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public AbstractHostAccess createHostAccess() {
         return new PolyglotHostAccess(this);
+    }
+
+    @Override
+    public String findLanguage(File file) throws IOException {
+        Objects.requireNonNull(file);
+        String mimeType = findMimeType(file);
+        if (mimeType != null) {
+            return findLanguage(mimeType);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String findLanguage(URL url) throws IOException {
+        String mimeType = findMimeType(url);
+        if (mimeType != null) {
+            return findLanguage(mimeType);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public String findMimeType(File file) throws IOException {
+        Objects.requireNonNull(file);
+        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        return truffleFile.detectMimeType();
+    }
+
+    @Override
+    public String findMimeType(URL url) throws IOException {
+        Objects.requireNonNull(url);
+        return EngineAccessor.SOURCE.findMimeType(url, getDefaultFileSystemContext());
+    }
+
+    @Override
+    public String findLanguage(String mimeType) {
+        Objects.requireNonNull(mimeType);
+        LanguageCache cache = LanguageCache.languageMimes().get(mimeType);
+        if (cache != null) {
+            return cache.getId();
+        }
+        return null;
+    }
+
+    @Override
+    public org.graalvm.polyglot.Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached,
+                    Charset encoding)
+                    throws IOException {
+        assert language != null;
+        com.oracle.truffle.api.source.Source.SourceBuilder builder;
+        if (origin instanceof File) {
+            builder = EngineAccessor.SOURCE.newBuilder(language, (File) origin);
+        } else if (origin instanceof CharSequence) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((CharSequence) origin), name);
+        } else if (origin instanceof ByteSequence) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((ByteSequence) origin), name);
+        } else if (origin instanceof Reader) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (Reader) origin, name);
+        } else if (origin instanceof URL) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
+        } else {
+            throw shouldNotReachHere();
+        }
+
+        if (origin instanceof File || origin instanceof URL) {
+            EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
+        }
+
+        if (content instanceof CharSequence) {
+            builder.content((CharSequence) content);
+        } else if (content instanceof ByteSequence) {
+            builder.content((ByteSequence) content);
+        }
+
+        builder.uri(uri);
+        builder.name(name);
+        builder.internal(internal);
+        builder.interactive(interactive);
+        builder.mimeType(mimeType);
+        builder.cached(cached);
+        builder.encoding(encoding);
+
+        try {
+            return PolyglotImpl.getOrCreatePolyglotSource(this, builder.build());
+        } catch (IOException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw shouldNotReachHere(e);
+        }
+    }
+
+    private Object getDefaultFileSystemContext() {
+        Object res = defaultFileSystemContext;
+        if (res == null) {
+            synchronized (this) {
+                res = defaultFileSystemContext;
+                if (res == null) {
+                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
+                    res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
+                    defaultFileSystemContext = res;
+                }
+            }
+        }
+        return res;
+    }
+
+    static final class EmbedderFileSystemContext {
+
+        final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
+        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
+        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
+
     }
 
     static org.graalvm.polyglot.Source getOrCreatePolyglotSource(PolyglotImpl polyglot, Source source) {

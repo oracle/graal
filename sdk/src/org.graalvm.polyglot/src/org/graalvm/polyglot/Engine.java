@@ -879,8 +879,6 @@ public final class Engine implements AutoCloseable {
 
     private static class PolyglotInvalid extends AbstractPolyglotImpl {
 
-        private final EmptySourceFactory sourceFactory = new EmptySourceFactory(this);
-
         /**
          * Forces ahead-of-time initialization.
          *
@@ -939,11 +937,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractSourceFactory getSourceFactory() {
-            return sourceFactory;
-        }
-
-        @Override
         public Class<?> loadLanguageClass(String className) {
             return null;
         }
@@ -971,47 +964,40 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
-        static class EmptySourceFactory extends AbstractSourceFactory {
-
-            EmptySourceFactory(AbstractPolyglotImpl polyglot) {
-                super(polyglot);
-            }
-
-            @Override
-            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                            throws IOException {
-                throw noPolyglotImplementationFound();
-            }
-
-            @Override
-            public String findLanguage(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findLanguage(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findLanguage(String mimeType) {
-                return null;
-            }
-        }
-
         @Override
         public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
+        }
+
+        @Override
+        public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                        throws IOException {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public String findLanguage(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(String mimeType) {
+            return null;
         }
 
     }

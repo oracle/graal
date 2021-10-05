@@ -51,8 +51,8 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Objects;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceFactory;
 import org.graalvm.polyglot.io.ByteSequence;
 
 /**
@@ -131,17 +131,17 @@ import org.graalvm.polyglot.io.ByteSequence;
  */
 public final class Source {
 
-    private static volatile AbstractSourceFactory FACTORY;
+    private static volatile AbstractPolyglotImpl IMPL;
 
-    static AbstractSourceFactory getFactory() {
-        if (FACTORY == null) {
+    static AbstractPolyglotImpl getImpl() {
+        if (IMPL == null) {
             synchronized (Engine.class) {
-                if (FACTORY == null) {
-                    FACTORY = Engine.getImpl().getSourceFactory();
+                if (IMPL == null) {
+                    IMPL = Engine.getImpl();
                 }
             }
         }
-        return FACTORY;
+        return IMPL;
     }
 
     final AbstractSourceDispatch dispatch;
@@ -593,7 +593,7 @@ public final class Source {
      * @since 19.0
      */
     public static String findLanguage(File file) throws IOException {
-        return getFactory().findLanguage(file);
+        return getImpl().findLanguage(file);
     }
 
     /**
@@ -614,7 +614,7 @@ public final class Source {
      * @since 19.0
      */
     public static String findLanguage(URL url) throws IOException {
-        return getFactory().findLanguage(url);
+        return getImpl().findLanguage(url);
     }
 
     /**
@@ -627,7 +627,7 @@ public final class Source {
      * @since 19.0
      */
     public static String findMimeType(File file) throws IOException {
-        return getFactory().findMimeType(file);
+        return getImpl().findMimeType(file);
     }
 
     /**
@@ -642,7 +642,7 @@ public final class Source {
      * @since 19.0
      */
     public static String findMimeType(URL url) throws IOException {
-        return getFactory().findMimeType(url);
+        return getImpl().findMimeType(url);
     }
 
     /**
@@ -654,7 +654,7 @@ public final class Source {
      * @since 19.0
      */
     public static String findLanguage(String mimeType) {
-        return getFactory().findLanguage(mimeType);
+        return getImpl().findLanguage(mimeType);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -917,7 +917,7 @@ public final class Source {
          * @since 19.0
          */
         public Source build() throws IOException {
-            Source source = getFactory().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
+            Source source = getImpl().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, fileEncoding);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
