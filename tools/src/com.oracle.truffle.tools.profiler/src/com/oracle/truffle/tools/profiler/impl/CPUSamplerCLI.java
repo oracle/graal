@@ -284,8 +284,8 @@ class CPUSamplerCLI extends ProfilerCLI {
         return samples;
     }
 
-    private static void printLegend(PrintStream out, String type, long samples, long period, int[] showTiers, Integer[] tiers) {
-        out.printf("Sampling %s. Recorded %s samples with period %dms.%n", type, samples, period);
+    private static void printLegend(PrintStream out, String type, long samples, long period, long missed, int[] showTiers, Integer[] tiers) {
+        out.printf("Sampling %s. Recorded %s samples with period %dms. Missed %s samples.%n", type, samples, period, missed);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
         if (showTiers == null) {
@@ -370,6 +370,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
+        private final long samplesMissed;
         private Set<Integer> tiers = new HashSet<>();
         private Integer[] sortedTiers;
         private int maxNameLength = 10;
@@ -383,6 +384,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
             Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads = new HashMap<>();
+            this.samplesMissed = data.missedSamples();
             for (Thread thread : data.getThreadData().keySet()) {
                 perThreadSourceLocationPayloads.put(thread, computeSourceLocationPayloads(data.getThreadData().get(thread)));
             }
@@ -409,31 +411,34 @@ class CPUSamplerCLI extends ProfilerCLI {
             SourceLocation location = sourceLocationEntry.getKey();
             OutputEntry outputEntry = new OutputEntry(location);
             maxNameLength = Math.max(maxNameLength, location.getRootName().length());
+
             for (ProfilerNode<CPUSampler.Payload> node : sourceLocationEntry.getValue()) {
                 CPUSampler.Payload payload = node.getPayload();
-                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+
+                int numberOfTiers = payload.getNumberOfTiers();
+                if (outputEntry.tierToSelfSamples.length < numberOfTiers) {
+                    outputEntry.tierToSelfSamples = Arrays.copyOf(outputEntry.tierToSelfSamples, numberOfTiers);
+                }
+                if (outputEntry.tierToSamples.length < numberOfTiers) {
+                    outputEntry.tierToSamples = Arrays.copyOf(outputEntry.tierToSamples, numberOfTiers);
+                }
+
+                for (int i = 0; i < numberOfTiers; i++) {
                     int selfHitCountsValue = payload.getTierSelfCount(i);
                     outputEntry.totalSelfSamples += selfHitCountsValue;
-                    if (outputEntry.tierToSelfSamples.length < i + 1) {
-                        outputEntry.tierToSelfSamples = Arrays.copyOf(outputEntry.tierToSelfSamples, outputEntry.tierToSelfSamples.length + 1);
-                    }
                     outputEntry.tierToSelfSamples[i] += selfHitCountsValue;
                     tiers.add(i);
-                }
-            }
-            for (ProfilerNode<CPUSampler.Payload> node : sourceLocationEntry.getValue()) {
-                if (node.isRecursive()) {
-                    continue;
-                }
-                CPUSampler.Payload payload = node.getPayload();
-                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+
+                    // if there is a recursive parent summed up for total time we must not sum up
+                    // again
+                    if (node.isRecursive()) {
+                        continue;
+                    }
+
                     int hitCountsValue = payload.getTierTotalCount(i);
                     outputEntry.totalSamples += hitCountsValue;
-                    if (outputEntry.tierToSamples.length < i + 1) {
-                        outputEntry.tierToSamples = Arrays.copyOf(outputEntry.tierToSamples, outputEntry.tierToSamples.length + 1);
-                    }
                     outputEntry.tierToSamples[i] += hitCountsValue;
-                    tiers.add(i);
+
                 }
             }
             return outputEntry;
@@ -469,7 +474,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Histogram", samplesTaken, samplePeriod, showTiers, sortedTiers);
+            printLegend(out, "Histogram", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
             out.println(sep);
             for (Map.Entry<Thread, List<OutputEntry>> threadListEntry : histogram.entrySet()) {
                 out.println(threadListEntry.getKey());
@@ -495,6 +500,8 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static class OutputEntry {
+        // break after 128 depth spaces to handle deep recursions
+        private static final int DEPTH_BREAK = 128;
         final SourceLocation location;
         int[] tierToSamples = new int[0];
         int[] tierToSelfSamples = new int[0];
@@ -520,9 +527,26 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
-        String format(String format, int[] showTiers, long samplePeriod, int indent, long globalTotalSamples, Integer[] tiers) {
+        static int computeIndentSize(int depth) {
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                indent += formatIndentBreakLabel(depth - indent).length();
+            }
+            return indent;
+        }
+
+        private static String formatIndentBreakLabel(int skippedDepth) {
+            return String.format("(\u21B3%s) ", skippedDepth);
+        }
+
+        String format(String format, int[] showTiers, long samplePeriod, int depth, long globalTotalSamples, Integer[] tiers) {
             List<Object> args = new ArrayList<>();
-            args.add(repeat(" ", indent) + location.getRootName());
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                args.add(formatIndentBreakLabel(depth - indent) + repeat(" ", indent) + location.getRootName());
+            } else {
+                args.add(repeat(" ", indent) + location.getRootName());
+            }
             args.add(totalSamples * samplePeriod);
             args.add(percent(totalSamples, globalTotalSamples));
             maybeAddTiers(args, tierToSamples, totalSamples, showTiers, tiers);
@@ -565,6 +589,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         private final int[] showTiers;
         private final long samplePeriod;
         private final long samplesTaken;
+        private final long samplesMissed;
         private final String title;
         private final String format;
         private final Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
@@ -578,6 +603,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             this.showTiers = options.get(ShowTiers);
             this.samplePeriod = options.get(SAMPLE_PERIOD);
             this.samplesTaken = data.getSamples();
+            this.samplesMissed = data.missedSamples();
             Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData = data.getThreadData();
             makeEntries(threadData);
             calculateMaxValues(threadData);
@@ -597,12 +623,10 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
-            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
             tiers.add(node.getPayload().getNumberOfTiers() - 1);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
-                if (!child.isRecursive()) {
-                    calculateMaxValuesRec(child, depth + 1);
-                }
+                calculateMaxValuesRec(child, depth + 1);
             }
         }
 
@@ -640,15 +664,11 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
-            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + depth);
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
             tiers.add(node.getPayload().getNumberOfTiers() - 1);
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
-                if (child.isRecursive()) {
-                    entry.merge(child.getPayload());
-                } else {
-                    entry.children.add(makeEntry(child, depth + 1));
-                }
+                entry.children.add(makeEntry(child, depth + 1));
             }
             return entry;
         }
@@ -656,7 +676,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         void print(PrintStream out) {
             String sep = repeat("-", title.length());
             out.println(sep);
-            printLegend(out, "Call Tree", samplesTaken, samplePeriod, showTiers, sortedTiers);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
             out.println(sep);
             out.println(title);
             out.println(sep);
