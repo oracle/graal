@@ -74,6 +74,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -579,6 +582,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 throw new AssertionError(String.format("Node subclass %s requires %s annotation", c.getName(), NodeClass.class.getSimpleName()));
             }
             VerifyNodeCosts.verifyNodeClass(c);
+            // Any concrete class which implements MemoryKill must actually implement either
+            // SingleMemoryKill or MultiMemoryKill.
+            assert !MemoryKill.class.isAssignableFrom(c) || Modifier.isAbstract(c.getModifiers()) || SingleMemoryKill.class.isAssignableFrom(c) || MultiMemoryKill.class.isAssignableFrom(c) : c +
+                            " must inherit from either SingleMemoryKill or MultiMemoryKill";
         }
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             verifier.verifyClass(c, metaAccess);
