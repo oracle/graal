@@ -370,6 +370,23 @@ public interface Platform {
     }
 
     /**
+     * Supported leaf platform: Windows on AArch 64-bit.
+     *
+     * @since 22.0
+     */
+    final class WINDOWS_AARCH64 implements WINDOWS, AARCH64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 22.0
+         */
+        public WINDOWS_AARCH64() {
+        }
+
+    }
+
+    /**
      * Marker for elements (types, methods, or fields) that are only visible during native image
      * generation and cannot be used at run time, regardless of the actual platform.
      *
