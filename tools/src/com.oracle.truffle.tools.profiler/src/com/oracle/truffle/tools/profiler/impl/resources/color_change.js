@@ -51,8 +51,8 @@ function update_color(color_type) {
     h_update_color(color_type);
 }
 
-function color_for_name(language_index, name) {
-    return colorData[language_index][name];
+function color_for_key(language_index, key) {
+    return colorData[language_index][key];
 }
 
 function color_for_compilation(interpreted, compiled) {

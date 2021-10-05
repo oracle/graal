@@ -437,9 +437,9 @@ function fg_update_color(color_type) {
 
 function fg_color_for_sample(color_type, sample) {
     if (color_type == "fg") {
-        return color_for_name(0, name_for_sample(sample));
+        return color_for_key(0, key_for_sample(sample));
     } else if (color_type == "bl") {
-        return color_for_name(sample.l, name_for_sample(sample));
+        return color_for_key(sample.l, key_for_sample(sample));
     } else if (color_type = "bc") {
         if (fg_collapsed) {
             return color_for_compilation(sample.ri, sample.rc);

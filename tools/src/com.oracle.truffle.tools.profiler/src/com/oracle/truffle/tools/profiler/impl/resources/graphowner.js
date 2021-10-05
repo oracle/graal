@@ -258,6 +258,10 @@ function title(e) {
     }
 }
 
+function key_for_sample(sample) {
+    return sample.n;
+}
+
 function name_for_sample(sample) {
     return profileNames[sample.n];
 }

@@ -545,7 +545,7 @@ final class SVGSamplerOutput {
                 if (colorsForNames.containsKey(cm)) {
                     JSONObject map = new JSONObject();
                     for (Map.Entry<String, String> e : colorsForNames.get(cm).entrySet()) {
-                        map.put(e.getKey(), e.getValue());
+                        map.put(nameHash.get(e.getKey()).toString(), e.getValue());
                     }
                     colors.put(map);
                 } else {
