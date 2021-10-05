@@ -56,6 +56,10 @@ function color_for_name(language_index, name) {
 }
 
 function color_for_compilation(interpreted, compiled) {
+    if (interpreted + compiled == 0) {
+        let gray = 192.0
+        return "rgb(" + gray.toFixed() + ", " + gray.toFixed() + ", " + gray.toFixed() + ")";
+    }
     let total = compiled + interpreted;
     let h = total == 0 ? 0.0 : (2.0 / 3.0) * (interpreted / total);
     let h6 = h * 6;
