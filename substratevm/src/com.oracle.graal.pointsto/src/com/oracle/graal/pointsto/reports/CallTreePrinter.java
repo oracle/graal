@@ -61,6 +61,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -75,16 +76,24 @@ public final class CallTreePrinter {
         CallTreePrinter printer = new CallTreePrinter(bb);
         printer.buildCallTree();
 
-        ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
-                        printer::printMethods);
+        AnalysisReportsOptions.CallTreeType optionValue = AnalysisReportsOptions.PrintAnalysisCallTreeType.getValue(bb.getOptions());
+        switch (optionValue) {
+            case TXT:
+                ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
+                                printer::printMethods);
+                break;
+            case CSV:
+                printCsvFiles(printer.methodToNode, reportsPath, reportName);
+                break;
+            default:
+                throw AnalysisError.shouldNotReachHere("Unsupported CallTreeType " + optionValue + " used with PrintAnalysisCallTreeType option");
+        }
         ReportUtils.report("list of used methods", reportsPath, "used_methods_" + reportName, "txt",
                         printer::printUsedMethods);
         ReportUtils.report("list of used classes", reportsPath, "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
         ReportUtils.report("list of used packages", reportsPath, "used_packages_" + reportName, "txt",
                         writer -> printer.printClasses(writer, true));
-
-        printCsvFiles(printer.methodToNode, reportsPath, reportName);
     }
 
     interface Node {
