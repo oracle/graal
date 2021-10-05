@@ -7,19 +7,17 @@ permalink: /examples/java-performance-examples/
 
 # Java Performance Examples
 
-The GraalVM compiler achieves excellent performance, especially for highly
-abstracted programs, due to its versatile optimization techniques. Code using
-more abstraction and modern Java features like Streams or Lambdas will see
-greater speedups. The examples below demonstrate this.
+The GraalVM compiler achieves excellent performance, especially for highly abstracted programs, due to its versatile optimization techniques.
+Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.
+The examples below demonstrate this.
 
-### Running Examples
+## Running Examples
 
-#### Streams API Example
+### Streams API Example
 
-A simple example based on the [Streams API](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html)
-is used here to demonstrate performance gains when using the GraalVM compiler.
-This example counts the number of uppercase characters in a body of text. To
-simulate a large load, the same sentence is processed 10 million times:
+A simple example based on the [Streams API](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html) is used here to demonstrate performance gains when using the GraalVM compiler.
+This example counts the number of uppercase characters in a body of text.
+To simulate a large load, the same sentence is processed 10 million times:
 
 1&#46; Save the following code snippet to a file named `CountUppercase.java`:
 
@@ -49,62 +47,54 @@ public class CountUppercase {
 ```shell
 javac CountUppercase.java
 java CountUppercase In 2021 I would like to run ALL languages in one VM.
-1 (297 ms)
-2 (452 ms)
-3 (136 ms)
-4 (88 ms)
-5 (107 ms)
-6 (135 ms)
-7 (88 ms)
-8 (87 ms)
-9 (78 ms)
-total: 69999993 (1550 ms)
+1 (319 ms)
+2 (275 ms)
+3 (164 ms)
+4 (113 ms)
+5 (100 ms)
+6 (124 ms)
+7 (86 ms)
+8 (76 ms)
+9 (77 ms)
+total: 69999993 (1414 ms)
 ```
 
-The warmup time depends on numerous factors like the source code or how
-many cores a machine has. If the performance profile of `CountUppercase` on your
-machine does not match the above, run it for more iterations by adding
-`-Diterations=N` just after `java` for some `N` greater than 1.
+The warmup time depends on numerous factors like the source code or how many cores a machine has.
+If the performance profile of `CountUppercase` on your machine does not match the above, run it for more iterations by adding `-Diterations=N` just after `java` for some `N` greater than 1.
 
 3&#46; Add the `-Dgraal.PrintCompilation=true` option to see statistics for the compilations:
 ```shell
 java -Dgraal.PrintCompilation=true CountUppercase In 2021 I would like to run ALL languages in one VM.
 ```
 
-This option prints a line after each compilation that shows the method
-compiled, time taken, bytecodes processed (including inlined methods), size
-of machine code produced, and amount of memory allocated during compilation.
+This option prints a line after each compilation that shows the method compiled, time taken, bytecodes processed (including inlined methods), size of machine code produced, and amount of memory allocated during compilation.
 
-4&#46; Use the `-XX:-UseJVMCICompiler` option to disable the GraalVM compiler and
-use the native top tier compiler in the VM to compare performance:
+4&#46; Use the `-XX:-UseJVMCICompiler` option to disable the GraalVM compiler and use the native top tier compiler in the VM to compare performance:
 ```shell
 java -XX:-UseJVMCICompiler CountUppercase In 2021 I would like to run ALL languages in one VM.
-1 (747 ms)
-2 (806 ms)
-3 (640 ms)
-4 (771 ms)
-5 (606 ms)
-6 (582 ms)
-7 (623 ms)
-8 (564 ms)
-9 (682 ms)
-total: 69999993 (6713 ms)
+1 (492 ms)
+2 (441 ms)
+3 (443 ms)
+4 (470 ms)
+5 (422 ms)
+6 (382 ms)
+7 (407 ms)
+8 (425 ms)
+9 (343 ms)
+total: 69999993 (4249 ms)
 ```
 
-The preceding example demonstrates the benefits of partial escape analysis (PEA)
-and advanced inlining, which combine to significantly reduce heap allocation.
+The preceding example demonstrates the benefits of partial escape analysis (PEA) and advanced inlining, which combine to significantly reduce heap allocation.
 The results were obtained using Oracle GraalVM Enterprise Edition.
 
-The GraalVM Community Edition still has good performance compared to the native top-tier
-compiler as shown below. You can simulate the Community Edition on the Enterprise Edition
-by adding the option `-Dgraal.CompilerConfiguration=community`.
+The GraalVM Community Edition still has good performance compared to the native top-tier compiler as shown below.
+You can simulate the Community Edition on the Enterprise Edition by adding the option `-Dgraal.CompilerConfiguration=community`.
 
-#### Sunflow Example
+### Sunflow Example
 
 [Sunflow](http://sunflow.sourceforge.net) is an open source rendering engine.
 The following example is a simplified version of the Sunflow engine core code.
-It performs calculations to blend various values for a point of light in a
-rendered scene.
+It performs calculations to blend various values for a point of light in a rendered scene.
 
 1&#46; Save the following code snippet to a file named `Blender.java`:
 ```java

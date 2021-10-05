@@ -56,11 +56,10 @@ Java on Trufle is an experimental technology in GraalVM, available as of version
 
 ## Available Distributions
 
-GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 16.
+GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 17.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
 GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The GraalVM Enterprise distribution based on Oracle JDK 16 is experimental with [several known limitations](https://docs.oracle.com/en/graalvm/enterprise/21/docs/overview/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 
 ## Certified Platforms
@@ -104,7 +103,7 @@ Tools/Utilities:
 
 Runtimes:
 
-* [Node.js](/reference-manual/js/) -- the Node.js 14.16.1 runtime for JavaScript
+* [Node.js](/reference-manual/js/) -- the Node.js 14.17.6 runtime for JavaScript
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
 * [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
