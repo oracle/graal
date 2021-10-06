@@ -2070,16 +2070,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchLdrLo12(originalInst, (int) targetAddress & 0xFFF, srcSize);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2094,16 +2093,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchAddLo12(originalInst, (int) targetAddress & 0xFFF);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2141,13 +2139,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
+        public void patch(long startAddress, int relative, byte[] code) {
             /*
              * Each move has a 16 bit immediate operand. We use a series of shifted moves to
              * represent immediate values larger than 16 bits.
              */
             // first retrieving the target address
-            long curValue = ((long) instructionPosition) + relative;
+            long curValue = startAddress + relative;
             int siteOffset = 0;
             boolean containsNegatedMov = false;
             for (MovAction include : includeSet) {

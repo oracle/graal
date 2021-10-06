@@ -675,9 +675,14 @@ public abstract class NativeImage extends AbstractImage {
                 // validating patched value does not overflow operand
                 switch (info.getRelocationKind()) {
                     case AARCH64_R_MOVW_UABS_G0:
+                        assert (targetValue & 0xFFFF_FFFF_FFFF_0000L) == 0 : "value to patch does not fit";
+                        break;
                     case AARCH64_R_MOVW_UABS_G1:
+                        assert (targetValue & 0xFFFF_FFFF_0000_0000L) == 0 : "value to patch does not fit";
+                        break;
                     case AARCH64_R_MOVW_UABS_G2:
-                        assert (patchValue & 0xFFFF) == patchValue : "value to patch does not fit";
+                        assert (targetValue & 0xFFFF_0000_0000_0000L) == 0 : "value to patch does not fit";
+                        break;
                 }
                 int originalInst = bufferBytes.getInt(offset);
                 int newInst = AArch64Assembler.PatcherUtil.patchMov(originalInst, patchValue);

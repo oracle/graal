@@ -3121,7 +3121,14 @@ public abstract class AArch64Assembler extends Assembler {
             this.instructionPosition = instructionPosition;
         }
 
-        abstract void patch(int codePos, int relative, byte[] code);
+        /**
+         * Patch the code buffer.
+         *
+         * @param startAddress starting address for instruction sequence to patch
+         * @param relative pc-relative value
+         * @param code machine code generated for this method
+         */
+        abstract void patch(long startAddress, int relative, byte[] code);
     }
 
     /**
@@ -3275,9 +3282,9 @@ public abstract class AArch64Assembler extends Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            // currently only BL instructions are being patched here
-            assert instruction == Instruction.BL : "trying to patch an unexpected instruction";
+        public void patch(long startAddress, int relative, byte[] code) {
+            // currently, only BL instructions are being patched here
+            GraalError.guarantee(instruction == Instruction.BL, "trying to patch an unexpected instruction");
 
             int curValue = relative; // BL is PC-relative
             assert (curValue & ((1 << shift) - 1)) == 0 : "relative offset has incorrect alignment";
