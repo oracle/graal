@@ -61,7 +61,7 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
     protected SubstrateArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, factories, providers, snippetReflection);
-        lowerings.put(ArrayCopyNode.class, new SubstrateArraycopyWithExceptionLowering());
+        lowerings.put(ArrayCopyNode.class, new SubstrateArrayCopyLowering());
     }
 
     /**
@@ -111,7 +111,7 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
         }
     }
 
-    static final class SubstrateArraycopyWithExceptionLowering implements NodeLoweringProvider<ArrayCopyNode> {
+    static final class SubstrateArrayCopyLowering implements NodeLoweringProvider<ArrayCopyNode> {
         @Override
         public void lower(ArrayCopyNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
