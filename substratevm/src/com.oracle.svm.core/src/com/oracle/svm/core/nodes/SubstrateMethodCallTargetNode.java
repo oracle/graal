@@ -39,7 +39,11 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     public static final NodeClass<SubstrateMethodCallTargetNode> TYPE = NodeClass.create(SubstrateMethodCallTargetNode.class);
 
     private JavaMethodProfile methodProfile;
-    private JavaMethodProfile samplingMethodProfile;
+    /*
+     * Method profile created from the sampling profiles is set to null because the profiling by
+     * sampling is currently unsupported.
+     */
+    private JavaMethodProfile samplingMethodProfile = null;
 
     public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile,
                     JavaMethodProfile methodProfile) {
@@ -64,8 +68,4 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
         return samplingMethodProfile;
     }
 
-    @Override
-    public boolean methodProfilesExist() {
-        return profilesExist;
-    }
 }

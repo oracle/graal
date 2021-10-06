@@ -30,6 +30,7 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -39,17 +40,23 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticFeature
 @Platforms({Platform.AMD64.class})
@@ -120,6 +127,21 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
             long addend = (annotation.nextInstructionPosition - annotation.operandPosition);
             relocs.addRelocationWithAddend((int) siteOffset, ObjectFile.RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference) {
+            VMConstant constant = ((ConstantReference) ref).getConstant();
+            if (constant instanceof SubstrateMethodPointerConstant) {
+                MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
+                ResolvedJavaMethod method = pointer.getMethod();
+                assert method instanceof HostedMethod;
+                HostedMethod hMethod = (HostedMethod) method;
+                if (hMethod.isCompiled()) {
+                    int pointerSize = ConfigurationValues.getTarget().wordSize;
+                    ObjectFile.RelocationKind relocationKind = pointerSize == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4;
+                    relocs.addRelocationWithoutAddend((int) siteOffset, relocationKind, pointer);
+                } else {
+                    GraalError.shouldNotReachHere(String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                }
+                return;
+            }
             assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
             relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), ref);
         } else {

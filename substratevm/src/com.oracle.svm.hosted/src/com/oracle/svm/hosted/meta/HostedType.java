@@ -115,15 +115,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         return subTypes;
     }
 
-    public boolean isSubType(HostedType type) {
-        for (HostedType subType : subTypes) {
-            if (type.equals(subType)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public HostedMethod[] getVTable() {
         assert vtable != null;
         return vtable;
@@ -312,6 +303,11 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public final ResolvedJavaType findLeastCommonAncestor(ResolvedJavaType otherType) {
         return universe.lookup(wrapped.findLeastCommonAncestor(((HostedType) otherType).wrapped));
+    }
+
+    @Override
+    public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return null;
     }
 
     @Override

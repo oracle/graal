@@ -63,7 +63,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
     protected JavaTypeProfile typeProfile;
-    protected boolean profilesExist;
 
     public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile) {
         this(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
@@ -308,11 +307,4 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         this.typeProfile = profile;
     }
 
-    public boolean methodProfilesExist() {
-        return true;
-    }
-
-    public void setProfilesExist() {
-        profilesExist = true;
-    }
 }

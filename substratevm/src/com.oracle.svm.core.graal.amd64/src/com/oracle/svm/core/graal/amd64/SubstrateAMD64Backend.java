@@ -40,7 +40,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
-import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -141,6 +140,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -182,17 +182,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         private final RuntimeConfiguration runtimeConfiguration;
         private final int newThreadStatus;
-        @Use({REG, OperandFlag.ILLEGAL})
-        private Value javaFrameAnchor;
-        @Temp({REG, OperandFlag.ILLEGAL})
-        private Value javaFrameAnchorTemp;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchorTemp;
 
         private final boolean destroysCallerSavedRegisters;
-        @Temp({REG, OperandFlag.ILLEGAL})
-        private Value exceptionTemp;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
 
         public SubstrateAMD64DirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state,
-                                          Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
+                        Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
             super(TYPE, callTarget, result, parameters, temps, state);
             this.runtimeConfiguration = runtimeConfiguration;
             this.newThreadStatus = newThreadStatus;
@@ -222,17 +219,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         private final RuntimeConfiguration runtimeConfiguration;
         private final int newThreadStatus;
-        @Use({REG, OperandFlag.ILLEGAL})
-        private Value javaFrameAnchor;
-        @Temp({REG, OperandFlag.ILLEGAL})
-        private Value javaFrameAnchorTemp;
+        @Use({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchor;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value javaFrameAnchorTemp;
 
         private final boolean destroysCallerSavedRegisters;
-        @Temp({REG, OperandFlag.ILLEGAL})
-        private Value exceptionTemp;
+        @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
 
         public SubstrateAMD64IndirectCallOp(RuntimeConfiguration runtimeConfiguration, ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                                            LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
+                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.runtimeConfiguration = runtimeConfiguration;
             this.newThreadStatus = newThreadStatus;
@@ -257,7 +251,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     static void maybeTransitionToNative(CompilationResultBuilder crb, AMD64MacroAssembler masm, RuntimeConfiguration runtimeConfiguration, Value javaFrameAnchor, Value temp, LIRFrameState state,
-                                        int newThreadStatus) {
+                    int newThreadStatus) {
         if (ValueUtil.isIllegal(javaFrameAnchor)) {
             /* Not a call that needs to set up a JavaFrameAnchor. */
             assert newThreadStatus == StatusSupport.STATUS_ILLEGAL;
@@ -325,7 +319,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         private final SharedMethod method;
 
         public SubstrateLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention,
-                                            RegisterAllocationConfig registerAllocationConfig, SharedMethod method) {
+                        RegisterAllocationConfig registerAllocationConfig, SharedMethod method) {
             super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
             this.method = method;
 
@@ -421,11 +415,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, targetRegister, info,
-                        Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, arguments, temps, info, Value.ILLEGAL,
-                        Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
             }
         }
 
@@ -666,8 +660,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new SubstrateAMD64DirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, callState,
-                    setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                    getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
         }
 
         @Override
@@ -682,8 +676,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new SubstrateAMD64IndirectCallOp(getRuntimeConfiguration(), targetMethod, result, parameters, temps, targetAddress, callState,
-                    setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                    getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
         }
 
         private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
@@ -928,8 +922,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
-            } else if (src instanceof SubstrateMethodVMConstant) {
-                return new LoadMethodVMConstantOp(dst, (SubstrateMethodVMConstant) src);
+            } else if (src instanceof SubstrateMethodPointerConstant) {
+                return new LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createLoad(dst, src);
         }
@@ -940,8 +934,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
-            } else if (src instanceof SubstrateMethodVMConstant) {
-                return new LoadMethodVMConstantOp(dst, (SubstrateMethodVMConstant) src);
+            } else if (src instanceof SubstrateMethodPointerConstant) {
+                return new LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
@@ -954,13 +948,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return new MoveFromConstOp(dst, constant);
         }
 
-        public static final class LoadMethodVMConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
-            public static final LIRInstructionClass<LoadMethodVMConstantOp> TYPE = LIRInstructionClass.create(LoadMethodVMConstantOp.class);
-            private final SubstrateMethodVMConstant constant;
-            @Def({REG, HINT})
-            protected AllocatableValue result;
+        public static final class LoadMethodPointerConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
+            public static final LIRInstructionClass<LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(LoadMethodPointerConstantOp.class);
+            private final SubstrateMethodPointerConstant constant;
+            @Def({REG, HINT}) protected AllocatableValue result;
 
-            protected LoadMethodVMConstantOp(AllocatableValue result, SubstrateMethodVMConstant constant) {
+            protected LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
                 super(TYPE);
                 this.constant = constant;
                 this.result = result;
@@ -973,9 +966,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 if (masm.target.inlineObjects) {
                     crb.recordInlineDataInCode(constant);
                     if (pointerSize == 4) {
-                        masm.movl(resultReg, 0xDEADDEAD, true);
+                        masm.movl(resultReg, 0, true);
                     } else {
-                        masm.movq(resultReg, 0xDEADDEADDEADDEADL, true);
+                        masm.movq(resultReg, 0L, true);
                     }
                 } else {
                     AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(constant, pointerSize);
@@ -993,7 +986,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             @Override
-            public SubstrateMethodVMConstant getConstant() {
+            public SubstrateMethodPointerConstant getConstant() {
                 return constant;
             }
         }
@@ -1064,7 +1057,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new AMD64FrameMap(getProviders().getCodeCache(), registerConfigNonNull, new SubstrateReferenceMapBuilderFactory(),
-                ((SubstrateAMD64RegisterConfig) registerConfigNonNull).shouldUseBasePointer());
+                        ((SubstrateAMD64RegisterConfig) registerConfigNonNull).shouldUseBasePointer());
         return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
     }
 
@@ -1150,7 +1143,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
         CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
-                uncompressedNullRegister);
+                        uncompressedNullRegister);
         tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         return tasm;
     }
@@ -1177,7 +1170,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                                                       RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
+                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
         AMD64Assembler asm = new AMD64Assembler(getTarget());

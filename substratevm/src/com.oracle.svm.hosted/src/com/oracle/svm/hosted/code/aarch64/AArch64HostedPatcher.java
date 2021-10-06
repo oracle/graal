@@ -169,7 +169,6 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     @Override
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
-
         relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
         relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, ref);

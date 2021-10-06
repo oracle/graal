@@ -152,7 +152,9 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
+
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -188,6 +190,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
+
 
 public class CompileQueue {
 
@@ -271,6 +274,23 @@ public class CompileQueue {
         @Override
         public String toString() {
             return "Virtual call from " + caller.format("%r %h.%n(%p)") + ", callTarget " + callTarget.format("%r %h.%n(%p)");
+        }
+    }
+
+    public static class MethodCheckReason extends CompileReason {
+
+        private final HostedMethod method;
+        private final HostedMethod callTarget;
+
+        public MethodCheckReason(HostedMethod method, HostedMethod callTarget, CompileReason prevReason) {
+            super(prevReason);
+            this.method = method;
+            this.callTarget = callTarget;
+        }
+
+        @Override
+        public String toString() {
+            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer from " + method.format("%r %h.%n(%p)");
         }
     }
 
@@ -1350,11 +1370,11 @@ public class CompileQueue {
             Reference reference = dataPatch.reference;
             if (reference instanceof ConstantReference) {
                 VMConstant constant = ((ConstantReference) reference).getConstant();
-                if (constant instanceof SubstrateMethodVMConstant) {
-                    MethodPointer pointer = (MethodPointer) ((SubstrateMethodVMConstant) constant).pointer();
+                if (constant instanceof SubstrateMethodPointerConstant) {
+                    MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                     final ResolvedJavaMethod method1 = pointer.getMethod();
                     HostedMethod hMethod = (HostedMethod) method1;
-                    ensureCompiled(hMethod, new DirectCallReason(method, reason));
+                    ensureCompiled(hMethod, new MethodCheckReason(method, hMethod, reason));
                 }
             }
         }

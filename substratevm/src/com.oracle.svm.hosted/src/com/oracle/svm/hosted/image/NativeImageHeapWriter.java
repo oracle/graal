@@ -237,7 +237,6 @@ public final class NativeImageHeapWriter {
      * Adds a relocation for a code pointer or other non-data pointers.
      */
     private void addNonDataRelocation(RelocatableBuffer buffer, int index, RelocatedPointer pointer) {
-        //maybe use this
         mustBeReferenceAligned(index);
         assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
         assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;

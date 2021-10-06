@@ -34,6 +34,7 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -42,15 +43,20 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateMethodVMConstant;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -63,7 +69,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, Comparable<HostedMethod>, OriginalMethodProvider {
 
@@ -77,7 +82,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
     protected int vtableIndex = -1;
-    private CFunctionPointer methodPointer;
+    private final MethodPointer methodPointer;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -106,7 +111,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
-        this.methodPointer = MethodPointer.factory(this);
+        this.methodPointer = new MethodPointer(this);
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -427,24 +432,39 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        /*
-         * This method is used by Graal to decide if method-based inlining guards are possible. As
-         * long as getEncoding() is unimplemented, this method needs to return false.
-         */
-        if (resolved instanceof HostedType) {
-            HostedMethod[] vTable = ((HostedType) resolved).getVTable();
-            for (HostedMethod method : vTable) {
-                if (method == this) {
-                    return true;
-                }
-            }
+        if (!hasVTableIndex()) {
+            return false;
+        }
+        final Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
+        final boolean useLLVMBackend = SubstrateOptions.useLLVMBackend();
+        if (arch instanceof AMD64 && !useLLVMBackend) {
+            return isInVTable((HostedType) resolved);
         }
         return false;
     }
 
+    private boolean isInVTable(HostedType type) {
+        // TODO: add comments
+        for (HostedType subtype : type.subTypes) {
+            boolean result = isInVTable(subtype);
+            if (result) {
+                return true;
+            }
+        }
+        if (!type.isInstantiated()) {
+            return false;
+        }
+        return vtableIndex < type.getVTable().length && type.getVTable()[vtableIndex] != null;
+    }
+
     @Override
     public Constant getEncoding() {
-        return new SubstrateMethodVMConstant(methodPointer);
+        boolean useLLVMBackend = SubstrateOptions.useLLVMBackend();
+        final Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
+        if (arch instanceof AMD64 && !useLLVMBackend) {
+            return new SubstrateMethodPointerConstant(methodPointer);
+        }
+        throw shouldNotReachHere("Method pointer constants are currently only supported for AMD64.");
     }
 
     @Override

@@ -40,7 +40,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
@@ -153,17 +152,21 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
         StructuredGraph graph = loadMethodNode.graph();
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
-        ReadNode svmMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
-        graph.replaceFixed(loadMethodNode, svmMethod);
+        ReadNode methodPointer = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
+        graph.replaceFixed(loadMethodNode, methodPointer);
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method, ResolvedJavaType receiverType) {
         int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
         assert vtableEntryOffset > 0;
+        /*
+         * Method pointer will always exist in the vtable due to the fact that all reachable methods
+         * through method pointer constant references will be compiled.
+         */
         Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
         AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
-        ReadNode svmMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
-        return svmMethod;
+        ReadNode methodPointer = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        return methodPointer;
     }
 
     @Override
