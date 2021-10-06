@@ -26,20 +26,28 @@ package com.oracle.svm.core.sampling;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CallStackFrameMethodInfo {
+    private static final int INITIAL_METHOD_ID = -1;
+
+    private static final String ENTER_SAFEPOINT_METHOD_NAME = "Safepoint.enterSlowPathSafepointCheck";
+
+    private static final String ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME = "Safepoint.enterSlowPathTransitionFromNativeToNewStatus";
+
     private final Map<Integer, String> sampledMethods = new HashMap<>();
 
-    private int enterSamplingCodeMethodId = ENTER_SAMPLING_CODE_METHOD_ID_INTIAL;
-    private static final int ENTER_SAMPLING_CODE_METHOD_ID_INTIAL = -1;
-    private static final String enterSamplingCodeMethod = "Safepoint.enterSlowPathSafepointCheck";
+    private int enterSafepointCheckId = INITIAL_METHOD_ID;
+
+    private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
         sampledMethods.put(methodId, method.format("%H.%n"));
-        if (enterSamplingCodeMethodId == ENTER_SAMPLING_CODE_METHOD_ID_INTIAL && method.format("%H.%n").contains(enterSamplingCodeMethod)) {
-            enterSamplingCodeMethodId = methodId;
+        if (enterSafepointCheckId == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_METHOD_NAME)) {
+            enterSafepointCheckId = methodId;
+        }
+        if (enterSafepointFromNativeId == INITIAL_METHOD_ID && method.format("%H.%n").contains(ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME)) {
+            enterSafepointFromNativeId = methodId;
         }
     }
 
@@ -48,14 +56,15 @@ public class CallStackFrameMethodInfo {
     }
 
     public boolean isSamplingCodeEntry(int methodId) {
-        return enterSamplingCodeMethodId == methodId;
+        return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId;
     }
 
-    public void setEnterSamplingCodeMethodId(int enterSamplingCodeMethodId) {
-        this.enterSamplingCodeMethodId = enterSamplingCodeMethodId;
+    public void setEnterSamplingCodeMethodId(int enterSafepointCheckId, int enterSafepointFromNativeId) {
+        this.enterSafepointCheckId = enterSafepointCheckId;
+        this.enterSafepointFromNativeId = enterSafepointFromNativeId;
     }
 
     public int getEnterSamplingCodeMethodId() {
-        return enterSamplingCodeMethodId;
+        return enterSafepointCheckId;
     }
 }
