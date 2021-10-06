@@ -29,11 +29,9 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 import static org.graalvm.word.LocationIdentity.any;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -60,6 +58,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Base class for nodes that intrinsify {@link System#arraycopy}.
@@ -68,13 +67,12 @@ import jdk.vm.ci.meta.JavaKind;
 public abstract class BasicArrayCopyNode extends WithExceptionNode implements ArrayCopy, StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
-    public static final int SRC_ARG = 0;
-    public static final int SRC_POS_ARG = 1;
-    public static final int DEST_ARG = 2;
-    public static final int DEST_POS_ARG = 3;
-    public static final int LENGTH_ARG = 4;
 
-    @Input NodeInputList<ValueNode> args;
+    @Input ValueNode src;
+    @Input ValueNode srcPos;
+    @Input ValueNode dest;
+    @Input ValueNode destPos;
+    @Input ValueNode length;
 
     @OptionalInput(State) FrameState stateDuring;
 
@@ -89,16 +87,16 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements Ar
     public BasicArrayCopyNode(NodeClass<? extends BasicArrayCopyNode> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind, int bci) {
         super(type, StampFactory.forKind(JavaKind.Void));
         this.bci = bci;
-        this.args = new NodeInputList<>(this, new ValueNode[]{src, srcPos, dest, destPos, length});
+        this.src = src;
+        this.srcPos = srcPos;
+        this.dest = dest;
+        this.destPos = destPos;
+        this.length = length;
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
     public BasicArrayCopyNode(NodeClass<? extends BasicArrayCopyNode> type, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, JavaKind elementKind) {
         this(type, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
-    }
-
-    public NodeInputList<ValueNode> args() {
-        return args;
     }
 
     public int getBci() {
@@ -178,31 +176,31 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements Ar
     }
 
     public ValueNode getSource() {
-        return args().get(SRC_ARG);
+        return src;
     }
 
     public ValueNode getSourcePosition() {
-        return args().get(SRC_POS_ARG);
+        return srcPos;
     }
 
     public ValueNode getDestination() {
-        return args().get(DEST_ARG);
+        return dest;
     }
 
     public ValueNode getDestinationPosition() {
-        return args().get(DEST_POS_ARG);
+        return destPos;
     }
 
     public ValueNode getLength() {
-        return args().get(LENGTH_ARG);
+        return length;
     }
 
-    public boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
+    public static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
         assert length >= 0;
         return position >= 0 && position <= virtualObject.entryCount() - length;
     }
 
-    public boolean checkEntryTypes(int srcPos, int length, VirtualObjectNode src, ResolvedJavaType destComponentType, VirtualizerTool tool) {
+    public static boolean checkEntryTypes(int srcPos, int length, VirtualObjectNode src, ResolvedJavaType destComponentType, VirtualizerTool tool) {
         if (destComponentType.getJavaKind() == JavaKind.Object && !destComponentType.isJavaLangObject()) {
             for (int i = 0; i < length; i++) {
                 ValueNode entry = tool.getEntry(src, srcPos + i);
