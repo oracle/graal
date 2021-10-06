@@ -9,7 +9,7 @@ You can install Oracle GraalVM Enterprise Edition on the Windows operating syste
 Follow these steps:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **16** for the Java version, and **Windows** for the operating system.
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **17** for the Java version, and **Windows** for the operating system.
 3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading graalvm-ee-java<version>-windows-amd64-<version>.zip.
 5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.zip_ archive to it.
@@ -40,14 +40,13 @@ The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK wi
 Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](/reference-manual/native-image/), [Java on Trufle](/reference-manual/java-on-truffle/), WebAssembly, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
-To make use of Native Image on Windows, observe the following recommendations. The
-required Microsoft Visual C++ (MSVC) version depends on the JDK version that
-GraalVM is based on. For GraalVM Enterprise distribution based on JDK 8, you will need MSVC
-2010 SP1 version. The recommended installation method is using Microsoft Windows
-SDK 7.1:
-1. Download the SDK file `GRMSDKX_EN_DVD.iso` for from [Microsoft](https://www.microsoft.com/en-gb/download).
-2. Mount the image by opening `F:\Setup\SDKSetup.exe` directly.
 
-For GraalVM Enterprise distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
+To start using Native Image on Windows, install Visual Studio Code and Microsoft Visual C++(MSVC). There are two installation options:
+  * Install the Visual Studio Code Build Tools with the Windows 10 SDK
+  * Install Visual Studio Code with the Windows 10 SDK
 
-The last prerequisite, common for both distributions, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+You can use Visual Studio 2017 version 15.9 or later.
+
+Lastly, on Windows, the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
+The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
+Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for step-by-step instructions.

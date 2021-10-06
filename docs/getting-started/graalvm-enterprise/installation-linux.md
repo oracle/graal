@@ -8,7 +8,7 @@ permalink: /getting-started/installation-linux/
 Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux operating system:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=21).
-2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **16** for the Java version, **Linux** for the operating system, and **amd64** for the architecture.
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **17** for the Java version, **Linux** for the operating system, and **amd64** for the architecture.
 3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-linux-amd64-<version>.tar.gz**.
 5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.tar.gz_ archive to it.
@@ -40,15 +40,13 @@ Tools/Utilities:
 * [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
 
 Runtimes:
-* [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
+* [Node.js](/reference-manual/js/) -- Node.js 14.17.6 compatible
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.4 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 ​
 These runtimes are not part of the GraalVM Enterprise base distribution and must be installed separately.
 
-To assist a user with installation, GraalVM Enterprise includes
-**GraalVM Updater**, a command line utility to install and manage additional
-functionalities. Proceed to the [installation steps](/reference-manual/graalvm-updater/#component-installation){:target="_blank"}
-to add any necessary language runtime or utility from above to the GraalVM Enterprise core.
+To assist a user with installation, GraalVM Enterprise includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
+Proceed to the [installation steps](/reference-manual/graalvm-updater/#component-installation){:target="_blank"} to add any necessary language runtime or utility from above to the GraalVM Enterprise core.
