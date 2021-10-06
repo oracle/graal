@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Base class for nodes that intrinsify {@link System#arraycopy}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
-public class BasicArrayCopyNode extends WithExceptionNode implements ArrayCopy, StateSplit {
+public abstract class BasicArrayCopyNode extends WithExceptionNode implements ArrayCopy, StateSplit {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
