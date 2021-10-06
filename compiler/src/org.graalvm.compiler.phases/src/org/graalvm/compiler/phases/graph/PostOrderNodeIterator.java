@@ -237,7 +237,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
     }
 
     protected void invoke(Invoke invoke) {
-        node(invoke.asNode());
+        node(invoke.asFixedNode());
     }
 
     protected void finished() {

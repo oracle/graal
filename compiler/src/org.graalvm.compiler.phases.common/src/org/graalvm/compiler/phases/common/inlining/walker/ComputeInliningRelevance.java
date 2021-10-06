@@ -109,7 +109,7 @@ public class ComputeInliningRelevance {
             return rootScope.computeInvokeRelevance(invoke);
         }
         assert nodeRelevances != null : "uninitialized relevance";
-        return nodeRelevances.get(invoke.asNode());
+        return nodeRelevances.get(invoke.asFixedNode());
     }
 
     /**
@@ -243,7 +243,7 @@ public class ComputeInliningRelevance {
          * scope's fastPathMinProbability, adjusted by scopeRelevanceWithinParent.
          */
         public double computeInvokeRelevance(Invoke invoke) {
-            double invokeProbability = nodeProbabilities.applyAsDouble(invoke.asNode());
+            double invokeProbability = nodeProbabilities.applyAsDouble(invoke.asFixedNode());
             assert !Double.isNaN(invokeProbability);
 
             double relevance = (invokeProbability / getFastPathMinProbability()) * Math.min(1.0, getScopeRelevanceWithinParent());

@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.Node.Input;
 import org.graalvm.compiler.graph.Node.OptionalInput;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
@@ -43,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Try to ensure that methods which update {@link Input} or {@link OptionalInput} fields also
- * include a call to {@link Node#updateUsages} or {@link Node#updateUsagesInterface}.
+ * include a call to {@link Node#updateUsages} or {@link ValueNode#updateUsagesInterface}.
  */
 public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
 
@@ -92,9 +93,11 @@ public class VerifyUpdateUsages extends VerifyPhase<CoreProviders> {
             // Single input field update so just check for updateUsages
             // or updateUsagesInterface call
             ResolvedJavaType nodeType = context.getMetaAccess().lookupJavaType(Node.class);
+            ResolvedJavaType valueNodeType = context.getMetaAccess().lookupJavaType(ValueNode.class);
             for (MethodCallTargetNode call : graph.getNodes().filter(MethodCallTargetNode.class)) {
                 ResolvedJavaMethod callee = call.targetMethod();
-                if (callee.getDeclaringClass().equals(nodeType) && (callee.getName().equals("updateUsages") || callee.getName().equals("updateUsagesInterface"))) {
+                if ((callee.getDeclaringClass().equals(nodeType) && (callee.getName().equals("updateUsages"))) ||
+                                (callee.getDeclaringClass().equals(valueNodeType) && callee.getName().equals("updateUsagesInterface"))) {
                     return;
                 }
             }
