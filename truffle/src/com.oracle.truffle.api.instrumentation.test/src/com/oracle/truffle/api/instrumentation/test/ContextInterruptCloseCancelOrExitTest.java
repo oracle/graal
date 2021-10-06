@@ -69,7 +69,6 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -271,7 +270,7 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(ParsingRequest request) {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                                return new RootNode(languageInstance) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         LanguageContext languageContext = LanguageContext.get(this);
@@ -283,7 +282,7 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                                         }
                                         return 0;
                                     }
-                                });
+                                }.getCallTarget();
                             }
 
                             @Override
@@ -377,14 +376,14 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
         return new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         LanguageContext languageContext = LanguageContext.get(this);
                         languageContext.getEnv().getContext().closeExited(this, 1);
                         return 0;
                     }
-                });
+                }.getCallTarget();
             }
 
             @Override
@@ -556,14 +555,14 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
         setupEnv(Context.newBuilder(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         LanguageContext languageContext = LanguageContext.get(this);
                         languageContext.getEnv().getContext().closeExited(this, 1);
                         return 0;
                     }
-                });
+                }.getCallTarget();
             }
 
             @Override
