@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -82,7 +83,7 @@ final class JDKIntrinsicsFeature implements GraalFeature {
                  */
                 ValueNode nonNullSrc = b.nullCheckedValue(src);
                 ValueNode nonNullDst = b.nullCheckedValue(dst);
-                b.add(new SubstrateArraycopyWithExceptionNode(nonNullSrc, srcPos, nonNullDst, dstPos, length, null, b.bci()));
+                b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length));
                 return true;
             }
         });

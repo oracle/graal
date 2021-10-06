@@ -63,10 +63,6 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable
         }
     }
 
-    public ArrayCopyNode(ArrayCopy arraycopy) {
-        this(arraycopy.getBci(), arraycopy.getSource(), arraycopy.getSourcePosition(), arraycopy.getDestination(), arraycopy.getDestinationPosition(), arraycopy.getLength());
-    }
-
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         if (!forceAnyLocation && elementKind == null) {
