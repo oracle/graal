@@ -162,10 +162,13 @@ function h_update_bar(id, bar) {
         let t = e.lastElementChild;
 
         let name = name_for_sample(bar);
+        let source = source_for_sample(bar);
+        let sourceLine = source_line_for_sample(bar);
+        let hits = bar.i + bar.c;
 
-        title.textContent = "Function: " + name + "\n" +
-            (bar.c + bar.i) + " samples (" + bar.i + " interpreted, " + bar.c + " compiled).\n" +
-            (100 * (bar.c + bar.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
+        title.textContent = name + " (" + languageNames[bar.l] + ")\n" +
+            "Samples: " + (hits) + " (" + (100 * (hits) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+            "Source location: " + source + ":" + sourceLine + "\n";
 
         r.width.baseVal.value = width;
         r.style.fill = h_color_for_sample(color_type, bar);
@@ -238,16 +241,16 @@ function h_canvas_resize() {
 
 function calculate_histogram_bars(bars, sample) {
     let bar;
-    if (!bars.hasOwnProperty(sample["n"])) {
+    if (!bars.hasOwnProperty(sample.k)) {
         bar = [];
         bar["id"] = sample["id"];
         bar["i"] = 0;
         bar["c"] = 0;
         bar["l"] = sample["l"];
-        bar["n"] = sample["n"];
-        bars[sample["n"]] = bar;
+        bar["k"] = sample["k"];
+        bars[sample.k] = bar;
     } else {
-        bar = bars[sample["n"]];
+        bar = bars[sample.k];
     }
     if (fg_collapsed) {
         bar["i"] = bar["i"] + sample["ri"];

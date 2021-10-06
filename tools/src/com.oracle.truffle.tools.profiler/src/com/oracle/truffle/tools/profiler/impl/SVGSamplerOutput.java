@@ -216,14 +216,18 @@ final class SVGSamplerOutput {
         private ArrayList<SVGComponent> components;
         private Random random = new Random();
         private Map<GraphColorMap, String> languageColors;
-        private Map<GraphColorMap, Map<String, String>> colorsForNames = new HashMap<>();
+        private Map<GraphColorMap, Map<SampleKey, String>> colorsForKeys = new HashMap<>();
         private int sampleId;
         public final Map<String, Integer> nameHash = new HashMap<>();
         public final Map<String, Integer> sourceHash = new HashMap<>();
+        public final Map<SampleKey, Integer> keyHash = new HashMap<>();
+        public final ArrayList<SampleKey> sampleKeys = new ArrayList<>();
         public int nameCounter = 0;
         public int sourceCounter = 0;
+        public int keyCounter = 0;
         public final JSONArray sampleNames = new JSONArray();
         public final JSONArray sourceNames = new JSONArray();
+        public final JSONArray sampleJsonKeys = new JSONArray();
         public final JSONArray sampleData = new JSONArray();
 
         GraphOwner(StringBuilder output, Map<TruffleContext, CPUSamplerData> data) {
@@ -314,13 +318,7 @@ final class SVGSamplerOutput {
             ArrayDeque<Task> tasks = new ArrayDeque<>();
             JSONObject root = new JSONObject();
             sampleData.put(root);
-            root.put("n", nameCounter);
-            root.put("f", sourceCounter);
-            root.put("fl", 0);
-            nameHash.put("<top>", nameCounter++);
-            sampleNames.put("<top>");
-            sourceHash.put("<none>", sourceCounter++);
-            sourceNames.put("<none>");
+            root.put("k", indexForSampleKey("Thread: <top>", "<none>", 0));
             root.put("id", sampleId++);
             root.put("i", 0);
             root.put("c", 0);
@@ -388,6 +386,48 @@ final class SVGSamplerOutput {
             }
         }
 
+        private int indexForSampleKey(String name, SourceSection section) {
+            final String sourceName;
+            int sourceLine = 0;
+            if (section != null && section.isAvailable()) {
+                sourceLine = section.getStartLine();
+                Source source = section.getSource();
+                if (source != null) {
+                    String path = source.getPath();
+                    if (path != null) {
+                        sourceName = path;
+                    } else {
+                        sourceName = source.getName();
+                    }
+                } else {
+                    sourceName = "<none>";
+                }
+            } else {
+                sourceName = "<none>";
+            }
+            return indexForSampleKey(name, sourceName, sourceLine);
+        }
+
+        private int indexForSampleKey(String name, String sourceFile, int line) {
+            int nameId = nameHash.computeIfAbsent(name, k -> {
+                    sampleNames.put(k);
+                    return nameCounter++;
+                });
+            int sourceId = sourceHash.computeIfAbsent(sourceFile, k -> {
+                    sourceNames.put(k);
+                    return sourceCounter++;
+                });
+            return keyHash.computeIfAbsent(new SampleKey(nameId, sourceId, line), k -> {
+                    sampleKeys.add(k);
+                    JSONArray jsonKey = new JSONArray();
+                    jsonKey.put(k.nameId);
+                    jsonKey.put(k.sourceId);
+                    jsonKey.put(k.sourceLine);
+                    sampleJsonKeys.put(jsonKey);
+                    return keyCounter++;
+                });
+        }
+
         private HashMap<Integer, HashMap<SampleKey, JSONObject>> recursiveChildMap = new HashMap<>();
 
         private HashMap<SampleKey, JSONObject> childrenByKeyForSample(JSONObject sample) {
@@ -438,11 +478,11 @@ final class SVGSamplerOutput {
                 } else {
                     owner = parent;
                 }
-                if (parent.getInt("n") == sample.getInt("n")) {
+                if (parent.getInt("k") == sample.getInt("k")) {
                     mergeCounts(owner, sample, true);
                 } else {
                     HashMap<SampleKey, JSONObject> siblings = childrenByKeyForSample(owner);
-                    SampleKey key = new SampleKey(sample.getInt("n"), sample.getInt("f"), sample.getInt("fl"));
+                    SampleKey key = sampleKeys.get(sample.getInt("k"));
                     if (siblings.containsKey(key)) {
                         JSONObject sibling = siblings.get(key);
                         mergeCounts(sibling, sample, false);
@@ -495,15 +535,7 @@ final class SVGSamplerOutput {
             JSONObject threadSample = new JSONObject();
             long totalSamples = x;
             int id = sampleId++;
-            threadSample.put("n", nameHash.computeIfAbsent(thread.getName(), k -> {
-                sampleNames.put(thread.getName());
-                return nameCounter++;
-            }));
-            threadSample.put("f", sourceHash.computeIfAbsent("<none>", k -> {
-                sourceNames.put("<none>");
-                return sourceCounter++;
-            }));
-            threadSample.put("fl", 0);
+            threadSample.put("k", indexForSampleKey(thread.getName(), "<none>", 0));
             threadSample.put("id", id);
             threadSample.put("p", 0);
             sampleData.put(threadSample);
@@ -535,6 +567,9 @@ final class SVGSamplerOutput {
             result.append("var sourceNames = ");
             result.append(sourceNames.toString());
             result.append(";\n");
+            result.append("var sampleKeys = ");
+            result.append(sampleJsonKeys.toString());
+            result.append(";\n");
             result.append("var profileData = ");
             result.append(sampleData.toString());
             result.append(";\n");
@@ -542,10 +577,10 @@ final class SVGSamplerOutput {
             result.append("var colorData = ");
             JSONArray colors = new JSONArray();
             for (GraphColorMap cm : GraphColorMap.values()) {
-                if (colorsForNames.containsKey(cm)) {
+                if (colorsForKeys.containsKey(cm)) {
                     JSONObject map = new JSONObject();
-                    for (Map.Entry<String, String> e : colorsForNames.get(cm).entrySet()) {
-                        map.put(nameHash.get(e.getKey()).toString(), e.getValue());
+                    for (Map.Entry<SampleKey, String> e : colorsForKeys.get(cm).entrySet()) {
+                        map.put(keyHash.get(e.getKey()).toString(), e.getValue());
                     }
                     colors.put(map);
                 } else {
@@ -572,35 +607,7 @@ final class SVGSamplerOutput {
 
         private void processSample(Task task, ArrayDeque<Task> tasks) {
             JSONObject result = new JSONObject();
-            final int nameId = nameHash.computeIfAbsent(task.sample.getRootName(), k -> {
-                sampleNames.put(task.sample.getRootName());
-                return nameCounter++;
-            });
-            result.put("n", nameId);
-            final String sourceName;
-            int sourceLine = 0;
-            SourceSection section = task.sample.getSourceSection();
-            if (section != null && section.isAvailable()) {
-                sourceLine = section.getStartLine();
-                Source source = section.getSource();
-                if (source != null) {
-                    String path = source.getPath();
-                    if (path != null) {
-                        sourceName = path;
-                    } else {
-                        sourceName = source.getName();
-                    }
-                } else {
-                    sourceName = "<none>";
-                }
-            } else {
-                sourceName = "<none>";
-            }
-            result.put("f", sourceHash.computeIfAbsent(sourceName, k -> {
-                sourceNames.put(k);
-                return sourceCounter++;
-            }));
-            result.put("fl", sourceLine);
+            result.put("k", indexForSampleKey(task.sample.getRootName(), task.sample.getSourceSection()));
             int id = sampleId++;
             result.put("id", id);
             result.put("p", task.parent);
@@ -632,6 +639,11 @@ final class SVGSamplerOutput {
             return (JSONObject) sampleData.get(id);
         }
 
+        protected String nameForKeyId(int keyId) {
+            SampleKey key = sampleKeys.get(keyId);
+            return sampleNames.getString(key.nameId);
+        }
+
         private void buildColorData() {
             for (Object sample : sampleData) {
                 buildColorDataForSample((JSONObject) sample);
@@ -639,8 +651,8 @@ final class SVGSamplerOutput {
         }
 
         private void buildColorDataForSample(JSONObject sample) {
-            colorForName(sample.getInt("n"), GraphColorMap.FLAME);
-            colorForName(sample.getInt("n"), GraphColorMap.values()[sample.getInt("l")]);
+            colorForKey(sample.getInt("k"), GraphColorMap.FLAME);
+            colorForKey(sample.getInt("k"), GraphColorMap.values()[sample.getInt("l")]);
         }
 
         public String initFunction(String argName) {
@@ -706,21 +718,21 @@ final class SVGSamplerOutput {
             return canvas.toString();
         }
 
-        public Map<String, String> colorsForType(GraphColorMap type) {
-            if (colorsForNames.containsKey(type)) {
-                return colorsForNames.get(type);
+        public Map<SampleKey, String> colorsForType(GraphColorMap type) {
+            if (colorsForKeys.containsKey(type)) {
+                return colorsForKeys.get(type);
             } else {
-                Map<String, String> colors = new HashMap<>();
-                colorsForNames.put(type, colors);
+                Map<SampleKey, String> colors = new HashMap<>();
+                colorsForKeys.put(type, colors);
                 return colors;
             }
         }
 
-        public String colorForName(int nameId, GraphColorMap type) {
-            String name = sampleNames.getString(nameId);
-            Map<String, String> colors = colorsForType(type);
-            if (colors.containsKey(name)) {
-                return colors.get(name);
+        public String colorForKey(int keyId, GraphColorMap type) {
+            SampleKey key = sampleKeys.get(keyId);
+            Map<SampleKey, String> colors = colorsForType(type);
+            if (colors.containsKey(key)) {
+                return colors.get(key);
             }
 
             double v1;
@@ -780,7 +792,7 @@ final class SVGSamplerOutput {
                     b = r;
             }
             String color = allocateColor(r, g, b);
-            colors.put(name, color);
+            colors.put(key, color);
             return color;
         }
 
@@ -1004,7 +1016,8 @@ final class SVGSamplerOutput {
             }
             HashMap<String, String> groupAttrs = new HashMap<>();
             int id = sample.getInt("id");
-            String fullText = owner.sampleNames.getString(sample.getInt("n"));
+            String fullText = owner.nameForKeyId(sample.getInt("k"));
+            GraphOwner.SampleKey key = owner.sampleKeys.get(sample.getInt("k"));
 
             groupAttrs.put("class", "func_g");
             groupAttrs.put("onclick", id == 0 ? "unzoom()" : "zoom(this)");
@@ -1021,13 +1034,13 @@ final class SVGSamplerOutput {
             double totalPercent = 100.0 * total / sampleCount;
             title.append(String.format("Self samples: %d (%.2f%%)\n", interpreted + compiled, percent));
             title.append(String.format("total samples:  %d (%.2f%%)\n", total, totalPercent));
-            title.append(String.format("Source location: %s:%d\n", owner.sourceNames.get(sample.getInt("f")), sample.getInt("fl")));
+            title.append(String.format("Source location: %s:%d\n", owner.sourceNames.get(key.sourceId), key.sourceLine));
             groupAttrs.put("title", escape(title.toString()));
             output.append(startGroup(groupAttrs));
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForName(sample.getInt("n"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(fillRectangle(x, y, width, FRAMEHEIGHT, owner.colorForKey(sample.getInt("k"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
 
             output.append(ttfString(black(), owner.fontName(), owner.fontSize(), x + 3, y - 5 + FRAMEHEIGHT, owner.abbreviate(fullText, width), null, ""));
             output.append(endGroup(groupAttrs));
@@ -1097,7 +1110,7 @@ final class SVGSamplerOutput {
         }
 
         private List<JSONObject> buildHistogram(JSONObject sample) {
-            Map<String, JSONObject> bars = new HashMap<>();
+            Map<GraphOwner.SampleKey, JSONObject> bars = new HashMap<>();
             ArrayDeque<JSONObject> samples = new ArrayDeque<>();
 
             JSONObject next = sample;
@@ -1111,15 +1124,15 @@ final class SVGSamplerOutput {
             return lines;
         }
 
-        private void buildHistogram(JSONObject sample, ArrayDeque<JSONObject> samples, Map<String, JSONObject> bars) {
-            JSONObject bar = bars.computeIfAbsent(owner.sampleNames.getString(sample.getInt("n")),
+        private void buildHistogram(JSONObject sample, ArrayDeque<JSONObject> samples, Map<GraphOwner.SampleKey, JSONObject> bars) {
+            JSONObject bar = bars.computeIfAbsent(owner.sampleKeys.get(sample.getInt("k")),
                             k -> {
                                 JSONObject entry = new JSONObject();
                                 entry.put("id", sample.getInt("id"));
                                 entry.put("i", 0);
                                 entry.put("c", 0);
                                 entry.put("l", sample.getInt("l"));
-                                entry.put("n", sample.getInt("n"));
+                                entry.put("k", sample.getInt("k"));
                                 return entry;
                             });
             bar.put("i", bar.getInt("i") + sample.getInt("i"));
@@ -1181,8 +1194,7 @@ final class SVGSamplerOutput {
         }
 
         private String drawElement(JSONObject bar, int position) {
-            int nameId = owner.sampleDataForId(bar.getInt("id")).getInt("n");
-            String name = owner.sampleNames.getString(nameId);
+            String name = owner.nameForKeyId(bar.getInt("k"));
             long selfTime = bar.getInt("c") + bar.getInt("i");
             double width = widthPerTime * selfTime;
 
@@ -1212,7 +1224,7 @@ final class SVGSamplerOutput {
 
             HashMap<String, String> rectAttrs = new HashMap<>();
 
-            output.append(fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForName(nameId, GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
+            output.append(fillRectangle(x1, y1, width, FRAMEHEIGHT, owner.colorForKey(bar.getInt("k"), GraphColorMap.FLAME), "rx=\"2\" ry=\"2\"", rectAttrs));
             double afterWidth = IMAGEWIDTH - width - XPAD * 2;
             int textLength = (int) (width / (owner.fontSize() / owner.fontWidth()));
             int afterLength = (int) (afterWidth / (owner.fontSize() / owner.fontWidth()));

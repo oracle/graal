@@ -259,15 +259,22 @@ function title(e) {
 }
 
 function key_for_sample(sample) {
-    return sample.n;
+    return sample.k;
 }
 
 function name_for_sample(sample) {
-    return profileNames[sample.n];
+    let key = sampleKeys[sample.k];
+    return profileNames[key[0]];
 }
 
 function source_for_sample(sample) {
-    return sourceNames[sample.f];
+    let key = sampleKeys[sample.k];
+    return sourceNames[key[1]];
+}
+
+function source_line_for_sample(sample) {
+    let key = sampleKeys[sample.k];
+    return sourceNames[key[2]];
 }
 
 function function_name(e) {

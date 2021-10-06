@@ -181,6 +181,7 @@ function zoom_child(sample) {
     let t = e.lastElementChild;
     let name = name_for_sample(sample);
     let source = source_for_sample(sample);
+    let sourceLine = source_line_for_sample(sample);
 
     let compiled = 0;
     let interpreted = 0;
@@ -198,7 +199,7 @@ function zoom_child(sample) {
     title.textContent = name + " (" + languageNames[sample.l] + ")\n" +
         "Self samples: " + (interpreted + compiled) + " (" + (100 * (compiled + interpreted) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
         "Total samples: " + (hits) + " (" + (100 * (hits) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
-        "Source location: " + source + ":" + sample.fl + "\n";
+        "Source location: " + source + ":" + sourceLine + "\n";
 
     r.x.baseVal.value = x;
     r.y.baseVal.value = y;
@@ -296,7 +297,7 @@ function zoom_internal(sample, parents, unrelated) {
         zoom_child(c.value);
         c = iter.next();
     }
-    fg_search_update();
+    fg_search_update(search_matches);
     fg_canvas_resize();
     rebuild_histogram(sample);
 }
