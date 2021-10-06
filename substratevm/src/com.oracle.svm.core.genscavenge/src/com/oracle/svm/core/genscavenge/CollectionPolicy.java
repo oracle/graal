@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.UserError;
 public interface CollectionPolicy {
     final class Options {
         @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime.")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("BySpaceAndTime");
+        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -86,6 +86,11 @@ public interface CollectionPolicy {
         return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
     }
 
+    static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {
+        Boolean optionValue = HeapParameters.Options.CollectYoungGenerationSeparately.getValue();
+        return (optionValue != null) ? optionValue : defaultValue;
+    }
+
     String getName();
 
     /**
@@ -97,9 +102,9 @@ public interface CollectionPolicy {
 
     /**
      * (Re)computes minimum/maximum/initial sizes of space based on the available
-     * {@linkplain PhysicalMemory physical memory} and current runtime option values. This method is
-     * called after slow-path allocation (of a TLAB or a large object) and so allocation is allowed,
-     * but can trigger a collection.
+     * {@linkplain PhysicalMemory physical memory} and current runtime option values. This method
+     * can be called directly or after a slow-path allocation (of a TLAB or a large object) and so
+     * allocation is allowed, but may trigger a collection.
      */
     void updateSizeParameters();
 
@@ -165,7 +170,7 @@ public interface CollectionPolicy {
     int getTenuringAge();
 
     /** Called at the beginning of a collection, in the safepoint operation. */
-    void onCollectionBegin(boolean completeCollection);
+    void onCollectionBegin(boolean completeCollection, long requestingNanoTime);
 
     /** Called before the end of a collection, in the safepoint operation. */
     void onCollectionEnd(boolean completeCollection, GCCause cause);

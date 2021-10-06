@@ -217,4 +217,10 @@ public abstract class Heap {
      * value and returns true. Otherwise, the method returns false.
      */
     public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
+
+    /**
+     * (Re)computes minimum/maximum/initial sizes of space based on the available
+     * {@linkplain PhysicalMemory physical memory} and current runtime option values.
+     */
+    public abstract void updateSizeParameters();
 }
