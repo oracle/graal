@@ -57,7 +57,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable
         super(TYPE, src, srcPos, dst, dstPos, length, null, bci);
         this.forceAnyLocation = forceAnyLocation;
         if (!forceAnyLocation) {
-            elementKind = ArrayCopy.selectComponentKind(this);
+            elementKind = selectComponentKind(this);
         } else {
             assert elementKind == null;
         }
@@ -66,7 +66,7 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         if (!forceAnyLocation && elementKind == null) {
-            elementKind = ArrayCopy.selectComponentKind(this);
+            elementKind = selectComponentKind(this);
         }
         if (elementKind != null) {
             return NamedLocationIdentity.getArrayLocation(elementKind);

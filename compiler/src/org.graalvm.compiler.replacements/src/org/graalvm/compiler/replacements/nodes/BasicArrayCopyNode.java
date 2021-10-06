@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 import static org.graalvm.word.LocationIdentity.any;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -37,10 +38,12 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.word.LocationIdentity;
 
@@ -143,5 +146,21 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements Ar
     @Override
     public boolean hasSideEffect() {
         return true;
+    }
+
+    public static JavaKind selectComponentKind(BasicArrayCopyNode arraycopy) {
+        ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
+        ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
+
+        if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
+            return null;
+        }
+        if (!destType.getComponentType().isAssignableFrom(srcType.getComponentType())) {
+            return null;
+        }
+        if (!arraycopy.isExact()) {
+            return null;
+        }
+        return srcType.getComponentType().getJavaKind();
     }
 }
