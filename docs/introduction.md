@@ -90,9 +90,9 @@ Tools/Utilities:
 
 Runtimes:
 
-* [Node.js](/reference-manual/js/) -- the Node.js 14.16.1 runtime for JavaScript
+* [Node.js](/reference-manual/js/) -- the Node.js 14.17.6 runtime for JavaScript
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.4 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [GraalWasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 

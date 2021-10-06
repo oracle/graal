@@ -104,10 +104,10 @@ More than 100,000 npm packages are regularly tested and are compatible with Graa
 To install a Node.js module, use the `npm` executable from the `<graalvm>/bin` folder, which is installed together with `node`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
-Install the `colors` and `ansispan` modules using `npm install`.
+Install the modules `colors`, `ansispan`, and `express` using `npm install`.
 After the modules are installed, you can use them from your application.
 ```shell
-$JAVA_HOME/bin/npm install colors ansispan
+$JAVA_HOME/bin/npm install colors ansispan express
 ```
 
 Use the following code snippet and save it as the `app.js` file in the same directory where you installed the Node.js modules:
