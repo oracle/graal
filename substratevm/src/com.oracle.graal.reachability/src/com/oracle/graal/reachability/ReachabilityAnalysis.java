@@ -68,7 +68,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 }
             }
 
-            markTypeInstantiated(type);
+            markTypeReachable(type);
 
             if (type.getSuperclass() != null) {
                 addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -111,6 +111,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     public void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
         if (method == null) {
             System.err.println("Null method received");
+            System.out.println("reson: " + reason);
             new RuntimeException().printStackTrace();
             return;
         }
@@ -127,11 +128,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     private void onMethodImplementationInvoked(AnalysisMethod method) {
         if (!processed.add(method)) {
             System.err.println("Method " + method + " has already been processed");
-//            return;
+// return;
         }
         if (!processed2.add(method.getQualifiedName())) {
             System.err.println("Method " + method + " has already been processed");
-//            return;
+// return;
         }
         if (method.isNative()) {
             System.err.println("native method " + method);
@@ -206,6 +207,10 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
                 AnalysisMethod implementationInvokedMethod = type.resolveConcreteMethod(method, current);
+                if (implementationInvokedMethod == null) {
+                    System.out.println("onMethodInvoked: method " + method + " on type " + current + " is null");
+                    continue;
+                }
                 markMethodImplementationInvoked(implementationInvokedMethod, type); // todo better
                                                                                     // reason
             }
@@ -225,6 +230,10 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         Set<AnalysisType> instantiatedSubtypes = clazz.getInstantiatedSubtypes();
         for (AnalysisType subtype : instantiatedSubtypes) {
             AnalysisMethod resolvedMethod = subtype.resolveConcreteMethod(method, clazz);
+            if (resolvedMethod == null) {
+                System.out.println("onMethodInvoked: method " + method + " on type " + subtype + " is null");
+                continue;
+            }
             markMethodImplementationInvoked(resolvedMethod, method); // todo better reason
         }
     }
