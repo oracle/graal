@@ -21,7 +21,7 @@ public class RuntimeAnalysisWorkarounds {
          * folding. The condition must always be false, and it can't be proved as false.
          */
         if (Options.ConstantFoldSamplingCodeStartId.getValue()) {
-            ImageSingletons.lookup(CallStackFrameMethodInfo.class).setEnterSamplingCodeMethodId(0, 0);
+            ImageSingletons.lookup(CallStackFrameMethodInfo.class).setEnterSamplingCodeMethodId(0, 0, 0);
         }
     }
 }
