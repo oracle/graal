@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -36,10 +35,10 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * Models the flow transfer of an {@link ArrayCopy} node which intrinsifies calls to
- * System.arraycopy(). This flow registers itself as an observer for both the source and the
- * destination. When either the source or the destination elements change the element flows from
- * source are passed to destination.
+ * Models the flow transfer of an {@link org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode}
+ * node which intrinsifies calls to System.arraycopy(). This flow registers itself as an observer
+ * for both the source and the destination. When either the source or the destination elements
+ * change the element flows from source are passed to destination.
  */
 public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
