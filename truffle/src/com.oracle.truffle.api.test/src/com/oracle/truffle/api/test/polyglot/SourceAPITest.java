@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -707,7 +706,7 @@ public class SourceAPITest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SourceSectionProvider(request.getSource())));
+                return RootNode.createConstantNode(new SourceSectionProvider(request.getSource())).getCallTarget();
             }
         });
         try (Context context = Context.create(ProxyLanguage.ID)) {
