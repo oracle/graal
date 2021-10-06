@@ -308,6 +308,12 @@ public abstract class CCompilerInvoker {
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            List<String> strictOptions = new ArrayList<>(super.compileStrictOptions());
+            strictOptions.add("-Wno-tautological-compare");
+            return strictOptions;
+        }
     }
 
     protected InputStream getCompilerErrorStream(Process compilingProcess) {
