@@ -43,7 +43,7 @@ public abstract class JfrEventSupport {
 }
 
 /**
- * Placeholder implementation for old JDK version that do not have JFR support.ked.
+ * Placeholder implementation for old JDK version that do not have JFR support.
  */
 final class JfrEventSupportBeforeJDK11 extends JfrEventSupport {
 }

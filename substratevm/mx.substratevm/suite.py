@@ -183,6 +183,7 @@ suite = {
             "spotbugs": "false",
         },
 
+
         "com.oracle.svm.core.jdk8": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -195,7 +196,9 @@ suite = {
         "com.oracle.svm.core.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.core.jfr",
+            ],
             "requires" : [
                 "jdk.jfr",
                 "jdk.management",
@@ -597,6 +600,20 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+
+        "com.oracle.svm.core.jfr": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
         },
 
         "com.oracle.svm.driver": {
@@ -1091,11 +1108,8 @@ suite = {
                     "com.oracle.svm.core.jdk11.jfr", # Uses of com.oracle.svm.core.jdk11.jfr.JfrEnabled
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
-                    "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
-                    "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
                     "* to jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
-                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1444,7 +1458,6 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk11",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
@@ -1455,6 +1468,20 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        "SVM_TESTS_JDK11" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.test.jdk11",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "SVM",
+            ],
+            "javaCompliance": "11+",
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
