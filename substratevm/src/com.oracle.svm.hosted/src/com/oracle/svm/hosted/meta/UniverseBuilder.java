@@ -63,7 +63,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.svm.core.FunctionPointerHolder;
-import com.oracle.svm.core.InvalidVTableEntryHandler;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -674,7 +674,7 @@ public class UniverseBuilder {
          * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
          * stub that reports a fatal error.
          */
-        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray()) {
@@ -999,6 +999,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
     }
 }
