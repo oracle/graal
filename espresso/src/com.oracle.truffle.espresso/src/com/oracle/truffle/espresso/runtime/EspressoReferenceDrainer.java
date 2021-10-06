@@ -207,7 +207,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                     }
                 }
             } finally {
-                Target_java_lang_Thread.terminate(context.getCurrentThread(), meta);
+                context.getThreadAccess().terminate(context.getCurrentThread());
                 if (context.isClosing()) {
                     // Ignore exceptions that arise during closing.
                     return;

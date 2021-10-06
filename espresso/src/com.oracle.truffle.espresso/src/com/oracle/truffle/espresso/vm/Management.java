@@ -60,6 +60,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.threads.State;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -297,7 +298,7 @@ public final class Management extends NativeEnv {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if (Target_java_lang_Thread.getThreadId(meta, activeThreads[j]) == id) {
+                if (getThreadAccess().getThreadId(activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }
@@ -310,7 +311,7 @@ public final class Management extends NativeEnv {
                 int threadStatus = meta.java_lang_Thread_threadStatus.getInt(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
-                int mask = Target_java_lang_Thread.State.BLOCKED.value | Target_java_lang_Thread.State.WAITING.value | Target_java_lang_Thread.State.TIMED_WAITING.value;
+                int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
                 if ((threadStatus & mask) != 0) {
                     lockObj = (StaticObject) meta.HIDDEN_THREAD_BLOCKED_OBJECT.getHiddenObject(thread);
                     if (lockObj == null) {
@@ -567,7 +568,7 @@ public final class Management extends NativeEnv {
             StaticObject[] activeThreads = getContext().getActiveThreads();
             threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
             for (int j = 0; j < activeThreads.length; ++j) {
-                long tid = Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]);
+                long tid = getThreadAccess().getThreadId(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(tid, j, threadIds);
             }
         }
@@ -586,7 +587,7 @@ public final class Management extends NativeEnv {
         StaticObject thread = StaticObject.NULL;
 
         for (int j = 0; j < activeThreads.length; ++j) {
-            if (Target_java_lang_Thread.getThreadId(getMeta(), activeThreads[j]) == threadId) {
+            if (getThreadAccess().getThreadId(activeThreads[j]) == threadId) {
                 thread = activeThreads[j];
                 break;
             }
@@ -620,7 +621,7 @@ public final class Management extends NativeEnv {
             StaticObject thread = StaticObject.NULL;
 
             for (int j = 0; j < activeThreads.length; ++j) {
-                if (Target_java_lang_Thread.getThreadId(meta, activeThreads[j]) == id) {
+                if (getThreadAccess().getThreadId(activeThreads[j]) == id) {
                     thread = activeThreads[j];
                     break;
                 }

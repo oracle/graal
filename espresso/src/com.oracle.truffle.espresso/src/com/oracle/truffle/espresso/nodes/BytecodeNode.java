@@ -257,11 +257,11 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -339,7 +339,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -1783,7 +1782,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = (instrument == null) ? 0 : instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         if (targetBCI <= curBCI) {
-            checkStopping();
+            checkDeprecation();
             if (++loopCount[0] >= REPORT_LOOP_STRIDE) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
@@ -1814,9 +1813,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         return nextStatementIndex;
     }
 
-    private void checkStopping() {
+    private void checkDeprecation() {
         if (getContext().shouldCheckDeprecationStatus()) {
-            Target_java_lang_Thread.checkDeprecatedState(getMeta(), getContext().getCurrentThread());
+            getContext().getThreadAccess().checkDeprecation();
         }
     }
 
