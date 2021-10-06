@@ -1072,12 +1072,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         if isinstance(vm, mx_benchmark.GuestVm):
             host_vm = vm.host_vm()
             assert host_vm
+        name = 'graalvm-ee' if has_component('svmee') else 'graalvm-ce'
         dims = {
-            "vm": vm.name(),
-            # the host-vm is hardcoded to one of the accepted names of the field
-            "host-vm": 'graalvm-ee' if has_component('svmee') else 'graalvm-ce',
+            # the vm and host-vm fields are hardcoded to one of the accepted names of the field
+            "vm": name,
+            "host-vm": name,
             "host-vm-config": self.host_vm_config_name(host_vm, vm),
-            "guest-vm": vm.name() if host_vm else "none",
+            "guest-vm": name if host_vm else "none",
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
 
