@@ -75,7 +75,7 @@ public final class DynamicProxyFeature implements Feature {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             dynamicProxySupport.addProxyClass(interfaces);
         };
-        ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
+        ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter, ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFiles.DYNAMIC_PROXY_NAME);
