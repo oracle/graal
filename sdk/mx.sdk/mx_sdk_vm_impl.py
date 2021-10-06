@@ -2265,10 +2265,6 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
 
         name = '{}_INSTALLABLE'.format(component.installable_id.replace('-', '_').upper())
-        if other_involved_components:
-            for launcher_config in launcher_configs:
-                if _force_bash_launchers(launcher_config):
-                    name += '_B' + basename(launcher_config.destination).upper()
         for library_config in library_configs:
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
