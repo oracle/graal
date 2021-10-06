@@ -16,7 +16,7 @@ class.
 
 - `native-image [options] -jar jarfile [imagename] [options]` to build an image for a JAR file.
 
-The options passed to `native-image` are evaluated left-to-right. For more information, see [Native Image Build Configuration](BuildConfiguration.md/#order-of-arguments-evaluation).
+The options passed to `native-image` are evaluated left-to-right. For more information, see [Native Image Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
 The options fall into four categories: image generation options, macro options, non-standard options, and server options.
 Non-standard and server options are subject to change through a deprecation cycle.

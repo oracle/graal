@@ -14,7 +14,7 @@ If you are interested in how Native Image supports the common use case, continue
 
 ## Create a Shared Library
 
-First of all one has to use the `native-image` builder to generate a shared library with some JNI-compatible [entry points](README.md/#build-a-shared-library).
+First of all one has to use the `native-image` builder to generate a shared library with some JNI-compatible [entry points](README.md#build-a-shared-library).
 Start with the Java code:
 ```java
 package org.pkg.implnative;

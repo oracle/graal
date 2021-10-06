@@ -36,7 +36,7 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 ```
 
 The above command will install the LLVM toolchain from the GitHub catalog for GraalVM Community users.
-For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md/#manual-installation) is required.
+For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md#manual-installation) is required.
 
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell

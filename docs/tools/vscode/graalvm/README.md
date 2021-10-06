@@ -192,7 +192,7 @@ Open the _launch.json_ file and click the Add Configuration... button in the bot
 5&#46; Generate load to the running process to invoke more code and generate the best configuration.
 Once all possible execution paths have been executed, terminate the process. At this point the Native Image agent dumps the collected configuration to the selected output directory.
 
-Once the configuration for Native Image has been generated, follow the documentation on how to [generate a native image for a project](https://www.graalvm.org/reference-manual/native-image/#build-a-native-image) from the command line, or how to [build native images right from VS Code](../micronaut/README.md#generate-native-images-of-micronaut-projects).
+Once the configuration for Native Image has been generated, follow the documentation on how to [generate a native image for a project](https://www.graalvm.org/reference-manual/native-image#build-a-native-image) from the command line, or how to [build native images right from VS Code](../micronaut/README.md#generate-native-images-of-micronaut-projects).
 
 ## Native Image Debugger
 
@@ -461,7 +461,7 @@ For example, to connect to the Chrome Dev Tools protocol port, the content of th
 
 Alternatively, to pass the `--polyglot` option to any of the existing application launchers, add the `runtimeArgs` attribute containing the `--polyglot` value to their respective debug configurations.
 
-> Note: In some cases (polyglot application calls Java or R, or native launcher accesses languages installed with `gu` without [rebuilding images](https://www.graalvm.org/reference-manual/graalvm-updater/#component-uninstallation)), also passing the `--jvm` option is necessary.
+> Note: In some cases (polyglot application calls Java or R, or native launcher accesses languages installed with `gu` without [rebuilding images](https://www.graalvm.org/reference-manual/graalvm-updater#component-uninstallation)), also passing the `--jvm` option is necessary.
 
 ![Image Debug Configuration for Python](images/polyglot-debug-config.png)
 
@@ -502,14 +502,14 @@ GraalVM supports smart editing features of development tools used to create gues
 This allows you to attach compatible development tools such as VS Code to GraalVM and to get features like auto complete, go to declaration, or documentation on hover.
 
 Currently, [GraalVM's Language Server Protocol](https://www.graalvm.org/tools/lsp/) implementation supports the following services:
-* [Text Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_synchronization)
-* [Hover Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_hover)
-* [Completion Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_completion)
-* [Signature Help Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_signatureHelp)
-* [Document Highlight Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_documentHighlight)
-* [Code Action Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeAction)
-* [Code Lens Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#textDocument_codeLens)
-* [Execute Command Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_executeCommand)
+* [Text Document Synchronization](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_synchronization)
+* [Hover Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_hover)
+* [Completion Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_completion)
+* [Signature Help Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_signatureHelp)
+* [Document Highlight Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_documentHighlight)
+* [Code Action Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_codeAction)
+* [Code Lens Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#textDocument_codeLens)
+* [Execute Command Provider](https://microsoft.github.io/language-server-protocol/specifications/specification-current#workspace_executeCommand)
 
 > Note: The Language Server Protocol is offered as a technology preview and requires to pass the `--experimental-options` option for its activation.
 

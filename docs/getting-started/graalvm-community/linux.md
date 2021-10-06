@@ -36,18 +36,18 @@ The base distribution of GraalVM Community Edition for Linux (AMD64) platforms i
 The base installation can be extended with:
 
 Tools/Utilities:
-*  [Native Image](../../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
-*  [LLVM toolchain](../../reference-manual/llvm/Compiling.md/#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
-*  [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
+* [Native Image](../../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
+* [LLVM toolchain](../../reference-manual/llvm/Compiling.md#llvm-toolchain-for-compiling-cc) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime
+* [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
 
 Runtimes:
-*  [Node.js](../../reference-manual/js/README.md) -- Node.js v14.17.6 compatible
-*  [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
-*  [Ruby](../../reference-manual/ruby/README.md) -- Ruby 2.7.2 compatible
-*  [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
-*  [Wasm](../../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
+* [Node.js](../../reference-manual/js/README.md) -- Node.js v14.17.6 compatible
+* [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
+* [Ruby](../../reference-manual/ruby/README.md) -- Ruby 2.7.2 compatible
+* [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
+* [Wasm](../../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 ​
 These runtimes are not part of the GraalVM Community base distribution and must be installed separately.
 
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
-Proceed to the [installation steps](../../reference-manual/graalvm-updater.md/#component-installation) to add any necessary language runtime or utility from above to GraalVM.
+Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.

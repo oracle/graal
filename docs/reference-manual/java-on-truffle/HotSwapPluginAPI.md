@@ -7,7 +7,7 @@ permalink: /reference-manual/java-on-truffle/hotswap-plugin/
 
 # Truffle on Java HotSwap Plugin API
 
-With Java on Truffle you can benefit from enhanced HotSwap [capabilites](Demos.md/#enhanced-hotswap-capabilities-with-java-on-truffle) that allow the code to evolve naturally during development without the need for restarting a running application.
+With Java on Truffle you can benefit from enhanced HotSwap [capabilites](Demos.md#enhanced-hotswap-capabilities-with-java-on-truffle) that allow the code to evolve naturally during development without the need for restarting a running application.
 ​
 While code reloading (HotSwap) is a powerful tool, it is not sufficient to reflect all kinds of changes, e.g., changes to annotations, framework-specific changes such as implemented services or beans.
 For these things the code often needs to be executed to reload configurations or contexts before the changes are fully reflected in the running instance.
@@ -138,7 +138,7 @@ Here is a sample application created from the tutorial ["Creating your first Mic
 Example's sources can be downloaded as a ready-made Gradle project from [here](https://guides.micronaut.io/latest/micronaut-creating-first-graal-app-gradle-java.zip).
 Download, unzip and open the project in your IDE.
 
-Before you proceed, make sure that you have Java on Truffle [installed](README.md/#install-java-on-truffle) and set the GraalVM as the project SDK.
+Before you proceed, make sure that you have Java on Truffle [installed](README.md#install-java-on-truffle) and set the GraalVM as the project SDK.
 ​
 1. In your IDE navigate to the root `build.gradle` within the sample project. Add:
 

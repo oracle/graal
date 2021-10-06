@@ -10,7 +10,7 @@ It is designed to accelerate the execution of applications written in Java and o
 GraalVM Enterprise's polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating any foreign language call costs.
 
 This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, supported platforms, available distributions, core and additional functionalities, and support levels for various features.
-The conceptual overview and advantages of GraalVM Enterprise are described on the [Solutions Overview](overview.md) page.
+The conceptual overview and advantages of GraalVM Enterprise are described on the [Solutions Overview](solutions-overview.md) page.
 
 * [GraalVM Enterprise Architecture](#graalvm-enterprise-architecture)
 * [Runtime Modes](#runtime-modes)

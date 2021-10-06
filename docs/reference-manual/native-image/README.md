@@ -50,7 +50,7 @@ After this additional step, the `native-image` executable will become available 
 the `GRAALVM_HOME/bin` directory.
 
 The above command will install Native Image from the GitHub catalog for GraalVM Community users.
-For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md/#manual-installation) is required.
+For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md#manual-installation) is required.
 
 ## Prerequisites
 

@@ -38,7 +38,7 @@ Ensure you set up GraalVM before you begin.
 The below examples work:
 * on a JVM, by passing `--polyglot --jvm`.
 * on native launchers with `--polyglot` (e.g., `js --polyglot`).
-  It might be required to [rebuild images](graalvm-updater.md/#rebuild-images) to access languages installed with `gu`.
+  It might be required to [rebuild images](graalvm-updater.md#rebuild-images) to access languages installed with `gu`.
 * with native executables (e.g., `native-image --language:js`).
 
 For native launchers and native executables using Java as a Target Language
