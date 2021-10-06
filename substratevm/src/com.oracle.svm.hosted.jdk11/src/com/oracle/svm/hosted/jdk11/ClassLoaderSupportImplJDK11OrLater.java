@@ -107,8 +107,8 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
         return bundleName.substring(0, classSep);
     }
 
-    private void buildPackageToModulesMap(NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport) {
-        for (ModuleLayer layer : allLayers(classLoaderSupport.moduleLayerForImageBuild)) {
+    private void buildPackageToModulesMap(NativeImageClassLoaderSupportJDK11OrLater cls) {
+        for (ModuleLayer layer : allLayers(cls.moduleLayerForImageBuild)) {
             for (Module module : layer.modules()) {
                 for (String packageName : module.getDescriptor().packages()) {
                     addToPackageNameModules(module, packageName);

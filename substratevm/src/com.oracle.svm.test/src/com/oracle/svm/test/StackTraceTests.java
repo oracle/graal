@@ -103,6 +103,7 @@ public class StackTraceTests {
 
     static final class SecurityManagerSubclass extends SecurityManager {
         @Override
+        @SuppressWarnings({"deprecation"}) // deprecated on JDK 17
         protected Class<?>[] getClassContext() {
             return super.getClassContext();
         }

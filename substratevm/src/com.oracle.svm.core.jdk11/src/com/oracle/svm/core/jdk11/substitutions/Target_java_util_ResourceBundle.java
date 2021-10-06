@@ -44,12 +44,12 @@ public final class Target_java_util_ResourceBundle {
      */
 
     @Substitute
-    private static ResourceBundle getBundle(String baseName, Target_java_lang_Module_JDK11OrLater module) {
+    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
     }
 
     @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, Target_java_lang_Module_JDK11OrLater module) {
+    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

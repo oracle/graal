@@ -89,10 +89,10 @@ public class EscapeAnalysisTest extends EATestBase {
         testEscapeAnalysis("testMonitorSnippet", JavaConstant.forInt(0), false);
     }
 
-    @SuppressWarnings({"deprecation", "synchronization"})
+    @SuppressWarnings({"synchronized", "deprecation"})
     public static int testMonitorSnippet() {
-        Integer x = new Integer(0);
-        Double y = new Double(0);
+        Object x = new Integer(0);
+        Object y = new Double(0);
         Object z = new Object();
         synchronized (x) {
             synchronized (y) {
@@ -101,7 +101,7 @@ public class EscapeAnalysisTest extends EATestBase {
                 }
             }
         }
-        return x.intValue();
+        return ((Integer) x).intValue();
     }
 
     @Test
@@ -113,16 +113,16 @@ public class EscapeAnalysisTest extends EATestBase {
      * This test case differs from the last one in that it requires inlining within a synchronized
      * region.
      */
-    @SuppressWarnings({"deprecation", "synchronization"})
+    @SuppressWarnings({"synchronized", "deprecation"})
     public static int testMonitor2Snippet() {
-        Integer x = new Integer(0);
-        Double y = new Double(0);
+        Object x = new Integer(0);
+        Object y = new Double(0);
         Object z = new Object();
         synchronized (x) {
             synchronized (y) {
                 synchronized (z) {
                     notInlineable();
-                    return x.intValue();
+                    return ((Integer) x).intValue();
                 }
             }
         }

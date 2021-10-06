@@ -786,7 +786,7 @@ public final class Engine implements AutoCloseable {
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
@@ -869,6 +869,7 @@ public final class Engine implements AutoCloseable {
         static boolean AOT;
 
         static {
+            @SuppressWarnings("deprecation")
             Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
                 public Boolean run() {
                     return Boolean.getBoolean("com.oracle.graalvm.isaot");

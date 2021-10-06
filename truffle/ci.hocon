@@ -103,12 +103,12 @@ builds += [
     run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets : [gate],
     name: "gate-truffle-8"},
-  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {
+  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} ${jdt} {
     environment: {DISABLE_DSL_STATE_BITS_TESTS: "true"},
     run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets : [gate],
     name: "gate-truffle-oraclejdk-11"},
-  ${linux-amd64} ${oraclejdk17}   ${truffleCommon} ${eclipse} {
+  ${linux-amd64} ${oraclejdk17}   ${truffleCommon} ${eclipse} ${jdt} {
     environment: {DISABLE_DSL_STATE_BITS_TESTS: "true"},
     run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets : [gate],

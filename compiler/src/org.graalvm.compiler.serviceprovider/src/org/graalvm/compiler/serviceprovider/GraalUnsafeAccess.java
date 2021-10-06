@@ -59,6 +59,7 @@ public class GraalUnsafeAccess {
      * @throws SecurityException if a security manager is present and it denies
      *             {@link RuntimePermission}("accessUnsafe")
      */
+    @SuppressWarnings("deprecation") // checkPermission deprecated starting with JDK 17
     public static Unsafe getUnsafe() {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
