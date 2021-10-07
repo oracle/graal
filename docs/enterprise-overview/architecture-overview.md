@@ -70,8 +70,11 @@ The following are the certified platforms for GraalVM Enterprise 21:
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](/getting-started/installation-linux/) 	|
+| Alpine Linux  | 7, 8  | x86 64-bit | [Static Native Images](../reference-manual/native-image/StaticImages.md) |
 | macOS 	| 10.14 (Mojave), 10.15 (Catalina)	| x86 64-bit 	| [Installation Guide for macOS](/getting-started/installation-macos/) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](/getting-started/installation-windows/) 	|
+
+> Note: Alpine Linux is only certified for running executables created with GraalVM Native Image and statically linked to `muslc`.
 
 ## Distribution Components List
 
