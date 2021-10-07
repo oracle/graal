@@ -63,8 +63,8 @@ import com.oracle.truffle.tools.profiler.StackTraceEntry;
 public class ManualSamplingTest extends AbstractPolyglotTest {
 
     protected static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().sourceIs(s -> !s.isInternal()).tagIs(RootTag.class, StatementTag.class).build();
-    private final Semaphore enteredSample = new Semaphore(0);
-    private final Semaphore leaveSample = new Semaphore(0);
+    private Semaphore enteredSample = new Semaphore(0);
+    private Semaphore leaveSample = new Semaphore(0);
     private CPUSampler sampler;
 
     private static void assertEntry(Iterator<StackTraceEntry> iterator, String expectedName, int expectedCharIndex) {
@@ -97,6 +97,8 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
     @Before
     public void setup() {
         enterContext = false;
+        enteredSample = new Semaphore(0);
+        leaveSample = new Semaphore(0);
         setupEnv(Context.newBuilder().build(), new ProxyLanguage() {
             @Override
             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
