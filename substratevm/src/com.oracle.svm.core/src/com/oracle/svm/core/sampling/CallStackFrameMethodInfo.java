@@ -31,8 +31,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class CallStackFrameMethodInfo {
     private static final int INITIAL_METHOD_ID = -1;
 
-    //Safepoint,enterSlowPathTransitionFromVMToJava
-
     private static final String ENTER_SAFEPOINT_METHOD_NAME = "Safepoint.enterSlowPathSafepointCheck";
 
     private static final String ENTER_SAFEPOINT_FROM_NATIVE_METHOD_NAME = "Safepoint.enterSlowPathTransitionFromNativeToNewStatus";
