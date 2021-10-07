@@ -41,7 +41,7 @@ Currently, the GraalVM Enterprise environment on Windows can be extended with [N
 
 ## Prerequisites for Using Native Image on Windows
 
-To start using Native Image on Windows, install Visual Studio Code and Microsoft Visual C++(MSVC). There are two installation options:
+To start using Native Image on Windows, install Visual Studio and Microsoft Visual C++(MSVC). There are two installation options:
   * Install the Visual Studio Code Build Tools with the Windows 10 SDK
   * Install Visual Studio Code with the Windows 10 SDK
 
