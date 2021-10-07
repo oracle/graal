@@ -849,7 +849,7 @@ public final class EspressoContext {
     }
 
     public void interruptThread(StaticObject guestThread) {
-        threadRegistry.interruptThread(guestThread);
+        threads.interruptThread(guestThread);
     }
 
     public void invalidateNoThreadStop(String message) {

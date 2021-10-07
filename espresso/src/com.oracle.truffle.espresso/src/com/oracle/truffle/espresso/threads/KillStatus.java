@@ -33,17 +33,11 @@ public enum KillStatus {
      */
     STOP,
     /**
-     * Was killed, but we are in context closing. If the thread is alive for a while in that state,
-     * it will be considered uncooperative.
-     */
-    KILLED,
-    /**
-     * Was killed, and is calling Thread.exit(). Ignore further kill signals.
+     * Thread is terminated, and is calling Thread.exit(). Ignore further stop signals.
      */
     EXITING,
     /**
-     * Thread is uncooperative: needs to be killed with a host exception. Very dangerous state to be
-     * in.
+     * Thread is uncooperative: needs to be killed with a host exception. Unrecoverable state.
      */
     KILL
 }

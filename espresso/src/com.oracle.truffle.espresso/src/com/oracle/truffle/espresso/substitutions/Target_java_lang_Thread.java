@@ -119,8 +119,7 @@ public final class Target_java_lang_Thread {
             ThreadsAccess threadAccess = context.getThreadAccess();
             if (context.multiThreadingEnabled()) {
                 // Thread.start() is synchronized.
-                if (threadAccess.isStillborn(self)) {
-                    threadAccess.terminateAndNotify(self);
+                if (threadAccess.terminateIfStillborn(self)) {
                     return;
                 }
                 Thread hostThread = threadAccess.createJavaThread(self, threadExit, dispatchUncaught);
@@ -176,9 +175,9 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean isAlive(@JavaType(Thread.class) StaticObject self) {
-        int state = self.getKlass().getMeta().java_lang_Thread_threadStatus.getInt(self);
-        return state != State.NEW.value && state != State.TERMINATED.value;
+    public static boolean isAlive(@JavaType(Thread.class) StaticObject self,
+                    @Inject EspressoContext context) {
+        return context.getThreadAccess().isAlive(self);
     }
 
     @Substitution(hasReceiver = true)
@@ -236,7 +235,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution
     public static void clearInterruptEvent(@Inject EspressoContext context) {
-        context.getThreadAccess().clearInterruptStatus();
+        context.getThreadAccess().clearInterruptEvent();
     }
 
     @TruffleBoundary
@@ -259,10 +258,7 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void suspend0(@JavaType(Object.class) StaticObject toSuspend,
                     @Inject EspressoContext context) {
-        toSuspend.getKlass().getContext().invalidateNoSuspend("Calling Thread.suspend()");
-        if (!isAlive(toSuspend)) {
-            return;
-        }
+        context.invalidateNoSuspend("Calling Thread.suspend()");
         context.getThreadAccess().suspend(toSuspend);
     }
 
@@ -270,7 +266,7 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
                     @Inject EspressoContext context) {
-        self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
+        context.invalidateNoThreadStop("Calling thread.stop()");
         context.getThreadAccess().stop(self, throwable);
     }
 

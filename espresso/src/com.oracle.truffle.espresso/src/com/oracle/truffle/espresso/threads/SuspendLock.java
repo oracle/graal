@@ -25,51 +25,27 @@ package com.oracle.truffle.espresso.threads;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class SuspendLock {
-    private Object handshakeLock = new Object() {
+public final class SuspendLock {
+    private final Object handshakeLock = new Object() {
     };
+    private final ThreadsAccess access;
+    private final StaticObject thread;
 
     private volatile boolean shouldSuspend;
     private volatile boolean threadSuspended;
 
-    public boolean shouldSuspend() {
-        return shouldSuspend;
+    public SuspendLock(ThreadsAccess access, StaticObject thread) {
+        this.access = access;
+        this.thread = thread;
     }
 
-    public boolean isSuspended() {
-        return threadSuspended;
-    }
-
-    public void suspend(ThreadsAccess threads, StaticObject thread) {
-        if (threads.getHost(thread) == Thread.currentThread()) {
+    public void suspend() {
+        if (access.getHost(thread) == Thread.currentThread()) {
             // No need for handshake
             shouldSuspend = true;
             selfSuspend();
         } else {
-            suspendHandshake(threads, thread);
-        }
-    }
-
-    private void suspendHandshake(ThreadsAccess threads, StaticObject thread) {
-        boolean wasInterrupted = false;
-        while (!isSuspended()) {
-            shouldSuspend = true;
-            try {
-                synchronized (handshakeLock) {
-                    if (!threads.isAlive(thread)) {
-                        // If thread terminates, we don't want to wait forever
-                        handshakeLock.wait(100);
-                    } else {
-                        break;
-                    }
-                }
-            } catch (InterruptedException e) {
-                /* Thread.suspend() is not supposed to be interrupted */
-                wasInterrupted = true;
-            }
-        }
-        if (wasInterrupted) {
-            threads.getContext().interruptThread(threads.getContext().getCurrentThread());
+            suspendHandshake();
         }
     }
 
@@ -85,17 +61,49 @@ public class SuspendLock {
         threadSuspended = false;
     }
 
-    private void notifySuspended() {
-        synchronized (handshakeLock) {
-            threadSuspended = true;
-            handshakeLock.notifyAll();
-        }
-    }
-
     public synchronized void resume() {
         if (shouldSuspend()) {
             shouldSuspend = false;
             notifyAll();
+        }
+    }
+
+    private boolean shouldSuspend() {
+        return shouldSuspend;
+    }
+
+    private boolean isSuspended() {
+        return threadSuspended;
+    }
+
+    private void suspendHandshake() {
+        boolean wasInterrupted = false;
+        while (!isSuspended()) {
+            shouldSuspend = true;
+            try {
+                synchronized (handshakeLock) {
+                    if (!access.isAlive(thread)) {
+                        // If thread terminates, we don't want to wait forever
+                        handshakeLock.wait(100);
+                    } else {
+                        break;
+                    }
+                }
+            } catch (InterruptedException e) {
+                /* Thread.suspend() is not supposed to be interrupted */
+                wasInterrupted = true;
+            }
+        }
+        if (wasInterrupted) {
+            // Re-interrupt ourselves
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void notifySuspended() {
+        synchronized (handshakeLock) {
+            threadSuspended = true;
+            handshakeLock.notifyAll();
         }
     }
 }

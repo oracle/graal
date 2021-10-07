@@ -1417,7 +1417,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject thread,
                     @Inject Meta meta) {
-        Thread hostThread = (Thread) meta.getThreadAccess().getHost(thread);
+        Thread hostThread = meta.getThreadAccess().getHost(thread);
         UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
     }
 
