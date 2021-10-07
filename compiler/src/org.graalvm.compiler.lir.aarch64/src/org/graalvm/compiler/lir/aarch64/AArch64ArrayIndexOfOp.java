@@ -204,15 +204,8 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
     private void emitSIMDCode(AArch64MacroAssembler masm, Register baseAddress) {
         /*
-         * TODO: integrate this information into original explanation.
-         * 
-         * For the findTwoConsecutive case, the second value is loaded and compared against a second
-         * set of registers, where each value is shifted to the right by one index, so that is
-         * matches the index values of the first set of chunks. In this way, a match is identified
-         * by anding together the first and second set of chunks.
-         *
-         *
          * @formatter:off
+         *  Find a single char in a chunk:
          *  Chunk-based reading uses the following approach (with example for UTF-16) inspired from [1]. For SIMD implementation, the steps
          *  represent computation applied to one lane of 8 bytes. SIMD version replicates the following steps to all 4 lanes of 8 bytes each.
          *  1. Fill 8-byte chunk with search element ('searchElement'): 0x000000000000elem -> 0xelemelemelemelem
@@ -237,6 +230,20 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          *   4.3 Reverse the bitstream in T5 (0x0000030000000000 -> 0x0000000000c00000)
          *   4.4 Calculate leading zeros in T5 and divide the count by 2 to get the byte offset of matching element in a chunk.
          *   4.5 Retrieve the position of 'searchElement' by adding offset within chunk to the index of the chunk.
+         *
+         *  Find two consecutive chars in a chunk:
+         *  The findTwoConsecutive case uses the same steps as finding a single character in a chunk but for two characters separately.
+         *  To look for two consecutive characters 'c1c2', we search 'c1' in a first chunk [0..n] and 'c2' in the second chunk at [1..n+1].
+         *  Consequently, if the matching sequence is present in a chunk, it will be found at the same position in their respective chunks.
+         *  The following list highlights the differences compared to the steps to search a single character in a chunk.
+         *   1a. Use two registers, each repeating one of the two consecutive characters to search for.
+         *   2a. Read the first chunk starting from the 32 byte aligned ref position. Read the second chunk starting at the next character
+         *  from the ref position and ending with the first char from the next 32 byte aligned chunk.
+         *   3a. Compare a chunk for presence of the corresponding char.
+         *    3a.1 The first chunk is compared with the register repeating the first char and the same for the second chunk.
+         *    3a.2 Perform logical AND on the outcome of comparisons for the first and second char.
+         *   4a. As the second chunk starts at a char offset from the first chunk, the result of AND from 3a.2 gives a register with all the
+         *  bits set at the position where the match is found. The steps to find the position of the match in the searchString remain unchanged.
          *
          *  [1] https://github.com/ARM-software/optimized-routines/blob/master/string/aarch64/strchr.S
          * @formatter:on
@@ -283,10 +290,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * 'refAddress' pointing to the beginning of the last chunk.
          */
         masm.add(64, searchEnd, baseAddress, arrayLength, ShiftType.LSL, shiftSize);
-        if (findTwoConsecutive) {
-            /* The end of the region is the second to last element in the array */
-            masm.sub(64, searchEnd, searchEnd, elementByteSize);
-        }
         masm.bic(64, refAddress, searchEnd, 31L);
         /* Set 'chunkToReadAddress' pointing to the chunk from where the search begins. */
         masm.add(64, chunkToReadAddress, baseAddress, fromIndex, ShiftType.LSL, shiftSize);
@@ -308,9 +311,9 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
              */
             try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
                 Register tailValue = scratchRegister.getRegister();
-                masm.fldr(eSize.bits(), tailValue, AArch64Address.createBaseRegisterOnlyAddress(eSize.bits(), chunkToReadAddress));
+                masm.ldr(eSize.bits(), tailValue, AArch64Address.createBaseRegisterOnlyAddress(eSize.bits(), chunkToReadAddress));
                 // setting firstChunkPart2[1:n] within tempRegV2
-                masm.neon.elementRor(ASIMDSize.FullReg, eSize, tmpRegV2, firstChunkPart2RegV, elementByteSize);
+                masm.neon.elementRor(ASIMDSize.FullReg, eSize, tmpRegV2, firstChunkPart2RegV, 1);
                 // setting tmpRegV1 = firstChunkPart1[1:n]:firstChunkPart2[0]
                 masm.neon.extVVV(ASIMDSize.FullReg, tmpRegV1, firstChunkPart1RegV, firstChunkPart2RegV, elementByteSize);
                 // tailValue becomes the last value within tmpRegV2

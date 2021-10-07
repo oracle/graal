@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -250,12 +250,27 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
     }
 
     /**
-     * TODO: add more detailed explanation.
+     * This implementation is similar to (AArch64ArrayIndexOfOp.emitSIMDCompare). Similar steps are
+     * taken to ensure more of the accesses with array1 are aligned. The main difference is that it
+     * is only necessary to find any mismatch, not a match. In the case of a mismatch, the loop is
+     * exited immediately.
      *
-     * This implementation is very similar to (AArch64ArrayIndexOfOp.emitSIMDCompare). Similar steps
-     * are taken to ensure more of the accesses with array1 are aligned. The main difference is that
-     * it is only necessary to find any mismatch, not a match. In the case of a mismatch, then the
-     * loop is immediately exited.
+     * @formatter:off
+     *  1. Get the references that point to the first characters of the source and target array.
+     *  2. Read and compare array chunk-by-chunk.
+     *   2.1 Store end index at the beginning of the last chunk ('refAddress1'). This ensures that we
+     *   don't read beyond the array boundary.
+     *   2.2 Read a 32-byte chunk from source and target array each in two SIMD registers.
+     *  3. Compare the 32-byte chunks from both arrays. Comparison sets all bits of the destination register
+     *  when the source and target elements are equal. The result of the comparison is now in two SIMD registers.
+     *  4. Detect a mismatch by checking if any element of the two SIMD registers is zero.
+     *   4.1 Combine the result of comparison from Step 3 into one SIMD register by performing logical AND.
+     *   4.2 Mismatch is detected if any of the bits in the comparison result is unset. Thus, find the minimum
+     *   element across the vector. Here, element size doesn't matter as the objective is to detect a mismatch.
+     *   4.3 Read the minimum value from Step 4.2 and sign-extend it to 8 bytes. There is a mismatch,
+     *   if the result != 0xFFFFFFFFFFFFFFFF or (result+1) != 0.
+     *  5. Repeat the process until the end of the arrays.
+     * @formatter:on
      */
     private void emitSIMDCompare(AArch64MacroAssembler masm, Register byteArrayLength, Register hasMismatch, Register scratch, Label endLabel) {
         Register array1Address = asRegister(temp2);
@@ -272,7 +287,8 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         Label compareByChunkTail = new Label();
         Label processTail = new Label();
 
-        /* Set 'array1Address' and 'array2Address' to point to start of arrays. */
+        masm.mov(64, hasMismatch, zr);
+        /* 1. Set 'array1Address' and 'array2Address' to point to start of arrays. */
         masm.add(64, array1Address, asRegister(array1Value), array1BaseOffset);
         masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset);
         /*
@@ -280,7 +296,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          * 'refAddress1' pointing to the beginning of the last chunk.
          */
         masm.add(64, endOfArray1, array1Address, byteArrayLength);
-        masm.bic(64, refAddress1, endOfArray1, 31L);
+        masm.sub(64, refAddress1, endOfArray1, 32);
 
         masm.align(16);
         masm.bind(compareByChunkHead);
@@ -288,44 +304,38 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
         masm.branchConditionally(ConditionFlag.LE, processTail);
         masm.bind(compareByChunkTail);
 
+        /* 2.2 Read a 32-byte chunk from source and target array each in two SIMD registers. */
         masm.fldp(128, array1Part1RegV, array1Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array1Address, 32));
         masm.fldp(128, array2Part1RegV, array2Part2RegV, AArch64Address.createImmediateAddress(128, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array2Address, 32));
         /* 3. Compare arrays in the 32-byte chunk */
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part1RegV, array1Part1RegV, array2Part1RegV);
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.DoubleWord, array1Part2RegV, array1Part2RegV, array2Part2RegV);
-        /* Determining if they are identical. */
-        /* Combine two registers into 1 register */
+        /* 4. Determining if they are identical. */
+        /* 4.1 Combine two registers into 1 register */
         masm.neon.andVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, array1Part1RegV, array1Part1RegV, array1Part2RegV);
-        /* Reduce 128-bit value to 32/64-bit value */
-        masm.neon.xtnVV(AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
-        if (arrayIndexScale == 1) {
-            masm.neon.umaxvSV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
-        } else {
-            masm.neon.xtnVV(AArch64ASIMDAssembler.ElementSize.Byte, array1Part1RegV, array1Part1RegV);
-        }
-        /* If ~value != 0, then there is a mismatch somewhere. */
-        masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, hasMismatch, array1Part1RegV, 0);
-        masm.neg(64, hasMismatch, hasMismatch);
-        /* if there is mismatch, then no more searching is necessary */
+        /* 4.2 Find the minimum value across the vector */
+        masm.neon.uminvSV(AArch64ASIMDAssembler.ASIMDSize.FullReg, AArch64ASIMDAssembler.ElementSize.Word, array1Part1RegV, array1Part1RegV);
+        /* 4.3 If hasMismatch != 0, then there is a mismatch somewhere. */
+        masm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.Word, hasMismatch, array1Part1RegV, 0);
+        masm.add(64, hasMismatch, hasMismatch, 1);
+        /* If there is mismatch, then no more searching is necessary */
         masm.cbnz(64, hasMismatch, endLabel);
 
-        /* No mismatch; jump to next loop iteration. */
-        masm.bic(64, array1Address, array1Address, 31);
-        masm.bic(64, array2Address, array2Address, 31);
+        /* 5. No mismatch; jump to next loop iteration. */
         masm.jmp(compareByChunkHead);
 
         masm.align(16);
         masm.bind(processTail);
         masm.cmp(64, array1Address, endOfArray1);
         masm.branchConditionally(ConditionFlag.GE, endLabel);
-        /* adjust array1Address and array2Address to access last 32 bytes. */
+        /* Adjust array1Address and array2Address to access last 32 bytes. */
         masm.sub(64, array1Address, endOfArray1, 32);
         masm.add(64, array2Address, asRegister(array2Value), array2BaseOffset - 32);
         masm.add(64, array2Address, array2Address, byteArrayLength);
         /*
-         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkLoopTail',
-         * the 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the
-         * compareByChunkLoopHead would never using 'array1Address' >= 'endOfArray1' condition.
+         * Move back the 'endOfArray1' by 32-bytes because at the end of 'compareByChunkTail', the
+         * 'chunkToRead' would be reset to 32-byte aligned addressed. Thus, the 'compareByChunkHead'
+         * would never be using 'array1Address' >= 'endOfArray1' condition.
          */
         masm.mov(64, endOfArray1, array1Address);
         masm.jmp(compareByChunkTail);

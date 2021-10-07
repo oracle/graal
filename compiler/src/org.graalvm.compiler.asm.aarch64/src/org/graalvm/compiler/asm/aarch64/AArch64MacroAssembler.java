@@ -1323,7 +1323,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
-        if (clampedShift != 0 || !dst.equals(src)) {
+        if (clampedShift == 0) {
+            if (!dst.equals(src)) {
+                mov(size, dst, src);
+            }
+            // else nop
+        } else {
             int remainingBits = size - clampedShift;
             super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
         }
