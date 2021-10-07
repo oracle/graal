@@ -178,7 +178,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
             } else if (fixedNode instanceof WithExceptionNode) {
                 WithExceptionNode withExceptionNode = (WithExceptionNode) fixedNode;
-                AbstractBeginNode normalSuccessor = graph.add(withExceptionNode.createNextBegin());
+                AbstractBeginNode normalSuccessor = graph.add(new BeginNode());
                 ExceptionObjectNode exceptionSuccessor = graph.add(new ExceptionObjectNode(getMetaAccess()));
                 setExceptionState(exceptionSuccessor);
                 exceptionSuccessor.setNext(graph.add(new UnwindNode(exceptionSuccessor)));

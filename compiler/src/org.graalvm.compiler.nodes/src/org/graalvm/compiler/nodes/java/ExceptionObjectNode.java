@@ -24,33 +24,30 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
-import org.graalvm.compiler.nodes.MultiKillingBeginNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * The entry to an exception handler with the exception coming from a call (as opposed to a local
@@ -85,27 +82,23 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
              * Now the lowering to BeginNode+LoadExceptionNode can be performed, since no more
              * deopts can float in between the begin node and the load exception node.
              */
-            Node predecessor = predecessor();
-            AbstractBeginNode entry;
-            if (predecessor instanceof SingleMemoryKill) {
-                LocationIdentity locationsKilledByPredecessor = ((SingleMemoryKill) predecessor).getKilledLocationIdentity();
-                entry = graph().add(KillingBeginNode.create(locationsKilledByPredecessor));
-            } else if (predecessor instanceof MultiMemoryKill) {
-                LocationIdentity[] locationsKilledByPredecessor = ((MultiMemoryKill) predecessor).getKilledLocationIdentities();
-                entry = graph().add(MultiKillingBeginNode.create(locationsKilledByPredecessor));
-            } else {
-                entry = graph().add(new BeginNode());
-            }
-
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
 
             GraalError.guarantee(graph().getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", this);
             GraalError.guarantee(stateAfter() != null, "StateAfter must not be null for %s", this);
             loadException.setStateAfter(stateAfter());
+            BeginNode begin = graph().add(new BeginNode());
+            FixedWithNextNode insertAfter = begin;
+            graph().addAfterFixed(this, begin);
             replaceAtUsages(loadException, InputType.Value);
-            graph().replaceFixedWithFixed(this, entry);
-            entry.graph().addAfterFixed(entry, loadException);
-
+            if (hasUsages()) {
+                MemoryAnchorNode anchor = graph().add(new MemoryAnchorNode(LocationIdentity.any()));
+                graph().addAfterFixed(begin, anchor);
+                replaceAtUsages(anchor, InputType.Memory);
+                insertAfter = anchor;
+            }
+            graph().addAfterFixed(insertAfter, loadException);
+            graph().removeFixed(this);
             loadException.lower(tool);
         }
     }

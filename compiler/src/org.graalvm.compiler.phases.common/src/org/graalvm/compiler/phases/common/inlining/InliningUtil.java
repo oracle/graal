@@ -583,9 +583,6 @@ public class InliningUtil extends ValueMergeUtil {
             } else {
                 invokeWithException.killExceptionEdge();
             }
-
-            // get rid of memory kill
-            invokeWithException.killKillingBegin();
         } else {
             if (unwindNode != null && unwindNode.isAlive()) {
                 try (DebugCloseable position = unwindNode.withNodeSourcePosition()) {

@@ -1536,7 +1536,6 @@ public class SnippetTemplate {
     }
 
     private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
-        verifyWithExceptionNode(replacee);
         if (replacee.graph().isAfterStage(StageFlag.FLOATING_READS)) {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
@@ -1566,25 +1565,6 @@ public class SnippetTemplate {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Verifies that a {@link WithExceptionNode} does not have memory usages. It shouldn't because
-     * if it is a memory kill, its {@link WithExceptionNode#next()} and
-     * {@link WithExceptionNode#exceptionEdge()} edges should start with a memory kill as well
-     * ({@link org.graalvm.compiler.nodes.KillingBeginNode}, {@link ExceptionObjectNode}) or be
-     * {@linkplain org.graalvm.compiler.nodes.UnreachableBeginNode unreachable}.
-     *
-     * Knowing that there are no memory usages simplifies the handling of {@link WithExceptionNode}
-     * after {@link FloatingReadPhase} because we can simply ignore the memory graph. If this
-     * changes in the future, we need to rewire the memory graph on the exception edge, just as we
-     * do for the return path of the snippet for replacees other than {@link WithExceptionNode}.
-     * This guarantee ensures that we do not forget that.
-     */
-    private static void verifyWithExceptionNode(ValueNode node) {
-        if (node instanceof WithExceptionNode) {
-            GraalError.guarantee(node.hasNoUsages() || !node.hasUsagesOfType(InputType.Memory), "%s should not have any memory usages", node);
         }
     }
 

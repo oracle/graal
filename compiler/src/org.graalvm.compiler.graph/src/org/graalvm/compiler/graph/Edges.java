@@ -223,7 +223,7 @@ public abstract class Edges extends Fields {
 
     private void verifyUpdateValid(Node node, int index, Object newValue) {
         if (newValue != null && !getType(index).isAssignableFrom(newValue.getClass())) {
-            throw new IllegalArgumentException("Can not assign " + newValue.getClass() + " to " + getType(index) + " in " + node);
+            throw new IllegalArgumentException("Can not assign " + newValue + " to " + getType(index) + " in " + node);
         }
     }
 

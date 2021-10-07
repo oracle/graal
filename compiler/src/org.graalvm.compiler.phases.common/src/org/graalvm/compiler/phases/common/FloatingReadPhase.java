@@ -445,8 +445,10 @@ public class FloatingReadPhase extends Phase {
                  * or exceptional successor - and we have to tell the scheduler here which side it
                  * needs to choose by putting in the location identity on both successors.
                  */
-                LocationIdentity killedLocationIdentity = node.predecessor() instanceof SingleMemoryKill ? ((SingleMemoryKill) node.predecessor()).getKilledLocationIdentity() : LocationIdentity.any();
-                result.getMap().put(killedLocationIdentity, (MemoryKill) node);
+                // LocationIdentity killedLocationIdentity = node.predecessor() instanceof
+                // SingleMemoryKill ? ((SingleMemoryKill)
+                // node.predecessor()).getKilledLocationIdentity() : LocationIdentity.any();
+                // result.getMap().put(killedLocationIdentity, (MemoryKill) node);
             }
             return result;
         }

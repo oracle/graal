@@ -294,7 +294,6 @@ public class GraphEncoder {
                     InvokeWithExceptionNode invokeWithExcpetion = (InvokeWithExceptionNode) invoke;
                     ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithExcpetion.exceptionEdge();
 
-                    writeOrderId(invokeWithExcpetion.next().next(), nodeOrder);
                     writeOrderId(invokeWithExcpetion.exceptionEdge(), nodeOrder);
                     writeOrderId(exceptionEdge.stateAfter(), nodeOrder);
                     writeOrderId(exceptionEdge.next(), nodeOrder);
