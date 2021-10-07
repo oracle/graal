@@ -26,8 +26,11 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.BasicCollectionPolicies.Options.AllocationBeforePhysicalMemorySize;
 import static com.oracle.svm.core.genscavenge.BasicCollectionPolicies.Options.PercentTimeInIncrementalCollection;
+import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -50,6 +53,7 @@ final class BasicCollectionPolicies {
         public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
         assert userValue == null || userValue >= 0;
         return 0; // override option (if set): survivor spaces not supported
@@ -166,7 +170,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public void onCollectionBegin(boolean completeCollection) {
+        public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
         }
 
         @Override
@@ -191,6 +195,9 @@ final class BasicCollectionPolicies {
 
         @Override
         public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+            if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
+                return false;
+            }
             return true;
         }
 
@@ -226,7 +233,7 @@ final class BasicCollectionPolicies {
 
         @Override
         public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
-            if (followingIncrementalCollection && !HeapParameters.Options.CollectYoungGenerationSeparately.getValue()) {
+            if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
                 return false;
             }
             return estimateUsedHeapAtNextIncrementalCollection().aboveThan(getMaximumHeapSize()) ||

@@ -32,7 +32,9 @@ import com.oracle.svm.core.log.Log;
  */
 final class Timer implements AutoCloseable {
     private final String name;
+    private boolean wasOpened;
     private long openNanos;
+    private boolean wasClosed;
     private long closeNanos;
     private long collectedNanos;
 
@@ -45,29 +47,47 @@ final class Timer implements AutoCloseable {
     }
 
     public Timer open() {
-        openNanos = System.nanoTime();
+        return openAt(System.nanoTime());
+    }
+
+    Timer openAt(long nanoTime) {
+        openNanos = nanoTime;
+        wasOpened = true;
         closeNanos = 0L;
+        wasClosed = false;
         return this;
     }
 
     @Override
     public void close() {
-        /* If a timer was not opened, pretend it was opened at the start of the VM. */
-        if (openNanos == 0L) {
-            openNanos = HeapImpl.getChunkProvider().getFirstAllocationTime();
-        }
-        closeNanos = System.nanoTime();
-        collectedNanos += closeNanos - openNanos;
+        closeAt(System.nanoTime());
+    }
+
+    void closeAt(long nanoTime) {
+        closeNanos = nanoTime;
+        wasClosed = true;
+        collectedNanos += closeNanos - getOpenedTime();
     }
 
     public void reset() {
         openNanos = 0L;
+        wasOpened = false;
         closeNanos = 0L;
+        wasClosed = false;
         collectedNanos = 0L;
     }
 
-    public long getFinish() {
-        assert closeNanos > 0L : "Should have closed timer";
+    public long getOpenedTime() {
+        if (!wasOpened) {
+            /* If a timer was not opened, pretend it was opened at the start of the VM. */
+            assert openNanos == 0;
+            openNanos = HeapImpl.getChunkProvider().getFirstAllocationTime();
+        }
+        return openNanos;
+    }
+
+    public long getClosedTime() {
+        assert wasClosed : "Should have closed timer";
         return closeNanos;
     }
 
@@ -78,9 +98,7 @@ final class Timer implements AutoCloseable {
 
     /** Get the nanoseconds collected by the most recent open/close pair. */
     long getLastIntervalNanos() {
-        assert openNanos > 0L : "Should have opened timer";
-        assert closeNanos > 0L : "Should have closed timer";
-        return closeNanos - openNanos;
+        return getClosedTime() - getOpenedTime();
     }
 
     static long getTimeSinceFirstAllocation(long nanos) {
@@ -140,8 +158,8 @@ final class Timers {
         if (log.isEnabled()) {
             log.newline();
             log.string("  [GC nanoseconds:");
-            logOneTimer(log, "    ", verifyBefore);
             logOneTimer(log, "    ", collection);
+            logOneTimer(log, "      ", verifyBefore);
             logOneTimer(log, "      ", rootScan);
             logOneTimer(log, "        ", cheneyScanFromRoots);
             logOneTimer(log, "        ", cheneyScanFromDirtyRoots);
@@ -156,7 +174,7 @@ final class Timers {
             logOneTimer(log, "      ", cleanCodeCache);
             logOneTimer(log, "      ", referenceObjects);
             logOneTimer(log, "      ", releaseSpaces);
-            logOneTimer(log, "    ", verifyAfter);
+            logOneTimer(log, "      ", verifyAfter);
             logGCLoad(log, "    ", "GCLoad", collection, mutator);
             log.string("]");
         }
