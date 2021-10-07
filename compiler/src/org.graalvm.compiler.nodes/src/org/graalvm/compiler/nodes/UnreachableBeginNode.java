@@ -28,6 +28,8 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.word.LocationIdentity;
 
 /**
  * Allows to build control flow structures that are syntactically correct (can be processed by all
@@ -35,7 +37,7 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
  * compilation pipeline. Useful together with {@link UnreachableControlSinkNode}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class UnreachableBeginNode extends AbstractBeginNode {
+public final class UnreachableBeginNode extends AbstractBeginNode implements SingleMemoryKill {
 
     public static final NodeClass<UnreachableBeginNode> TYPE = NodeClass.create(UnreachableBeginNode.class);
 
@@ -43,4 +45,16 @@ public final class UnreachableBeginNode extends AbstractBeginNode {
         super(TYPE);
     }
 
+    /**
+     * Determine which memory location is killed by this node. Since this node can be used on the
+     * {@linkplain WithExceptionNode#exceptionEdge() exception edge} of an {@link WithExceptionNode}
+     * that might also be a {@linkplain org.graalvm.compiler.nodes.memory.MemoryKill memory kill},
+     * this node must be a memory kill as well. Since the branch is unreachable and will be deleted
+     * eventually, killing {@link LocationIdentity#any()} do not cause issues with respect to
+     * optimizations.
+     */
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
+    }
 }
