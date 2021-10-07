@@ -239,4 +239,9 @@ public class CardTableBarrierSet implements BarrierSet {
     private static boolean matches(ArrayRangeWrite node, SerialArrayRangeWriteBarrier barrier) {
         return barrier.getAddress() == node.getAddress() && node.getLength() == barrier.getLength() && node.getElementStride() == barrier.getElementStride();
     }
+
+    @Override
+    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
+        return false;
+    }
 }

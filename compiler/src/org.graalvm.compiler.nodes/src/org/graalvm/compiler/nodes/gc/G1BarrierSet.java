@@ -201,4 +201,9 @@ public class G1BarrierSet implements BarrierSet {
     private static boolean isObjectValue(ValueNode value) {
         return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
     }
+
+    @Override
+    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
+        return arrayStoreBarrierType(storageKind) != BarrierType.NONE;
+    }
 }
