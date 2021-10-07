@@ -1491,18 +1491,20 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case SINGLE:
                 if (kind.getVectorLength() > 1) {
                     minmaxop = min ? VexRVMOp.VMINPS : VexRVMOp.VMAXPS;
+                    vcmpp = VexFloatCompareOp.VCMPPS;
                 } else {
                     minmaxop = min ? VexRVMOp.VMINSS : VexRVMOp.VMAXSS;
+                    vcmpp = VexFloatCompareOp.VCMPSS;
                 }
-                vcmpp = VexFloatCompareOp.VCMPPS;
                 break;
             case DOUBLE:
                 if (kind.getVectorLength() > 1) {
                     minmaxop = min ? VexRVMOp.VMINPD : VexRVMOp.VMAXPD;
+                    vcmpp = VexFloatCompareOp.VCMPPD;
                 } else {
                     minmaxop = min ? VexRVMOp.VMINSD : VexRVMOp.VMAXSD;
+                    vcmpp = VexFloatCompareOp.VCMPSD;
                 }
-                vcmpp = VexFloatCompareOp.VCMPPD;
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
