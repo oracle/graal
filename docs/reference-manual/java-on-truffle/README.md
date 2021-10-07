@@ -129,7 +129,7 @@ cd spring-petclinic
 
 3. Then run it from the command line by selecting the `-truffle` runtime:
 ```java
-java -truffle -jar target/spring-petclinic-2.4.2.jar
+java -truffle -jar target/spring-petclinic-<version>-SNAPSHOT.jar
 ```
 
 4. When the application starts, access it on [localhost:8000](http://localhost:8080/).
