@@ -6,7 +6,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/TraversingCo
 ---
 # Truffle Approach to the Compilation Queue
 
-As of version 21.3.0 Truffle has a new approach to compilation queueing.
+As of version 21.2.0 Truffle has a new approach to compilation queueing.
 This document gives motivation and an overview of this approach.
 
 ## What is a Compilation queue?
@@ -70,7 +70,7 @@ This gives a priority boost to targets that are currently "very hot" when compar
 
 For performance reasons the weight for tasks is cached and reused for a period of 1ms. If the cached value is older than 1ms, it is recalculated.
 
-The traversing compilation queue is on by default as of version 21.3.0 and can be disabled using `--engine.TraversingCompilationQueue=false`.
+The traversing compilation queue is on by default as of version 21.2.0 and can be disabled using `--engine.TraversingCompilationQueue=false`.
 
 ## Dynamic Compilation Thresholds
 
@@ -135,5 +135,5 @@ MinScale >|/     .                               .
               MinNormalLoad                   MaxNormalLoad
 ```
 
-The dynamic thresholds only work with the traversing compilation queue and are on by default as of version 21.3.0.
+The dynamic thresholds only work with the traversing compilation queue and are on by default as of version 21.2.0.
 They can be disabled with `--engine.DynamicCompilationThresholds=false`.
