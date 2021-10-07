@@ -47,6 +47,7 @@ public class JfrEnabled implements BooleanSupplier {
     private static boolean jvmVersionSupported() {
         return JavaVersionUtil.JAVA_SPEC == 11 || JavaVersionUtil.JAVA_SPEC == 16 || JavaVersionUtil.JAVA_SPEC == 17;
     }
+
     private static boolean osSupported() {
         return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
     }

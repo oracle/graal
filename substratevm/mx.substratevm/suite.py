@@ -247,10 +247,7 @@ suite = {
         "com.oracle.svm.core.jdk15": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core",
-                "com.oracle.svm.core.jdk11"
-            ],
+            "dependencies": ["com.oracle.svm.core.jdk11"],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",

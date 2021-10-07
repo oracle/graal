@@ -18,11 +18,11 @@ gate-svm-js: {
 }
 
 builds += [
-  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
     timelimit: "35:00"
   }
-  ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
+  ${labsjdk-ce-17} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
   ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
@@ -49,7 +49,7 @@ builds += [
       ${svm-cmd-gate} ["build,hellomodule,test"]
     ]
   }
-  ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
     timelimit: "45:00"
     environment : {
@@ -60,7 +60,7 @@ builds += [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
     ]
   }
-  ${oraclejdk8} ${svm-common-gate} ${svm-common-windows-oraclejdk8} {
+  ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} {
     name: "gate-svm-windows-basics"
     environment: {
       PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
