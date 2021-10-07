@@ -306,8 +306,8 @@ final class PolyglotExceptionImpl {
 
     private SourceSection newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
         com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-        Source source = polyglot.getAPIAccess().newSource(truffleSource);
-        return polyglot.getAPIAccess().newSourceSection(source, section);
+        Source source = polyglot.getAPIAccess().newSource(polyglot.getSourceDispatch(), truffleSource);
+        return polyglot.getAPIAccess().newSourceSection(source, polyglot.getSourceSectionDispatch(), section);
     }
 
     @Override

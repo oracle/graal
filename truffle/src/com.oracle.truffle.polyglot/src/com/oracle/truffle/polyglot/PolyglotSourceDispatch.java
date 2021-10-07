@@ -40,33 +40,17 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
-import java.nio.charset.Charset;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Supplier;
 
-import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.source.Source.SourceBuilder;
-
-class PolyglotSourceDispatch extends AbstractSourceDispatch {
-
-    private volatile Object defaultFileSystemContext;
+final class PolyglotSourceDispatch extends AbstractSourceDispatch {
 
     protected PolyglotSourceDispatch(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
@@ -196,50 +180,6 @@ class PolyglotSourceDispatch extends AbstractSourceDispatch {
     }
 
     @Override
-    public String findLanguage(File file) throws IOException {
-        Objects.requireNonNull(file);
-        String mimeType = findMimeType(file);
-        if (mimeType != null) {
-            return findLanguage(mimeType);
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public String findLanguage(URL url) throws IOException {
-        String mimeType = findMimeType(url);
-        if (mimeType != null) {
-            return findLanguage(mimeType);
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public String findMimeType(File file) throws IOException {
-        Objects.requireNonNull(file);
-        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
-        return truffleFile.detectMimeType();
-    }
-
-    @Override
-    public String findMimeType(URL url) throws IOException {
-        Objects.requireNonNull(url);
-        return EngineAccessor.SOURCE.findMimeType(url, getDefaultFileSystemContext());
-    }
-
-    @Override
-    public String findLanguage(String mimeType) {
-        Objects.requireNonNull(mimeType);
-        LanguageCache cache = LanguageCache.languageMimes().get(mimeType);
-        if (cache != null) {
-            return cache.getId();
-        }
-        return null;
-    }
-
-    @Override
     public int hashCode(Object impl) {
         return impl.hashCode();
     }
@@ -265,77 +205,6 @@ class PolyglotSourceDispatch extends AbstractSourceDispatch {
     public boolean hasCharacters(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.hasCharacters();
-    }
-
-    @Override
-    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                    throws IOException {
-        assert language != null;
-        SourceBuilder builder;
-        if (origin instanceof File) {
-            builder = EngineAccessor.SOURCE.newBuilder(language, (File) origin);
-        } else if (origin instanceof CharSequence) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((CharSequence) origin), name);
-        } else if (origin instanceof ByteSequence) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder(language, ((ByteSequence) origin), name);
-        } else if (origin instanceof Reader) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (Reader) origin, name);
-        } else if (origin instanceof URL) {
-            builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
-        } else {
-            throw shouldNotReachHere();
-        }
-
-        if (origin instanceof File || origin instanceof URL) {
-            EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
-        }
-
-        if (content instanceof CharSequence) {
-            builder.content((CharSequence) content);
-        } else if (content instanceof ByteSequence) {
-            builder.content((ByteSequence) content);
-        }
-
-        builder.uri(uri);
-        builder.name(name);
-        builder.internal(internal);
-        builder.interactive(interactive);
-        builder.mimeType(mimeType);
-        builder.cached(cached);
-        builder.encoding(encoding);
-
-        try {
-            return PolyglotImpl.getOrCreatePolyglotSource(engineImpl, builder.build());
-        } catch (IOException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw shouldNotReachHere(e);
-        }
-    }
-
-    private Object getDefaultFileSystemContext() {
-        Object res = defaultFileSystemContext;
-        if (res == null) {
-            synchronized (this) {
-                res = defaultFileSystemContext;
-                if (res == null) {
-                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
-                    res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
-                    defaultFileSystemContext = res;
-                }
-            }
-        }
-        return res;
-    }
-
-    static final class EmbedderFileSystemContext {
-
-        final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
-        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
-        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
-
     }
 
 }
