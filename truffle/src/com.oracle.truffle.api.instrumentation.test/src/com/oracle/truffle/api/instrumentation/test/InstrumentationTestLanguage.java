@@ -1942,7 +1942,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 Thread.sleep(timeToSleep);
             } catch (InterruptedException e) {
-                throw new AssertionError(e);
+                throw new Interrupted();
             }
         }
 
@@ -1950,6 +1950,17 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SleepNode(timeToSleep, cloneUninitialized(children, materializedTags));
         }
+    }
+
+    @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
+    static class Interrupted extends AbstractTruffleException {
+
+        @ExportMessage
+        public ExceptionType getExceptionType() {
+            return ExceptionType.INTERRUPT;
+        }
+
     }
 
     private static class ConstantNode extends InstrumentedNode {
