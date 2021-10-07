@@ -14,7 +14,7 @@ permalink: /reference-manual/polyglot-programming/
 * [Passing Options Programmatically](#passing-options-programmatically)
 * [Passing Options Using JVM Arguments](#passing-options-using-jvm-arguments)
 
-GraalVM allows users to write polyglot applications that seamlessly pass values from one language to another by means of the [Truffle language implementation framework](../../../truffle/docs/README.md) (henceforth "Truffle").
+GraalVM allows users to write polyglot applications that seamlessly pass values from one language to another by means of the [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle").
 
 Truffle is a Java library for building programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
 When writing a language interpreter with Truffle, it will automatically use the GraalVM compiler as a just-in-time compiler for the language.

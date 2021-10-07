@@ -46,7 +46,7 @@ These are [onCreate](https://github.com/graalvm/simpletool/blob/master/src/main/
 The `onCreate` and `onDispose` methods are self-explanatory: they are called by the framework when the instrument is created and disposed.
 We will discuss their implementations later, but first let us discuss the remaining one: `getOptionDescriptors`.
 
-The [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) comes with its own system for specifying command-line options.
+The [Truffle language implementation framework](../../truffle/docs/README.md) comes with its own system for specifying command-line options.
 These options allow tool users to control the tool either from the command line or when creating [polyglot contexts](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.html).
 It is annotation-based, and examples for such options are the [ENABLED](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L91) and [PRINT_COVERAGE](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L97) fields of `SimpleCoverageInstrument`.
 Both of these are static final fields of the type [OptionKey](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionKey.html) annotated with [Option](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html) which, similar to the `Registration` annotation, provides some metadata for the option.
@@ -128,7 +128,7 @@ As mentioned before, Simple Tool is a Maven project.
 Setting `JAVA_HOME` to a GraalVM installation and running `mvn package` produces a `target/simpletool-<version>.jar`.
 This is the Simple Tool distribution form.
 
-The [Truffle framework](truffle/README.md) offers a clear separation between the language/tooling code and the application code.
+The [Truffle framework](../../truffle/docs/README.md) offers a clear separation between the language/tooling code and the application code.
 For this reason, putting the JAR on the class path will not result in the framework realizing a new tool is needed.
 To achieve this we use `--vm.Dtruffle.class.path.append=/path/to/simpletool-<version>.jar` as is illustrated in a [launcher script for our simple tool](https://github.com/graalvm/simpletool/blob/master/simpletool).
 This script also shows we can [set the CLI options](https://github.com/graalvm/simpletool/blob/master/simpletool#L19) we specified for Simple Tool.

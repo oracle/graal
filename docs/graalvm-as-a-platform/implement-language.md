@@ -11,7 +11,7 @@ toc_group: graalvm-as-a-platform
 We have found that the easiest way to get started with implementing your own language is by extending an existing language such as SimpleLanguage.
 [SimpleLanguage](https://github.com/graalvm/simplelanguage) is a demonstration language built using the [Language API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/package-summary.html).
 The SimpleLanguage project provides a showcase on how to use the Language APIs for writing your own language.
-It aims to use most of the available [Truffle language implementation framework](truffle/README.md) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
+It aims to use most of the available [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
 
 To start, ensure [Maven3](https://maven.apache.org/download.cgi) and GraalVM are available in your system.
 
@@ -48,7 +48,7 @@ The SimpleLanguage demonstration language is licensed under the [Universal Permi
 
 ## IDE Setup
 
-The [Truffle framework](truffle/README.md) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs.
+The [Truffle framework](../../truffle/docs/README.md) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs.
 If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
 
 ### Eclipse
@@ -248,7 +248,7 @@ A sample POM using `--upgrade-module-path` to export Language API packages can b
 
 ### Other JVM Implementations
 
-Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](truffle/README.md), other JVM implementations need additional JARs to be present on the class path.
+Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](../../truffle/docs/README.md), other JVM implementations need additional JARs to be present on the class path.
 These are the Language API and GraalVM SDK JARs available from Maven Central.
 
 Assuming `JAVA_HOME` points to a stock JDK installation, and that the current working directory is the `simplelanguage` directory and the Language API and GraalVM SDK JARs are present in that directory, one can execute SimpleLanguage with the following command:
