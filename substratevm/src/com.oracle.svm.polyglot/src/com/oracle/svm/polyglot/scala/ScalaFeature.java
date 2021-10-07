@@ -66,6 +66,9 @@ public class ScalaFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeScalaEnumerations(access);
         RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol");
+        RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol$");
+        /* Initialized through an invokedynamic in `scala.Option` */
+        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
     }
 
     @Override
