@@ -100,10 +100,10 @@ Tools/Utilities:
 
 * [Native Image](../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native platform executable.
 * [LLVM toolchain](../reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
-* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) to run Java via a Java bytecode interpreter.
 
 Runtimes:
 
+* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
 * [Node.js](../reference-manual/js/README.md) -- the Node.js 14.17.6 runtime for JavaScript
 * [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
 * [Ruby](../reference-manual/ruby/README.md) -- Ruby 2.7.3 compatible
