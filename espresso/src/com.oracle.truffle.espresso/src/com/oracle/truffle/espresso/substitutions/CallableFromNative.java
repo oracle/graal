@@ -77,6 +77,13 @@ public abstract class CallableFromNative extends SubstitutionProfiler {
     public abstract Object invoke(Object env, Object[] args);
 
     /**
+     * Returns the name of the annotation that generated the node.
+     *
+     * @return The annotation type.
+     */
+    public abstract String generatedBy();
+
+    /**
      * The method to invoke when coming from java code.
      * 
      * @param env The env corresponding to this callable
