@@ -427,6 +427,7 @@ function graph_popup_fix_width(e, right_justify) {
     if (right_justify) {
         e.parentElement.x.baseVal.value = fg_width - max_label_end - xpad;
     }
+    graph_ensure_space();
 };
 
 function graph_register_handler(key, description, action) {
@@ -437,4 +438,19 @@ function graph_register_handler(key, description, action) {
         }
     });
     help_strings.push([key, description]);
+}
+
+function graph_ensure_space() {
+    let svg = document.firstElementChild;
+    let maxY = 0;
+    for (const e of svg.getElementsByTagName("svg")) {
+        if (svg.style["display"] != "none") {
+            let y = e.y.baseVal.value + e.height.baseVal.value;
+            if (y > maxY) {
+                maxY = y;
+            }
+        }
+    }
+    svg.height.baseVal.value = maxY;
+    svg.viewBox.baseVal.height = maxY;
 }

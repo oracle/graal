@@ -260,8 +260,7 @@ function h_canvas_resize() {
     h_svg.viewBox.baseVal.height = height;
     let h_canvas = document.getElementById("h_canvas");
     h_canvas.height.baseVal.value = height;
-    svg.height.baseVal.value = svg.height.baseVal.value - old_height + height;
-    svg.viewBox.baseVal.height = svg.height.baseVal.value;
+    graph_ensure_space();
 }
 
 function calculate_histogram_bars(bars, sample) {

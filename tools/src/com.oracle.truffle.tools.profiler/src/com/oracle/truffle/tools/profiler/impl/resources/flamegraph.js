@@ -272,8 +272,7 @@ function fg_canvas_resize() {
     let fg_canvas = document.getElementById("fg_canvas");
     fg_canvas.height.baseVal.value = height;
     fg_canvas.y.baseVal.value = -height;
-    svg.height.baseVal.value = svg.height.baseVal.value - old_height + height;
-    svg.viewBox.baseVal.height = svg.height.baseVal.value;
+    graph_ensure_space();
 }
 
 function zoom_internal(sample, parents, unrelated) {

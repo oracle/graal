@@ -156,14 +156,14 @@ function color_create_legend() {
         }
     } else if (color_type == "bc") {
         color_legend_entry(e, 0, color_for_compilation(0, 0), "No self samples");
-        for (let i = 0; i <= 10; i++) {
-            let color = color_for_compilation(10 - i, i);
-            let text = (i * 10) + "% samples were compiled.";
+        for (let i = 0; i <= 4; i++) {
+            let color = color_for_compilation(4 - i, i);
+            let text = (i * 25) + "% samples were compiled.";
 
             color_legend_entry(e, i + 1, color, text);
         }
 
-        entry_count = 12;
+        entry_count = 6;
     }
 
     let help_entry_count = 0;
@@ -232,6 +232,7 @@ function color_legend() {
         }
     }
     legend_state = !legend_state;
+    graph_ensure_space();
 }
 
 // C for color cycle.
