@@ -574,15 +574,10 @@ public abstract class NativeImage extends AbstractImage {
         assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
-        HostedMethod target = null;
-        boolean valid = methodPointer.isValid();
-        if (valid) {
-            ResolvedJavaMethod method = methodPointer.getMethod();
-            target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
-            valid = target.isCompiled();
-        }
-        if (!valid) {
-            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_INVALID_HANDLER_METHOD);
+        ResolvedJavaMethod method = methodPointer.getMethod();
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
+        if (!target.isCompiled()) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
         sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), false, 0L);
@@ -976,6 +971,6 @@ final class MethodPointerInvalidHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_INVALID_HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
     }
 }

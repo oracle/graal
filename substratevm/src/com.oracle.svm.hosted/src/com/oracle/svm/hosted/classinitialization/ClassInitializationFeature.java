@@ -341,7 +341,7 @@ public class ClassInitializationFeature implements GraalFeature {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             access.registerAsCompiled(throwVerifyError);
-            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
@@ -360,7 +360,7 @@ public class ClassInitializationFeature implements GraalFeature {
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
             access.registerAsCompiled(classInitializer);
-            classInitializerFunction = MethodPointer.factory(classInitializer);
+            classInitializerFunction = new MethodPointer(classInitializer);
         }
         return new ClassInitializationInfo(classInitializerFunction);
     }

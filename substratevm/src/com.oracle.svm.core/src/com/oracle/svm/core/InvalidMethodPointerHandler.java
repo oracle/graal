@@ -50,8 +50,8 @@ public final class InvalidMethodPointerHandler {
     public static final Method INVALID_VTABLE_ENTRY_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "invalidVTableEntryHandler");
     public static final String INVALID_VTABLE_ENTRY_MSG = "Fatal error: Virtual method call used an illegal vtable entry that was seen as unused by the static analysis";
 
-    public static final Method METHOD_POINTER_INVALID_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "methodPointerInvalidHandler");
-    public static final String METHOD_POINTER_INVALID_MSG = "Fatal error: Method pointer invoked on a method that is null, was not registered for compilation, or was not seen as invoked by the static analysis";
+    public static final Method METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "methodPointerNotCompiledHandler");
+    public static final String METHOD_POINTER_NOT_COMPILED_MSG = "Fatal error: Method pointer invoked on a method that was not compiled because it was not seen as invoked by the static analysis nor was it directly registered for compilation";
 
     @StubCallingConvention
     @NeverInline("We need a separate frame that stores all registers")
@@ -63,10 +63,10 @@ public final class InvalidMethodPointerHandler {
 
     @StubCallingConvention
     @NeverInline("We need a separate frame that stores all registers")
-    private static void methodPointerInvalidHandler() {
+    private static void methodPointerNotCompiledHandler() {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
-        failFatally(callerSP, callerIP, METHOD_POINTER_INVALID_MSG);
+        failFatally(callerSP, callerIP, METHOD_POINTER_NOT_COMPILED_MSG);
     }
 
     private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {

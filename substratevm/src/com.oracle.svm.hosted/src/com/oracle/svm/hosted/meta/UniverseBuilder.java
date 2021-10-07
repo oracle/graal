@@ -925,7 +925,7 @@ public class UniverseBuilder {
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[idx] = MethodPointer.factory(type.vtable[idx]);
+                vtable[idx] = new MethodPointer(type.vtable[idx]);
             }
 
             // pointer maps in Dynamic Hub

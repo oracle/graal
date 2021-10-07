@@ -81,7 +81,7 @@ public class CEntryPointLiteralFeature implements Feature {
                      * Only during compilation and native image writing, we do the actual
                      * replacement.
                      */
-                    return MethodPointer.factory(hStub);
+                    return new MethodPointer(hStub);
                 }
             }
             return source;

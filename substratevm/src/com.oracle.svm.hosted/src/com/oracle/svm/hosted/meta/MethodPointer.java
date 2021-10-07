@@ -26,43 +26,28 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
-
-import com.oracle.svm.core.InvalidMethodPointerHandler;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A pointer to the compiled code of a method.
  */
-public class MethodPointer implements CFunctionPointer {
-    private static final MethodPointer INVALID = new MethodPointer(null);
-
+public final class MethodPointer implements CFunctionPointer {
     private final ResolvedJavaMethod method;
 
-    public static CFunctionPointer factory(ResolvedJavaMethod method) {
-        return (method != null) ? new MethodPointer(method) : INVALID;
-    }
-
-    protected MethodPointer(ResolvedJavaMethod method) {
+    public MethodPointer(ResolvedJavaMethod method) {
+        Objects.requireNonNull(method);
         this.method = method;
     }
 
-    public boolean isValid() {
-        return (method != null);
-    }
-
     public ResolvedJavaMethod getMethod() {
-        assert isValid();
         return method;
     }
 
-    /**
-     * Always {@code false} because even a pointer to {@code null} or to a method that is not
-     * compiled will eventually be replaced by
-     * {@link InvalidMethodPointerHandler#METHOD_POINTER_INVALID_HANDLER_METHOD}.
-     */
     @Override
     public boolean isNull() {
         return false;
@@ -70,7 +55,7 @@ public class MethodPointer implements CFunctionPointer {
 
     @Override
     public boolean isNonNull() {
-        return !isNull();
+        return true;
     }
 
     @Override
