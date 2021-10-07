@@ -64,7 +64,7 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j,scala.runtime.LambdaDeserialize,scala.Symbol$',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j', # mis-initialized from netty
                            '--initialize-at-run-time=io.netty.channel.unix.IovArray,io.netty.channel.epoll.EpollEventLoop,io.netty.channel.unix.Errors,io.netty.channel.unix.Socket,io.netty.channel.unix.Limits'
                           ],
     'chi-square'        : [
