@@ -144,10 +144,9 @@ It is a REPL capable of evaluating Java code and consists of two parts:
 This design naturally fits the point we are trying to illustrate. We can build a native executable of the JShell's UI part, and make it include Java on Truffle to run the code dynamically specified at run time.
 
 Prerequisites:
-* [GraalVM 21.0](/downloads/)
+* [GraalVM 21.3](/downloads/)
 * [Native Image](/reference-manual/native-image/#install-native-image)
 * [Java on Truffle](/reference-manual/java-on-truffle/#install-java-on-truffle)
-
 
 1. Clone the [project](https://github.com/graalvm/graalvm-demos) with the demo applications and navigate to the `espresso-jshell` directory:
 

@@ -133,4 +133,4 @@ Becomes:
 js --jvm --vm.Dgraal.ShowConfiguration=info -version
 ```
 
-Note the `-D` prefix is replaced by `--vm.D`.
+> Note the `-D` prefix is replaced by `--vm.D`.

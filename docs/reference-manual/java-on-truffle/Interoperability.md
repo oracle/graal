@@ -21,7 +21,7 @@ How this type is attached to foreign objects is an implementation detail.
 
 ## Polyglot
 
-Java on Truffle provides a guest Java Polyglot API, described in [`polyglot.jar`](#).
+Java on Truffle provides a guest Java Polyglot API, described in `polyglot.jar`.
 This JAR is automatically injected on guest Java contexts but can be excluded with `--java.Polyglot=false`.
 
 You can import the `Polyglot` class to interact with other guest languages:
