@@ -207,6 +207,7 @@ public abstract class PointsToAnalysis implements BigBang {
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
     }
 
+    @Override
     public boolean strengthenGraalGraphs() {
         return strengthenGraalGraphs;
     }

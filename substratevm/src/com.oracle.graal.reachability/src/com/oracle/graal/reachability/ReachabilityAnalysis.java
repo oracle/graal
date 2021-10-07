@@ -118,7 +118,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!method.registerAsImplementationInvoked(null)) {
             return;
         }
-        method.setReason(reason);
         schedule(() -> onMethodImplementationInvoked(method));
     }
 

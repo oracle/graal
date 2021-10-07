@@ -53,7 +53,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
@@ -95,7 +94,7 @@ public class InlineBeforeAnalysis {
 
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
-            if (((bb instanceof PointsToAnalysis) && ((PointsToAnalysis) bb).strengthenGraalGraphs()) && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
+            if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
                 InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(), result);
                 decoder.decode(method, false, result.trackNodeSourcePosition());
             } else {

@@ -38,10 +38,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
@@ -89,8 +87,6 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentHashMap<JavaConstant, BytecodePosition> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
     private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
-
-    public static final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs = new ConcurrentHashMap<>();
 
     private boolean sealed;
 
@@ -352,7 +348,7 @@ public class AnalysisUniverse implements Universe {
     @Override
     public AnalysisField lookup(JavaField field) {
         if (field instanceof AnalysisField) {
-            System.err.println("Querying already made analysis type: " + field);
+            System.err.println("Querying already made analysis field: " + field);
             return ((AnalysisField) field);
         }
         JavaField result = lookupAllowUnresolved(field);

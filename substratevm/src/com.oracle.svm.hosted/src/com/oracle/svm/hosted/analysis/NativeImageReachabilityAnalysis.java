@@ -28,6 +28,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysis;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -38,12 +39,19 @@ import java.util.concurrent.ForkJoinPool;
 public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implements Inflation {
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
+    private final boolean strengthenGraalGraphs;
 
     public NativeImageReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor,
                     Runnable heartbeatCallback, MethodSummaryProvider methodSummaryProvider) {
         super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), methodSummaryProvider);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
+        this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
+    }
+
+    @Override
+    public boolean strengthenGraalGraphs() {
+        return strengthenGraalGraphs;
     }
 
     @Override
