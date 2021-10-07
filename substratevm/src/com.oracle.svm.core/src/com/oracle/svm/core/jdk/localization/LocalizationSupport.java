@@ -63,9 +63,12 @@ public class LocalizationSupport {
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
+    public final Charset defaultCharset;
+
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
+        this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 

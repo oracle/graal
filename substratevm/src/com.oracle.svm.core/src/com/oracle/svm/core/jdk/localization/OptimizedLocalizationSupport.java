@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk.localization;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import org.graalvm.collections.Pair;
 
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -50,8 +51,8 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
-        super(defaultLocale, locales);
+    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
+        super(defaultLocale, locales, defaultCharset);
     }
 
     /**

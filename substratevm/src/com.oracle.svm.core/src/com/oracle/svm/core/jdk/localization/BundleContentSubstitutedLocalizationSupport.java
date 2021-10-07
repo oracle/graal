@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListResourceBundle;
@@ -65,8 +66,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, List<String> requestedPatterns, ForkJoinPool pool) {
-        super(defaultLocale, locales);
+    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
+        super(defaultLocale, locales, defaultCharset);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
     }
