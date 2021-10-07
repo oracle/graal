@@ -14,22 +14,18 @@ Instruments can track very fine-grained, VM-level runtime events to profile, ins
 
 ## Simple Tool
 
-To provide an easier starting point for tool developers we have created a
-[Simple Tool](https://github.com/graalvm/simpletool) example project. This is a
-javadoc-rich Maven project which implements a simple code coverage tool.
+To provide an easier starting point for tool developers we have created a [Simple Tool](https://github.com/graalvm/simpletool) example project.
+This is a javadoc-rich Maven project which implements a simple code coverage tool.
 
-We recommend cloning the repository and exploring the source code as a starting
-point for tool development. The following sections will provide a guided tour of
-the steps needed to build and run a GraalVM tool, using Simple Tool source code
-as the running example. These sections do not cover all of the features of the
-[Instrument API](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/package-summary.html) so we encourage you to check the javadoc for more details.
+We recommend cloning the repository and exploring the source code as a starting point for tool development.
+The following sections will provide a guided tour of the steps needed to build and run a GraalVM tool, using Simple Tool source code as the running example.
+These sections do not cover all of the features of the [Instrument API](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/package-summary.html) so we encourage you to check the javadoc for more details.
 
 ### Requirements
 
-As mentioned before, Simple Tool is a code coverage tool. Ultimately, it
-should provide the developer with information on what percentage of source code
-lines was executed, as well as exactly which lines were executed. With that in
-mind, we can define some high-level requirements from our tool:
+As mentioned before, Simple Tool is a code coverage tool.
+Ultimately, it should provide the developer with information on what percentage of source code lines was executed, as well as exactly which lines were executed.
+With that in mind, we can define some high-level requirements from our tool:
 
 1. The tool keeps track of loaded source code.
 2. The tool keeps track of executed source code.
@@ -40,14 +36,10 @@ mind, we can define some high-level requirements from our tool:
 The main starting point for tools is subclassing the [TruffleInstrument](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html) class.
 Unsurprisingly, the simple tool code base does exactly this, creating the [SimpleCoverageInstrument](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L84) class.
 
-The
-[Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html)
-annotation on the class ensures that the newly created instrument is registered
-with the Instrument API, i.e., that it will be automatically
-discovered by the framework. It also provides some metadata about the
-instrument: ID, name, version, which services the instrument provides, and
-whether the instrument is internal or not. In order for this annotation to be
-effective the DSL processor needs to process this class. This is, in the case of Simple Tool, done automatically by having the DSL processor as a dependency in the [Maven configuration](https://github.com/graalvm/simpletool/blob/master/pom.xml#L83).
+The [Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html) annotation on the class ensures that the newly created instrument is registered with the Instrument API, i.e., that it will be automatically discovered by the framework.
+It also provides some metadata about the instrument: ID, name, version, which services the instrument provides, and whether the instrument is internal or not.
+In order for this annotation to be effective the DSL processor needs to process this class.
+This is, in the case of Simple Tool, done automatically by having the DSL processor as a dependency in the [Maven configuration](https://github.com/graalvm/simpletool/blob/master/pom.xml#L83).
 
 Now we will look back at the implementation of the `SimpleCoverageInstrument` class, namely which methods from `TruffleInstrument` it overrides.
 These are [onCreate](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L130), [onDispose](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L182), and [getOptionDescriptors](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L245).
@@ -89,22 +81,13 @@ The instrument keeps a mapping from each `Source` to a [Coverage](https://github
 ### Execution Event Node
 
 Guest languages are implemented as Abstract Syntax Tree (AST) interpreters.
-The language implementers annotate certain nodes with tags, which allows us to
-select which nodes we are interested in, by using the aforementioned
-`SourceSectionFilter`, in a language-agnostic manner.
+The language implementers annotate certain nodes with tags, which allows us to select which nodes we are interested in, by using the aforementioned `SourceSectionFilter`, in a language-agnostic manner.
 
-The main power of the Instrument API lies in its ability to insert specialised
-nodes in the AST which "wrap" the nodes of interest. These nodes are built using
-the same infrastructure that the language developers use, and are, from the
-perspective of the runtime, indistinguishable from the language nodes. This
-means that all of the techniques used to optimize guest languages into such high
-performing language implementations are available to the tool developers as
-well.
+The main power of the Instrument API lies in its ability to insert specialised nodes in the AST which "wrap" the nodes of interest.
+These nodes are built using the same infrastructure that the language developers use, and are, from the perspective of the runtime, indistinguishable from the language nodes. This means that all of the techniques used to optimize guest languages into such high performing language implementations are available to the tool developers as well.
 
 More information about these techniques is available in the [language implementation documentation](https://github.com/oracle/graal/tree/master/truffle/docs).
-Suffice it to say that for Simple Tool to meet its second requirement, we need to
-instrument all expressions with our own node that will notify us when that
-expression is executed.
+Suffice it to say that for Simple Tool to meet its second requirement, we need to instrument all expressions with our own node that will notify us when that expression is executed.
 
 For this task we use the [CoverageNode](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/CoverageNode.java).
 It is a subclass of [ExecutionEventNode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecutionEventNode.html) which, as the name implies, is used to instrument events during execution.
@@ -121,8 +104,7 @@ The factory is the [CoverageEventFactory](https://github.com/graalvm/simpletool/
 This class just ensures that each `CoverageNode` knows the `SourceSection` it is instrumenting by looking it up in the provided [EventContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html).
 
 Finally, when we are [enabling the instrument](https://github.com/graalvm/simpletool/blob/master/src/main/java/com/oracle/truffle/st/SimpleCoverageInstrument.java#L173),
-we tell the instrumenter to use our factory to "wrap" the nodes selected by our
-filter.
+we tell the instrumenter to use our factory to "wrap" the nodes selected by our filter.
 
 ### Interaction Between Users and Instruments
 
@@ -237,14 +219,18 @@ The following examples are intended to show common use-cases that can be solved 
 
 ### Instrumentation Event Listeners
 
-The Instrument API is defined in the `com.oracle.truffle.api.instrumentation` package. Instrumentation agents can be developed by extending the `TruffleInstrument` class, and can be attached to a running GraalVM instance using the `Instrumenter` class. Once attached to a running language runtime, instrumentation agents remain usable as long as the language runtime is not disposed. Instrumentation agents on GraalVM can monitor a variety of VM-level runtime events, including any of the following:
+The Instrument API is defined in the `com.oracle.truffle.api.instrumentation` package.
+Instrumentation agents can be developed by extending the `TruffleInstrument` class, and can be attached to a running GraalVM instance using the `Instrumenter` class.
+Once attached to a running language runtime, instrumentation agents remain usable as long as the language runtime is not disposed.
+Instrumentation agents on GraalVM can monitor a variety of VM-level runtime events, including any of the following:
 
 1. _Source code-related events_: The agent can be notified every time a new [Source](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) or [SourceSection](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html) element is loaded by the monitored language runtime.
 2. _Allocation events_: The agent can be notified every time a new object is allocated in the memory space of the monitored language runtime.
 3. _Language runtime and thread creation events_: The agent can be notified as soon as a new [execution context](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) or a new thread for a monitored language runtime is created.
 4. _Application execution events_: The agent gets notified every time a monitored application executes a specific set of language operations. Examples of such operations include language statements and expressions, thus allowing an instrumentation agent to inspect running applications with very high precision.
 
-For each execution event, instrumentation agents can define _filtering_ criteria that will be used by the GraalVM instrumentation runtime to monitor only the relevant execution events. Currently, GraalVM instruments accept one of the following two filter types:
+For each execution event, instrumentation agents can define _filtering_ criteria that will be used by the GraalVM instrumentation runtime to monitor only the relevant execution events.
+Currently, GraalVM instruments accept one of the following two filter types:
 
 1. `AllocationEventFilter` to filter allocation events by allocation type.
 2. `SourceSectionFilter` to filter source code locations in an application.
@@ -258,9 +244,12 @@ SourceSectionFilter.newBuilder()
                    .build()
 ```
 
-The filter in the example can be used to monitor the execution of all JavaScript statements in a given application. Other filtering options such as line numbers or file extensions can also be provided.
+The filter in the example can be used to monitor the execution of all JavaScript statements in a given application.
+Other filtering options such as line numbers or file extensions can also be provided.
 
-Source section filters like the one in the example can use _Tags_ to specify a set of execution events to be monitored. Language-agnostic tags such as statements and expressions are defined in the [`com.oracle.truffle.api.instrumentation.Tag`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html) class, and are supported by all GraalVM languages. In addition to standard tags, GraalVM languages may provide other, language-specific, tags to enable fine-grained profiling of language-specific events. (As an example, the GraalVM JavaScript engine provides JavaScript-specific tags to track the usages of ECMA builtin objects such as `Array`, `Map`, or `Math`.)
+Source section filters like the one in the example can use _Tags_ to specify a set of execution events to be monitored. Language-agnostic tags such as statements and expressions are defined in the [`com.oracle.truffle.api.instrumentation.Tag`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html) class, and are supported by all GraalVM languages.
+In addition to standard tags, GraalVM languages may provide other, language-specific, tags to enable fine-grained profiling of language-specific events.
+(As an example, the GraalVM JavaScript engine provides JavaScript-specific tags to track the usages of ECMA builtin objects such as `Array`, `Map`, or `Math`.)
 
 ### Monitoring Execution Events
 
@@ -271,7 +260,8 @@ Application execution events enable very precise and detailed monitoring. GraalV
 
 ### Simple Instrumentation Agent
 
-A simple example of a custom instrumentation agent used to perform runtime code coverage can be found in the `CoverageExample` class. What follows is an overview of the agent, its design, and its capabilities.
+A simple example of a custom instrumentation agent used to perform runtime code coverage can be found in the `CoverageExample` class.
+What follows is an overview of the agent, its design, and its capabilities.
 
 All instruments extend the `TruffleInstrument` abstract class and are registered in the GraalVM runtime through the `@Registration` annotation:
 
@@ -287,7 +277,9 @@ public final class CoverageExample extends TruffleInstrument {
 }
 ```
 
-Instruments override the `onCreate(Env env)` method to perform custom operations at instrument loading time. Typically, an instrument would use this method to register itself in the existing GraalVM execution environment. As an example, an instrument using AST nodes can be registered in the following way:
+Instruments override the `onCreate(Env env)` method to perform custom operations at instrument loading time.
+Typically, an instrument would use this method to register itself in the existing GraalVM execution environment.
+As an example, an instrument using AST nodes can be registered in the following way:
 
 ```java
 @Override
@@ -325,7 +317,10 @@ Execution event nodes can implement certain callback methods to intercept runtim
 2. `onReturnValue`: executed after a source code element returns a value.
 3. `onReturnExceptional`: executed in case the filtered source code element throws an exception.
 
-Execution event nodes are created on a _per code location_ basis. Therefore, they can be used to store data specific to a given source code location in the instrumented application. As an example, an instrumentation node can simply keep track of all code locations that have already been visited using a node-local flag. Such a node-local `boolean` flag can be used to track the execution of AST nodes in the following way:
+Execution event nodes are created on a _per code location_ basis.
+Therefore, they can be used to store data specific to a given source code location in the instrumented application.
+As an example, an instrumentation node can simply keep track of all code locations that have already been visited using a node-local flag.
+Such a node-local `boolean` flag can be used to track the execution of AST nodes in the following way:
 
 ```java
 // To keep track of all source code locations executed
@@ -349,7 +344,9 @@ public ExecutionEventNode create(final EventContext ec) {
 }
 ```
 
-As the above code shows, an `ExecutionEventNode` is a valid AST node. This implies that the instrumentation code will be optimized by the GraalVM runtime together with the instrumented application, resulting in minimal instrumentation overhead. Furthermore, this allows instrument developers to use the [Truffle framework compiler directives](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html) directly from instrumentation nodes. In the example, compiler directives are used to inform the GraalVM compiler that `visited` can be considered compilation-final.
+As the above code shows, an `ExecutionEventNode` is a valid AST node.
+This implies that the instrumentation code will be optimized by the GraalVM runtime together with the instrumented application, resulting in minimal instrumentation overhead. Furthermore, this allows instrument developers to use the [Truffle framework compiler directives](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html) directly from instrumentation nodes.
+In the example, compiler directives are used to inform the GraalVM compiler that `visited` can be considered compilation-final.
 
 Each instrumentation node is bound to a specific code location. Such locations can be accessed by the agent using the provided [`EventContext`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html) object.
 The context object gives instrumentation nodes access to a variety of information about the current AST nodes being executed. Examples of query APIs available to instrumentation agents through `EventContext` include:
@@ -376,7 +373,9 @@ SourceSectionFilter inputGeneratingLocations = SourceSectionFilter.newBuilder()
 instrumenter.attachExecutionEventFactory(sourceSectionFilter, inputGeneratingLocations, factory);
 ```
 
-The first source section filter (`sourceSectionFilter`, in the example) is a normal filter equivalent to other filters described before, and is used to identify the source code locations to be monitored. The second section filter, `inputGeneratingLocations`, is used by the agent to specify the _intermediate values_ that should be monitored for a certain source section. Intermediate values correspond to _all_ observable values that are involved in the execution of a monitored code element, and are reported to the instrumentation agent by means of the `onInputValue` callback. As an example, let us assume an agent needs to profile all _operand_ values provided to sum operations (i.e., `+`) in JavaScript:
+The first source section filter (`sourceSectionFilter`, in the example) is a normal filter equivalent to other filters described before, and is used to identify the source code locations to be monitored.
+The second section filter, `inputGeneratingLocations`, is used by the agent to specify the _intermediate values_ that should be monitored for a certain source section. Intermediate values correspond to _all_ observable values that are involved in the execution of a monitored code element, and are reported to the instrumentation agent by means of the `onInputValue` callback.
+As an example, let us assume an agent needs to profile all _operand_ values provided to sum operations (i.e., `+`) in JavaScript:
 
 ```javascript
 var a = 3;
@@ -421,11 +420,16 @@ onEnter - VariableWrite
 onReturnValue - VariableWrite
 ```
 
-The `onInputValue` method can be used in combination with source section filters to intercept very fine-grained execution events such as intermediate values used by language expressions. The intermediate values that are accessible to the Instrumentation framework greatly depend on the instrumentation support provided by each language. Moreover, languages may provide additional metadata associated with language-specific `Tag` classes.
+The `onInputValue` method can be used in combination with source section filters to intercept very fine-grained execution events such as intermediate values used by language expressions.
+The intermediate values that are accessible to the Instrumentation framework greatly depend on the instrumentation support provided by each language.
+Moreover, languages may provide additional metadata associated with language-specific `Tag` classes.
 
 ### Altering the Execution Flow of an Application
 
-The instrumentation capabilities that we have presented so far enable users to _observe_ certain aspects of a running application. In addition to passive monitoring of an application's behavior, the Instrument API features support for actively _altering_ the behavior of an application at runtime. Such capabilities can be used to write complex instrumentation agents that affect the behavior of a running application to achieve specific runtime semantics. For example, one could alter the semantics of a running application to ensure that certain methods or functions are never executed (e.g., by throwing an exception when they are called).
+The instrumentation capabilities that we have presented so far enable users to _observe_ certain aspects of a running application.
+In addition to passive monitoring of an application's behavior, the Instrument API features support for actively _altering_ the behavior of an application at runtime.
+Such capabilities can be used to write complex instrumentation agents that affect the behavior of a running application to achieve specific runtime semantics.
+For example, one could alter the semantics of a running application to ensure that certain methods or functions are never executed (e.g., by throwing an exception when they are called).
 
 Instrumentation agents with such capabilities can be implemented by leveraging the `onUnwind` callback in execution event listeners and factories. As an example, let's consider the following JavaScript code:
 
