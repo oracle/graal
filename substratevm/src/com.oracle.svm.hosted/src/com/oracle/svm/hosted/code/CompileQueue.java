@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -789,13 +788,6 @@ public class CompileQueue {
     private StructuredGraph transplantGraph(DebugContext debug, HostedMethod hMethod, CompileReason reason) {
         AnalysisMethod aMethod = hMethod.getWrapped();
         StructuredGraph aGraph = aMethod.getAnalyzedGraph();
-        if (aGraph == null) {
-            ResolvedJavaMethod wrapped = aMethod.wrapped;
-            while (wrapped instanceof AnalysisMethod) {
-                wrapped = ((AnalysisMethod) wrapped).wrapped;
-            }
-            aGraph = AnalysisUniverse.graphs.get(wrapped);
-        }
         if (aGraph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }

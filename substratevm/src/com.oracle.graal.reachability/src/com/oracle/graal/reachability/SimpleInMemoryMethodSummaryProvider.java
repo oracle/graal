@@ -89,11 +89,6 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
         // to preserve the graphs for compilation
         method.setAnalyzedGraph(decoded);
-        ResolvedJavaMethod wrapped = method.wrapped;
-        while (wrapped instanceof AnalysisMethod) {
-            wrapped = ((AnalysisMethod) wrapped).wrapped;
-        }
-        AnalysisUniverse.graphs.put(wrapped, decoded);
 
         List<AnalysisType> accessedTypes = new ArrayList<>();
         List<AnalysisType> instantiatedTypes = new ArrayList<>();

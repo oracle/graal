@@ -175,9 +175,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             System.err.println("Parsing reason: " + method.getReason());
             ex.printStackTrace();
         }
-        if (method.getName().contains("VTable") || method.getName().equals("getMutexes") || method.getName().equals("position")) {
-            System.out.println("Successfully parsed " + method);
-        }
     }
 
     @Override
@@ -252,13 +249,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         }
         universe.setAnalysisDataValid(true);
         return true;
-// while (true) {
-// boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
-// if (quiescent) {
-// break;
-// }
-// }
-// return false;
     }
 
     private ObjectScanner.ReusableSet scannedObjects = new ObjectScanner.ReusableSet();

@@ -204,7 +204,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     protected void schedule(Runnable task) {
         executor.execute((d) -> task.run());
-        // executorService.submit(task);
     }
 
     @Override

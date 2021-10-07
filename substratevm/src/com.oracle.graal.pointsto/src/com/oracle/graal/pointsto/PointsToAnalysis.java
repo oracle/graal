@@ -763,14 +763,7 @@ public abstract class PointsToAnalysis implements BigBang {
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")
     public static ForkJoinPool createExecutor(DebugContext debug, int numberOfThreads) {
         ForkJoinPool.ForkJoinWorkerThreadFactory factory = debugThreadFactory(debug.areScopesEnabled() || debug.areMetricsEnabled() ? debug : null);
-        return new ForkJoinPool(numberOfThreads, factory, new Thread.UncaughtExceptionHandler() {
-            @Override
-            public void uncaughtException(Thread t, Throwable e) {
-                System.err.println("Thread " + t);
-                e.printStackTrace();
-                System.err.println("---");
-            }
-        }, false);
+        return new ForkJoinPool(numberOfThreads, factory, null, false);
     }
 
     private static ForkJoinPool.ForkJoinWorkerThreadFactory debugThreadFactory(DebugContext debug) {
