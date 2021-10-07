@@ -288,7 +288,7 @@ public final class HeapChunk {
             if (!visitor.visitObjectInline(obj)) {
                 return false;
             }
-            offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
+            offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
         }
         return true;
     }

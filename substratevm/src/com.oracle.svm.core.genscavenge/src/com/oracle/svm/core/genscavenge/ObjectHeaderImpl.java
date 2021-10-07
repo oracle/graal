@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -327,6 +328,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /** In an Object, install a forwarding pointer to a different Object. */
+    @AlwaysInline("GC performance")
     static void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
         UnsignedWord forwardHeader;

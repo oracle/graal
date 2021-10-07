@@ -145,7 +145,7 @@ final class AlignedChunkRememberedSet {
                 while (ptr.belowThan(walkLimit)) {
                     Object obj = ptr.toObject();
                     visitor.visitObjectInline(obj);
-                    ptr = LayoutEncoding.getObjectEnd(obj);
+                    ptr = LayoutEncoding.getObjectEndInline(obj);
                 }
             }
         }
