@@ -57,6 +57,7 @@ import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -533,7 +534,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     private static void checkOptionFieldUsages(List<String> errors, Map<ResolvedJavaField, Set<ResolvedJavaMethod>> optionFieldUsages) {
         for (Map.Entry<ResolvedJavaField, Set<ResolvedJavaMethod>> e : optionFieldUsages.entrySet()) {
             if (e.getValue().isEmpty()) {
-                errors.add("No uses found for " + e.getKey().format("%H.%n"));
+                if (e.getKey().format("%H.%n").equals(GraalOptions.VerifyPhases.getDescriptor().getLocation())) {
+                    // Special case: This option may only have downstream uses
+                } else {
+                    errors.add("No uses found for " + e.getKey().format("%H.%n"));
+                }
             }
         }
     }

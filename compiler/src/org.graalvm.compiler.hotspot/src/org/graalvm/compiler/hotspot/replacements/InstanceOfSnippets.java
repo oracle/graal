@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
@@ -275,11 +274,6 @@ public class InstanceOfSnippets implements Snippets {
 
                 OptionValues localOptions = instanceOf.getOptions();
                 JavaTypeProfile profile = instanceOf.profile();
-                if (GeneratePIC.getValue(localOptions)) {
-                    // FIXME: We can't embed constants in hints. We can't really load them from GOT
-                    // either. Hard problem.
-                    profile = null;
-                }
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(localOptions),
                                 TypeCheckMaxHints.getValue(localOptions));
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type().getType();

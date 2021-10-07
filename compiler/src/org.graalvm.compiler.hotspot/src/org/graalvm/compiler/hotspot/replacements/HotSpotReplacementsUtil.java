@@ -41,7 +41,6 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.CompressionNode;
@@ -641,6 +640,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static long cardTableStart(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.cardtableStartAddress;
+    }
+
+    @Fold
     public static int g1CardQueueIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.g1CardQueueIndexOffset;
     }
@@ -648,6 +652,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int g1CardQueueBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.g1CardQueueBufferOffset;
+    }
+
+    @Fold
+    public static int logOfHeapRegionGrainBytes(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.logOfHRGrainBytes;
     }
 
     @Fold
@@ -725,11 +734,31 @@ public class HotSpotReplacementsUtil {
         return loadHubIntrinsic(object);
     }
 
+    @Fold
+    public static boolean verifyOops(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOops;
+    }
+
     public static Object verifyOop(Object object) {
-        if (GraalHotSpotVMConfigNode.verifyOops()) {
+        if (verifyOops(INJECTED_VMCONFIG)) {
             verifyOopStub(VERIFY_OOP, object);
         }
         return object;
+    }
+
+    @Fold
+    public static long verifyOopBits(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopBits;
+    }
+
+    @Fold
+    public static long verifyOopMask(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopMask;
+    }
+
+    @Fold
+    public static long verifyOopCounterAddress(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.verifyOopCounterAddress;
     }
 
     @NodeIntrinsic(ForeignCallNode.class)

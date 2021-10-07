@@ -62,7 +62,7 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext()) {
             // The mark for an invocation that uses an inline cache must be placed at the
             // instruction that loads the Klass from the inline cache.
             // For the first invocation this is set to a bitpattern that is guaranteed to never be a

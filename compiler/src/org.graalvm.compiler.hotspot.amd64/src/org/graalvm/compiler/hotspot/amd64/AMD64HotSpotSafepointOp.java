@@ -26,8 +26,6 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rip;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 import static org.graalvm.compiler.core.common.NumUtil.isInt;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -46,8 +44,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -68,7 +64,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         this.state = state;
         this.config = config;
         this.thread = thread;
-        if (config.useThreadLocalPolling || isPollingPageFar(config) || ImmutableCode.getValue(tool.getOptions())) {
+        if (config.useThreadLocalPolling || isPollingPageFar(config)) {
             temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
         } else {
             // Don't waste a register if it's unneeded
@@ -100,24 +96,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     private static void emitGlobalPoll(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         assert !atReturn || state == null : "state is unneeded at return";
-        if (ImmutableCode.getValue(crb.getOptions())) {
-            JavaKind hostWordKind = JavaKind.Long;
-            int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-            JavaConstant pollingPageAddress = JavaConstant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
-            // This move will be patched to load the safepoint page from a data segment
-            // co-located with the immutable code.
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                asm.movq(scratch, asm.getPlaceholder(-1));
-            } else {
-                asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
-            }
-            final int pos = asm.position();
-            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-            if (state != null) {
-                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-            }
-            asm.testl(rax, new AMD64Address(scratch));
-        } else if (isPollingPageFar(config)) {
+        if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
             crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
             final int pos = asm.position();

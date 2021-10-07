@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.core.GraalCompiler.emitFrontEnd;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMON_TRAP;
@@ -198,8 +197,6 @@ public abstract class Stub {
                     try (DebugContext.Scope s = debug.scope("CodeInstall", compResult);
                                     DebugContext.Activation a = debug.activate()) {
                         assert destroyedCallerRegisters != null;
-                        // Add a GeneratePIC check here later, we don't want to install
-                        // code if we don't have a corresponding VM global symbol.
                         HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult, options);
                         code = codeCache.installCode(null, compiledCode, null, null, false);
                     } catch (Throwable e) {
@@ -219,7 +216,7 @@ public abstract class Stub {
     private CompilationResult buildCompilationResult(DebugContext debug, final Backend backend) {
         CompilationIdentifier compilationId = getStubCompilationId();
         final StructuredGraph graph = getGraph(debug, compilationId);
-        CompilationResult compResult = new CompilationResult(compilationId, toString(), GeneratePIC.getValue(options));
+        CompilationResult compResult = new CompilationResult(compilationId, toString());
 
         // Stubs cannot be recompiled so they cannot be compiled with assumptions
         assert graph.getAssumptions() == null;

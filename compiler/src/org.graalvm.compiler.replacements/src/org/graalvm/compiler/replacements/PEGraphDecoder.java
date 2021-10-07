@@ -822,11 +822,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else {
             assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
         }
-        if (encodedGraph.getFields() != null) {
-            for (ResolvedJavaField field : encodedGraph.getFields()) {
-                graph.recordField(field);
-            }
-        }
         if (encodedGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
         }

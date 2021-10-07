@@ -42,8 +42,6 @@ public final class GraphBuilderConfiguration {
         private TypePlugin[] typePlugins;
         private InlineInvokePlugin[] inlineInvokePlugins;
         private ClassInitializationPlugin classInitializationPlugin;
-        private InvokeDynamicPlugin invokeDynamicPlugin;
-        private ProfilingPlugin profilingPlugin;
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
@@ -57,8 +55,6 @@ public final class GraphBuilderConfiguration {
             this.typePlugins = copyFrom.typePlugins;
             this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
-            this.invokeDynamicPlugin = copyFrom.invokeDynamicPlugin;
-            this.profilingPlugin = copyFrom.profilingPlugin;
         }
 
         public Plugins(Plugins copyFrom) {
@@ -165,22 +161,6 @@ public final class GraphBuilderConfiguration {
 
         public void setClassInitializationPlugin(ClassInitializationPlugin plugin) {
             this.classInitializationPlugin = plugin;
-        }
-
-        public InvokeDynamicPlugin getInvokeDynamicPlugin() {
-            return invokeDynamicPlugin;
-        }
-
-        public void setInvokeDynamicPlugin(InvokeDynamicPlugin plugin) {
-            this.invokeDynamicPlugin = plugin;
-        }
-
-        public ProfilingPlugin getProfilingPlugin() {
-            return profilingPlugin;
-        }
-
-        public void setProfilingPlugin(ProfilingPlugin plugin) {
-            this.profilingPlugin = plugin;
         }
 
         public StampPair getOverridingStamp(GraphBuilderTool b, JavaType type, boolean nonNull) {

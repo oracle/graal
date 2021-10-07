@@ -39,7 +39,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
@@ -71,7 +70,6 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
@@ -460,11 +458,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final List<ResolvedJavaMethod> methods;
 
-    /**
-     * Records the fields that were accessed while constructing this graph.
-     */
-    private EconomicSet<ResolvedJavaField> fields = null;
-
     private enum UnsafeAccessState {
         NO_ACCESS,
         HAS_ACCESS,
@@ -724,9 +717,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.setGuardsStage(getGuardsStage());
         copy.stageFlags = EnumSet.copyOf(stageFlags);
         copy.trackNodeSourcePosition = trackNodeSourcePositionForCopy;
-        if (fields != null) {
-            copy.fields = createFieldSet(fields);
-        }
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
@@ -1111,15 +1101,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return true;
     }
 
-    private static EconomicSet<ResolvedJavaField> createFieldSet(EconomicSet<ResolvedJavaField> init) {
-        // Multiple ResolvedJavaField objects can represent the same field so they
-        // need to be compared with equals().
-        if (init != null) {
-            return EconomicSet.create(Equivalence.DEFAULT, init);
-        }
-        return EconomicSet.create(Equivalence.DEFAULT);
-    }
-
     /**
      * Gets an unmodifiable view of the methods that were inlined while constructing this graph.
      */
@@ -1152,41 +1133,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             for (ResolvedJavaMethod m : other.methods) {
                 methods.add(m);
             }
-        }
-    }
-
-    /**
-     * Gets an unmodifiable view of the fields that were accessed while constructing this graph.
-     *
-     * @return {@code null} if no field accesses were recorded
-     */
-    public EconomicSet<ResolvedJavaField> getFields() {
-        return fields;
-    }
-
-    /**
-     * Records that {@code field} was accessed in this graph.
-     */
-    public void recordField(ResolvedJavaField field) {
-        assert GraalOptions.GeneratePIC.getValue(getOptions());
-        if (this.fields == null) {
-            this.fields = createFieldSet(null);
-        }
-        fields.add(field);
-    }
-
-    /**
-     * Updates the {@linkplain #getFields() fields} of this graph with the accessed fields of
-     * another graph.
-     */
-    public void updateFields(StructuredGraph other) {
-        assert this != other;
-        assert GraalOptions.GeneratePIC.getValue(getOptions());
-        if (other.fields != null) {
-            if (this.fields == null) {
-                this.fields = createFieldSet(null);
-            }
-            this.fields.addAll(other.fields);
         }
     }
 

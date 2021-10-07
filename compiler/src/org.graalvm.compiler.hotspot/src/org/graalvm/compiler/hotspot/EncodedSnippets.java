@@ -410,7 +410,7 @@ public class EncodedSnippets {
         private final String originalMethod;
 
         SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, String originalMethod, ResolvedJavaType... accessingClasses) {
-            super(encoding, startOffset, objects, types, null, null, null, false, false);
+            super(encoding, startOffset, objects, types, null, null, false, false);
             this.accessingClasses = accessingClasses;
             this.originalMethod = originalMethod;
         }

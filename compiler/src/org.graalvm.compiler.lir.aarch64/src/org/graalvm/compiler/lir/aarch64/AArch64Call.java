@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -208,16 +207,12 @@ public class AArch64Call {
     public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
         int before = masm.position();
         if (scratch != null) {
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                masm.bl(0);
-            } else {
-                /*
-                 * Offset might not fit into a 28-bit immediate, generate an indirect call with a
-                 * 64-bit immediate address which is fixed up by HotSpot.
-                 */
-                masm.movNativeAddress(scratch, 0L, true);
-                masm.blr(scratch);
-            }
+            /*
+             * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
+             * immediate address which is fixed up by HotSpot.
+             */
+            masm.movNativeAddress(scratch, 0L, true);
+            masm.blr(scratch);
         } else {
             // Address is fixed up by HotSpot.
             masm.bl(0);
@@ -244,12 +239,8 @@ public class AArch64Call {
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                masm.jmp();
-            } else {
-                masm.movNativeAddress(scratch.getRegister(), 0L);
-                masm.jmp(scratch.getRegister());
-            }
+            masm.movNativeAddress(scratch.getRegister(), 0L);
+            masm.jmp(scratch.getRegister());
             int after = masm.position();
             crb.recordDirectCall(before, after, callTarget, null);
             masm.ensureUniquePC();

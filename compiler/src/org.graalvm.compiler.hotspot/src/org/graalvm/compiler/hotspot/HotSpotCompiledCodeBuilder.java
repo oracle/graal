@@ -118,7 +118,7 @@ public class HotSpotCompiledCodeBuilder {
 
         int totalFrameSize = compResult.getTotalFrameSize();
         StackSlot customStackArea = compResult.getCustomStackArea();
-        boolean isImmutablePIC = compResult.isImmutablePIC();
+        boolean isImmutablePIC = false; // Legacy API from jaotc that no longer does anything
 
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;

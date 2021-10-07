@@ -41,7 +41,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -623,11 +622,6 @@ public class InliningUtil extends ValueMergeUtil {
 
         // Copy inlined methods from inlinee to caller
         graph.updateMethods(inlineGraph);
-
-        // Update the set of accessed fields
-        if (GraalOptions.GeneratePIC.getValue(graph.getOptions())) {
-            graph.updateFields(inlineGraph);
-        }
 
         if (inlineGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();

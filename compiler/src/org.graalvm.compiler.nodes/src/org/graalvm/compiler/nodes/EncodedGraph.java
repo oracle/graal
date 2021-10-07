@@ -26,11 +26,9 @@ package org.graalvm.compiler.nodes;
 
 import java.util.List;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.graph.NodeClass;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -47,7 +45,6 @@ public class EncodedGraph {
     private final Assumptions assumptions;
     private final List<ResolvedJavaMethod> inlinedMethods;
     private final boolean trackNodeSourcePosition;
-    private final EconomicSet<ResolvedJavaField> fields;
     private final boolean hasUnsafeAccess;
 
     /**
@@ -57,12 +54,11 @@ public class EncodedGraph {
     protected int[] nodeStartOffsets;
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, StructuredGraph sourceGraph) {
-        this(encoding, startOffset, objects, types, sourceGraph.getAssumptions(), sourceGraph.getMethods(), sourceGraph.getFields(), sourceGraph.hasUnsafeAccess(),
-                        sourceGraph.trackNodeSourcePosition());
+        this(encoding, startOffset, objects, types, sourceGraph.getAssumptions(), sourceGraph.getMethods(), sourceGraph.hasUnsafeAccess(), sourceGraph.trackNodeSourcePosition());
     }
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods,
-                    EconomicSet<ResolvedJavaField> fields, boolean hasUnsafeAccess, boolean trackNodeSourcePosition) {
+                    boolean hasUnsafeAccess, boolean trackNodeSourcePosition) {
         this.encoding = encoding;
         this.startOffset = startOffset;
         this.objects = objects;
@@ -70,7 +66,6 @@ public class EncodedGraph {
         this.assumptions = assumptions;
         this.inlinedMethods = inlinedMethods;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
-        this.fields = fields;
         this.hasUnsafeAccess = hasUnsafeAccess;
     }
 
@@ -108,10 +103,6 @@ public class EncodedGraph {
 
     public boolean trackNodeSourcePosition() {
         return trackNodeSourcePosition;
-    }
-
-    public EconomicSet<ResolvedJavaField> getFields() {
-        return fields;
     }
 
     public boolean hasUnsafeAccess() {
