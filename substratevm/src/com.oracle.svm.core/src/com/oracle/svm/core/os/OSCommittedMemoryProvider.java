@@ -102,6 +102,11 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     }
 
     @Override
+    public boolean areUnalignedChunksZeroed() {
+        return false;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {

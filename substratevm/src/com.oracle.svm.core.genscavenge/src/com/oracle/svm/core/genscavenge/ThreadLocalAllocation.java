@@ -234,8 +234,9 @@ public final class ThreadLocalAllocation {
 
             if (size.aboveOrEqual(HeapParameters.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */
+                boolean needsZeroing = !HeapImpl.getChunkProvider().areUnalignedChunksZeroed();
                 UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
-                return allocateLargeArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk);
+                return allocateLargeArrayInNewTlab(hub, length, size, fillStartOffset, newTlabChunk, needsZeroing);
             }
             /* Small arrays go into the regular aligned chunk. */
 
@@ -274,7 +275,7 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
-    private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, UnalignedHeapChunk.UnalignedHeader newTlabChunk) {
+    private static Object allocateLargeArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, UnalignedHeapChunk.UnalignedHeader newTlabChunk, boolean needsZeroing) {
         ThreadLocalAllocation.Descriptor tlab = getTlab();
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
@@ -284,8 +285,8 @@ public final class ThreadLocalAllocation {
         Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
         assert memory.isNonNull();
 
-        /* Install the DynamicHub and length, and zero the elements. */
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, true, fillStartOffset, true);
+        /* Install the DynamicHub and length. Also zero the elements if necessary. */
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, needsZeroing, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)
