@@ -43,55 +43,80 @@ function h_search(term) {
 
 function h_update_search() {
     let re = h_search_regex;
-    if (re == null) {
-        return;
-    }
-    for (let i = 0; i < histogramData.length; i++) {
-        let bar = histogramData[i];
-        if (name_for_sample(bar).match(re)) {
-            bar.searchMatch = true;
-            let e = h_element_for_id(i);
-            if (e != null) {
-                let r = e.children[1];
-                r.style.fill = searchColor;
+    if (re != null) {
+        for (let i = 0; i < histogramData.length; i++) {
+            let bar = histogramData[i];
+            if (name_for_sample(bar).match(re)) {
+                bar.searchMatch = true;
+                let e = h_element_for_id(i);
+                h_highlight_bar(i, bar);
+            }
+        }
+    } else if (hilight_bar != null) {
+        for (let i = 0; i < histogramData.length; i++) {
+            let bar = histogramData[i];
+            if (hilight_bar.k == bar.k) {
+                bar.searchMatch = true;
+                let e = h_element_for_id(i);
+                h_highlight_bar(i, bar);
             }
         }
     }
 }
 
-var hilight_element = null;
+var hilight_bar = null;
 
 function h_reset_search() {
     for (let i = 0; i < histogramData.length; i++) {
         let bar = histogramData[i];
         if (bar.searchMatch = true) {
             bar.searchMatch = false;
-            let e = h_element_for_id(i);
-            if (e != null) {
-                let color = bar.currentColor;
-                if (color == undefined) {
-                    color = h_color_for_sample(color_type, bar);
-                }
-                let r = e.children[1];
-                r.style.fill = color;
-            }
+            h_unhighlight_bar(i, bar);
         }
     }
     h_search_regex = null;
 }
 
+function h_highlight_bar(id, bar) {
+    let e = h_element_for_id(id)
+    if (e != null) {
+        let r = e.children[1];
+        r.style.fill = searchColor;
+    }
+}
+
+function h_unhighlight_bar(id, bar) {
+    let e = h_element_for_id(id)
+    if (e != null) {
+        let color = bar.currentColor;
+        if (color == undefined) {
+            color = h_color_for_sample(color_type, bar);
+        }
+        let r = e.children[1];
+        r.style.fill = color;
+    }
+}
+
 function h_highlight(e) {
-    if (hilight_element == e) {
+    let id = e.getAttribute("id").substring(2);
+    let bar = histogram_entry_for_id(id);
+    if (hilight_bar != null && hilight_bar.k == bar.k) {
         hilight_element = null;
         reset_search();
     } else {
-        let bar = histogram_entry_for_id(e.getAttribute("id").substring(2));
         reset_search();
-        hilight_element = e;
-        let name = name_for_sample(bar);
-        // Ensure we escape anything that might cause a problem with the regexp.
-        name = "^" + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$"; // $& means the whole matched string
-        search(name);
+        hilight_bar = bar;
+        h_highlight_bar(id, bar);
+
+        let iter = sample_and_children_depth_first(profileData[0]);
+        let c = iter.next();
+        while (!c.done) {
+            let sample = c.value;
+            if (sample.k == bar.k) {
+                fg_highlight_sample(search_matches, sample);
+            }
+            c = iter.next();
+        }
     }
 }
 

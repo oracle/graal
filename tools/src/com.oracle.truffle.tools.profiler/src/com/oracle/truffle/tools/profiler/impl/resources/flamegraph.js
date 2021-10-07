@@ -318,35 +318,39 @@ function unzoom() {
 function fg_search(term) {
     var re = new RegExp(term);
 
-    search_matches = []
+    let search_matches = []
 
     let iter = sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
         if (name_for_sample(sample).match(re)) {
-            sample.searchMatch = true;
-            search_matches.push(sample);
-            let e = fg_element_for_sample(sample);
-            if (e != null) {
-                let r = e.children[1];
-                r.style.fill = searchColor;
-            }
+            fg_highlight_sample(search_matches, sample);
         }
         c = iter.next();
     }
+
+    fg_search_update(search_matches);
 
     if (search_matches.length == 0)
         return;
 
     searchbtn.style["opacity"] = "0.8";
     searchbtn.firstChild.nodeValue = "Reset Search"
-
-    fg_search_update();
 }
 
-function fg_search_update() {
-    let samples = search_matches.slice();
+function fg_highlight_sample(samples, sample) {
+    sample.searchMatch = true;
+    samples.push(sample);
+    let e = fg_element_for_sample(sample);
+    if (e != null) {
+        let r = e.children[1];
+        r.style.fill = searchColor;
+    }
+}
+
+function fg_search_update(samples) {
+    search_matches = samples.slice();
 
     if (samples.length == 0) {
         matchedtxt.style["opacity"] = "0.0";

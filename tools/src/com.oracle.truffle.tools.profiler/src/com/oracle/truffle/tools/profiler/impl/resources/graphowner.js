@@ -274,7 +274,7 @@ function source_for_sample(sample) {
 
 function source_line_for_sample(sample) {
     let key = sampleKeys[sample.k];
-    return sourceNames[key[2]];
+    return key[2];
 }
 
 function function_name(e) {
