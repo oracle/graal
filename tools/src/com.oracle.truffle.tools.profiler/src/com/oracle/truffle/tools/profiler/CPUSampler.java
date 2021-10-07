@@ -797,6 +797,9 @@ public final class CPUSampler implements Closeable {
                         continue;
                     }
                     synchronized (CPUSampler.this) {
+                        if (!collecting) {
+                            return;
+                        }
                         final MutableSamplerData mutableSamplerData = activeContexts.get(result.context);
                         for (StackSample sample : result.samples) {
                             mutableSamplerData.biasStatistic.accept(sample.biasNs);
