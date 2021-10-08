@@ -134,7 +134,7 @@ public abstract class StaticProperty {
 
     private void throwIllegalArgumentException(Class<?> accessType) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + type.getName() + "' cannot be accessed as '" + accessType.getName() + "'");
+        throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + type.getName() + "' cannot be accessed as '" + (accessType == null ? "null" : accessType.getName()) + "'");
     }
 
     private void checkObjectGetAccess() {
@@ -143,9 +143,13 @@ public abstract class StaticProperty {
         }
     }
 
-    private void checkObjectSetAccess(Class<?> accessType) {
-        if (!type.isAssignableFrom(accessType)) {
-            throwIllegalArgumentException(accessType);
+    private void checkObjectSetAccess(Object value) {
+        if (value == null) {
+            if (type.isPrimitive()) {
+                throwIllegalArgumentException(null);
+            }
+        } else if (!type.isAssignableFrom(value.getClass())) {
+            throwIllegalArgumentException(value.getClass());
         }
     }
 
@@ -201,7 +205,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final void setObject(Object obj, Object value) {
-        checkObjectSetAccess(value.getClass());
+        checkObjectSetAccess(value);
         UNSAFE.putObject(shape.getStorage(obj, false), (long) offset, value);
     }
 
@@ -218,7 +222,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final void setObjectVolatile(Object obj, Object value) {
-        checkObjectSetAccess(value.getClass());
+        checkObjectSetAccess(value);
         UNSAFE.putObjectVolatile(shape.getStorage(obj, false), offset, value);
     }
 
@@ -238,7 +242,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final boolean compareAndSwapObject(Object obj, Object expect, Object update) {
-        checkObjectSetAccess(update.getClass());
+        checkObjectSetAccess(update);
         return UNSAFE.compareAndSwapObject(shape.getStorage(obj, false), offset, expect, update);
     }
 
@@ -255,7 +259,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final Object getAndSetObject(Object obj, Object value) {
-        checkObjectSetAccess(value.getClass());
+        checkObjectSetAccess(value);
         return UNSAFE.getAndSetObject(shape.getStorage(obj, false), offset, value);
     }
 
@@ -274,7 +278,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final Object compareAndExchangeObject(Object obj, Object expect, Object update) {
-        checkObjectSetAccess(update.getClass());
+        checkObjectSetAccess(update);
         return CASSupport.compareAndExchangeObject(shape.getStorage(obj, false), offset, expect, update);
     }
 
