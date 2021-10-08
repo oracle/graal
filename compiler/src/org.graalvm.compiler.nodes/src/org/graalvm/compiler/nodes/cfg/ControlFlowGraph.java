@@ -685,16 +685,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             Block lexBlock = blockFor(lex);
             assert lexBlock != null;
             final double lexFrequency = lexBlock.getRelativeFrequency();
-            final double localLoopFrequency = localLoopFrequencyData.get(lb).getLoopFrequency();
-            /*
-             * While the local loop frequency is calculated without the predecessor frequency, the
-             * exit frequency needs to be adjusted already to compute any outer loop local
-             * frequencies correctly.
-             */
             final double loopPredFrequency = blockFor(lb.forwardEnd()).relativeFrequency;
-            final double virginExitFrequency = multiplyRelativeFrequencies(lexFrequency, localLoopFrequency, loopPredFrequency);
-            // exit path, we set the exit probability
-            lexBlock.setRelativeFrequency(virginExitFrequency);
+            final double loopExitFrequencyScaled = multiplyRelativeFrequencies(lexFrequency, loopPredFrequency);
+            lexBlock.setRelativeFrequency(loopExitFrequencyScaled);
         }
     }
 
@@ -709,29 +702,36 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private double calculateLocalLoopFrequency(LoopBeginNode lb) {
         Block header = blockFor(lb);
         assert header != null;
-        double loopEndFrequency = 0D;
+        /*
+         * Ideally we would like to take the loop end frequency sum here because it respects control
+         * flow sinks (unwinds and deopts) inside the loop. However, semantically, if we ever exit a
+         * loop in compiled code it means we did not do so by an unwind or deopt but a loop exit,
+         * thus we ignore the end (and sink) frequencies and compute loop frequency purely based on
+         * the exit frequencies.
+         */
+        double loopExitFrequencySum = 0D;
         ProfileSource source = ProfileSource.UNKNOWN;
-        for (LoopEndNode len : lb.loopEnds()) {
-            Block endBlock = blockFor(len);
-            assert endBlock != null;
-            assert endBlock.relativeFrequency >= 0D;
-            loopEndFrequency += endBlock.relativeFrequency;
-            source = source.combine(endBlock.frequencySource);
+
+        for (LoopExitNode lex : lb.loopExits()) {
+            Block lexBlock = blockFor(lex);
+            assert lexBlock != null;
+            assert lexBlock.relativeFrequency >= 0D;
+            loopExitFrequencySum += lexBlock.relativeFrequency;
+            source = source.combine(lexBlock.frequencySource);
         }
 
-        loopEndFrequency = Math.min(1, loopEndFrequency);
-        loopEndFrequency = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, loopEndFrequency);
+        loopExitFrequencySum = Math.min(1, loopExitFrequencySum);
+        loopExitFrequencySum = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, loopExitFrequencySum);
 
         double loopFrequency = -1;
-        if (loopEndFrequency == 1D) {
-            // endless loop, loop with exit and deopt unconditionally after the exit
+        if (loopExitFrequencySum == 0D) {
+            // loop without loop exit nodes (deopt or throw exited)
             loopFrequency = MAX_RELATIVE_FREQUENCY;
         } else {
-            double exitFrequency = 1D - loopEndFrequency;
-            loopFrequency = 1D / exitFrequency;
+            loopFrequency = 1D / loopExitFrequencySum;
 
-            assert Double.isFinite(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " endFrequency=" + loopEndFrequency;
-            assert !Double.isNaN(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " endFrequency=" + loopEndFrequency;
+            assert Double.isFinite(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " lexFrequencySum=" + loopExitFrequencySum;
+            assert !Double.isNaN(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " lexFrequencySum=" + loopExitFrequencySum;
         }
         localLoopFrequencyData.put(lb, LoopFrequencyData.create(loopFrequency, source));
         return loopFrequency;
