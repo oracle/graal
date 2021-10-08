@@ -125,6 +125,6 @@ public final class ParserField {
                     throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
             }
         }
-        return StaticObject.class;
+        return isHidden() ? Object.class : StaticObject.class;
     }
 }
