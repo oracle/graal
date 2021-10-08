@@ -188,7 +188,7 @@ ruby [options] program.rb
 ```
 
 GraalVM Ruby runtime environment uses the
-[same options as the standard implementation of Ruby](../../reference-manual/ruby/Options.md),
+[same options as the standard implementation of Ruby](../../reference-manual/ruby/options.md),
 with some additions. For example:
 ```shell
 gem install chunky_png

@@ -17,10 +17,9 @@ permalink: /reference-manual/embed-languages/
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
-* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
+* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
-
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -493,7 +492,7 @@ Caching may be disabled explicitly by setting [cached(boolean cached)](https://
 
 Consider the following code snippet as an example:
 
-```
+```java
 public class Main {
     public static void main(String[] args) {
         try (Engine engine = Engine.create()) {
@@ -599,8 +598,6 @@ for (;;) {
     }
 }
 ```
-
-
 
 ## Step Through with Execution Listeners
 

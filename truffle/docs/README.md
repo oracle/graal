@@ -50,7 +50,7 @@ Consider reading [these publications](https://github.com/oracle/graal/blob/maste
 Implementing a language using Truffle offers a way to interoperate with other "Truffle" languages.
 To learn more about verifying that your language is a valid polyglot citizen, read more about using the [Polyglot TCK](./TCK.md).
 Somewhat related topics worth exploring are [Truffle Libraries](./TruffleLibraries.md), as well as how to use them to implement a language [interoperability](./InteropMigration.md).
-Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](../../reference-manual/embedding/embed-languages.md).
+Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](../../docs/reference-manual/embedding/embed-languages.md).
 
 To better understand how to improve the performance of your language please consult the documentation on [profiling](./Profiling.md) and [optimizing](./Optimizing.md) your language.
 Also, to better understand how to use Truffle's automated monomorphization feature (i.e., splitting), look at the [related documentation](./splitting/Monomorphization.md).
