@@ -69,8 +69,8 @@ public final class ExtensionFieldsMetadata {
     private static List<Field> initNewFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         List<Field> toAdd = new ArrayList<>(instanceFields.size());
         for (ParserField newField : instanceFields) {
-            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REGULAR);
-            Field field = new Field(holder, linkedField, pool, true);
+            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REDEFINE_ADDED);
+            Field field = new Field(holder, linkedField, pool);
             toAdd.add(field);
 
             // mark a compatible field where

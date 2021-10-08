@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_REDEFINE_ADDED;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
@@ -40,6 +41,7 @@ final class LinkedField extends StaticProperty {
         REGULAR,
         WITH_TYPE,
         OBFUSCATED,
+        REDEFINE_ADDED,
     }
 
     private final ParserField parserField;
@@ -58,6 +60,8 @@ final class LinkedField extends StaticProperty {
                 return parserField.withFlags(FIELD_ID_TYPE);
             case OBFUSCATED:
                 return parserField.withFlags(FIELD_ID_OBFUSCATE);
+            case REDEFINE_ADDED:
+                return parserField.withFlags(ACC_REDEFINE_ADDED);
         }
         throw EspressoError.shouldNotReachHere();
     }
@@ -156,6 +160,10 @@ final class LinkedField extends StaticProperty {
 
     public boolean isHidden() {
         return getParserField().isHidden();
+    }
+
+    public boolean isRedefineAdded() {
+        return getParserField().isRedefineAdded();
     }
 
     ParserField getParserField() {
