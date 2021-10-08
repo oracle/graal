@@ -127,8 +127,7 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private final Field[] staticFieldTable;
 
-    private final Assumption noAddedFields = Truffle.getRuntime().createAssumption();
-    private ExtensionFieldsMetadata extensionFieldsMetadata;
+    @CompilationFinal private ExtensionFieldsMetadata extensionFieldsMetadata;
 
     // used for class redefintion when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
@@ -727,7 +726,7 @@ public final class ObjectKlass extends Klass {
             }
         }
         declaredFields = insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
-        if (!noAddedFields.isValid()) {
+        if (getExtensionFieldsMetadata(false) != null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // add from extension fields too
             Field[] extensionFields = extensionFieldsMetadata.getDeclaredAddedFields();
@@ -1246,19 +1245,16 @@ public final class ObjectKlass extends Klass {
         // fields
         if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
             Map<ParserField, Field> compatibleFields = packet.detectedChange.getMappedCompatibleFields();
-            if (extensionFieldsMetadata == null) {
-                // make sure the extension metadata is initialized
-                extensionFieldsMetadata = new ExtensionFieldsMetadata();
-            }
+
+            ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
             // add new fields to the extension object
-            extensionFieldsMetadata.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
-            extensionFieldsMetadata.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
+            extension.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
+            extension.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
 
             // make sure all new fields trigger re-resolution of fields
             // with same name + type in the full class hierarchy
             markForReResolution(packet.detectedChange.getAddedStaticFields());
             markForReResolution(packet.detectedChange.getAddedInstanceFields());
-            noAddedFields.invalidate();
         }
 
         for (Field removedField : packet.detectedChange.getRemovedFields()) {
@@ -1337,6 +1333,21 @@ public final class ObjectKlass extends Klass {
 
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
+    }
+
+    private ExtensionFieldsMetadata getExtensionFieldsMetadata(boolean create) {
+        ExtensionFieldsMetadata metadata = extensionFieldsMetadata;
+        if (metadata == null) {
+            if (create) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    if (extensionFieldsMetadata == null) {
+                        extensionFieldsMetadata = metadata = new ExtensionFieldsMetadata();
+                    }
+                }
+            }
+        }
+        return metadata;
     }
 
     private void markForReResolution(List<ParserField> addedFields) {
