@@ -2022,7 +2022,7 @@ public class SnippetTemplate {
                     returnDuplicate.replaceAndDelete(next);
                 }
             }
-            if (unwindPath != null) {
+            if (unwindPath != null && unwindPath.isAlive()) {
                 GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS) || replacee instanceof WithExceptionNode,
                                 "Using a snippet with an UnwindNode after floating reads would require support for the memory graph (unless the replacee has an exception edge)");
                 GraalError.guarantee(replacee instanceof WithExceptionNode, "Snippet has an UnwindNode, but replacee is not a node with an exception handler");
@@ -2059,10 +2059,11 @@ public class SnippetTemplate {
                 }
             } else {
                 /*
-                 * Since the snippet unwindPath is null, a placeholder WithExceptionNode needs to be
-                 * added for any WithExceptionNode replacee. This placeholder WithExceptionNode
-                 * temporarily preserves the replacee's original exception edge and is needed
-                 * because lowering should not remove edges from the original CFG.
+                 * Since the snippet unwindPath is null or has been deleted, a placeholder
+                 * WithExceptionNode needs to be added for any WithExceptionNode replacee. This
+                 * placeholder WithExceptionNode temporarily preserves the replacee's original
+                 * exception edge and is needed because lowering should not remove edges from the
+                 * original CFG.
                  */
                 if (replacee instanceof WithExceptionNode) {
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
