@@ -168,14 +168,14 @@ public final class ModuleLayerFeature implements Feature {
 
         try {
             ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
-            List<String> notFoundModules = new ArrayList<>();
+            List<String> missingModules = new ArrayList<>();
             for (String module : reachableModules) {
                 Optional<ModuleReference> mref = composed.find(module);
                 if (mref.isEmpty()) {
-                    notFoundModules.add(module);
+                    missingModules.add(module);
                 }
             }
-            reachableModules.removeAll(notFoundModules);
+            reachableModules.removeAll(missingModules);
 
             return Configuration.empty().resolve(beforeFinder, afterFinder, reachableModules);
         } catch (FindException | ResolutionException | SecurityException ex) {
