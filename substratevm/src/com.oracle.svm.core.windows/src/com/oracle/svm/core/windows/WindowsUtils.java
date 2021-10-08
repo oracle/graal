@@ -61,7 +61,7 @@ public class WindowsUtils {
 
     public static int getpid(java.lang.Process process) {
         Target_java_lang_ProcessImpl processImpl = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
-        return com.oracle.svm.core.windows.headers.Process.GetProcessId(WordFactory.pointer(processImpl.handle));
+        return com.oracle.svm.core.windows.headers.Process.NoTransitions.GetProcessId(WordFactory.pointer(processImpl.handle));
     }
 
     @TargetClass(java.io.FileDescriptor.class)

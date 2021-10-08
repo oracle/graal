@@ -524,6 +524,16 @@ public abstract class VMThreads {
         throw VMError.shouldNotReachHere();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void yield() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    // Should not be implemented and will be removed with GR-34388.
+    public boolean supportsPatientSafepoints() {
+        return false;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
     public boolean verifyThreadIsAttached(IsolateThread thread) {
         return nextThread(thread) != thread;

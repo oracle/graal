@@ -701,15 +701,18 @@ public final class Safepoint {
 
         /** Wait for there to be no threads (except myself) still waiting to reach a safepoint. */
         private static void waitForSafepoints(String reason) {
-            final Log trace = Log.noopLog().string("[Safepoint.Master.waitForSafepoints:  reason: ").string(reason).newline();
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while waiting for safepoints.");
             final long startNanos = System.nanoTime();
             long loopNanos = startNanos;
+
+            long warningNanos = -1;
+            long failureNanos = -1;
 
             for (int loopCount = 1; /* return */; loopCount += 1) {
                 int atSafepoint = 0;
                 int ignoreSafepoints = 0;
                 int notAtSafepoint = 0;
+                int lostUpdates = 0;
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (isMyself(vmThread)) {
                         /* Don't wait for myself. */
@@ -727,6 +730,7 @@ public final class Safepoint {
                                 /* Re-request the safepoint in case of a lost update. */
                                 if (getSafepointRequested(vmThread) > 0 && !StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
                                     requestSafepoint(vmThread);
+                                    lostUpdates++;
                                 }
                                 notAtSafepoint += 1;
                                 break;
@@ -758,24 +762,48 @@ public final class Safepoint {
                     }
                 }
                 if (notAtSafepoint == 0) {
-                    trace.string("  returns");
-                    if (trace.isEnabled() && Statistics.Options.GatherSafepointStatistics.getValue()) {
-                        trace.string(" with installed: ").signed(Statistics.getInstalled());
-                    }
-                    trace.string("]").newline();
                     return;
                 }
 
-                trace.string("  loopCount: ").signed(loopCount)
-                                .string("  atSafepoint: ").signed(atSafepoint)
-                                .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
-                                .string("  notAtSafepoint: ").signed(notAtSafepoint)
-                                .newline();
-                loopNanos = doNotLoopTooLong(loopNanos, startNanos, reason);
-                maybeFatallyTooLong(startNanos, reason);
+                if (warningNanos == -1 || failureNanos == -1) {
+                    warningNanos = Safepoint.getSafepointPromptnessWarningNanos();
+                    failureNanos = Safepoint.getSafepointPromptnessFailureNanos();
+                }
 
-                // Wait impatiently for requested threads to come to a safepoint.
-                PauseNode.pause();
+                long nanosSinceStart = TimeUtils.nanoSecondsSince(startNanos);
+                if (warningNanos > 0 || failureNanos > 0) {
+                    long nanosSinceLastWarning = TimeUtils.nanoSecondsSince(loopNanos);
+
+                    boolean printWarning = warningNanos > 0 && TimeUtils.nanoTimeLessThan(warningNanos, nanosSinceLastWarning);
+                    boolean fatalError = failureNanos > 0 && TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart);
+                    if (printWarning || fatalError) {
+                        Log.log().string("[Safepoint.Master: not all threads reached a safepoint (").string(reason).string(") within ").signed(warningNanos).string(" ns. Total wait time so far: ")
+                                        .signed(nanosSinceStart).string(" ns.").newline();
+                        Log.log().string("  loopCount: ").signed(loopCount)
+                                        .string("  atSafepoint: ").signed(atSafepoint)
+                                        .string("  ignoreSafepoints: ").signed(ignoreSafepoints)
+                                        .string("  notAtSafepoint: ").signed(notAtSafepoint)
+                                        .string("  lostUpdates: ").signed(lostUpdates)
+                                        .string("]")
+                                        .newline();
+
+                        loopNanos = System.nanoTime();
+                        if (fatalError) {
+                            VMError.guarantee(false, "Safepoint promptness failure.");
+                        }
+                    }
+                }
+
+                // Wait for requested threads to come to a safepoint.
+                if (VMThreads.singleton().supportsPatientSafepoints()) {
+                    if (nanosSinceStart < TimeUtils.nanosPerMilli) {
+                        VMThreads.singleton().yield();
+                    } else {
+                        VMThreads.singleton().nativeSleep(1);
+                    }
+                } else {
+                    PauseNode.pause();
+                }
             }
         }
 
@@ -806,37 +834,6 @@ public final class Safepoint {
                 }
             }
             trace.string("]").newline();
-        }
-
-        /** Have I looped for too long? If so, complain, but reset the wait. */
-        private static long doNotLoopTooLong(long loopNanos, long startNanos, String reason) {
-            long result = loopNanos;
-            final long waitedNanos = TimeUtils.nanoSecondsSince(loopNanos);
-            final long warningNanos = Safepoint.getSafepointPromptnessWarningNanos();
-            if ((0 < warningNanos) && TimeUtils.nanoTimeLessThan(warningNanos, waitedNanos)) {
-                final Log warning = Log.log().string("[Safepoint.Master.doNotLoopTooLong:");
-                warning.string("  warningNanos: ").signed(warningNanos).string(" < ").string(" waitedNanos: ").signed(waitedNanos);
-                warning.string("  startNanos: ").signed(startNanos);
-                warning.string("  reason: ").string(reason).string("]").newline();
-                result = System.nanoTime();
-            }
-            return result;
-        }
-
-        private static void maybeFatallyTooLong(long startNanos, String reason) {
-            final long failureNanos = Safepoint.getSafepointPromptnessFailureNanos();
-            if (0 < failureNanos) {
-                /* If a promptness limit was set. */
-                final long nanosSinceStart = TimeUtils.nanoSecondsSince(startNanos);
-                if (TimeUtils.nanoTimeLessThan(failureNanos, nanosSinceStart)) {
-                    /* If the promptness limit was exceeded. */
-                    final Log warning = Log.log().string("[Safepoint.Master.maybeFatallyTooLong:");
-                    warning.string("  failureNanos: ").signed(failureNanos).string(" < nanosSinceStart: ").signed(nanosSinceStart);
-                    warning.string("  startNanos: ").signed(startNanos);
-                    warning.string("  reason: ").string(reason).string("]").newline();
-                    VMError.guarantee(false, "Safepoint promptness failure.");
-                }
-            }
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
