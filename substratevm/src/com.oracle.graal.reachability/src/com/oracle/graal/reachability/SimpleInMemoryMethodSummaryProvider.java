@@ -61,9 +61,6 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
     @Override
     public MethodSummary getSummary(BigBang bb, AnalysisMethod method) {
-        // todo clean this up
-// System.out.println("Making a summary for " + method.format("%H.%n(%p)"));
-// System.out.println("1 Analyzed graph: " + method.getAnalyzedGraph());
         if (method.isIntrinsicMethod()) {
             System.err.println("this is intrinsic: " + method);
 // return MethodSummary.EMPTY;
@@ -77,12 +74,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
             System.err.println("parsing an intrinsic: " + method);
 // return MethodSummary.EMPTY;
         }
-// System.out.println("2 Analyzed graph: " + method.getAnalyzedGraph());
-// System.out.println("analysis parsed graph " + analysisParsedGraph);
-// System.out.println("Encoded graph " + analysisParsedGraph.getEncodedGraph());
+
         StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
-// StructuredGraph decoded = analysisParsedGraph.graph;
-// System.out.println("decoded " + decoded);
+
         if (decoded == null) {
             throw AnalysisError.shouldNotReachHere("Failed to decode a graph for " + method.format("%H.%n(%p)"));
         }
@@ -142,11 +136,9 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 }
             }
         }
-        MethodSummary summary = new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
+        return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
                         accessedTypes.toArray(new AnalysisType[0]),
                         instantiatedTypes.toArray(new AnalysisType[0]), accessedFields.toArray(new AnalysisField[0]), embeddedConstants.toArray(new JavaConstant[0]));
-// System.out.println("Made a summary " + summary);
-        return summary;
     }
 
     private AnalysisType analysisType(ResolvedJavaType type) {
