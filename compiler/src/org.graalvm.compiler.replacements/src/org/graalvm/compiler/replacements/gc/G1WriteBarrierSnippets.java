@@ -76,18 +76,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implements Snippets {
 
-    // This location identity is used by the pre- and the post-write barrier to write the different
-    // kinds of barrier data. It is sufficient to have one location identity as that data is only
-    // read by the GC.
-    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Log");
-    public static final LocationIdentity SATB_QUEUE_MARKING_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Marking");
-    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Index");
-    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Queue-Buffer");
-    public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
-    public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
+    public static final LocationIdentity SATB_QUEUE_MARKING_ACTIVE_LOCATION = NamedLocationIdentity.mutable("GC-SATB-Marking-Active");
+    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-SATB-Queue-Buffer");
+    public static final LocationIdentity SATB_QUEUE_LOG_LOCATION = NamedLocationIdentity.mutable("GC-SATB-Queue-Log");
+    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-SATB-Queue-Index");
 
-    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION};
-    protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
+    public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
+    public static final LocationIdentity CARD_QUEUE_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Log");
+    public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
+
+    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, SATB_QUEUE_LOG_LOCATION};
+    protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, CARD_QUEUE_LOG_LOCATION,
                     GC_CARD_LOCATION};
 
     public static class Counters {
@@ -132,7 +131,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word thread = getThread();
         verifyOop(object);
         Word field = Word.fromAddress(address);
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
 
         boolean trace = isTracingActive(traceStartCycle);
         int gcCycle = 0;
@@ -174,7 +173,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     Word nextIndex = indexValue.subtract(wordSize());
 
                     // Log the object to be marked as well as update the SATB's buffer next index.
-                    bufferAddress.writeWord(nextIndex, Word.objectToTrackedPointer(previousObject), GC_LOG_LOCATION);
+                    bufferAddress.writeWord(nextIndex, Word.objectToTrackedPointer(previousObject), SATB_QUEUE_LOG_LOCATION);
                     thread.writeWord(satbQueueIndexOffset(), nextIndex, SATB_QUEUE_INDEX_LOCATION);
                 } else {
                     g1PreBarrierStub(previousObject);
@@ -246,7 +245,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
                             // Log the object to be scanned as well as update the card queue's next
                             // index.
-                            bufferAddress.writeWord(nextIndex, cardAddress, GC_LOG_LOCATION);
+                            bufferAddress.writeWord(nextIndex, cardAddress, CARD_QUEUE_LOG_LOCATION);
                             thread.writeWord(cardQueueIndexOffset(), nextIndex, CARD_QUEUE_INDEX_LOCATION);
                         } else {
                             g1PostBarrierStub(cardAddress);
@@ -260,7 +259,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     @Snippet
     public void g1ArrayRangePreWriteBarrier(Address address, long length, @ConstantParameter int elementStride) {
         Word thread = getThread();
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingActiveOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
         if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0 || length == 0)) {
             return;
@@ -281,7 +280,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                     indexValue = indexValue - wordSize();
                     Word logAddress = bufferAddress.add(WordFactory.unsigned(indexValue));
                     // Log the object to be marked and update the SATB's buffer next index.
-                    logAddress.writeWord(0, Word.objectToTrackedPointer(previousObject), GC_LOG_LOCATION);
+                    logAddress.writeWord(0, Word.objectToTrackedPointer(previousObject), SATB_QUEUE_LOG_LOCATION);
                     indexAddress.writeWord(0, WordFactory.unsigned(indexValue), SATB_QUEUE_INDEX_LOCATION);
                 } else {
                     g1PreBarrierStub(previousObject);
@@ -320,7 +319,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                         Word logAddress = bufferAddress.add(WordFactory.unsigned(indexValue));
                         // Log the object to be scanned as well as update
                         // the card queue's next index.
-                        logAddress.writeWord(0, cur, GC_LOG_LOCATION);
+                        logAddress.writeWord(0, cur, CARD_QUEUE_LOG_LOCATION);
                         indexAddress.writeWord(0, WordFactory.unsigned(indexValue), CARD_QUEUE_INDEX_LOCATION);
                     } else {
                         g1PostBarrierStub(cur);
@@ -337,7 +336,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract int objectArrayIndexScale();
 
-    protected abstract int satbQueueMarkingOffset();
+    protected abstract int satbQueueMarkingActiveOffset();
 
     protected abstract int satbQueueBufferOffset();
 

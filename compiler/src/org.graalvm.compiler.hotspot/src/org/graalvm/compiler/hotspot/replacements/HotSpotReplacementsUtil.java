@@ -661,7 +661,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int g1SATBQueueMarkingOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1SATBQueueMarkingOffset;
+        return config.g1SATBQueueMarkingActiveOffset;
     }
 
     @Fold
