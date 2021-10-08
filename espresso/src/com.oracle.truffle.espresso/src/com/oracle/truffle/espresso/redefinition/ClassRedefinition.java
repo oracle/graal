@@ -76,6 +76,7 @@ public final class ClassRedefinition {
     private final Ids<Object> ids;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
+    private ArrayList<Field> currentSyntheticFields;
 
     public Assumption getMissingFieldAssumption() {
         return missingFieldAssumption;
@@ -160,6 +161,25 @@ public final class ClassRedefinition {
                     }
                 }
             }
+        }
+    }
+
+    public synchronized Field createSyntheticFrom(Field field) {
+        Field syntheticField = Field.synthetic(field);
+        syntheticField.setCompatibleField(field);
+        if (currentSyntheticFields == null) {
+            currentSyntheticFields = new ArrayList<>(1);
+        }
+        currentSyntheticFields.add(syntheticField);
+        return syntheticField;
+    }
+
+    public synchronized void clearSyntheticFields() {
+        if (currentSyntheticFields != null) {
+            for (Field field : currentSyntheticFields) {
+                field.removeByRedefintion();
+            }
+            currentSyntheticFields.clear();
         }
     }
 

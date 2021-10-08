@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -51,7 +49,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Field extends Member<Type> implements FieldRef {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
-    private static ArrayList<Field> currentSyntheticFields;
 
     final LinkedField linkedField;
     private final ObjectKlass holder;
@@ -61,7 +58,7 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
     private final boolean isAddedField;
-    private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
+    private boolean removedByRedefinition;
     private final Assumption needsReResolution = Truffle.getRuntime().createAssumption();
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
@@ -86,6 +83,10 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
+    public static Field synthetic(Field field) {
+        return new Field(field.holder, field.linkedField, field.pool, true, true);
+    }
+
     @Override
     public Symbol<Name> getName() {
         return linkedField.getName();
@@ -96,7 +97,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public void removeByRedefintion() {
-        removedByRedefinition.invalidate();
+        removedByRedefinition = true;
         needsReResolution.invalidate();
     }
 
@@ -105,7 +106,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public boolean isRemoved() {
-        return !removedByRedefinition.isValid();
+        return removedByRedefinition;
     }
 
     public boolean needsReResolution() {
@@ -209,27 +210,6 @@ public final class Field extends Member<Type> implements FieldRef {
     public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
-
-    // region Synthetic fields used by class redefinition
-    public static synchronized Field createSyntheticFrom(Field field) {
-        Field syntheticField = new Field(field.holder, field.linkedField, field.pool, true, true);
-        syntheticField.setCompatibleField(field);
-        if (currentSyntheticFields == null) {
-            currentSyntheticFields = new ArrayList<>(1);
-        }
-        currentSyntheticFields.add(syntheticField);
-        return syntheticField;
-    }
-
-    public static synchronized void clearSyntheticFields() {
-        if (currentSyntheticFields != null) {
-            for (Field field : currentSyntheticFields) {
-                field.removeByRedefintion();
-            }
-            currentSyntheticFields.clear();
-        }
-    }
-    // endregion Synthetic fields used by class redefinition
 
     // region Field accesses
 

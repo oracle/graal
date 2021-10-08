@@ -160,7 +160,7 @@ public final class RuntimeConstantPool extends ConstantPool {
             // field that actually uses the latest known resolved field
             // underneath.
             synchronized (this) {
-                Field syntheticField = Field.createSyntheticFrom(realField);
+                Field syntheticField = context.getClassRedefinition().createSyntheticFrom(realField);
                 Resolvable.ResolvedConstant resolved = FieldRefConstant.createSynthetic(syntheticField);
                 constants[index] = resolved;
                 return syntheticField;
