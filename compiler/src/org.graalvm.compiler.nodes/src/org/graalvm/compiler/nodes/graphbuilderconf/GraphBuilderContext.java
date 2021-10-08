@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -332,6 +333,28 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             return getGraph().addOrUniqueWithInputs(PiNode.create(value, objectNonNull(), guardingNode.asNode()));
         }
         return value;
+    }
+
+    /**
+     * When {@link #needsExplicitException} is true, the method returns a node with a stamp that is
+     * always positive and emits code that throws the provided exceptionKind for a negative length.
+     */
+    default ValueNode maybeEmitExplicitNegativeArraySizeCheck(ValueNode arrayLength, BytecodeExceptionKind exceptionKind) {
+        if (!needsExplicitException() || ((IntegerStamp) arrayLength.stamp(NodeView.DEFAULT)).isPositive()) {
+            return arrayLength;
+        }
+        ConstantNode zero = ConstantNode.defaultForKind(arrayLength.getStackKind());
+        LogicNode condition = append(IntegerLessThanNode.create(getConstantReflection(), getMetaAccess(), getOptions(), null, arrayLength, zero, NodeView.DEFAULT));
+        ValueNode[] arguments = exceptionKind.getNumArguments() == 1 ? new ValueNode[]{arrayLength} : new ValueNode[0];
+        GuardingNode guardingNode = emitBytecodeExceptionCheck(condition, false, exceptionKind, arguments);
+        if (guardingNode == null) {
+            return arrayLength;
+        }
+        return append(PiNode.create(arrayLength, StampFactory.positiveInt(), guardingNode.asNode()));
+    }
+
+    default ValueNode maybeEmitExplicitNegativeArraySizeCheck(ValueNode arrayLength) {
+        return maybeEmitExplicitNegativeArraySizeCheck(arrayLength, BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE);
     }
 
     default GuardingNode maybeEmitExplicitDivisionByZeroCheck(ValueNode divisor) {

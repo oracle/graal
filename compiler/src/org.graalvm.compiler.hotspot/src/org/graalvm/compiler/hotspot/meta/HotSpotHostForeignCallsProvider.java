@@ -113,6 +113,7 @@ import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.IllegalArgumentExceptionArgumentIsNotAnArrayStub;
 import org.graalvm.compiler.hotspot.stubs.IntegerExactOverflowExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.LongExactOverflowExceptionStub;
+import org.graalvm.compiler.hotspot.stubs.NegativeArraySizeExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.NullPointerExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.OutOfBoundsExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -477,6 +478,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new OutOfBoundsExceptionStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new NegativeArraySizeExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new DivisionByZeroExceptionStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new IntegerExactOverflowExceptionStub(options, providers,

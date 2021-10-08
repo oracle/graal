@@ -450,7 +450,9 @@ public class StandardGraphBuilderPlugins {
         r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
-                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentType, length, true));
+                ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
+                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
+                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
                 return true;
             }
         });
