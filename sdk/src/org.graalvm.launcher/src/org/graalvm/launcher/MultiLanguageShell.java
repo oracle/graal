@@ -223,7 +223,7 @@ class MultiLanguageShell implements Closeable {
 
     private void printHeader() {
         println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
-        println("Copyright (c) 2013-2020, Oracle and/or its affiliates");
+        println("Copyright (c) 2013-2021, Oracle and/or its affiliates");
         for (Language language : languages) {
             println("  " + language.getName() + " version " + language.getVersion());
         }
