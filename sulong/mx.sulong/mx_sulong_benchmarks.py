@@ -635,3 +635,7 @@ native_polybench_vm_registry.add_vm(PolybenchVm('load-aux-engine-cache',
     ['--experimental-options', '--multi-context-runs=1', '--engine.CacheLoad=' + os.path.join(os.getcwd(), 'test.image'),
      '--llvm.AOTCacheLoad=true', '--engine.CachePreinitializeContext=false', '--engine.TraceCache=true',
      '-w', '0', '-i', '10']), _suite, 10)
+native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-exclusive-engine',
+    ['--multi-context-runs=3', '--shared-engine=false', '-w', '10', '-i', '10']), _suite, 10)
+native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-shared-engine',
+    ['--multi-context-runs=3', '--shared-engine=true', '-w', '10', '-i', '10']), _suite, 10)
