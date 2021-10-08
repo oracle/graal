@@ -500,7 +500,7 @@ final class SVGSamplerOutput {
             }
         }
 
-        private void addRecursiveChild(JSONObject sample, JSONObject child) {
+        private static void addRecursiveChild(JSONObject sample, JSONObject child) {
             final JSONArray children;
             if (!sample.has("rs")) {
                 children = new JSONArray();
@@ -514,7 +514,7 @@ final class SVGSamplerOutput {
             child.put("rh", child.getInt("h"));
         }
         
-        private void mergeCounts(JSONObject a, JSONObject b, boolean child) {
+        private static void mergeCounts(JSONObject a, JSONObject b, boolean child) {
             int aRI = a.has("ri") ? a.getInt("ri") : a.getInt("i");
             int aRC = a.has("rc") ? a.getInt("rc") : a.getInt("c");
             int aRH = a.has("rh") ? a.getInt("rh") : a.getInt("h");
