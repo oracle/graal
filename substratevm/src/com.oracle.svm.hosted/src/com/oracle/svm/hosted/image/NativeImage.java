@@ -59,6 +59,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -77,9 +78,11 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
@@ -96,6 +99,7 @@ import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -564,14 +568,19 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    private static void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+    private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
         final int functionPointerRelocationSize = 8;
         assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
         // References to functions are via relocations to the symbol for the function.
-        ResolvedJavaMethod method = ((MethodPointer) info.getTargetObject()).getMethod();
+        MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
+        ResolvedJavaMethod method = methodPointer.getMethod();
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
+        if (!target.isCompiled()) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(method), false, 0L);
+        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), false, 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -954,5 +963,14 @@ public abstract class NativeImage extends AbstractImage {
         protected final RelocatableBuffer textBuffer;
         protected final ObjectFile objectFile;
         protected final NativeImageCodeCache codeCache;
+    }
+}
+
+@AutomaticFeature
+final class MethodPointerInvalidHandlerFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
     }
 }
