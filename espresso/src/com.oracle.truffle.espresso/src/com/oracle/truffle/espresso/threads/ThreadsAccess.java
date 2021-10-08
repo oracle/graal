@@ -178,7 +178,7 @@ public final class ThreadsAccess implements ContextAccess {
     }
 
     /**
-     * Implementation of {@code Thread.clearInterruptEvent} (JDK 13+)
+     * Implementation of {@code Thread.clearInterruptEvent} (JDK 13+).
      */
     public void clearInterruptEvent() {
         assert !context.getJavaVersion().java13OrEarlier();
@@ -186,7 +186,7 @@ public final class ThreadsAccess implements ContextAccess {
     }
 
     /**
-     * Sets the interrupted field of the given thread to {@code false}
+     * Sets the interrupted field of the given thread to {@code false}.
      */
     public void clearInterruptStatus(StaticObject guest) {
         meta.HIDDEN_INTERRUPTED.setBoolean(guest, false, true);
@@ -271,14 +271,16 @@ public final class ThreadsAccess implements ContextAccess {
     }
 
     /**
-     * Termination of a threads works as follows:
+     * Terminates a given thread.
+     * <p>
+     * The following procedure is applied for termination:
      * <ul>
      * <li>Prevent other threads from {@linkplain #stop(StaticObject, StaticObject)} stopping} the
-     * given thread</li>
-     * <li>Invoke guest {@code Thread.exit()}</li>
+     * given thread.</li>
+     * <li>Invoke guest {@code Thread.exit()}.</li>
      * <li>Sets the status of this thread to {@link State#TERMINATED} and notifies other threads
-     * waiting on this thread's monitor</li>
-     * <li>Unregisters the thread</li>
+     * waiting on this thread's monitor.</li>
+     * <li>Unregisters the thread from the context.</li>
      * </ul>
      */
     public void terminate(StaticObject thread) {
@@ -431,23 +433,25 @@ public final class ThreadsAccess implements ContextAccess {
                     return;
                 case STOP:
                     synchronized (this) {
-                        // synchronize to mqke sure we are still stopped.
+                        // synchronize to make sure we are still stopped.
                         KillStatus s = status;
                         if (s == STOP) {
                             updateKillState(NORMAL);
                             // check if death cause throwable is set, if not throw ThreadDeath
                             StaticObject deathThrowable = throwable;
                             throw deathThrowable != null ? meta.throwException(deathThrowable) : meta.throwException(meta.java_lang_ThreadDeath);
-                        } else if (s != KILL) {
-                            return;
+                        } else if (s == KILL) {
+                            throw new EspressoExitException(meta.getContext().getExitStatus());
                         }
+                        // Stop status has been
+                        assert s == NORMAL || s == EXITING;
+                        return;
                     }
-                    // fallthrough
                 case KILL:
                     // This thread refuses to stop. Send a host exception.
-                    assert meta.getContext().isClosing();
                     throw new EspressoExitException(meta.getContext().getExitStatus());
             }
+            throw EspressoError.shouldNotReachHere();
         }
     }
 

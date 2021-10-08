@@ -29,13 +29,26 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class GuestRunnable implements Runnable {
+/**
+ * The payload of the host thread executing a guest {@linkplain #thread thread}.
+ * 
+ * When started, the host thread:
+ * <ul>
+ * <li>Attached itself to the context.</li>
+ * <li>Fetches the guest {@link Thread#run()} methods and executes it.</li>
+ * <li>If an exception escapes the guest thread, call
+ * {@code Thread#dispatchUncaughtException(Throwable)}.</li>
+ * <li>Upon completion, {@link ThreadsAccess#terminate(StaticObject, DirectCallNode) terminates} the
+ * guest thread.</li>
+ * </ul>
+ */
+final class GuestRunnable implements Runnable {
     private final EspressoContext context;
     private final StaticObject thread;
     private final DirectCallNode exit;
     private final DirectCallNode dispatchUncaught;
 
-    public GuestRunnable(EspressoContext context, StaticObject thread, DirectCallNode exit, DirectCallNode dispatchUncaught) {
+    GuestRunnable(EspressoContext context, StaticObject thread, DirectCallNode exit, DirectCallNode dispatchUncaught) {
         this.context = context;
         this.thread = thread;
         this.exit = exit;
