@@ -162,7 +162,7 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
+    private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
         ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
         ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
 
@@ -226,7 +226,7 @@ public final class ModuleLayerFeature implements Feature {
         private final Field moduleExportedPackagesField;
         private final Method moduleFindModuleMethod;
 
-        public NameToModuleSynthesizer() {
+        NameToModuleSynthesizer() {
             everyoneModule = ReflectionUtil.readField(Module.class, "EVERYONE_MODULE", null);
             everyoneSet = Set.of(everyoneModule);
             moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
@@ -239,7 +239,7 @@ public final class ModuleLayerFeature implements Feature {
 
         /**
          * This method creates Module instances that will populate the runtime boot module layer of the image.
-         * This implementation is copy-pasted from {@link java.lang.Module#defineModules(Configuration, Function, ModuleLayer)}
+         * This implementation is copy-pasted from Module#defineModules(Configuration, Function, ModuleLayer)
          * with few simplifications (removing multiple classloader support) and removal of VM state updates
          * (otherwise we would be re-defining modules to the host VM).
          */
