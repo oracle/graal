@@ -68,20 +68,20 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRedefinition {
 
-    private static final Object redefineLock = new Object();
-    private static volatile boolean locked = false;
-    private static Thread redefineThread = null;
+    private final Object redefineLock = new Object();
+    private volatile boolean locked = false;
+    private Thread redefineThread = null;
 
     private final EspressoContext context;
     private final Ids<Object> ids;
     private final RedefineListener redefineListener;
-    private static volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
+    private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
 
-    public static Assumption getMissingFieldAssumption() {
+    public Assumption getMissingFieldAssumption() {
         return missingFieldAssumption;
     }
 
-    public static void invalidateMissingFields() {
+    public void invalidateMissingFields() {
         missingFieldAssumption.invalidate();
         missingFieldAssumption = Truffle.getRuntime().createAssumption();
     }
@@ -108,7 +108,7 @@ public final class ClassRedefinition {
         this.redefineListener = listener;
     }
 
-    public static void begin() {
+    public void begin() {
         synchronized (redefineLock) {
             while (locked) {
                 try {
@@ -123,7 +123,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public static void end() {
+    public void end() {
         synchronized (redefineLock) {
             locked = false;
             redefineThread = null;
@@ -131,7 +131,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public static boolean isRedefineThread() {
+    public boolean isRedefineThread() {
         return redefineThread == Thread.currentThread();
     }
 
@@ -143,7 +143,7 @@ public final class ClassRedefinition {
         redefineListener.postRedefinition(changedKlasses);
     }
 
-    public static void check() {
+    public void check() {
         CompilerAsserts.neverPartOfCompilation();
         // block until redefinition is done
         if (locked) {
@@ -642,7 +642,7 @@ public final class ClassRedefinition {
     }
 
     @TruffleBoundary
-    public static Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass, StaticObject receiver) {
+    public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass, StaticObject receiver) {
         // wait for potential ongoing redefinition to complete
         check();
         Klass lookupKlass = receiver != null ? receiver.getKlass() : resolutionSeed.getDeclaringKlass();

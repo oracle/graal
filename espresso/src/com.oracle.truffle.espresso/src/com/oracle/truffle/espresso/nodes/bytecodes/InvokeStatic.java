@@ -31,7 +31,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 /**
  * INVOKESTATIC bytecode.
@@ -104,7 +103,7 @@ public abstract class InvokeStatic extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
+            return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
     }

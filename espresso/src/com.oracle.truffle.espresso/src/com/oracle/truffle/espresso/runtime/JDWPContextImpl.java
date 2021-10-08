@@ -103,7 +103,7 @@ public final class JDWPContextImpl implements JDWPContext {
         vmEventListener.activate(mainThread, control, this);
         setup.setup(debugger, control, context.JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
+        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
@@ -688,7 +688,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isSystemThread() {
-        return ClassRedefinition.isRedefineThread();
+        return classRedefinition.isRedefineThread();
     }
 
     public long getBCI(Node rawNode, Frame frame) {
@@ -723,13 +723,13 @@ public final class JDWPContextImpl implements JDWPContext {
             JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
             // begin redefine transaction
-            ClassRedefinition.begin();
+            classRedefinition.begin();
 
             // clear synthetic fields, which forces re-resolution
             Field.clearSyntheticFields();
 
             // invalidate missing fields assumption, which forces re-resolution
-            ClassRedefinition.invalidateMissingFields();
+            classRedefinition.invalidateMissingFields();
 
             // redefine classes based on direct code changes first
             doRedefine(redefineInfos, changedKlasses);
@@ -760,7 +760,7 @@ public final class JDWPContextImpl implements JDWPContext {
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
-            ClassRedefinition.end();
+            classRedefinition.end();
         }
         return 0;
     }

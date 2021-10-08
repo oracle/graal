@@ -37,7 +37,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -125,7 +124,7 @@ public abstract class InvokeInterface extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
+            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();

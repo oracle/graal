@@ -333,7 +333,6 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -1542,7 +1541,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
-        ClassRedefinition.check();
+        quickNode.getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
         synchronized (this) {
             // re-check if node was already replaced by another thread
@@ -2282,7 +2281,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
         if (field.needsReResolution()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ClassRedefinition.check();
+            getMethod().getContext().getClassRedefinition().check();
             field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);
         }
         return field;

@@ -39,7 +39,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public interface FieldRefConstant extends MemberRefConstant {
@@ -132,7 +131,7 @@ public interface FieldRefConstant extends MemberRefConstant {
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
                 EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
-                return new Missing(failure);
+                return new Missing(failure, pool.getContext().getClassRedefinition().getMissingFieldAssumption());
             }
 
             MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
@@ -187,9 +186,9 @@ public interface FieldRefConstant extends MemberRefConstant {
         private final EspressoException failure;
         private final Assumption assumption;
 
-        public Missing(EspressoException failure) {
+        public Missing(EspressoException failure, Assumption missingFieldAssumption) {
             this.failure = failure;
-            this.assumption = ClassRedefinition.getMissingFieldAssumption();
+            this.assumption = missingFieldAssumption;
         }
 
         @Override

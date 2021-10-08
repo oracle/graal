@@ -34,7 +34,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -47,7 +46,10 @@ public abstract class InvokeEspressoNode extends Node {
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
         Method resolutionSeed = method;
         if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(), (StaticObject) receiver);
+            resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
+                            method,
+                            method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(),
+                            (StaticObject) receiver);
         }
         Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
         /*

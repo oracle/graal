@@ -44,6 +44,9 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -156,6 +159,7 @@ public final class EspressoContext {
     private final JDWPContextImpl jdwpContext;
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
+    private ClassRedefinition classRedefinition;
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
@@ -1015,5 +1019,16 @@ public final class EspressoContext {
      */
     public static EspressoContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
+        if (classRedefinition == null) {
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
+        }
+        return classRedefinition;
+    }
+
+    public ClassRedefinition getClassRedefinition() {
+        return classRedefinition;
     }
 }
