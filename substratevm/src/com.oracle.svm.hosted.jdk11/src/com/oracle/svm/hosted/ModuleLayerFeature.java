@@ -47,6 +47,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -164,7 +165,18 @@ public final class ModuleLayerFeature implements Feature {
     private Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
         ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
         ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
+
         try {
+            ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
+            List<String> notFoundModules = new ArrayList<>();
+            for (String module : reachableModules) {
+                Optional<ModuleReference> mref = composed.find(module);
+                if (mref.isEmpty()) {
+                    notFoundModules.add(module);
+                }
+            }
+            reachableModules.removeAll(notFoundModules);
+
             return Configuration.empty().resolve(beforeFinder, afterFinder, reachableModules);
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer configuration.", ex);
