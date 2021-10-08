@@ -80,7 +80,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, boolean fillContents, boolean emitMemoryBarrier,
+    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier,
                     @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
@@ -90,7 +90,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
+    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, FillContent fillContents, int fillStartOffset, boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();

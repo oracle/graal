@@ -50,7 +50,7 @@ public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
                     Word prototypeMarkWord,
                     UnsignedWord size,
-                    boolean fillContents,
+                    FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationProfilingData profilingData) {
@@ -76,7 +76,7 @@ public abstract class AllocationSnippets implements Snippets {
                     int length,
                     int arrayBaseOffset,
                     int log2ElementSize,
-                    boolean fillContents,
+                    FillContent fillContents,
                     int fillStartOffset,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
@@ -267,15 +267,15 @@ public abstract class AllocationSnippets implements Snippets {
                     Word prototypeMarkWord,
                     UnsignedWord size,
                     Word memory,
-                    boolean fillContents,
+                    FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationSnippetCounters snippetCounters) {
         initializeObjectHeader(memory, hub, prototypeMarkWord, false);
         int headerSize = instanceHeaderSize();
-        if (fillContents) {
+        if (fillContents == FillContent.WITH_ZEROES) {
             zeroMemory(memory, headerSize, size, constantSize, false, false, false, snippetCounters);
-        } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+        } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
         if (emitMemoryBarrier) {
@@ -292,7 +292,7 @@ public abstract class AllocationSnippets implements Snippets {
                     UnsignedWord allocationSize,
                     int length,
                     Word memory,
-                    boolean fillContents,
+                    FillContent fillContents,
                     int fillStartOffset,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
@@ -303,9 +303,9 @@ public abstract class AllocationSnippets implements Snippets {
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
         initializeObjectHeader(memory, hub, prototypeMarkWord, true);
-        if (fillContents) {
+        if (fillContents == FillContent.WITH_ZEROES) {
             zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
-        } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+        } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
         if (emitMemoryBarrier) {
@@ -373,6 +373,19 @@ public abstract class AllocationSnippets implements Snippets {
     public abstract int arrayLengthOffset();
 
     protected abstract int objectAlignment();
+
+    public enum FillContent {
+        DO_NOT_FILL,
+        WITH_ZEROES,
+        WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
+
+        public static FillContent fromBoolean(boolean fillContents) {
+            if (fillContents) {
+                return WITH_ZEROES;
+            }
+            return WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
+        }
+    }
 
     public static class AllocationProfilingData {
         final AllocationSnippetCounters snippetCounters;

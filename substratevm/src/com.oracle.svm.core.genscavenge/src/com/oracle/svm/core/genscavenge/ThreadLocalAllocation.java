@@ -28,6 +28,7 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -256,7 +257,7 @@ public final class ThreadLocalAllocation {
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Object allocateInstanceInNewTlab(DynamicHub hub, UnsignedWord size, AlignedHeader newTlabChunk) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
-        return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, true, true);
+        return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
@@ -265,13 +266,13 @@ public final class ThreadLocalAllocation {
             return null;
         }
         Pointer memory = allocateRawMemoryInTlab(size, getTlab());
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, true, fillStartOffset, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, FillContent.WITH_ZEROES, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Object allocateSmallArrayInNewTlab(DynamicHub hub, int length, UnsignedWord size, int fillStartOffset, AlignedHeader newTlabChunk) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, true, fillStartOffset, true);
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, false, FillContent.WITH_ZEROES, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory, modifies TLAB")
@@ -285,8 +286,13 @@ public final class ThreadLocalAllocation {
         Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
         assert memory.isNonNull();
 
-        /* Install the DynamicHub and length. Also zero the elements if necessary. */
-        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, needsZeroing, fillStartOffset, true);
+        /*
+         * Install the DynamicHub and length and zero the elements if necessary. If the memory is
+         * already pre-zeroed, we need to ensure that the snippet code does not fill the memory in
+         * any way.
+         */
+        FillContent fillKind = needsZeroing ? FillContent.WITH_ZEROES : FillContent.DO_NOT_FILL;
+        return FormatArrayNode.formatArray(memory, DynamicHub.toClass(hub), length, false, true, fillKind, fillStartOffset, true);
     }
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)

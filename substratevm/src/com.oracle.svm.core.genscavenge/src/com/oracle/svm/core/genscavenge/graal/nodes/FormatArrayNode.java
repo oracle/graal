@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.replacements.AllocationSnippets;
 import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
@@ -94,5 +95,6 @@ public class FormatArrayNode extends FixedWithNextNode implements Lowerable {
     }
 
     @NodeIntrinsic
-    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier);
+    public static native Object formatArray(Pointer memory, Class<?> hub, int length, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents, int fillStartOffset,
+                    boolean emitMemoryBarrier);
 }
