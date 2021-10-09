@@ -45,7 +45,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     public IntrinsicSubstitutorNode(JavaSubstitution.Factory factory, Method method) {
         super(method.getMethodVersion());
-        this.substitution = factory.create(getContext().getMeta());
+        this.substitution = factory.create();
 
         EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
                         "Substitution for synchronized method '%s' cannot be marked as trivial", method);

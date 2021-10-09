@@ -26,12 +26,11 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public abstract class CallableFromNative extends SubstitutionProfiler {
 
     public abstract static class Factory {
-        public abstract CallableFromNative create(Meta meta);
+        public abstract CallableFromNative create();
 
         private final String methodName;
         private final NativeSignature nativeSignature;

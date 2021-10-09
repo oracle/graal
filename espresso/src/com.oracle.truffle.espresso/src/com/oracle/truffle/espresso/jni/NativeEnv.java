@@ -290,7 +290,7 @@ public abstract class NativeEnv implements ContextAccess {
                             actualTarget = target;
                             if (actualTarget == null) {
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                                CallableFromNative subst = factory.create(getMeta());
+                                CallableFromNative subst = factory.create();
                                 NativeRootNode rootNode = new NativeRootNode(EspressoLanguage.get(null), subst);
                                 target = actualTarget = Truffle.getRuntime().createCallTarget(rootNode);
                             }
