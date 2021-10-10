@@ -161,6 +161,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
             self.base_image_build_args += ['-H:+ConfigureReflectionMetadata']
             if vm.is_llvm:
@@ -581,6 +582,17 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": ("<section>", str),
             }),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<total_call_edges>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "call-edges",
+            }, ['total_call_edges']),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
