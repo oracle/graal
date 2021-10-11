@@ -50,7 +50,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -74,6 +73,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -220,7 +220,7 @@ public final class ResourcesFeature implements Feature {
          */
 
         ImageClassLoader loader = accessImpl.imageClassLoader;
-        Stream.concat(loader.modulepath().stream(), loader.classpath().stream()).forEach(classpathFile -> {
+        Stream.concat(loader.modulepath().stream(), loader.classpath().stream()).distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(debugContext, classpathFile, includePatterns, excludePatterns);
