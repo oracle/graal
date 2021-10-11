@@ -24,19 +24,60 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.reachability.MethodSummaryProvider;
 import com.oracle.graal.reachability.ReachabilityAnalysis;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.hub.AnnotatedSuperInfo;
+import com.oracle.svm.core.hub.AnnotationsEncoding;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.GenericInfo;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.word.WordBase;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.MalformedParameterizedTypeException;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
+
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implements Inflation {
+
+    private Set<AnalysisField> handledUnknownValueFields = ConcurrentHashMap.newKeySet();
+    private Map<NativeImageReachabilityAnalysis.GenericInterfacesEncodingKey, Type[]> genericInterfacesMap = new ConcurrentHashMap<>();
+    private Map<NativeImageReachabilityAnalysis.AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap = new ConcurrentHashMap<>();;
+    private Map<NativeImageReachabilityAnalysis.InterfacesEncodingKey, DynamicHub[]> interfacesEncodings = new ConcurrentHashMap<>();;
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final boolean strengthenGraalGraphs;
@@ -60,6 +101,25 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     }
 
     @Override
+    protected void checkObjectGraph(ObjectScanner objectScanner) {
+        // todo refactor into a common class instead of this ugly copy
+        universe.getFields().forEach(this::handleUnknownValueField);
+        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(this::checkType);
+
+        /* Scan hubs of all types that end up in the native image. */
+        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(type -> scanHub(objectScanner, type));
+    }
+
+    @Override
+    public void cleanupAfterAnalysis() {
+        super.cleanupAfterAnalysis();
+        handledUnknownValueFields = null;
+        genericInterfacesMap = null;
+        annotatedInterfacesMap = null;
+        interfacesEncodings = null;
+    }
+
+    @Override
     public SubstrateReplacements getReplacements() {
         return (SubstrateReplacements) super.getReplacements();
     }
@@ -73,4 +133,490 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     public void checkUserLimitations() {
         // todo
     }
+
+    public void checkType(AnalysisType type) {
+        assert type.isReachable();
+        DynamicHub hub = getHostVM().dynamicHub(type);
+        if (hub.getGenericInfo() == null) {
+            fillGenericInfo(type, hub);
+        }
+        if (hub.getAnnotatedSuperInfo() == null) {
+            fillAnnotatedSuperInfo(type, hub);
+        }
+
+        if (type.getJavaKind() == JavaKind.Object) {
+            if (type.isArray()) {
+                hub.getComponentHub().setArrayHub(hub);
+            }
+
+            try {
+                AnalysisType enclosingType = type.getEnclosingType();
+                if (enclosingType != null) {
+                    hub.setEnclosingClass(getHostVM().dynamicHub(enclosingType));
+                }
+            } catch (UnsupportedFeatureException ex) {
+                getUnsupportedFeatures().addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
+            }
+
+            if (hub.getInterfacesEncoding() == null) {
+                fillInterfaces(type, hub);
+            }
+
+            /*
+             * Support for Java annotations.
+             */
+            try {
+                /*
+                 * Get the annotations from the wrapped type since AnalysisType.getAnnotations()
+                 * defends against JDK-7183985 and we want to get the original behavior.
+                 */
+                Annotation[] annotations = type.getWrappedWithoutResolve().getAnnotations();
+                Annotation[] declared = type.getWrappedWithoutResolve().getDeclaredAnnotations();
+                hub.setAnnotationsEncoding(encodeAnnotations(metaAccess, annotations, declared, hub.getAnnotationsEncoding()));
+            } catch (ArrayStoreException e) {
+                /* If we hit JDK-7183985 just encode the exception. */
+                hub.setAnnotationsEncoding(e);
+            }
+
+            /*
+             * Support for Java enumerations.
+             */
+            if (type.isEnum() && hub.shouldInitEnumConstants()) {
+                if (getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
+                    hub.initEnumConstantsAtRuntime(type.getJavaClass());
+                } else {
+                    /*
+                     * We want to retrieve the enum constant array that is maintained as a private
+                     * static field in the enumeration class. We do not want a copy because that
+                     * would mean we have the array twice in the native image: as the static field,
+                     * and in the enumConstant field of DynamicHub. The only way to get the original
+                     * value is via a reflective field access, and we even have to guess the field
+                     * name.
+                     */
+                    AnalysisField found = null;
+                    for (AnalysisField f : type.getStaticFields()) {
+                        if (f.getName().endsWith("$VALUES")) {
+                            if (found != null) {
+                                /*
+                                 * Enumeration has more than one static field with enumeration
+                                 * values. Bailout and use Class.getEnumConstants() to get the value
+                                 * instead.
+                                 */
+                                found = null;
+                                break;
+                            }
+                            found = f;
+                        }
+                    }
+                    Enum<?>[] enumConstants;
+                    if (found == null) {
+                        /*
+                         * We could not find a unique $VALUES field, so we use the value returned by
+                         * Class.getEnumConstants(). This is not ideal since
+                         * Class.getEnumConstants() returns a copy of the array, so we will have two
+                         * arrays with the same content in the image heap, but it is better than
+                         * failing image generation.
+                         */
+                        enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
+                    } else {
+                        enumConstants = (Enum<?>[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
+                        assert enumConstants != null;
+                    }
+                    hub.initEnumConstants(enumConstants);
+                }
+            }
+        }
+    }
+
+    static class GenericInterfacesEncodingKey {
+        final Type[] interfaces;
+
+        GenericInterfacesEncodingKey(Type[] aInterfaces) {
+            this.interfaces = aInterfaces;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NativeImagePointsToAnalysis.GenericInterfacesEncodingKey && Arrays.equals(interfaces, ((NativeImagePointsToAnalysis.GenericInterfacesEncodingKey) obj).interfaces);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(interfaces);
+        }
+    }
+
+    /** Modified copy of {@link Arrays#equals(Object[], Object[])}. */
+    private static boolean shallowEquals(Object[] a, Object[] a2) {
+        if (a == a2) {
+            return true;
+        } else if (a == null || a2 == null) {
+            return false;
+        }
+        int length = a.length;
+        if (a2.length != length) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            /* Modification: use reference equality. */
+            if (a[i] != a2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Modified copy of {@link Arrays#hashCode(Object[])}. */
+    private static int shallowHashCode(Object[] a) {
+        if (a == null) {
+            return 0;
+        }
+        int result = 1;
+
+        for (Object element : a) {
+            /* Modification: use identity hash code. */
+            result = 31 * result + System.identityHashCode(element);
+        }
+        return result;
+    }
+
+    static class AnnotatedInterfacesEncodingKey {
+        final AnnotatedType[] interfaces;
+
+        AnnotatedInterfacesEncodingKey(AnnotatedType[] aInterfaces) {
+            this.interfaces = aInterfaces;
+        }
+
+        /*
+         * JDK 12 introduced a broken implementation of hashCode() and equals() for the
+         * implementation classes of annotated types, leading to an infinite recursion. Tracked as
+         * JDK-8224012. As a workaround, we use shallow implementations that only depend on the
+         * identity hash code and reference equality. This is the same behavior as on JDK 8 and JDK
+         * 11 anyway.
+         */
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NativeImagePointsToAnalysis.AnnotatedInterfacesEncodingKey &&
+                            shallowEquals(interfaces, ((NativeImagePointsToAnalysis.AnnotatedInterfacesEncodingKey) obj).interfaces);
+        }
+
+        @Override
+        public int hashCode() {
+            return shallowHashCode(interfaces);
+        }
+    }
+
+    private void fillGenericInfo(AnalysisType type, DynamicHub hub) {
+        Class<?> javaClass = type.getJavaClass();
+
+        TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
+
+        Type[] allGenericInterfaces;
+        try {
+            allGenericInterfaces = javaClass.getGenericInterfaces();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
+            /*
+             * Loading generic interfaces can fail due to missing types. Ignore the exception and
+             * return an empty array.
+             */
+            allGenericInterfaces = new Type[0];
+        }
+
+        Type[] genericInterfaces = Arrays.stream(allGenericInterfaces).filter(this::isTypeAllowed).toArray(Type[]::new);
+        Type[] cachedGenericInterfaces;
+        try {
+            cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new NativeImageReachabilityAnalysis.GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
+            /*
+             * Computing the hash code of generic interfaces can fail due to missing types. Ignore
+             * the exception and proceed without caching. De-duplication of generic interfaces is an
+             * optimization and not necessary for correctness.
+             */
+            cachedGenericInterfaces = genericInterfaces;
+        }
+
+        Type genericSuperClass;
+        try {
+            genericSuperClass = javaClass.getGenericSuperclass();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
+            /*
+             * Loading the generic super class can fail due to missing types. Ignore the exception
+             * and return null.
+             */
+            genericSuperClass = null;
+        }
+        if (!isTypeAllowed(genericSuperClass)) {
+            genericSuperClass = null;
+        }
+        hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
+    }
+
+    private void fillAnnotatedSuperInfo(AnalysisType type, DynamicHub hub) {
+        Class<?> javaClass = type.getJavaClass();
+
+        AnnotatedType annotatedSuperclass;
+        try {
+            annotatedSuperclass = javaClass.getAnnotatedSuperclass();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
+            /*
+             * Loading the annotated super class can fail due to missing types. Ignore the exception
+             * and return null.
+             */
+            annotatedSuperclass = null;
+        }
+        if (annotatedSuperclass != null && !isTypeAllowed(annotatedSuperclass.getType())) {
+            annotatedSuperclass = null;
+        }
+
+        AnnotatedType[] allAnnotatedInterfaces;
+        try {
+            allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
+            /*
+             * Loading annotated interfaces can fail due to missing types. Ignore the exception and
+             * return an empty array.
+             */
+            allAnnotatedInterfaces = new AnnotatedType[0];
+        }
+
+        AnnotatedType[] annotatedInterfaces = Arrays.stream(allAnnotatedInterfaces)
+                        .filter(ai -> isTypeAllowed(ai.getType())).toArray(AnnotatedType[]::new);
+        AnnotatedType[] cachedAnnotatedInterfaces = annotatedInterfacesMap.computeIfAbsent(
+                        new NativeImageReachabilityAnalysis.AnnotatedInterfacesEncodingKey(annotatedInterfaces), k -> annotatedInterfaces);
+        hub.setAnnotatedSuperInfo(AnnotatedSuperInfo.factory(annotatedSuperclass, cachedAnnotatedInterfaces));
+    }
+
+    private boolean isTypeAllowed(Type t) {
+        if (t instanceof Class) {
+            Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
+            return resolved.isPresent() && hostVM.platformSupported(universe, resolved.get());
+        }
+        return true;
+    }
+
+    class InterfacesEncodingKey {
+        final AnalysisType[] aInterfaces;
+
+        InterfacesEncodingKey(AnalysisType[] aInterfaces) {
+            this.aInterfaces = aInterfaces;
+        }
+
+        DynamicHub[] createHubs() {
+            SVMHost svmHost = (SVMHost) hostVM;
+            DynamicHub[] hubs = new DynamicHub[aInterfaces.length];
+            for (int i = 0; i < hubs.length; i++) {
+                hubs[i] = svmHost.dynamicHub(aInterfaces[i]);
+            }
+            return hubs;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NativeImageReachabilityAnalysis.InterfacesEncodingKey && Arrays.equals(aInterfaces, ((NativeImageReachabilityAnalysis.InterfacesEncodingKey) obj).aInterfaces);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(aInterfaces);
+        }
+    }
+
+    /**
+     * Fill array returned by Class.getInterfaces().
+     */
+    private void fillInterfaces(AnalysisType type, DynamicHub hub) {
+        SVMHost svmHost = (SVMHost) hostVM;
+
+        AnalysisType[] aInterfaces = type.getInterfaces();
+        if (aInterfaces.length == 0) {
+            hub.setInterfacesEncoding(null);
+        } else if (aInterfaces.length == 1) {
+            hub.setInterfacesEncoding(svmHost.dynamicHub(aInterfaces[0]));
+        } else {
+            /*
+             * Many interfaces arrays are the same, e.g., all arrays implement the same two
+             * interfaces. We want to avoid duplicate arrays with the same content in the native
+             * image heap.
+             */
+            hub.setInterfacesEncoding(
+                            interfacesEncodings.computeIfAbsent(new NativeImageReachabilityAnalysis.InterfacesEncodingKey(aInterfaces), InterfacesEncodingKey::createHubs));
+        }
+    }
+
+    private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
+        SVMHost svmHost = (SVMHost) hostVM;
+        JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
+        objectScanner.scanConstant(hubConstant, ObjectScanner.ScanReason.HUB);
+    }
+
+    private void handleUnknownValueField(AnalysisField field) {
+        if (handledUnknownValueFields.contains(field)) {
+            return;
+        }
+        if (!field.isAccessed()) {
+            /*
+             * Field is not reachable yet, so do no process it. In particular, we must not register
+             * types listed in the @UnknownObjectField annotation as allocated when the field is not
+             * yet reachable
+             */
+            return;
+        }
+
+        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
+        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
+        if (unknownObjectField != null) {
+            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
+            assert field.getJavaKind() == JavaKind.Object;
+
+            field.setCanBeNull(unknownObjectField.canBeNull());
+
+            List<AnalysisType> aAnnotationTypes = extractAnnotationTypes(field, unknownObjectField);
+
+            for (AnalysisType type : aAnnotationTypes) {
+                type.registerAsAllocated(null);
+            }
+
+            /*
+             * Use the annotation types, instead of the declared type, in the UnknownObjectField
+             * annotated fields initialization.
+             */
+            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[0]));
+
+        } else if (unknownPrimitiveField != null) {
+            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
+            /*
+             * Register a primitive field as containing unknown values(s), i.e., is usually written
+             * only in hosted code.
+             */
+
+            field.registerAsWritten(null);
+        }
+
+        handledUnknownValueFields.add(field);
+    }
+
+    private List<AnalysisType> extractAnnotationTypes(AnalysisField field, UnknownObjectField unknownObjectField) {
+        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(unknownObjectField.types()));
+        for (String annotationTypeName : unknownObjectField.fullyQualifiedTypes()) {
+            try {
+                Class<?> annotationType = Class.forName(annotationTypeName);
+                annotationTypes.add(annotationType);
+            } catch (ClassNotFoundException e) {
+                throw shouldNotReachHere("Annotation type not found " + annotationTypeName);
+            }
+        }
+
+        List<AnalysisType> aAnnotationTypes = new ArrayList<>();
+        AnalysisType declaredType = field.getType();
+
+        for (Class<?> annotationType : annotationTypes) {
+            AnalysisType aAnnotationType = metaAccess.lookupJavaType(annotationType);
+
+            assert !WordBase.class.isAssignableFrom(annotationType) : "Annotation type must not be a subtype of WordBase: field: " + field + " | declared type: " + declaredType +
+                            " | annotation type: " + annotationType;
+            assert declaredType.isAssignableFrom(aAnnotationType) : "Annotation type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
+                            " | annotation type: " + annotationType;
+            assert aAnnotationType.isArray() || (aAnnotationType.isInstanceClass() && !Modifier.isAbstract(aAnnotationType.getModifiers())) : "Annotation type failure: field: " + field +
+                            " | annotation type " + aAnnotationType;
+
+            aAnnotationTypes.add(aAnnotationType);
+        }
+        return aAnnotationTypes;
+    }
+
+    /**
+     * Register a field as containing unknown object(s), i.e., is usually written only in hosted
+     * code. It can have multiple declared types provided via annotation.
+     */
+    private void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
+        assert aField.getJavaKind() == JavaKind.Object;
+
+        aField.registerAsWritten(null);
+
+        /* Link the field with all declared types. */
+        for (AnalysisType fieldDeclaredType : declaredTypes) {
+            markTypeReachable(fieldDeclaredType);
+        }
+    }
+
+    private static Set<Annotation> filterUsedAnnotation(Set<Annotation> used, Annotation[] rest) {
+        if (rest == null) {
+            return null;
+        }
+
+        Set<Annotation> restUsed = new HashSet<>();
+        for (Annotation a : rest) {
+            if (used.contains(a)) {
+                restUsed.add(a);
+            }
+        }
+        return restUsed;
+    }
+
+    public static Object encodeAnnotations(AnalysisMetaAccess metaAccess, Annotation[] allAnnotations, Annotation[] declaredAnnotations, Object oldEncoding) {
+        Object newEncoding;
+        if (allAnnotations.length == 0 && declaredAnnotations.length == 0) {
+            newEncoding = null;
+        } else {
+            Set<Annotation> all = new HashSet<>();
+            Collections.addAll(all, allAnnotations);
+            Collections.addAll(all, declaredAnnotations);
+            final Set<Annotation> usedAnnotations = all.stream()
+                            .filter(a -> {
+                                try {
+                                    AnalysisType annotationClass = metaAccess.lookupJavaType(a.getClass());
+                                    return isAnnotationUsed(annotationClass);
+                                } catch (AnalysisError.TypeNotFoundError e) {
+                                    /*
+                                     * Silently ignore the annotation if its type was not discovered
+                                     * by the static analysis.
+                                     */
+                                    return false;
+                                }
+                            }).collect(Collectors.toSet());
+            Set<Annotation> usedDeclared = filterUsedAnnotation(usedAnnotations, declaredAnnotations);
+            newEncoding = usedAnnotations.size() == 0
+                            ? null
+                            : AnnotationsEncoding.encodeAnnotations(usedAnnotations, usedDeclared);
+        }
+
+        /*
+         * Return newEncoding only if the value is different from oldEncoding. Without this guard,
+         * for tests that do runtime compilation, the field appears as being continuously updated
+         * during BigBang.checkObjectGraph.
+         */
+        if (oldEncoding != null && oldEncoding.equals(newEncoding)) {
+            return oldEncoding;
+        } else {
+            return newEncoding;
+        }
+    }
+
+    /**
+     * We only want annotations in the native image heap that are "used" at run time. In our case,
+     * "used" means that the annotation interface is used at least in a type check. This leaves one
+     * case where Substrate VM behaves differently than a normal Java VM: When you just query the
+     * number of annotations on a class, then we might return a lower number.
+     */
+    private static boolean isAnnotationUsed(AnalysisType annotationType) {
+        if (annotationType.isReachable()) {
+            return true;
+        }
+        assert annotationType.getInterfaces().length == 1 : annotationType;
+
+        AnalysisType annotationInterfaceType = annotationType.getInterfaces()[0];
+        return annotationInterfaceType.isReachable();
+    }
+
+    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
+    }
+
 }

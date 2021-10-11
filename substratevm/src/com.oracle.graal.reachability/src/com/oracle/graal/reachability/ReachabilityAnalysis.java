@@ -273,7 +273,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         // scan constants
         boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
         ObjectScanner objectScanner = new ReachabilityObjectScanner(this, isParallel ? executor : null, scannedObjects, metaAccess);
-// checkObjectGraph(objectScanner);
+        checkObjectGraph(objectScanner);
         if (isParallel) {
             executor.start();
             objectScanner.scanBootImageHeapRoots(null, null);
@@ -284,6 +284,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             objectScanner.scanBootImageHeapRoots(null, null);
         }
     }
+
+    protected abstract void checkObjectGraph(ObjectScanner objectScanner);
 
     @Override
     public void cleanupAfterAnalysis() {
