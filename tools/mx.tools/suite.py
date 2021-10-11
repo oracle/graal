@@ -588,38 +588,6 @@ suite = {
                 "native-image.properties" : "file:mx.tools/tools-dap.properties",
             },
         },
-        "TRUFFLE_WARMUP_ESTIMATOR": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.tools.warmup",
-            ],
-            "distDependencies" : [
-                "truffle:TRUFFLE_API",
-            ],
-            "maven" : {
-              "artifactId" : "warmup",
-            },
-            "description" : "Truffle warmup estimation tool.",
-        },
-        "TRUFFLE_WARMUP_ESTIMATOR_TEST": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.tools.warmup.test",
-            ],
-            "distDependencies" : [
-                "truffle:TRUFFLE_TEST",
-                "TRUFFLE_WARMUP_ESTIMATOR",
-            ],
-            "description" : "Tests for the truffle warmup estimator tool.",
-            "maven" : False,
-        },
-        "TRUFFLE_WARMUP_ESTIMATOR_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "description" : "Truffle Profiler support distribution for the GraalVM",
-            "layout" : {
-                "native-image.properties" : "file:mx.tools/tools-profiler.properties",
-            },
-        },
         "VISUALVM_GRAALVM_SUPPORT": {
             "native": True,
             "platformDependent": True,
