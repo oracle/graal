@@ -350,7 +350,7 @@ libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
 }
 
 
-record_file_sizes: ["benchmark", "file-size:*", "--results-file", "sizes.json"] 
+record_file_sizes: ["benchmark", "file-size:*", "--results-file", "sizes.json"]
 upload_file_sizes: [bench-uploader.py, "sizes.json"]
 
 deploy_graalvm_linux_amd64: {
@@ -476,7 +476,7 @@ builds += [
   ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
   ${libgraal_truffle} ${vm_java_17} { name: gate-vm-libgraal-truffle-17-linux-amd64 }
 
-  ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,/sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]
