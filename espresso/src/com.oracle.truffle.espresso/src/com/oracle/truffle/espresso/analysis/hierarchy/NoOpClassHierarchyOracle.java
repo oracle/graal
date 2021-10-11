@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -34,9 +36,10 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static class LeafTypeAssumptionImpl implements LeafTypeAssumption {
         private final Assumption underlying;
-        static final LeafTypeAssumption NeverValidAssumption = new LeafTypeAssumptionImpl("invalid");
-        static {
-            NeverValidAssumption.getAssumption().invalidate();
+
+        // Used only to create never valid and always valid instances
+        private LeafTypeAssumptionImpl(Assumption underlyingAssumption) {
+            underlying = underlyingAssumption;
         }
 
         private LeafTypeAssumptionImpl(String assumptionName) {
@@ -55,8 +58,8 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
 
     protected static final LeafTypeAssumptionAccessor assumptionAccessor = new LeafTypeAssumptionAccessor();
 
-    protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl("final class is always a CHA leaf");
-    protected static final LeafTypeAssumption NotLeaf = LeafTypeAssumptionImpl.NeverValidAssumption;
+    protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl(AlwaysValidAssumption.INSTANCE);
+    protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
 
     @Override
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
