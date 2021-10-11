@@ -64,7 +64,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;

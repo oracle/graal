@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import org.graalvm.collections.Pair;
 
 import java.nio.charset.Charset;
@@ -49,10 +48,13 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
 
-    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
-
     public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         super(defaultLocale, locales, defaultCharset);
+    }
+
+    @Override
+    public boolean optimizedMode() {
+        return true;
     }
 
     /**
@@ -69,7 +71,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             }
         }
         String errorMessage = "Resource bundle not found " + baseName + ", locale " + locale + ". " +
-                        "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+                        "Register the resource bundle using the option -H:IncludeResourceBundles=" + baseName + ".";
         throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
 
     }
