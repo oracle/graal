@@ -14,20 +14,17 @@ permalink: /reference-manual/polyglot-programming/
 * [Passing Options Programmatically](#passing-options-programmatically)
 * [Passing Options Using JVM Arguments](#passing-options-using-jvm-arguments)
 
-GraalVM allows users to write polyglot applications that seamlessly
-pass values from one language to another by means of the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) (henceforth "Truffle").
+GraalVM allows users to write polyglot applications that seamlessly pass values from one language to another by means of the [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle").
 
 Truffle is a Java library for building programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
 When writing a language interpreter with Truffle, it will automatically use the GraalVM compiler as a just-in-time compiler for the language.
 By having access to this framework, a Ruby application, for example, can run on the same JVM as a Java application.
 Also, a host JVM-based language and a guest language can directly interoperate with each other and pass data back and forth in the same memory space.
 
-In order to provide foreign polyglot values in the languages implemented with Truffle, the so-called _polyglot interoperability protocol_ has been developed. This
-interoperability protocol consists of a set of standardized messages that every
-language implements and uses for foreign polyglot values. The protocol allows
-GraalVM to support interoperability between any combination of languages without
-requiring them to know of each other. For more details, proceed to the
-[High-Performance Cross-Language Interoperability in a Multi-Language Runtime](http://dx.doi.org/10.1145/2816707.2816714) paper.
+In order to provide foreign polyglot values in the languages implemented with Truffle, the so-called _polyglot interoperability protocol_ has been developed.
+This interoperability protocol consists of a set of standardized messages that every language implements and uses for foreign polyglot values.
+The protocol allows GraalVM to support interoperability between any combination of languages without requiring them to know of each other.
+For more details, proceed to the [High-Performance Cross-Language Interoperability in a Multi-Language Runtime](http://dx.doi.org/10.1145/2816707.2816714) paper.
 
 Throughout this section you learn how to combine multiple languages using GraalVM Polyglot APIs.
 
@@ -41,12 +38,12 @@ Ensure you set up GraalVM before you begin.
 The below examples work:
 * on a JVM, by passing `--polyglot --jvm`.
 * on native launchers with `--polyglot` (e.g., `js --polyglot`).
-  It might be required to [rebuild images](/reference-manual/graalvm-updater/#rebuild-images) to access languages installed with `gu`.
+  It might be required to [rebuild images](graalvm-updater.md#rebuild-images) to access languages installed with `gu`.
 * with native executables (e.g., `native-image --language:js`).
 
 For native launchers and native executables using Java as a Target Language
 and accessing classes other than Java arrays, it is required to recompile the image and provide
-a [reflection configuration file](/reference-manual/native-image/Reflection/).
+a [reflection configuration file](native-image/Reflection.md).
 
 Note: To start an application with LLVM as a Target Language, make sure
 to precompile the _polyglot.c_ file provided below.
@@ -201,7 +198,7 @@ polyglot --jvm polyglot.js polyglot.R polyglot.rb
 ```
 
 We have also included a basic experimental shell for multiple languages called the _Polyglot Shell_.
-It is useful to quickly test the interactivity of languages implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/).
+It is useful to quickly test the interactivity of languages implemented with the [Truffle framework](../../truffle/docs/README.md).
 This is how you can start it:
 
 ```shell

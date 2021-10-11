@@ -14,15 +14,16 @@ This allows seamless interoperability with the dynamic languages supported by Gr
 
 ## Running LLVM Bitcode on GraalVM
 
-To run LLVM-based languages on GraalVM, the binaries need to be compiled with embedded
-bitcode. The [Compiling](Compiling.md) guide provides information on
-how to compile a program to LLVM bitcode and what file format is expected.
+To run LLVM-based languages on GraalVM, the binaries need to be compiled with embedded bitcode.
+The [Compiling](Compiling.md) guide provides information on how to compile a program to LLVM bitcode and what file format is expected.
 
 The syntax to execute programs in LLVM bitcode format on GraalVM is:
 ```shell
 lli [LLI options] [GraalVM options] [polyglot options] <bitcode file> [program args]
 ```
-Here, `<bitcode file>` is [a compiled program with embedded LLVM bitcode](Compiling.md). See [LLI Command Options](Options.md) or use `lli --help` for options explanations.
 
-Note: LLVM bitcode is platform-dependent. The program must be compiled to
-bitcode for an appropriate platform.
+Here, `<bitcode file>` is [a compiled program with embedded LLVM bitcode](Compiling.md).
+See [LLI Command Options](Options.md) or use `lli --help` for options explanations.
+
+Note: LLVM bitcode is platform-dependent.
+The program must be compiled to bitcode for an appropriate platform.

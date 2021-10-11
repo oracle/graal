@@ -9,13 +9,10 @@ permalink: /reference-manual/llvm/Interoperability/
 GraalVM supports several other programming languages including JavaScript, Python, Ruby, and R.
 While GraalVM's implementation of `lli` is designed to run LLVM bitcode, it also provides the API for programming language interoperability that lets you execute code from any other GraalVM-supported language.
 
-Dynamic languages like JavaScript usually access object members by name. Since
-normally names are not preserved in LLVM bitcode, it must be compiled with debug
-information enabled (the LLVM toolchain shipped with GraalVM will automatically enable
-debugging information).
+Dynamic languages like JavaScript usually access object members by name.
+Since normally names are not preserved in LLVM bitcode, it must be compiled with debug information enabled (the LLVM toolchain shipped with GraalVM will automatically enable debugging information).
 
-The following example demonstrates how you can use the API for interoperability
-with other programming languages.
+The following example demonstrates how you can use the API for interoperability with other programming languages.
 
 Define a C struct for points and implement allocation functions in a file named _cpart.c_:
 
@@ -52,9 +49,7 @@ void printPoint(struct Point *p) {
 }
 ```
 
-Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`),
-and then compile _cpart.c_  (the graalvm-llvm library defines the polyglot
-API functions used in the example):
+Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`), and then compile _cpart.c_  (the graalvm-llvm library defines the Polyglot API functions used in the example):
 ```shell
 $LLVM_TOOLCHAIN/clang -shared cpart.c -lgraalvm-llvm -o cpart.so
 ```
@@ -104,9 +99,8 @@ Point<17.000000,42.000000>
 
 ## Polyglot C API
 
-There are also lower level API functions for directly accessing polyglot values
-from C. See the [Polyglot Programming](https://graalvm.org/reference-manual/polyglot-programming/) reference
-and the comments in `polyglot.h` for more details.
+There are also lower level API functions for directly accessing polyglot values from C.
+See the [Polyglot Programming](../polyglot-programming.md) reference and the comments in `polyglot.h` for more details.
 
 For example, this program allocates and accesses a Java array from C:
 ```c
@@ -163,5 +157,4 @@ java Polyglot
 24
 ```
 
-See the [Embedding Languages](https://graalvm.org/reference-manual/embed-languages/) reference for
-more information.
+See the [Embedding Languages](../embedding/embed-languages.md) reference for more information.
