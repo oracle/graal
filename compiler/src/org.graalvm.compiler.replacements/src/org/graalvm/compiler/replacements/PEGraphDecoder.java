@@ -84,8 +84,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PluginReplacementNode;
-import org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode;
+import org.graalvm.compiler.nodes.PluginReplacementInterface;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.SimplifyingGraphDecoder;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -1497,20 +1496,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 }
             }
         }
-        if (node instanceof PluginReplacementNode) {
-            PluginReplacementNode pluginReplacementNode = (PluginReplacementNode) node;
+        if (node instanceof PluginReplacementInterface) {
+            PluginReplacementInterface pluginReplacementNode = (PluginReplacementInterface) node;
             PEPluginGraphBuilderContext graphBuilderContext = new PEPluginGraphBuilderContext(methodScope,
-                            pluginReplacementNode);
-            boolean success = pluginReplacementNode.replace(graphBuilderContext, providers.getReplacements());
-            if (success) {
-                replacedNode = graphBuilderContext.pushedNode;
-            } else if (pluginReplacementMustSucceed()) {
-                throw new GraalError("Plugin failed:" + node);
-            }
-        } else if (node instanceof PluginReplacementWithExceptionNode) {
-            PluginReplacementWithExceptionNode pluginReplacementNode = (PluginReplacementWithExceptionNode) node;
-            PEPluginGraphBuilderContext graphBuilderContext = new PEPluginGraphBuilderContext(methodScope,
-                            pluginReplacementNode);
+                            pluginReplacementNode.asFixedNode());
             boolean success = pluginReplacementNode.replace(graphBuilderContext, providers.getReplacements());
             if (success) {
                 replacedNode = graphBuilderContext.pushedNode;

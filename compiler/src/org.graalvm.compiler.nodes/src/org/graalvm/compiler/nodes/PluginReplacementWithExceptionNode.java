@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvi
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
 @NodeInfo(nameTemplate = "PluginReplacementWithException/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class PluginReplacementWithExceptionNode extends WithExceptionNode {
+public final class PluginReplacementWithExceptionNode extends WithExceptionNode implements PluginReplacementInterface {
     public static final NodeClass<PluginReplacementWithExceptionNode> TYPE = NodeClass.create(PluginReplacementWithExceptionNode.class);
 
     @Input protected NodeInputList<ValueNode> args;
@@ -51,6 +51,7 @@ public final class PluginReplacementWithExceptionNode extends WithExceptionNode 
         this.pluginName = pluginName;
     }
 
+    @Override
     public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection) {
         return function.replace(b, injection, stamp, args);
     }
