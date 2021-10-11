@@ -62,6 +62,9 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
              */
             rerunClassInit(a, "sun.nio.ch.UnixDomainSockets");
         }
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            rerunClassInit(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
+        }
 
         /*
          * Re-initialize the registered shutdown hooks, because any hooks registered during native
