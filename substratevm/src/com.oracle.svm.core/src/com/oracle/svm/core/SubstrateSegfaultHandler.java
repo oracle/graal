@@ -153,7 +153,7 @@ public abstract class SubstrateSegfaultHandler {
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
     protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         dumpInterruptibly(signalInfo, context);

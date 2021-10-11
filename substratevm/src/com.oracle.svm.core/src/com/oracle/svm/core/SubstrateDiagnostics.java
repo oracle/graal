@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.Arrays;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -616,6 +617,10 @@ public class SubstrateDiagnostics {
                 log.string("Threads:").indent(true);
                 for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                     log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
+                    int safepointBehavior = SafepointBehavior.getSafepointBehavior(thread);
+                    if (safepointBehavior != SafepointBehavior.ALLOW_SAFEPOINT) {
+                        log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
+                    }
                     if (allowJavaHeapAccess) {
                         Thread threadObj = JavaThreads.fromVMThread(thread);
                         log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj);

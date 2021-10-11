@@ -99,7 +99,7 @@ public class VMErrorSubstitutions {
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
         VMErrorSubstitutions.shutdown(callerIP, msg, ex);
         throw UnreachableNode.unreachable();

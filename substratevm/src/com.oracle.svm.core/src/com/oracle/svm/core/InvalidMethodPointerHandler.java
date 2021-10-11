@@ -70,7 +70,7 @@ public final class InvalidMethodPointerHandler {
     }
 
     private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         /*

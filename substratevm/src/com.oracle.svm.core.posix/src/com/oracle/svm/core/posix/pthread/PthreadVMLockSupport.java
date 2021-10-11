@@ -166,7 +166,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
             Log.log().string(functionName).string(" returned ").signed(result).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }

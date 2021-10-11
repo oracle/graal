@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -421,12 +422,12 @@ public abstract class JavaThreads {
      * When this method is being executed, we expect that the current thread owns
      * {@linkplain VMThreads#THREAD_MUTEX}. This is fine even though this method is not
      * {@linkplain Uninterruptible} because this method is either executed as part of a VM operation
-     * or {@linkplain StatusSupport#setStatusIgnoreSafepoints()} was called.
+     * or {@linkplain SafepointBehavior#setIgnoreThreadInSafepointHandling()} was called.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while detaching a thread.")
     public static void detachThread(IsolateThread vmThread) {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
-        assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
+        assert SafepointBehavior.isIgnoredBySafepointHandling(vmThread) || VMOperation.isInProgress();
 
         Thread thread = currentThread.get(vmThread);
         ParkEvent.detach(getUnsafeParkEvent(thread));

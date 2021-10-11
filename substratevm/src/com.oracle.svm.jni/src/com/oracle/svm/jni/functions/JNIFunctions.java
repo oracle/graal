@@ -832,7 +832,7 @@ public final class JNIFunctions {
         if (log != null) {
             try {
                 log.string("Fatal error reported via JNI: ").string(message).newline();
-                VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+                VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
                 SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), callerIP);
             } catch (Throwable ignored) {
                 /*

@@ -565,7 +565,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Avoid StackOverflowError and safepoints until they are disabled permanently", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int reportException(Throwable exception) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         logException(exception);

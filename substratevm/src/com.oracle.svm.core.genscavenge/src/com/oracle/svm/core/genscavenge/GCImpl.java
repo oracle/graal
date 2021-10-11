@@ -783,14 +783,10 @@ public final class GCImpl implements GC {
                          */
                         continue;
                     }
-                    if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                    if (!VMThreads.SafepointBehavior.safepointChecksEnabled(vmThread)) {
                         /*
-                         * When a thread is ignoring safepoints, it is reporting a fatal VM error.
-                         * The thread is not paused and we cannot safely walk its stack (we don't
-                         * even know where it starts). We simply ignore it and keep collecting until
-                         * it terminates the VM rather than crashing here. The thread might access
-                         * the heap to print diagnostics, but it must do so with due caution and
-                         * should not crash because of our ongoing GC.
+                         * When a thread is ignoring safepoints, then the thread is not paused and
+                         * we cannot safely walk its stack (we don't even know where it starts).
                          */
                         continue;
                     }

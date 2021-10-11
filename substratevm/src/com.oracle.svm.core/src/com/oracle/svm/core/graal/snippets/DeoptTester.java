@@ -29,7 +29,6 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -112,7 +111,7 @@ public class DeoptTester {
                             !CEntryPointSnippets.isIsolateInitialized() ||
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
-                            VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()) ||
+                            !VMThreads.SafepointBehavior.safepointChecksEnabled() ||
                             !JavaThreads.currentJavaThreadInitialized()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }

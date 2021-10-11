@@ -87,7 +87,7 @@ public abstract class VMThreads {
      * <li>Acquire the mutex outside of a VM operation but only execute uninterruptible code. This
      * is safe as the uninterruptible code cannot trigger a safepoint.</li>
      * <li>Acquire the mutex from a thread that previously called
-     * {@link StatusSupport#setStatusIgnoreSafepoints()}.</li>
+     * {@link SafepointBehavior#setIgnoreThreadInSafepointHandling()}.</li>
      * </ol>
      *
      * Deadlock example 1:
@@ -120,7 +120,9 @@ public abstract class VMThreads {
      */
     protected static final VMCondition THREAD_LIST_CONDITION = new VMCondition(THREAD_MUTEX);
 
-    /** The first element in the linked list of {@link IsolateThread}s. */
+    /**
+     * The first element in the linked list of {@link IsolateThread}s.
+     */
     private static IsolateThread head;
     /**
      * This field is used to guarantee that all isolate threads that were started by SVM have exited
@@ -142,7 +144,9 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
-    /** The highest stack address. */
+    /**
+     * The highest stack address.
+     */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
     /**
      * The lowest stack address. Note that this value does not necessarily match the value that is
@@ -161,13 +165,17 @@ public abstract class VMThreads {
         return initializationState.get() >= STATE_INITIALIZED;
     }
 
-    /** Is threading being torn down? */
+    /**
+     * Is threading being torn down?
+     */
     @Uninterruptible(reason = "Called from uninterruptible code during tear down.")
     public static boolean isTearingDown() {
         return initializationState.get() >= STATE_TEARING_DOWN;
     }
 
-    /** Note that threading is being torn down. */
+    /**
+     * Note that threading is being torn down.
+     */
     static void setTearingDown() {
         initializationState.set(STATE_TEARING_DOWN);
     }
@@ -329,7 +337,7 @@ public abstract class VMThreads {
 
         cleanupBeforeDetach(thread);
 
-        setStatusIgnoreSafepointsAndLock();
+        setIgnoreThreadInSafepointHandlingAndLock();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -356,11 +364,11 @@ public abstract class VMThreads {
     }
 
     /*
-     * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling functions
-     * that are not marked as @Uninterruptible during the detach process. We hold the THREAD_MUTEX,
-     * so we know that we are not going to be interrupted by a safepoint. But a safepoint can
-     * already be requested, or our safepoint counter can reach 0 - so it is still possible that we
-     * enter the safepoint slow path.
+     * Make me immune to safepoints and make the safepoint mechanism ignore me. We are calling
+     * functions that are not marked as @Uninterruptible during the detach process. We hold the
+     * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
+     * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
+     * possible that we enter the safepoint slow path.
      *
      * Between setting the status and acquiring the TREAD_MUTEX, we must not access the heap.
      * Otherwise, we risk a race with the GC as this thread will continue executing even though the
@@ -368,8 +376,8 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Prevent that anything floats between setting the status and acquiring the mutex.")
-    private static void setStatusIgnoreSafepointsAndLock() {
-        StatusSupport.setStatusIgnoreSafepoints();
+    private static void setIgnoreThreadInSafepointHandlingAndLock() {
+        SafepointBehavior.setIgnoreThreadInSafepointHandling();
         THREAD_MUTEX.lockNoTransition();
     }
 
@@ -607,51 +615,56 @@ public abstract class VMThreads {
      * Access to platform-specific implementations.
      */
 
-    /** A thread-local enum giving the thread status of a VMThread. And supporting methods. */
+    /**
+     * A thread-local enum giving the thread status of a VMThread. And supporting methods.
+     */
     public static class StatusSupport {
 
-        /** The status of a {@link IsolateThread}. */
+        /**
+         * The status of a {@link IsolateThread}.
+         */
         public static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt("StatusSupport.statusTL").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
         /**
-         * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
-         * to the {@link #statusTL} because we need the disabled flag to be "sticky": once
-         * safepoints are disabled, they must never be enabled again. Either the thread is getting
-         * detached, or a fatal error occurred and we are printing diagnostics before killing the
-         * VM.
+         * An illegal thread state for places where we need to pass a value.
          */
-        private static final FastThreadLocalInt safepointsDisabledTL = FastThreadLocalFactory.createInt("StatusSupport.safepointsDisabledTL");
-
-        /** An illegal thread state for places where we need to pass a value. */
         public static final int STATUS_ILLEGAL = -1;
         /**
          * {@link IsolateThread} memory has been allocated for the thread, but the thread is not on
          * the VMThreads list yet.
          */
         public static final int STATUS_CREATED = 0;
-        /** The thread is running in Java code. */
+        /**
+         * The thread is running in Java code.
+         */
         public static final int STATUS_IN_JAVA = STATUS_CREATED + 1;
-        /** The thread has been requested to stop at a safepoint. */
+        /**
+         * The thread has been requested to stop at a safepoint.
+         */
         public static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
-        /** The thread is running in native code. */
+        /**
+         * The thread is running in native code.
+         */
         public static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
-        /** The thread is running in trusted native code that was linked into the image. */
+        /**
+         * The thread is running in trusted native code that was linked into the image.
+         */
         public static final int STATUS_IN_VM = STATUS_IN_NATIVE + 1;
         private static final int MAX_STATUS = STATUS_IN_VM;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static String statusToString(int status, boolean safepointsDisabled) {
+        private static String statusToString(int status) {
             switch (status) {
                 case STATUS_CREATED:
-                    return safepointsDisabled ? "STATUS_CREATED (safepoints disabled)" : "STATUS_CREATED";
+                    return "STATUS_CREATED";
                 case STATUS_IN_JAVA:
-                    return safepointsDisabled ? "STATUS_IN_JAVA (safepoints disabled)" : "STATUS_IN_JAVA";
+                    return "STATUS_IN_JAVA";
                 case STATUS_IN_SAFEPOINT:
-                    return safepointsDisabled ? "STATUS_IN_SAFEPOINT (safepoints disabled)" : "STATUS_IN_SAFEPOINT";
+                    return "STATUS_IN_SAFEPOINT";
                 case STATUS_IN_NATIVE:
-                    return safepointsDisabled ? "STATUS_IN_NATIVE (safepoints disabled)" : "STATUS_IN_NATIVE";
+                    return "STATUS_IN_NATIVE";
                 case STATUS_IN_VM:
-                    return safepointsDisabled ? "STATUS_IN_VM (safepoints disabled)" : "STATUS_IN_VM";
+                    return "STATUS_IN_VM";
                 default:
                     return "STATUS error";
             }
@@ -659,10 +672,12 @@ public abstract class VMThreads {
 
         /* Access methods to treat VMThreads.statusTL as a volatile int. */
 
-        /** For debugging. */
+        /**
+         * For debugging.
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static String getStatusString(IsolateThread vmThread) {
-            return statusToString(statusTL.getVolatile(vmThread), isStatusIgnoreSafepoints(vmThread));
+            return statusToString(statusTL.getVolatile(vmThread));
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -685,12 +700,16 @@ public abstract class VMThreads {
             statusTL.setVolatile(vmThread, STATUS_IN_NATIVE);
         }
 
-        /** There is no unguarded change to safepoint. */
+        /**
+         * There is no unguarded change to safepoint.
+         */
         public static boolean compareAndSetNativeToSafepoint(IsolateThread vmThread) {
             return statusTL.compareAndSet(vmThread, STATUS_IN_NATIVE, STATUS_IN_SAFEPOINT);
         }
 
-        /** An <em>unguarded</em> transition to Java. */
+        /**
+         * An <em>unguarded</em> transition to Java.
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusJavaUnguarded() {
             statusTL.setVolatile(STATUS_IN_JAVA);
@@ -700,7 +719,9 @@ public abstract class VMThreads {
             statusTL.setVolatile(STATUS_IN_VM);
         }
 
-        /** A guarded transition from native to another status. */
+        /**
+         * A guarded transition from native to another status.
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean compareAndSetNativeToNewStatus(int newStatus) {
             return statusTL.compareAndSet(STATUS_IN_NATIVE, newStatus);
@@ -742,16 +763,6 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusIgnoreSafepoints() {
-            return safepointsDisabledTL.getVolatile() == 1;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
-            return safepointsDisabledTL.getVolatile(vmThread) == 1;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void assertStatusJava() {
             String msg = "Thread status must be 'Java'.";
             if (GraalDirectives.inIntrinsic()) {
@@ -787,20 +798,10 @@ public abstract class VMThreads {
             }
         }
 
-        /**
-         * Make myself immune to safepoints. Set the thread status to ensure that the safepoint
-         * mechanism ignores me. It is not necessary to clear a pending safepoint request (i.e., to
-         * reset the safepoint counter) because the safepoint slow path is going to do that in case.
-         *
-         * Be careful with this method. If a thread is marked to ignore safepoints, it means that it
-         * can continue executing while a safepoint (and therefore a GC) is in progress. So, either
-         * prevent that a safepoint can be initiated (by holding the {@link #THREAD_MUTEX}) or make
-         * sure that this thread does not access any movable heap objects (even executing write
-         * barriers can already cause issues).
-         */
+        // This method will be removed in GR-34435.
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusIgnoreSafepoints() {
-            safepointsDisabledTL.setVolatile(1);
+            SafepointBehavior.setPreventVMFromReachingSafepoint();
         }
 
         public static boolean isValidStatus(int status) {
@@ -828,17 +829,99 @@ public abstract class VMThreads {
         }
     }
 
+    public static class SafepointBehavior {
+        /** Determines how this thread interacts with the safepoint handling. */
+        private static final FastThreadLocalInt safepointBehaviorTL = FastThreadLocalFactory.createInt("StatusSupport.safepointBehaviorTL");
+
+        /** The thread will freeze as soon as possible if a safepoint is requested. */
+        public static final int ALLOW_SAFEPOINT = 0;
+
+        /**
+         * The thread won't freeze at a safepoint, and will actively prevent the VM from reaching a
+         * safepoint (regardless of the thread status).
+         */
+        static final int PREVENT_VM_FROM_REACHING_SAFEPOINT = 1;
+
+        /**
+         * The thread won't freeze at a safepoint and the safepoint handling will ignore the thread.
+         * So, the VM will be able to reach a safepoint regardless of the status of this thread.
+         */
+        static final int IGNORE_THREAD_IN_SAFEPOINT_HANDLING = 2;
+
+        public static boolean isIgnoredBySafepointHandling(IsolateThread vmThread) {
+            return safepointBehaviorTL.getVolatile(vmThread) == IGNORE_THREAD_IN_SAFEPOINT_HANDLING;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean safepointChecksEnabled() {
+            return safepointBehaviorTL.getVolatile() == ALLOW_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean safepointChecksEnabled(IsolateThread vmThread) {
+            return safepointBehaviorTL.getVolatile(vmThread) == ALLOW_SAFEPOINT;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int getSafepointBehavior(IsolateThread vmThread) {
+            return safepointBehaviorTL.getVolatile(vmThread);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void setPreventVMFromReachingSafepoint() {
+            assert safepointChecksEnabled();
+            safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
+        }
+
+        /**
+         * Changes the safepoint behavior so that this thread won't freeze at a safepoint and the
+         * safepoint handling will ignore the thread. So, the VM will be able to reach a safepoint
+         * regardless of the status of this thread.
+         *
+         * Be careful with this. If a thread is ignored by the safepoint handling, it means that it
+         * can continue executing while a safepoint (and therefore a GC) is in progress. So, either
+         * prevent that a safepoint can be initiated (by holding the {@link #THREAD_MUTEX}) or make
+         * sure that this thread does not access any movable heap objects (even executing write
+         * barriers can already cause issues).
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        static void setIgnoreThreadInSafepointHandling() {
+            assert safepointChecksEnabled();
+            safepointBehaviorTL.setVolatile(IGNORE_THREAD_IN_SAFEPOINT_HANDLING);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static String toString(int safepointBehavior) {
+            switch (safepointBehavior) {
+                case ALLOW_SAFEPOINT:
+                    return "";
+                case PREVENT_VM_FROM_REACHING_SAFEPOINT:
+                    return "PREVENT_VM_FROM_REACHING_SAFEPOINT";
+                case IGNORE_THREAD_IN_SAFEPOINT_HANDLING:
+                    return "IGNORE_THREAD_IN_SAFEPOINT_HANDLING";
+                default:
+                    return "Invalid safepoint behavior";
+            }
+        }
+    }
+
     /**
      * A thread-local enum conveying any actions needed before thread begins executing Java code.
      */
     public static class ActionOnTransitionToJavaSupport {
 
-        /** The actions to be performed. */
+        /**
+         * The actions to be performed.
+         */
         private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnTransitionToJavaSupport.actionTL");
 
-        /** The thread does not need to take any action. */
+        /**
+         * The thread does not need to take any action.
+         */
         private static final int NO_ACTION = 0;
-        /** Code synchronization should be performed due to newly installed code. */
+        /**
+         * Code synchronization should be performed due to newly installed code.
+         */
         private static final int SYNCHRONIZE_CODE = NO_ACTION + 1;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -886,7 +969,9 @@ public abstract class VMThreads {
          */
         private static final int SWITCH_STACK = NO_ACTION + 1;
 
-        /** Target of stack switching. */
+        /**
+         * Target of stack switching.
+         */
         private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnSP");
         private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnIP");
 

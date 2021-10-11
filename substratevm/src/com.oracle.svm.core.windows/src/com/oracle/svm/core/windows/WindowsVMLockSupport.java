@@ -161,7 +161,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
             int lastError = WinBase.GetLastError();
             Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
