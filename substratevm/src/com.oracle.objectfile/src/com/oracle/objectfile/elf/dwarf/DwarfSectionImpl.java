@@ -340,6 +340,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    protected int writeAttrSecOffset(int value, byte[] buffer, int pos) {
+        return writeAttrData4(value, buffer, pos);
+    }
+
     protected int writeAttrData2(short value, byte[] buffer, int pos) {
         if (buffer == null) {
             return pos + putShort(value, scratch, 0);
