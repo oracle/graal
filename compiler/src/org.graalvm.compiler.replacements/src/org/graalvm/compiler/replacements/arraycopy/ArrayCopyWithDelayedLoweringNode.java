@@ -84,10 +84,6 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode i
         return snippet;
     }
 
-    public void setBci(int bci) {
-        this.bci = bci;
-    }
-
     public boolean reachedRequiredLoweringStage() {
         return graph().getGuardsStage().reachedGuardsStage(delayUntil);
     }

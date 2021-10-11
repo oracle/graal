@@ -115,7 +115,7 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
             ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(ARRAYCOPY, node.getSource(), node.getSourcePosition(), node.getDestination(),
                             node.getDestinationPosition(), node.getLength()));
             call.setStateAfter(node.stateAfter());
-            call.setBci(node.getBci());
+            call.setBci(node.bci());
             graph.replaceWithExceptionSplit(node, call);
         }
     }

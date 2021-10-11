@@ -625,7 +625,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    invoke.setBci(arraycopy.getBci());
+                    invoke.setBci(arraycopy.bci());
                     invoke.setStateDuring(null);
                     invoke.setStateAfter(null);
                     if (arraycopy.stateDuring() != null) {
@@ -636,10 +636,6 @@ public abstract class ArrayCopySnippets implements Snippets {
                     }
                 } else if (originalNode instanceof InvokeWithExceptionNode) {
                     throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
-                } else if (originalNode instanceof ArrayCopyWithDelayedLoweringNode) {
-                    ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) duplicates.get(originalNode);
-                    assert arraycopy.stateAfter() != null : arraycopy;
-                    slowPath.setBci(arraycopy.getBci());
                 }
             }
             GraphUtil.killCFG(arraycopy);

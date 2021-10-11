@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -63,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Base class for nodes that intrinsify {@link System#arraycopy}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
-public abstract class BasicArrayCopyNode extends WithExceptionNode implements StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
+public abstract class BasicArrayCopyNode extends WithExceptionNode implements DeoptBciSupplier, StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
@@ -98,8 +99,14 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements St
         this(type, src, srcPos, dest, destPos, length, elementKind, BytecodeFrame.INVALID_FRAMESTATE_BCI);
     }
 
-    public int getBci() {
+    @Override
+    public int bci() {
         return bci;
+    }
+
+    @Override
+    public void setBci(int bci) {
+        this.bci = bci;
     }
 
     public JavaKind getElementKind() {
@@ -311,7 +318,7 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements St
 
     @Override
     public void computeStateDuring(FrameState currentStateAfter) {
-        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(getBci(), asNode().getStackKind());
+        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci(), asNode().getStackKind());
         setStateDuring(newStateDuring);
     }
 }
