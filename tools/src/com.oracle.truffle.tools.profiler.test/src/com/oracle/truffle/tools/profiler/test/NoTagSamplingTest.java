@@ -69,7 +69,7 @@ public class NoTagSamplingTest {
             });
 
             Map<Thread, List<StackTraceEntry>> sample = null;
-            for (int i = 0; i < 10000; i++) {// times out ofter 10s
+            for (int i = 0; i < 10000; i++) { // times out after 10s
                 sample = sampler.takeSample();
                 if (!sample.isEmpty()) {
                     break;
