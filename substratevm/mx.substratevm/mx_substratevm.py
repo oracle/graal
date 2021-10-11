@@ -116,16 +116,6 @@ def svmbuild_dir(suite=None):
     return join(suite.dir, 'svmbuild')
 
 
-def is_musl_gcc_wrapper_on_path():
-    mx.logv('Probing if musl-gcc exists on path.')
-    throwaway_capture = mx.LinesOutputCapture()
-    try:
-        ret_code = mx.run(['musl-gcc', '-v'], nonZeroIsFatal=False, out=throwaway_capture, err=throwaway_capture)
-        return ret_code == 0
-    except OSError as _:
-        return False
-
-
 def is_musl_supported():
     jdk = mx.get_jdk(tag='default')
     if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
@@ -243,10 +233,7 @@ def vm_executable_path(executable, config=None):
 
 def run_musl_basic_tests():
     if is_musl_supported():
-        if is_musl_gcc_wrapper_on_path():
-            helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
-        else:
-            mx.abort('Attempted to run musl tests without a musl-gcc wrapper.')
+        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
 
 
 @contextmanager
@@ -1578,7 +1565,5 @@ if is_musl_supported():
     doc_string = "Runs a musl based Hello World static native-image with custom build arguments."
     @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
     def musl_helloworld(args, config=None):
-        if not is_musl_gcc_wrapper_on_path():
-            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/StaticImages.md')
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
