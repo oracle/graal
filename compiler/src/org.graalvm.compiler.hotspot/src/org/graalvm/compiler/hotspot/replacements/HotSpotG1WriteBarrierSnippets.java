@@ -93,7 +93,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
     @Override
     protected int satbQueueMarkingActiveOffset() {
-        return HotSpotReplacementsUtil.g1SATBQueueMarkingOffset(INJECTED_VMCONFIG);
+        return HotSpotReplacementsUtil.g1SATBQueueMarkingActiveOffset(INJECTED_VMCONFIG);
     }
 
     @Override
