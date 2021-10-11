@@ -152,8 +152,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             for (AnalysisType type : summary.instantiatedTypes) {
                 markTypeInstantiated(type);
             }
-            for (AnalysisField field : summary.accessedFields) {
-                markFieldAccessed(field);
+            for (AnalysisField field : summary.readFields) {
+                markFieldRead(field);
+            }
+            for (AnalysisField field : summary.writtenFields) {
+                markFieldWritten(field);
             }
             for (JavaConstant constant : summary.embeddedConstants) {
                 if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
@@ -180,6 +183,16 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     @Override
     public void markFieldAccessed(AnalysisField field) {
         field.registerAsAccessed();
+    }
+
+    @Override
+    public void markFieldRead(AnalysisField field) {
+        field.registerAsRead(null);
+    }
+
+    @Override
+    public void markFieldWritten(AnalysisField field) {
+        field.registerAsWritten(null);
     }
 
     @Override

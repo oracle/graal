@@ -32,22 +32,26 @@ import jdk.vm.ci.meta.JavaConstant;
 import java.util.Arrays;
 
 public class MethodSummary {
-    public static final MethodSummary EMPTY = new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], new AnalysisType[0], new AnalysisType[0], new AnalysisField[0], new JavaConstant[0]);
+    public static final MethodSummary EMPTY = new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], new AnalysisType[0], new AnalysisType[0], new AnalysisField[0], new AnalysisField[0],
+                    new JavaConstant[0]);
 
     public final AnalysisMethod[] invokedMethods;
     public final AnalysisMethod[] implementationInvokedMethods;
     public final AnalysisType[] accessedTypes;
     public final AnalysisType[] instantiatedTypes;
-    public final AnalysisField[] accessedFields;
+    public final AnalysisField[] readFields;
+    public final AnalysisField[] writtenFields;
     public final JavaConstant[] embeddedConstants;
 
-    public MethodSummary(AnalysisMethod[] invokedMethods, AnalysisMethod[] implementationInvokedMethods, AnalysisType[] accessedTypes, AnalysisType[] instantiatedTypes, AnalysisField[] accessedFields,
+    public MethodSummary(AnalysisMethod[] invokedMethods, AnalysisMethod[] implementationInvokedMethods, AnalysisType[] accessedTypes, AnalysisType[] instantiatedTypes, AnalysisField[] readFields,
+                    AnalysisField[] writtenFields,
                     JavaConstant[] embeddedConstants) {
         this.invokedMethods = invokedMethods;
         this.implementationInvokedMethods = implementationInvokedMethods;
         this.accessedTypes = accessedTypes;
         this.instantiatedTypes = instantiatedTypes;
-        this.accessedFields = accessedFields;
+        this.readFields = readFields;
+        this.writtenFields = writtenFields;
         this.embeddedConstants = embeddedConstants;
     }
 
@@ -55,10 +59,11 @@ public class MethodSummary {
     public String toString() {
         return "MethodSummary{" +
                         "invokedMethods=" + Arrays.toString(invokedMethods) +
-                        "implementationInvokedMethods=" + Arrays.toString(implementationInvokedMethods) +
+                        ", implementationInvokedMethods=" + Arrays.toString(implementationInvokedMethods) +
                         ", accessedTypes=" + Arrays.toString(accessedTypes) +
                         ", instantiatedTypes=" + Arrays.toString(instantiatedTypes) +
-                        ", accessedFields=" + Arrays.toString(accessedFields) +
+                        ", readFields=" + Arrays.toString(readFields) +
+                        ", writtenFields=" + Arrays.toString(writtenFields) +
                         ", embeddedConstants=" + Arrays.toString(embeddedConstants) +
                         '}';
     }

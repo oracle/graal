@@ -109,6 +109,10 @@ public interface ReachabilityAnalysis {
         markFieldAccessed(field);
     }
 
+    default void markFieldWritten(AnalysisField field) {
+        markFieldAccessed(field);
+    }
+
     void markMethodImplementationInvoked(AnalysisMethod method, Object reason);
 
     /**

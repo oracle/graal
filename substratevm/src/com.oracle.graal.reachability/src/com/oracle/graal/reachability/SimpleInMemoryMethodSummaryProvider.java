@@ -43,9 +43,11 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import java.util.ArrayList;
@@ -86,7 +88,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
         List<AnalysisType> accessedTypes = new ArrayList<>();
         List<AnalysisType> instantiatedTypes = new ArrayList<>();
-        List<AnalysisField> accessedFields = new ArrayList<>();
+        List<AnalysisField> readFields = new ArrayList<>();
+        List<AnalysisField> writtenFields = new ArrayList<>();
         List<AnalysisMethod> invokedMethods = new ArrayList<>();
         List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
         List<JavaConstant> embeddedConstants = new ArrayList<>();
@@ -120,8 +123,15 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 InstanceOfNode node = (InstanceOfNode) n;
                 accessedTypes.add(analysisType(node.type().getType()));
             } else if (n instanceof AccessFieldNode) {
-                AccessFieldNode node = (AccessFieldNode) n;
-                accessedFields.add(analysisField(node.field()));
+                if (n instanceof LoadFieldNode) {
+                    LoadFieldNode node = (LoadFieldNode) n;
+                    readFields.add(analysisField(node.field()));
+                } else if (n instanceof StoreFieldNode) {
+                    StoreFieldNode node = (StoreFieldNode) n;
+                    writtenFields.add(analysisField(node.field()));
+                } else {
+                    throw AnalysisError.shouldNotReachHere("Unhalded AccessFieldNode Type");
+                }
             } else if (n instanceof Invoke) {
                 Invoke node = (Invoke) n;
                 CallTargetNode.InvokeKind kind = node.getInvokeKind();
@@ -138,7 +148,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         }
         return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
                         accessedTypes.toArray(new AnalysisType[0]),
-                        instantiatedTypes.toArray(new AnalysisType[0]), accessedFields.toArray(new AnalysisField[0]), embeddedConstants.toArray(new JavaConstant[0]));
+                        instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
+                        embeddedConstants.toArray(new JavaConstant[0]));
     }
 
     private AnalysisType analysisType(ResolvedJavaType type) {
