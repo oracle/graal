@@ -369,19 +369,25 @@ final class SVGSamplerOutput {
 
             @Override
             public boolean equals(Object obj) {
-                if (this == obj)
+                if (this == obj) {
                     return true;
-                if (obj == null)
+                }
+                if (obj == null) {
                     return false;
-                if (getClass() != obj.getClass())
+                }
+                if (getClass() != obj.getClass()) {
                     return false;
+                }
                 SampleKey other = (SampleKey) obj;
-                if (nameId != other.nameId)
+                if (nameId != other.nameId) {
                     return false;
-                if (sourceId != other.sourceId)
+                }
+                if (sourceId != other.sourceId) {
                     return false;
-                if (sourceLine != other.sourceLine)
+                }
+                if (sourceLine != other.sourceLine) {
                     return false;
+                }
                 return true;
             }
         }
@@ -410,38 +416,38 @@ final class SVGSamplerOutput {
 
         private int indexForSampleKey(String name, String sourceFile, int line) {
             int nameId = nameHash.computeIfAbsent(name, k -> {
-                    sampleNames.put(k);
-                    return nameCounter++;
-                });
+                sampleNames.put(k);
+                return nameCounter++;
+            });
             int sourceId = sourceHash.computeIfAbsent(sourceFile, k -> {
-                    sourceNames.put(k);
-                    return sourceCounter++;
-                });
+                sourceNames.put(k);
+                return sourceCounter++;
+            });
             return keyHash.computeIfAbsent(new SampleKey(nameId, sourceId, line), k -> {
-                    sampleKeys.add(k);
-                    JSONArray jsonKey = new JSONArray();
-                    jsonKey.put(k.nameId);
-                    jsonKey.put(k.sourceId);
-                    jsonKey.put(k.sourceLine);
-                    sampleJsonKeys.put(jsonKey);
-                    return keyCounter++;
-                });
+                sampleKeys.add(k);
+                JSONArray jsonKey = new JSONArray();
+                jsonKey.put(k.nameId);
+                jsonKey.put(k.sourceId);
+                jsonKey.put(k.sourceLine);
+                sampleJsonKeys.put(jsonKey);
+                return keyCounter++;
+            });
         }
 
         private HashMap<Integer, HashMap<SampleKey, JSONObject>> recursiveChildMap = new HashMap<>();
 
         private HashMap<SampleKey, JSONObject> childrenByKeyForSample(JSONObject sample) {
             return recursiveChildMap.computeIfAbsent(sample.getInt("id"), k -> {
-                    HashMap<SampleKey, JSONObject> childMap = new HashMap<>();
-                    return childMap;
-                });
+                HashMap<SampleKey, JSONObject> childMap = new HashMap<>();
+                return childMap;
+            });
         }
 
         private static final class RecursivePositionTask {
             JSONObject sample;
             long x;
 
-            public RecursivePositionTask(JSONObject sample, long x) {
+            RecursivePositionTask(JSONObject sample, long x) {
                 this.sample = sample;
                 this.x = x;
             }
@@ -513,7 +519,7 @@ final class SVGSamplerOutput {
             child.put("ri", child.getInt("i"));
             child.put("rh", child.getInt("h"));
         }
-        
+
         private static void mergeCounts(JSONObject a, JSONObject b, boolean child) {
             int aRI = a.has("ri") ? a.getInt("ri") : a.getInt("i");
             int aRC = a.has("rc") ? a.getInt("rc") : a.getInt("c");
@@ -1140,7 +1146,7 @@ final class SVGSamplerOutput {
             if (sample.has("s")) {
                 JSONArray children = sample.getJSONArray("s");
                 for (Object childId : children) {
-                    samples.add(owner.sampleDataForId((Integer)childId));
+                    samples.add(owner.sampleDataForId((Integer) childId));
                 }
             }
         }
