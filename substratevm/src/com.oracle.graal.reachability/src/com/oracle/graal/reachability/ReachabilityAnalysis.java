@@ -39,6 +39,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
 import java.util.Set;
@@ -139,44 +140,48 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         }
         try {
             MethodSummary summary = methodSummaryProvider.getSummary(this, method);
-            for (AnalysisMethod invokedMethod : summary.invokedMethods) {
-                markMethodInvoked(invokedMethod);
-            }
-            for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-// markMethodInvoked(invokedMethod);
-                markMethodImplementationInvoked(invokedMethod, method);
-            }
-            for (AnalysisType type : summary.accessedTypes) {
-                markTypeReachable(type);
-            }
-            for (AnalysisType type : summary.instantiatedTypes) {
-                markTypeInstantiated(type);
-            }
-            for (AnalysisField field : summary.readFields) {
-                markFieldRead(field);
-            }
-            for (AnalysisField field : summary.writtenFields) {
-                markFieldWritten(field);
-            }
-            for (JavaConstant constant : summary.embeddedConstants) {
-                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-                    // todo heap initiate scanning
-                    // track the constant
-                    if (this.scanningPolicy().trackConstant(this, constant)) {
-                        BytecodePosition position = new BytecodePosition(null, method, 0);
-                        getUniverse().registerEmbeddedRoot(constant, position);
-
-                        Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
-                        AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
-                        markTypeInHeap(type);
-                    }
-                }
-            }
+            processSummary(method, summary);
         } catch (Throwable ex) {
             System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));
             System.err.println(ex + " " + ex.getMessage());
             System.err.println("Parsing reason: " + method.getReason());
             ex.printStackTrace();
+        }
+    }
+
+    private void processSummary(AnalysisMethod method, MethodSummary summary) {
+        for (AnalysisMethod invokedMethod : summary.invokedMethods) {
+            markMethodInvoked(invokedMethod);
+        }
+        for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
+// markMethodInvoked(invokedMethod);
+            markMethodImplementationInvoked(invokedMethod, method);
+        }
+        for (AnalysisType type : summary.accessedTypes) {
+            markTypeReachable(type);
+        }
+        for (AnalysisType type : summary.instantiatedTypes) {
+            markTypeInstantiated(type);
+        }
+        for (AnalysisField field : summary.readFields) {
+            markFieldRead(field);
+        }
+        for (AnalysisField field : summary.writtenFields) {
+            markFieldWritten(field);
+        }
+        for (JavaConstant constant : summary.embeddedConstants) {
+            if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+                // todo heap initiate scanning
+                // track the constant
+                if (this.scanningPolicy().trackConstant(this, constant)) {
+                    BytecodePosition position = new BytecodePosition(null, method, 0);
+                    getUniverse().registerEmbeddedRoot(constant, position);
+
+                    Object obj = getSnippetReflectionProvider().asObject(Object.class, constant);
+                    AnalysisType type = getMetaAccess().lookupJavaType(obj.getClass());
+                    markTypeInHeap(type);
+                }
+            }
         }
     }
 
@@ -306,5 +311,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     public TypeState getAllSynchronizedTypeState() {
         // todo don't overapproximate so much
         return objectType.getTypeFlow(this, true).getState();
+    }
+
+    public void processGraph(StructuredGraph graph) {
+        MethodSummary summary = methodSummaryProvider.getSummary(this, graph);
+        // todo figure out what to pass
+        processSummary(null, summary);
     }
 }

@@ -86,6 +86,15 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         // to preserve the graphs for compilation
         method.setAnalyzedGraph(decoded);
 
+        return createSummaryFromGraph(decoded);
+    }
+
+    @Override
+    public MethodSummary getSummary(BigBang bigBang, StructuredGraph graph) {
+        return createSummaryFromGraph(graph);
+    }
+
+    private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
         List<AnalysisType> accessedTypes = new ArrayList<>();
         List<AnalysisType> instantiatedTypes = new ArrayList<>();
         List<AnalysisField> readFields = new ArrayList<>();
@@ -93,7 +102,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         List<AnalysisMethod> invokedMethods = new ArrayList<>();
         List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
         List<JavaConstant> embeddedConstants = new ArrayList<>();
-        for (Node n : decoded.getNodes()) {
+        for (Node n : graph.getNodes()) {
             if (n instanceof NewInstanceNode) {
                 NewInstanceNode node = (NewInstanceNode) n;
                 instantiatedTypes.add(analysisType(node.instanceClass()));

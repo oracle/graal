@@ -1010,11 +1010,19 @@ public class NativeImageGenerator {
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bb.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
+            Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
+            // todo refactor
             if (bb instanceof NativeImagePointsToAnalysis) {
-                // todo refactor
-                for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
+                for (StructuredGraph graph : snippetGraphs) {
                     HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph).registerUsedElements(false);
                 }
+            } else if (bb instanceof NativeImageReachabilityAnalysis) {
+                NativeImageReachabilityAnalysis reachabilityAnalysis = (NativeImageReachabilityAnalysis) bb;
+                for (StructuredGraph graph : snippetGraphs) {
+                    reachabilityAnalysis.processGraph(graph);
+                }
+            } else {
+                throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
             }
         }
     }

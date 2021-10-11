@@ -26,7 +26,10 @@ package com.oracle.graal.reachability;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 public interface MethodSummaryProvider {
     MethodSummary getSummary(BigBang bigBang, AnalysisMethod method);
+
+    MethodSummary getSummary(BigBang bigBang, StructuredGraph graph);
 }
