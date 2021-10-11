@@ -513,15 +513,6 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def hosting_registry(self):
         return java_vm_registry
 
-class SulongMultiContextVm(SulongVm):
-    def name(self):
-        return "sulong-multi"
-
-    def launcherClass(self):
-        return "com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"
-
-    def launcherName(self):
-        return "llimul"
 
 class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
 
@@ -618,7 +609,6 @@ native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(SulongVm(), _suite, 10)
-native_vm_registry.add_vm(SulongMultiContextVm(), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',

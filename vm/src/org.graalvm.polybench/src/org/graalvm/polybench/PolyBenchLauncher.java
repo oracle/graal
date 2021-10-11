@@ -329,7 +329,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         for (Map.Entry<Integer, List<String>> runOptionsEntry : runOptionsMap.entrySet()) {
             Map<String, String> runOptions = config.polyglotRunOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
             if (useExperimental) {
-                // the enabled experimental-options flag must be propagated to runOptions to enable parsing of
+                // the enabled experimental-options flag must be propagated to runOptions to enable
+                // parsing of
                 // run-level experimental options
                 runOptionsEntry.getValue().add("--experimental-options");
             }
