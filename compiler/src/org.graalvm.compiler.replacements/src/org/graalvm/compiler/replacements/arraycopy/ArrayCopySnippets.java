@@ -106,7 +106,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class ArrayCopySnippets implements Snippets {
 
-    private enum ArrayCopyTypeCheck {
+    protected enum ArrayCopyTypeCheck {
         UNDEFINED_ARRAY_TYPE_CHECK,
         // either we know that both objects are arrays and have the same type,
         // or we apply generic array copy snippet, which enforces type check
@@ -160,7 +160,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         elementKindCounter.inc();
@@ -181,7 +181,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         elementKindCounter.inc();
@@ -204,7 +204,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
@@ -224,7 +224,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
@@ -308,7 +308,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     /**
      * Writing this as individual if statements to avoid a merge without a frame state.
      */
-    private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, Counters counters) {
+    protected void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
         if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
@@ -332,7 +332,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         counters.checkSuccessCounter.inc();
     }
 
-    private void checkArrayTypes(Object nonNullSrc, Object nonNullDest, ArrayCopyTypeCheck arrayTypeCheck) {
+    protected void checkArrayTypes(Object nonNullSrc, Object nonNullDest, ArrayCopyTypeCheck arrayTypeCheck) {
         if (arrayTypeCheck == ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK) {
             // nothing to do
         } else if (arrayTypeCheck == ArrayCopyTypeCheck.HUB_BASED_ARRAY_TYPE_CHECK) {
