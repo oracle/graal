@@ -148,7 +148,7 @@ public abstract class StaticProperty {
             if (type.isPrimitive()) {
                 throwIllegalArgumentException(null);
             }
-        } else if (!type.isAssignableFrom(value.getClass())) {
+        } else if (!type.isInstance(value)) {
             throwIllegalArgumentException(value.getClass());
         }
     }
