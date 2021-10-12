@@ -14,9 +14,42 @@ permalink: /reference-manual/native-image/BuildConfiguration/
 * [Building Native Image with Java Reflection Example](Agent.md#building-native-image-with-java-reflection-example)
 * [Agent Advanced Usage](Agent.md#agent-advanced-usage)
 
-Native Image supports a wide range of options to configure a native image build process.
+Native Image builds a binary based on the closed-world view of the program from the classpath. The closed-world view of the program is built with *reachability analysis* that starts from an entry point (e.g., the `main` function) and finds all potentially executable code.
 
-## Embedding a Configuration File
+Due to the *dynamic features of the JDK*, code and resources are not always detectable by the reachability analysis of Native Image. For example, in
+```java
+  Class<?> c = Class.forName(Files.readString(path));
+```
+the native image analysis can't know which class will be needed at run time as that information is hidden in an external file.
+
+To overcome this Native Image requires *configuration* for dynamic features of the JDK. The JDK constructs that require configuration are:
+ 1) Reflection - When method, field, or type are accessed through reflection.
+ 2) JNI - If a method, field, or type are accessed from native code via JNI.
+ 2) Dynamic Proxies - The
+ 3) Resources - when resourcess are accessed
+ 4) Serialization - if a type is serialized or deserialized.
+ 5) Classes that will be loaded dynamically - when
+
+The image build can be informed about those features through three distinct mechanisms:
+
+ 1) [Configuration in the Code](#configuration-in-the-code)--preferred as no information is duplicated.
+
+ 2) [Configuration with Files](#configuration-with-files)--for dynamic constructs that can't be configured directly in the code or the code is not accessible.
+
+ 3) [Native Image Plugins](#native-image-plugins) (aka. *features*)--for advanced use cases where complex analysis of code is necessary. This method should be used only if configuration in code itself or with files is not possible.
+
+## Configuration in the Code
+
+### Partial Evaluation of Function Calls
+
+## Defining the Closed World with Configuration Files
+
+### Conditional Configuration in Files
+
+## Configuration with Features
+
+
+# Additional Configuration
 
 A recommended way to provide configuration is to embed a
 **native-image.properties** file into a project JAR file. The Native Image builder
