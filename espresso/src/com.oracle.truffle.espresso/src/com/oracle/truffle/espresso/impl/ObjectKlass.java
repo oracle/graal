@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -146,6 +147,7 @@ public final class ObjectKlass extends Klass {
     private final StaticObject definingClassLoader;
 
     private final LeafTypeAssumption leafTypeAssumption;
+    private final SingleImplementor implementor;
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
@@ -236,6 +238,7 @@ public final class ObjectKlass extends Klass {
         }
 
         this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -1417,6 +1420,11 @@ public final class ObjectKlass extends Klass {
     public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
         Objects.requireNonNull(assumptionAccessor);
         return leafTypeAssumption;
+    }
+
+    public SingleImplementor getImplementor(ClassHierarchyAccessor accessor) {
+        Objects.requireNonNull(accessor);
+        return implementor;
     }
 
     public final class KlassVersion {

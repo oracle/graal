@@ -73,4 +73,14 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     public LeafTypeAssumption isLeafClass(ObjectKlass klass) {
         return klass.getLeafTypeAssumption(classHierarchyInfoAccessor);
     }
+
+    @Override
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+        return SingleImplementor.Invalid;
+    }
+
+    @Override
+    public SingleImplementor getSingleImplementor(ObjectKlass klass) {
+        return klass.getImplementor(classHierarchyInfoAccessor);
+    }
 }

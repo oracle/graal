@@ -55,4 +55,8 @@ public interface ClassHierarchyOracle {
      *         {@code klass} is created.
      */
     LeafTypeAssumption isLeafClass(ObjectKlass klass);
+
+    SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass);
+
+    SingleImplementor getSingleImplementor(ObjectKlass klass);
 }

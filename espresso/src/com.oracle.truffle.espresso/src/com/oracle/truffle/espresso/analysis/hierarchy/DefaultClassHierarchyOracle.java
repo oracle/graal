@@ -35,13 +35,38 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         markAncestorsAsNonLeaf(newKlass);
 
-        if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
-        }
         if (newKlass.isAbstract() || newKlass.isInterface()) {
             return NotLeaf;
         }
+        // this is a concrete klass, add it to implementors of super classes and interfaces
+        addImplementorToSuperInterfaces(newKlass);
+        if (newKlass.isFinalFlagSet()) {
+            return FinalIsAlwaysLeaf;
+        }
         return new LeafTypeAssumptionImpl(newKlass);
+    }
+
+    /**
+     * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
+     * parent interfaces.
+     */
+    private static void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+        if (superInterface.getImplementor(classHierarchyInfoAccessor).hasValue().isValid()) {
+            superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
+            for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
+                addImplementor(ancestorInterface, implementor);
+            }
+        }
+    }
+
+    private static void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
+        ObjectKlass currentKlass = newKlass;
+        do {
+            for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
+                addImplementor(superInterface, newKlass);
+            }
+            currentKlass = currentKlass.getSuperKlass();
+        } while (currentKlass != null && currentKlass.getImplementor(classHierarchyInfoAccessor).hasValue().isValid());
     }
 
     private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
@@ -50,5 +75,10 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
             currentParent.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
             currentParent = currentParent.getSuperKlass();
         }
+    }
+
+    @Override
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+        return SingleImplementor.createImplementor(klass);
     }
 }
