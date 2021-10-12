@@ -443,7 +443,7 @@ public final class ThreadsAccess implements ContextAccess {
                         } else if (s == KILL) {
                             throw new EspressoExitException(meta.getContext().getExitStatus());
                         }
-                        // Stop status has been
+                        // Stop status has been cleared somewhere else.
                         assert s == NORMAL || s == EXITING;
                         return;
                     }
