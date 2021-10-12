@@ -30,6 +30,8 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_UR
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.reflect.Method;
@@ -46,6 +48,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -59,6 +62,7 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysis;
@@ -550,6 +554,8 @@ public class NativeImageGenerator {
                 return;
             }
 
+            dumpAnalysisStats();
+
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
@@ -697,6 +703,93 @@ public class NativeImageGenerator {
                 ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             }
         }
+    }
+
+    private static final String DUMP_FOLDER = "/Users/dkozak/tmp/hello-dir/stats/";
+
+    private void dumpAnalysisStats() {
+        AnalysisUniverse universe = getBigbang().getUniverse();
+        List<String> reachableTypes = universe.getTypes().stream().filter(AnalysisType::isReachable).map(AnalysisType::getName).sorted().collect(Collectors.toList());
+        List<String> invokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isInvoked).map(it -> it.format("%H.%n(%P)")).sorted().collect(Collectors.toList());
+        List<String> implInvokedMethods = universe.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).map(it -> it.format("%H.%n(%P)")).sorted().collect(Collectors.toList());
+        System.out.println("Reachable types " + reachableTypes.size());
+        System.out.println("Invoked methods " + invokedMethods.size());
+        System.out.println("Implementation invoked methods " + implInvokedMethods.size());
+
+        boolean useReachability = NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue();
+        String fileName = useReachability ? "reachability_" : "points-to_";
+
+        List<Pair<List<String>, String>> pairs = Arrays.asList(Pair.create(reachableTypes, "types"), Pair.create(invokedMethods, "invokedMethods"),
+                Pair.create(implInvokedMethods, "implInvokedMethods"));
+
+        for (Pair<List<String>, String> pair : pairs) {
+            try (FileWriter writer = new FileWriter(DUMP_FOLDER + fileName + pair.getRight())) {
+                for (String line : pair.getLeft()) {
+                    writer.write(line);
+                    writer.write('\n');
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private String dumpChain(AnalysisMethod method) {
+        ArrayList<String> methods = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+
+        boolean success = dfs(method, methods, seen);
+        StringBuilder builder = new StringBuilder();
+        if (!success) {
+            builder.append("Path is incomplete :X \n");
+        }
+        return serializePath(methods, builder);
+    }
+
+    private String serializePath(ArrayList<String> methods, StringBuilder builder) {
+        for (int i = methods.size() - 1; i >= 0; i--) {
+            builder.append(methods.get(i));
+            if (i != 0)
+                builder.append("->");
+        }
+        return builder.toString();
+    }
+
+    private boolean dfs(AnalysisMethod method, ArrayList<String> methods, Set<String> seen) {
+        String name = method.format("%H.%n(%P)");
+        if (!seen.add(name)) {
+            return false;
+        }
+        methods.add(name);
+        if (method.isRootMethod()) {
+            return true;
+        }
+        Set<AnalysisMethod> callers = method.getCallers();
+        for (AnalysisMethod caller : callers) {
+            if (dfs(caller, methods, seen)) {
+                return true;
+            }
+        }
+        if (callers.isEmpty()) {
+            System.out.println(serializePath(methods, new StringBuilder()));
+        }
+        methods.remove(methods.size() - 1);
+        return false;
+    }
+
+    void reportBuildArtifacts(String imageName) {
+        Path buildDir = generatedFiles(HostedOptionValues.singleton());
+        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
+            writer.println("[" + artifactType + "]");
+            if (artifactType == BuildArtifacts.ArtifactType.JDK_LIB_SHIM) {
+                writer.println("# Note that shim JDK libraries depend on this");
+                writer.println("# particular native image (including its name)");
+                writer.println("# and therefore cannot be used with others.");
+            }
+            paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
+            writer.println();
+        });
+        ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer);
     }
 
     @SuppressWarnings("try")

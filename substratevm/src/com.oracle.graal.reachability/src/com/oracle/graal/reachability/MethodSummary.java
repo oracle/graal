@@ -67,4 +67,8 @@ public class MethodSummary {
                         ", embeddedConstants=" + Arrays.toString(embeddedConstants) +
                         '}';
     }
+
+    public MethodSummary withoutMethods() {
+        return new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants);
+    }
 }

@@ -38,10 +38,18 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
@@ -154,7 +162,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             markMethodInvoked(invokedMethod);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
-// markMethodInvoked(invokedMethod);
+            markMethodInvoked(invokedMethod);
             markMethodImplementationInvoked(invokedMethod, method);
         }
         for (AnalysisType type : summary.accessedTypes) {
@@ -315,7 +323,41 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     public void processGraph(StructuredGraph graph) {
         MethodSummary summary = methodSummaryProvider.getSummary(this, graph);
-        // todo figure out what to pass
-        processSummary(null, summary);
+        AnalysisMethod method = analysisMethod(graph.method());
+        method.registerAsInvoked(null);
+        method.registerAsImplementationInvoked(null);
+        processSummary(method, summary.withoutMethods());
+
+        registerForeignCalls(graph);
+    }
+
+    private void registerForeignCalls(StructuredGraph graph) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ForeignCall) {
+                ForeignCall node = (ForeignCall) n;
+                registerForeignCall(node.getDescriptor());
+            } else if (n instanceof UnaryMathIntrinsicNode) {
+                UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
+                registerForeignCall(getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+            } else if (n instanceof BinaryMathIntrinsicNode) {
+                BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
+                registerForeignCall(getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
+            } else if (n instanceof FrameState) {
+                FrameState node = (FrameState) n;
+                AnalysisMethod method = (AnalysisMethod) node.getMethod();
+                if (method != null) {
+                    markTypeReachable(method.getDeclaringClass());
+                }
+            }
+        }
+    }
+
+    private void registerForeignCall(ForeignCallDescriptor descriptor) {
+        Optional<AnalysisMethod> targetMethod = getHostVM().handleForeignCall(descriptor, getProviders().getForeignCalls());
+        targetMethod.ifPresent(this::addRootMethod);
+    }
+
+    private AnalysisMethod analysisMethod(ResolvedJavaMethod method) {
+        return method instanceof AnalysisMethod ? ((AnalysisMethod) method) : universe.lookup(method);
     }
 }

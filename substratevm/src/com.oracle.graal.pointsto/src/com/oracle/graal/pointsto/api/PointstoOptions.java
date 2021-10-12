@@ -81,7 +81,7 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> ExtendedAsserts = new OptionKey<>(false);
 
     @Option(help = "Track the callers for methods and accessing methods for fields.")//
-    public static final OptionKey<Boolean> TrackAccessChain = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TrackAccessChain = new OptionKey<>(true);
 
     @Option(help = "Track the input for type flows.")//
     public static final OptionKey<Boolean> TrackInputFlows = new OptionKey<>(false);
