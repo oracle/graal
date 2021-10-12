@@ -397,7 +397,8 @@ public class AnalysisUniverse implements Universe {
         } else if (result instanceof ResolvedJavaMethod) {
             return (AnalysisMethod) result;
         }
-        throw new UnsupportedFeatureException("Unresolved method found. Probably there are some compilation or classpath problems. " + method.format("%H.%n(%p)"));
+        throw new UnsupportedFeatureException("Unresolved method found: " + (method != null ? method.format("%H.%n(%p)") : "null") +
+                        ". Probably there are some compilation or classpath problems. ");
     }
 
     @Override

@@ -296,7 +296,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 }
                 break;
             default:
-                throw shouldNotReachHere("Field recomputation of kind " + kind + " specified by alias " + annotated.format("%H.%n") + " not yet supported");
+                throw shouldNotReachHere("Field recomputation of kind " + kind + " for field " + original.format("%H.%n") +
+                                (annotated != null ? " specified by alias " + annotated.format("%H.%n") : "") +
+                                " not yet supported");
         }
         putCached(receiver, result);
         return result;

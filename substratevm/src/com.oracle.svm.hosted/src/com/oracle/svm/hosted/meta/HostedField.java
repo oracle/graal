@@ -151,6 +151,7 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
 
     public JavaConstant readStorageValue(JavaConstant receiver) {
         JavaConstant result = readValue(receiver);
+        assert result != null : "Cannot read value for field " + this.format("%H.%n");
         assert result.getJavaKind() == getType().getStorageKind() : this;
         return result;
     }
