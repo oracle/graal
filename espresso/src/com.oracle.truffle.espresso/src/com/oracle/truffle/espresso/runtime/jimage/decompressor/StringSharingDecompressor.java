@@ -39,9 +39,9 @@ import java.util.Properties;
  *
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public class StringSharingDecompressor implements ResourceDecompressor {
 
@@ -69,7 +69,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
 
     static {
 
-        //SIZES[CONSTANT_Utf8] = XXX;
+        // SIZES[CONSTANT_Utf8] = XXX;
         SIZES[CONSTANT_Integer] = 4;
         SIZES[CONSTANT_Float] = 4;
         SIZES[CONSTANT_Long] = 8;
@@ -93,12 +93,12 @@ public class StringSharingDecompressor implements ResourceDecompressor {
 
     @SuppressWarnings("fallthrough")
     public static byte[] normalize(StringsProvider provider, byte[] transformed,
-            int offset) throws IOException {
+                    int offset) throws IOException {
         DataInputStream stream = new DataInputStream(new ByteArrayInputStream(transformed,
-                offset, transformed.length - offset));
+                        offset, transformed.length - offset));
         ByteArrayOutputStream outStream = new ByteArrayOutputStream(transformed.length);
         DataOutputStream out = new DataOutputStream(outStream);
-        byte[] header = new byte[8]; //maginc/4, minor/2, major/2
+        byte[] header = new byte[8]; // maginc/4, minor/2, major/2
         stream.readFully(header);
         out.write(header);
         int count = stream.readUnsignedShort();
@@ -142,14 +142,14 @@ public class StringSharingDecompressor implements ResourceDecompressor {
             }
         }
         out.write(transformed, transformed.length - stream.available(),
-                stream.available());
+                        stream.available());
         out.flush();
 
         return outStream.toByteArray();
     }
 
     private static String reconstruct(StringsProvider reader, DataInputStream cr)
-            throws IOException {
+                    throws IOException {
         int descIndex = CompressIndexes.readInt(cr);
         String desc = reader.getString(descIndex);
         byte[] encodedDesc = getEncoded(desc);
@@ -211,8 +211,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
 
     private static ByteBuffer safeAdd(ByteBuffer current, byte[] bytes) {
         if (current.remaining() < bytes.length) {
-            ByteBuffer newBuffer = ByteBuffer.allocate((current.capacity()
-                    + bytes.length) * 2);
+            ByteBuffer newBuffer = ByteBuffer.allocate((current.capacity() + bytes.length) * 2);
             newBuffer.order(ByteOrder.BIG_ENDIAN);
             newBuffer.put(current.array(), 0, current.position());
             current = newBuffer;
@@ -232,7 +231,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
 
     @Override
     public byte[] decompress(StringsProvider reader, byte[] content,
-            int offset, long originalSize) throws Exception {
+                    int offset, long originalSize) throws Exception {
         return normalize(reader, content, offset);
     }
 }

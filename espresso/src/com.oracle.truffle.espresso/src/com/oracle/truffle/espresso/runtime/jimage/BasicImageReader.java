@@ -37,34 +37,32 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Objects;
 import java.util.stream.IntStream;
+
 import jdk.internal.jimage.decompressor.Decompressor;
 
 /**
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public class BasicImageReader implements AutoCloseable {
     @SuppressWarnings("removal")
     private static boolean isSystemProperty(String key, String value, String def) {
         // No lambdas during bootstrap
         return AccessController.doPrivileged(
-            new PrivilegedAction<Boolean>() {
-                @Override
-                public Boolean run() {
-                    return value.equals(System.getProperty(key, def));
-                }
-            });
+                        new PrivilegedAction<Boolean>() {
+                            @Override
+                            public Boolean run() {
+                                return value.equals(System.getProperty(key, def));
+                            }
+                        });
     }
 
-    static private final boolean IS_64_BIT =
-            isSystemProperty("sun.arch.data.model", "64", "32");
-    static private final boolean USE_JVM_MAP =
-            isSystemProperty("jdk.image.use.jvm.map", "true", "true");
-    static private final boolean MAP_ALL =
-            isSystemProperty("jdk.image.map.all", "true", IS_64_BIT ? "true" : "false");
+    static private final boolean IS_64_BIT = isSystemProperty("sun.arch.data.model", "64", "32");
+    static private final boolean USE_JVM_MAP = isSystemProperty("jdk.image.use.jvm.map", "true", "true");
+    static private final boolean MAP_ALL = isSystemProperty("jdk.image.map.all", "true", IS_64_BIT ? "true" : "false");
 
     private final Path imagePath;
     private final ByteOrder byteOrder;
@@ -82,7 +80,7 @@ public class BasicImageReader implements AutoCloseable {
 
     @SuppressWarnings("removal")
     protected BasicImageReader(Path path, ByteOrder byteOrder)
-            throws IOException {
+                    throws IOException {
         this.imagePath = Objects.requireNonNull(path);
         this.byteOrder = Objects.requireNonNull(byteOrder);
         this.name = this.imagePath.toString();
@@ -93,7 +91,7 @@ public class BasicImageReader implements AutoCloseable {
             // Check to see if the jvm has opened the file using libjimage
             // native entry when loading the image for this runtime
             map = NativeImageBuffer.getNativeMap(name);
-         } else {
+        } else {
             map = null;
         }
 
@@ -108,15 +106,10 @@ public class BasicImageReader implements AutoCloseable {
                 public Void run() {
                     if (BasicImageReader.class.getClassLoader() == null) {
                         try {
-                            Class<?> fileChannelImpl =
-                                Class.forName("sun.nio.ch.FileChannelImpl");
-                            Method setUninterruptible =
-                                    fileChannelImpl.getMethod("setUninterruptible");
+                            Class<?> fileChannelImpl = Class.forName("sun.nio.ch.FileChannelImpl");
+                            Method setUninterruptible = fileChannelImpl.getMethod("setUninterruptible");
                             setUninterruptible.invoke(channel);
-                        } catch (ClassNotFoundException |
-                                 NoSuchMethodException |
-                                 IllegalAccessException |
-                                 InvocationTargetException ex) {
+                        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
                             // fall thru - will only happen on JDK-8 systems where this code
                             // is only used by tools using jrt-fs (non-critical.)
                         }
@@ -193,10 +186,10 @@ public class BasicImageReader implements AutoCloseable {
         }
 
         if (result.getMajorVersion() != ImageHeader.MAJOR_VERSION ||
-            result.getMinorVersion() != ImageHeader.MINOR_VERSION) {
+                        result.getMinorVersion() != ImageHeader.MINOR_VERSION) {
             throw new IOException("The image file \"" + name + "\" is not " +
-                "the correct version. Major: " + result.getMajorVersion() +
-                ". Minor: " + result.getMinorVersion());
+                            "the correct version. Major: " + result.getMajorVersion() +
+                            ". Minor: " + result.getMinorVersion());
         }
 
         return result;
@@ -204,10 +197,10 @@ public class BasicImageReader implements AutoCloseable {
 
     private static ByteBuffer slice(ByteBuffer buffer, int position, int capacity) {
         // Note that this is the only limit and position manipulation of
-        // BasicImageReader private ByteBuffers.  The synchronize could be avoided
+        // BasicImageReader private ByteBuffers. The synchronize could be avoided
         // by cloning the buffer to make a local copy, but at the cost of creating
         // a new object.
-        synchronized(buffer) {
+        synchronized (buffer) {
             buffer.limit(position + capacity);
             buffer.position(position);
             return buffer.slice();
@@ -367,7 +360,7 @@ public class BasicImageReader implements AutoCloseable {
         }
 
         if (MAP_ALL) {
-            ByteBuffer buffer = slice(memoryMap, (int)offset, (int)size);
+            ByteBuffer buffer = slice(memoryMap, (int) offset, (int) size);
             buffer.order(ByteOrder.BIG_ENDIAN);
 
             return buffer;
@@ -389,7 +382,7 @@ public class BasicImageReader implements AutoCloseable {
             if (read != size) {
                 ImageBufferCache.releaseBuffer(buffer);
                 throw new RuntimeException("Short read: " + read +
-                                           " instead of " + size + " bytes");
+                                " instead of " + size + " bytes");
             }
 
             return buffer;
@@ -424,12 +417,12 @@ public class BasicImageReader implements AutoCloseable {
 
         if (compressedSize < 0 || Integer.MAX_VALUE < compressedSize) {
             throw new IndexOutOfBoundsException(
-                "Bad compressed size: " + compressedSize);
+                            "Bad compressed size: " + compressedSize);
         }
 
         if (uncompressedSize < 0 || Integer.MAX_VALUE < uncompressedSize) {
             throw new IndexOutOfBoundsException(
-                "Bad uncompressed size: " + uncompressedSize);
+                            "Bad uncompressed size: " + uncompressedSize);
         }
 
         if (compressedSize == 0) {
@@ -444,7 +437,7 @@ public class BasicImageReader implements AutoCloseable {
 
                 try {
                     bytesOut = decompressor.decompressResource(byteOrder,
-                            (int strOffset) -> getString(strOffset), bytesIn);
+                                    (int strOffset) -> getString(strOffset), bytesIn);
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
                 }

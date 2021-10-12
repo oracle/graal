@@ -29,9 +29,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,9 +45,9 @@ import java.util.function.Consumer;
 /**
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public final class ImageReader implements AutoCloseable {
     private final SharedImageReader reader;
@@ -95,7 +95,6 @@ public final class ImageReader implements AutoCloseable {
         ensureOpen();
         return reader.getRootDirectory();
     }
-
 
     public Node findNode(String name) throws IOException {
         ensureOpen();
@@ -165,11 +164,11 @@ public final class ImageReader implements AutoCloseable {
         requireOpen();
         int off = "/modules/".length();
         return reader.findNode("/modules")
-                     .getChildren()
-                     .stream()
-                     .map(Node::getNameString)
-                     .map(s -> s.substring(off, s.length()))
-                     .toArray(String[]::new);
+                        .getChildren()
+                        .stream()
+                        .map(Node::getNameString)
+                        .map(s -> s.substring(off, s.length()))
+                        .toArray(String[]::new);
     }
 
     public long[] getAttributes(int offset) {
@@ -238,7 +237,7 @@ public final class ImageReader implements AutoCloseable {
 
                 if (reader == null) {
                     // Will fail with an IOException if wrong byteOrder.
-                    reader =  new SharedImageReader(imagePath, byteOrder);
+                    reader = new SharedImageReader(imagePath, byteOrder);
                     OPEN_FILES.put(imagePath, reader);
                 } else if (reader.getByteOrder() != byteOrder) {
                     throw new IOException("\"" + reader.getName() + "\" is not an image file");
@@ -544,9 +543,7 @@ public final class ImageReader implements AutoCloseable {
 
         Directory makeDirectories(String parent) {
             Directory last = rootDir;
-            for (int offset = parent.indexOf('/', 1);
-                    offset != -1;
-                    offset = parent.indexOf('/', offset + 1)) {
+            for (int offset = parent.indexOf('/', 1); offset != -1; offset = parent.indexOf('/', offset + 1)) {
                 String dir = parent.substring(0, offset);
                 last = makeDirectory(dir, last);
             }
@@ -758,7 +755,7 @@ public final class ImageReader implements AutoCloseable {
             consumer.accept(this);
             for (Node child : children) {
                 if (child.isDirectory()) {
-                    ((Directory)child).walk(consumer);
+                    ((Directory) child).walk(consumer);
                 } else {
                     consumer.accept(child);
                 }
@@ -840,7 +837,7 @@ public final class ImageReader implements AutoCloseable {
 
         @Override
         public Node resolveLink(boolean recursive) {
-            return (recursive && link instanceof LinkNode) ? ((LinkNode)link).resolveLink(true) : link;
+            return (recursive && link instanceof LinkNode) ? ((LinkNode) link).resolveLink(true) : link;
         }
 
         @Override

@@ -24,20 +24,18 @@ package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  *
- * Index compressor. Use the minimal amount of bytes required to store
- * an integer.
+ * Index compressor. Use the minimal amount of bytes required to store an integer.
  *
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public class CompressIndexes {
     private static final int COMPRESSED_FLAG = 1 << (Byte.SIZE - 1);
@@ -106,12 +104,12 @@ public class CompressIndexes {
     public static byte[] compress(int value) {
         // Only positive values are supported.
         if (value < 0) {
-            throw new  IllegalArgumentException("value < 0");
+            throw new IllegalArgumentException("value < 0");
         }
 
         // Determine number of significant digits.
         int width = 32 - Integer.numberOfLeadingZeros(value);
-        // Determine number of byte to represent.  Allow for header if
+        // Determine number of byte to represent. Allow for header if
         // compressed.
         int size = Math.min(((width + HEADER_WIDTH - 1) >> 3) + 1, Integer.BYTES);
 
@@ -120,12 +118,12 @@ public class CompressIndexes {
 
         // Insert significant bytes in result.
         for (int i = 0; i < size; i++) {
-            result[i] = (byte)(value >> ((size - i - 1) * Byte.SIZE));
+            result[i] = (byte) (value >> ((size - i - 1) * Byte.SIZE));
         }
 
         // If compressed, mark and insert size.
         if (size < Integer.BYTES) {
-            result[0] |= (byte)(COMPRESSED_FLAG | (size << HEADER_SHIFT));
+            result[0] |= (byte) (COMPRESSED_FLAG | (size << HEADER_SHIFT));
         }
 
         return result;

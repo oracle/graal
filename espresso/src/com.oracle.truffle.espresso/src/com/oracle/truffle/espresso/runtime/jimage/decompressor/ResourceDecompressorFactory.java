@@ -31,9 +31,9 @@ import java.util.Properties;
  *
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public abstract class ResourceDecompressorFactory {
     private final String name;
@@ -44,6 +44,7 @@ public abstract class ResourceDecompressorFactory {
 
     /**
      * The Factory name.
+     * 
      * @return The name.
      */
     public String getName() {
@@ -52,12 +53,12 @@ public abstract class ResourceDecompressorFactory {
 
     /**
      * To build a new decompressor.
+     * 
      * @param properties Contains configuration.
      * @return A new decompressor.
      * @throws IOException
      */
     public abstract ResourceDecompressor newDecompressor(Properties properties)
-            throws IOException;
+                    throws IOException;
 
 }
-

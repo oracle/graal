@@ -27,25 +27,27 @@ import java.util.List;
 
 /**
  *
- * A descriptor parser used to extract java type strings from
- * UTF_8 descriptors.
+ * A descriptor parser used to extract java type strings from UTF_8 descriptors.
  *
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public class SignatureParser {
 
-   public static class ParseResult {
+    public static class ParseResult {
 
         public final List<String> types = new ArrayList<>();
         public String formatted;
-        private ParseResult() {}
+
+        private ParseResult() {
+        }
     }
 
-    private SignatureParser() {}
+    private SignatureParser() {
+    }
 
     public static String reconstruct(String formatted, List<String> arguments) {
         int arg_index = 0;
@@ -58,12 +60,12 @@ public class SignatureParser {
             switch (c) {
                 case 'L': {
                     String pkg = arguments.get(arg_index);
-                    if(!pkg.isEmpty()) {
+                    if (!pkg.isEmpty()) {
                         out.append(pkg).append("/");
                     }
-                    arg_index+=1;
+                    arg_index += 1;
                     out.append(arguments.get(arg_index));
-                    arg_index+=1;
+                    arg_index += 1;
                     break;
                 }
                 default: {
@@ -85,14 +87,14 @@ public class SignatureParser {
                 case ';':
                 case ':':
                 case '<': {
-                    if(type != null) {
+                    if (type != null) {
                         String fullName = type.toString();
                         int endIndex = fullName.lastIndexOf("/");
                         String clazz = fullName;
                         String pkg = "";
-                        if(endIndex != -1) {
+                        if (endIndex != -1) {
                             pkg = fullName.substring(0, endIndex);
-                            clazz = fullName.substring(endIndex+1);
+                            clazz = fullName.substring(endIndex + 1);
                         }
                         res.types.add(pkg);
                         res.types.add(clazz);
@@ -103,7 +105,7 @@ public class SignatureParser {
                     break;
                 }
                 case 'L': {
-                    if(type == null) {
+                    if (type == null) {
                         type = new StringBuilder();
                         formatted.append(c);
                     } else {
@@ -112,7 +114,7 @@ public class SignatureParser {
                     break;
                 }
                 default: {
-                    if(type == null) {
+                    if (type == null) {
                         formatted.append(c);
                     } else {
                         type.append(c);

@@ -30,9 +30,9 @@ import java.util.Objects;
 /**
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public final class ImageHeader {
     public static final int MAGIC = 0xCAFEDADA;
@@ -50,15 +50,14 @@ public final class ImageHeader {
     private final int stringsSize;
 
     public ImageHeader(int resourceCount, int tableCount,
-            int locationsSize, int stringsSize) {
+                    int locationsSize, int stringsSize) {
         this(MAGIC, MAJOR_VERSION, MINOR_VERSION, 0, resourceCount,
-                tableCount, locationsSize, stringsSize);
+                        tableCount, locationsSize, stringsSize);
     }
 
     public ImageHeader(int magic, int majorVersion, int minorVersion,
-                int flags, int resourceCount,
-                int tableLength, int locationsSize, int stringsSize)
-    {
+                    int flags, int resourceCount,
+                    int tableLength, int locationsSize, int stringsSize) {
         this.magic = magic;
         this.majorVersion = majorVersion;
         this.minorVersion = minorVersion;
@@ -70,7 +69,7 @@ public final class ImageHeader {
     }
 
     public static int getHeaderSize() {
-       return HEADER_SLOTS * 4;
+        return HEADER_SLOTS * 4;
     }
 
     static ImageHeader readFrom(IntBuffer buffer) {
@@ -78,7 +77,7 @@ public final class ImageHeader {
 
         if (buffer.capacity() != HEADER_SLOTS) {
             throw new InternalError(
-                "jimage header not the correct size: " + buffer.capacity());
+                            "jimage header not the correct size: " + buffer.capacity());
         }
 
         int magic = buffer.get(0);
@@ -92,7 +91,7 @@ public final class ImageHeader {
         int stringsSize = buffer.get(6);
 
         return new ImageHeader(magic, majorVersion, minorVersion, flags,
-            resourceCount, tableLength, locationsSize, stringsSize);
+                        resourceCount, tableLength, locationsSize, stringsSize);
     }
 
     public void writeTo(ImageStream stream) {
@@ -154,10 +153,10 @@ public final class ImageHeader {
 
     public int getIndexSize() {
         return getHeaderSize() +
-               getRedirectSize() +
-               getOffsetsSize() +
-               getLocationsSize() +
-               getStringsSize();
+                        getRedirectSize() +
+                        getOffsetsSize() +
+                        getLocationsSize() +
+                        getStringsSize();
     }
 
     int getRedirectOffset() {
@@ -166,16 +165,16 @@ public final class ImageHeader {
 
     int getOffsetsOffset() {
         return getRedirectOffset() +
-               getRedirectSize();
+                        getRedirectSize();
     }
 
     int getLocationsOffset() {
         return getOffsetsOffset() +
-               getOffsetsSize();
+                        getOffsetsSize();
     }
 
     int getStringsOffset() {
         return getLocationsOffset() +
-               getLocationsSize();
+                        getLocationsSize();
     }
 }

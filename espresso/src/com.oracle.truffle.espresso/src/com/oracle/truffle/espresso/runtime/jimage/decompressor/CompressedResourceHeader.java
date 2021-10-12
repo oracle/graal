@@ -25,19 +25,17 @@ package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Objects;
-import jdk.internal.jimage.decompressor.ResourceDecompressor.StringsProvider;
 
 /**
  *
- * A resource header for compressed resource. This class is handled internally,
- * you don't have to add header to the resource, headers are added automatically
- * for compressed resources.
+ * A resource header for compressed resource. This class is handled internally, you don't have to
+ * add header to the resource, headers are added automatically for compressed resources.
  *
  * @implNote This class needs to maintain JDK 8 source compatibility.
  *
- * It is used internally in the JDK to implement jimage/jrtfs access,
- * but also compiled and delivered as part of the jrtfs.jar to support access
- * to the jimage file provided by the shipped JDK by tools running on JDK 8.
+ *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
+ *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
+ *           the shipped JDK by tools running on JDK 8.
  */
 public final class CompressedResourceHeader {
 
@@ -50,8 +48,8 @@ public final class CompressedResourceHeader {
     private final boolean isTerminal;
 
     public CompressedResourceHeader(long compressedSize,
-            long uncompressedSize, int decompressorNameOffset, int contentOffset,
-            boolean isTerminal) {
+                    long uncompressedSize, int decompressorNameOffset, int contentOffset,
+                    boolean isTerminal) {
         this.compressedSize = compressedSize;
         this.uncompressedSize = uncompressedSize;
         this.decompressorNameOffset = decompressorNameOffset;
@@ -71,9 +69,9 @@ public final class CompressedResourceHeader {
         return contentOffset;
     }
 
-    public String getStoredContent(StringsProvider provider) {
+    public String getStoredContent(ResourceDecompressor.StringsProvider provider) {
         Objects.requireNonNull(provider);
-        if(contentOffset == -1) {
+        if (contentOffset == -1) {
             return null;
         }
         return provider.getString(contentOffset);
@@ -96,7 +94,7 @@ public final class CompressedResourceHeader {
         buffer.putLong(uncompressedSize);
         buffer.putInt(decompressorNameOffset);
         buffer.putInt(contentOffset);
-        buffer.put(isTerminal ? (byte)1 : (byte)0);
+        buffer.put(isTerminal ? (byte) 1 : (byte) 0);
         return buffer.array();
     }
 
@@ -105,7 +103,7 @@ public final class CompressedResourceHeader {
     }
 
     public static CompressedResourceHeader readFromResource(ByteOrder order,
-            byte[] resource) {
+                    byte[] resource) {
         Objects.requireNonNull(order);
         Objects.requireNonNull(resource);
         if (resource.length < getSize()) {
@@ -114,7 +112,7 @@ public final class CompressedResourceHeader {
         ByteBuffer buffer = ByteBuffer.wrap(resource, 0, SIZE);
         buffer.order(order);
         int magic = buffer.getInt();
-        if(magic != MAGIC) {
+        if (magic != MAGIC) {
             return null;
         }
         long size = buffer.getLong();
@@ -123,6 +121,6 @@ public final class CompressedResourceHeader {
         int contentIndex = buffer.getInt();
         byte isTerminal = buffer.get();
         return new CompressedResourceHeader(size, uncompressedSize,
-                decompressorNameOffset, contentIndex, isTerminal == 1);
+                        decompressorNameOffset, contentIndex, isTerminal == 1);
     }
 }
