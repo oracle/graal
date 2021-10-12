@@ -35,8 +35,13 @@ function s(node) {        // show
     let name = name_for_sample(sample)
     let details = name + " (" + languageNames[sample.l] + ") - ";
     if (sample.hasOwnProperty("h")) {
-        details = details + "(Self:" + (sample.i + sample.c) + " samples " +
-            "Total: " + (sample.h) + " samples)";
+        if (fg_collapsed) {
+            details = details + "(Self:" + (sample.ri + sample.rc) + " samples " +
+                "Total: " + (sample.rh) + " samples)";
+        } else {
+            details = details + "(Self:" + (sample.i + sample.c) + " samples " +
+                "Total: " + (sample.h) + " samples)";
+        }
     } else {
         details = details + "(" + (sample.i + sample.c) + " samples)";
     }
@@ -70,37 +75,21 @@ function restore_attr(e, attr) {
     e.removeAttribute("_orig_"+attr);
 }
 
-function find_sample_in_tree(tree, id, parents, unrelated) {
-    if (tree.id == id) {
-        return tree;
-    } else if (tree.hasOwnProperty('s')) {
-        parents.push(tree)
-        let children = tree.s;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].id == id) {
-                for (let j = 0; j < i; j++) {
-                    unrelated.push(children[j]);
-                }
-                for (let j = i + 1; j < children.length; j++) {
-                    unrelated.push(children[j]);
-                }
-                return children[i];
-            } else if(children[i].id > id) {
-                for (let j = 0; j < i - 1; j++) {
-                    unrelated.push(children[j]);
-                }
-                for (let j = i; j < children.length; j++) {
-                    unrelated.push(children[j]);
-                }
-                return find_sample_in_tree(children[i - 1], id, parents, unrelated);
+function find_sample_in_tree(id, parents, unrelated) {
+    let result = profileData[id];
+    let sample = result;
+    let parent = sample.p
+    while (parent != null) {
+        parents.push(profileData[parent]);
+        for (const sibling of profileData[parent].s) {
+            if (sibling != sample.id) {
+                unrelated.push(profileData[sibling]);
             }
         }
-        for (let j = 0; j < children.length - 1; j++) {
-            unrelated.push(children[j]);
-        }
-        return find_sample_in_tree(children[children.length - 1], id, parents, unrelated);
+        sample = profileData[parent];
+        parent = sample.p;
     }
-    return null;
+    return result;
 }
 
 function validate_no_overlap(sample, parents, unrelated) {
@@ -149,36 +138,48 @@ function validate_no_overlap(sample, parents, unrelated) {
 function sample_parents_and_unrelated_for_id(id) {
     let parents = [];
     let unrelated = [];
-    let result =  [find_sample_in_tree(profileData, id, parents, unrelated), parents, unrelated];
+    let result =  [find_sample_in_tree(id, parents, unrelated), parents, unrelated];
     return result
 }
 
 function sample_for_id(id) {
-    return find_sample_in_tree(profileData, id, [], []);
-}
-
-function depth_for_id_in_tree(tree, id) {
-    if (tree.id == id) {
-        return 0;
-    } else if (tree.hasOwnProperty('s')) {
-        let children = tree.s;
-        for (let i = 0; i < children.length; i++) {
-            if (children[i].id == id) {
-                return 1;
-            } else if(children[i].id > id) {
-                return 1 + depth_for_id_in_tree(children[i - 1], id);
-            }
-        }
-        return 1 + depth_for_id_in_tree(children[children.length - 1], id);
-    }
-    return -1;
+    return profileData[id];
 }
 
 function depth_for_sample(sample) {
     if (!sample.hasOwnProperty("depth")) {
-        sample.depth = depth_for_id_in_tree(profileData, sample.id);
+        let parent = profileData[sample.p];
+        let depth = 0;
+        while (parent != null) {
+            if (parent.hasOwnProperty("depth")) {
+                depth += parent.depth + 1;
+                break;
+            } else {
+                depth += 1;
+            }
+            parent = profileData[sample.p];
+        }
+        sample.depth = depth;
     }
     return sample.depth;
+}
+
+function collapsed_depth_for_sample(sample) {
+    if (!sample.hasOwnProperty("rdepth")) {
+        let parent = profileData[sample.rp];
+        let depth = 0;
+        while (parent != null) {
+            if (parent.hasOwnProperty("rdepth")) {
+                depth += parent.rdepth + 1;
+                break;
+            } else {
+                depth += 1;
+            }
+            parent = profileData[sample.rp];
+        }
+        sample.rdepth = depth;
+    }
+    return sample.rdepth;
 }
 
 function sample_and_children_depth_first(sample) {
@@ -191,21 +192,60 @@ function sample_and_children_depth_first(sample) {
                 let result = stack.pop();
 
                 let rdepth = depth_for_sample(result);
-                if (result.hasOwnProperty("s")) {
-                    let children = result.s.slice();
-                    children.reverse();
-
-                    for(const child of children) {
-                        if (!child.hasOwnProperty("depth")) {
-                            child.depth = rdepth + 1;
-                        }
-                        stack.push(child);
+                for(const child of direct_children(result).reverse()) {
+                    if (!child.hasOwnProperty("depth")) {
+                        child.depth = rdepth + 1;
                     }
+                    stack.push(child);
                 }
                 return {value: result, done: false}
             }
         }
     }
+}
+
+function collapsed_sample_and_children_depth_first(sample) {
+    let stack = [sample];
+    return {
+        next: function() {
+            if (stack.length == 0) {
+                return {value: null, done: true}
+            } else {
+                let result = stack.pop();
+
+                let rdepth = depth_for_sample(result);
+                for(const child of collapsed_children(result).reverse()) {
+                    if (!child.hasOwnProperty("depth")) {
+                        child.depth = rdepth + 1;
+                    }
+                    stack.push(child);
+                }
+                return {value: result, done: false}
+            }
+        }
+    }
+}
+
+function direct_children(sample) {
+    let result = [];
+    if (sample.hasOwnProperty("s")) {
+        for (const childId of sample["s"]) {
+            let child = sample_for_id(childId);
+            result.push(child);
+        }
+    }
+    return result;
+}
+
+function collapsed_children(sample) {
+    let result = [];
+    if (sample.hasOwnProperty("rs")) {
+        for (const childId of sample["rs"]) {
+            let child = sample_for_id(childId);
+            result.push(child);
+        }
+    }
+    return result;
 }
 
 function title(e) {
@@ -218,12 +258,23 @@ function title(e) {
     }
 }
 
+function key_for_sample(sample) {
+    return sample.k;
+}
+
 function name_for_sample(sample) {
-    return profileNames[sample.n];
+    let key = sampleKeys[sample.k];
+    return profileNames[key[0]];
 }
 
 function source_for_sample(sample) {
-    return sourceNames[sample.f];
+    let key = sampleKeys[sample.k];
+    return sourceNames[key[1]];
+}
+
+function source_line_for_sample(sample) {
+    let key = sampleKeys[sample.k];
+    return key[2];
 }
 
 function function_name(e) {
@@ -319,52 +370,6 @@ function owner_resize(new_width) {
 }
 
 var help_strings = [];
-var help_state = false;
-
-function graph_create_help() {
-    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    e.id = "help";
-
-    let r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    svg.y.baseVal.value = 50;
-    r.className.baseVal = "popup";
-    r.x.baseVal.value = 0;
-    r.y.baseVal.value = 0;
-    r.width.baseVal.value = 250;
-    r.style.fill = "white";
-    r.style.stroke = "black";
-    r.style["stroke-width"] = 2;
-    r.rx.baseVal.value = 2;
-    r.ry.baseVal.vlaue = 2;
-
-    let t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    t.className.baseVal = "title";
-    t.style.textAnchor = "middle";
-    t.setAttribute("y", fg_frameheight * 2);
-    t.style.fontSize = fontSize * 1.5;
-    t.style.fontFamily = "Verdana";
-    t.style.fill = "rgb(0, 0, 0)";
-    t.textContent = "Keyboard shortcut";
-
-    e.appendChild(r);
-    e.appendChild(t);
-    e.style.display = "none";
-    svg.appendChild(e);
-
-    let entry_count = 0;
-
-    for (; entry_count < help_strings.length; entry_count++) {
-        graph_help_entry(e, entry_count, help_strings[entry_count][0], help_strings[entry_count][1]);
-    }
-
-    svg.x.baseVal.value = document.firstElementChild.width.baseVal.value - 250 - xpad;
-    t.setAttribute("x", 250 / 2);
-    r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
-    document.firstElementChild.appendChild(svg);
-    return e;
-
-}
 
 function graph_help_entry(e, i, key, description) {
     let y = (fg_frameheight * 2) + (i + 1) * fg_frameheight * 1.5;
@@ -422,23 +427,8 @@ function graph_popup_fix_width(e, right_justify) {
     if (right_justify) {
         e.parentElement.x.baseVal.value = fg_width - max_label_end - xpad;
     }
+    graph_ensure_space();
 };
-
-function graph_help() {
-    let e = document.getElementById("help");
-    if (e == null) {
-        e = graph_create_help();
-    }
-    if (e != null) {
-        if (e.style["display"] == "none") {
-            e.style["display"] = "block";
-            graph_popup_fix_width(e, true);
-        } else {
-            e.style["display"] = "none";
-        }
-    }
-    help_state = !help_state;
-}
 
 function graph_register_handler(key, description, action) {
     window.addEventListener("keydown", function (e) {
@@ -450,4 +440,17 @@ function graph_register_handler(key, description, action) {
     help_strings.push([key, description]);
 }
 
-graph_register_handler("?", "Display keyboard shortcuts", graph_help);
+function graph_ensure_space() {
+    let svg = document.firstElementChild;
+    let maxY = 0;
+    for (const e of svg.getElementsByTagName("svg")) {
+        if (svg.style["display"] != "none") {
+            let y = e.y.baseVal.value + e.height.baseVal.value;
+            if (y > maxY) {
+                maxY = y;
+            }
+        }
+    }
+    svg.height.baseVal.value = maxY;
+    svg.viewBox.baseVal.height = maxY;
+}

@@ -51,11 +51,15 @@ function update_color(color_type) {
     h_update_color(color_type);
 }
 
-function color_for_name(language_index, name) {
-    return colorData[language_index][name];
+function color_for_key(language_index, key) {
+    return colorData[language_index][key];
 }
 
 function color_for_compilation(interpreted, compiled) {
+    if (interpreted + compiled == 0) {
+        let gray = 192.0
+        return "rgb(" + gray.toFixed() + ", " + gray.toFixed() + ", " + gray.toFixed() + ")";
+    }
     let total = compiled + interpreted;
     let h = total == 0 ? 0.0 : (2.0 / 3.0) * (interpreted / total);
     let h6 = h * 6;
@@ -126,21 +130,10 @@ function color_create_legend() {
     t.style.fontSize = fontSize * 1.5;
     t.style.fontFamily = "Verdana";
     t.style.fill = "rgb(0, 0, 0)";
-    t.textContent = "Legend";
-
-    let t2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    t2.className.baseVal = "title";
-    t2.style.textAnchor = "middle";
-    t2.setAttribute("x", 125);
-    t2.setAttribute("y", fg_frameheight * 3);
-    t2.style.fontSize = fontSize;
-    t2.style.fontFamily = "Verdana";
-    t2.style.fill = "rgb(0, 0, 0)";
-    t2.textContent = "Press \"l\" to toggle legend";
+    t.textContent = "Legend & Help";
 
     e.appendChild(r);
     e.appendChild(t);
-    e.appendChild(t2);
     e.style.display = "none";
     svg.appendChild(e);
 
@@ -162,16 +155,26 @@ function color_create_legend() {
             }
         }
     } else if (color_type == "bc") {
-        for (let i = 0; i <= 10; i++) {
-            let color = color_for_compilation(10 - i, i);
-            let text = (i * 10) + "% samples were compiled.";
+        color_legend_entry(e, 0, color_for_compilation(0, 0), "No self samples");
+        for (let i = 0; i <= 4; i++) {
+            let color = color_for_compilation(4 - i, i);
+            let text = (i * 25) + "% samples were compiled.";
 
-            color_legend_entry(e, i, color, text);
+            color_legend_entry(e, i + 1, color, text);
         }
 
-        entry_count = 11;
+        entry_count = 6;
     }
 
+    let help_entry_count = 0;
+
+    for (; help_entry_count < help_strings.length; help_entry_count++) {
+        graph_help_entry(e, entry_count + help_entry_count + 1, help_strings[help_entry_count][0], help_strings[help_entry_count][1]);
+    }
+
+    if (help_entry_count > 0) {
+        entry_count = entry_count + help_entry_count + 1;
+    }
     r.height.baseVal.value = (fg_frameheight * 2.5) + (entry_count + 1) * fg_frameheight * 1.5;
     color_insert_legend(svg);
     return e;
@@ -229,8 +232,9 @@ function color_legend() {
         }
     }
     legend_state = !legend_state;
+    graph_ensure_space();
 }
 
 // C for color cycle.
 graph_register_handler("c", "Cycle through graph colorings", color_cycle);
-graph_register_handler("l", "Toggle legend display", color_legend);
+graph_register_handler("?", "Toggle legend & help display", color_legend);
