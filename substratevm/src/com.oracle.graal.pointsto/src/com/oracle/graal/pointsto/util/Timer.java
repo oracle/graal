@@ -24,10 +24,15 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class Timer {
 
+    private static final int UNKNOWN = -1;
     private String prefix;
 
     private final String name;
@@ -37,7 +42,7 @@ public class Timer {
     /** Timer total time in nanoseconds. */
     private long totalTime;
     /** Total VM memory in bytes recorded when the timer is printed. */
-    private long totalMemory;
+    private long totalHeapUsage;
 
     public Timer(String name) {
         this(null, name, true);
@@ -80,16 +85,22 @@ public class Timer {
 
     private void print(long time) {
         final String concurrentPrefix;
+        String pid = GraalServices.getExecutionID();
         if (prefix != null) {
             // Add the PID to further disambiguate concurrent builds of images with the same name
-            String pid = GraalServices.getExecutionID();
             concurrentPrefix = String.format("[%s:%s] ", prefix, pid);
         } else {
             concurrentPrefix = "";
         }
-        totalMemory = Runtime.getRuntime().totalMemory();
-        double totalMemoryGB = totalMemory / 1024.0 / 1024.0 / 1024.0;
-        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, totalMemoryGB);
+        totalHeapUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        double heapUsageGB = totalHeapUsage / 1024.0 / 1024.0 / 1024.0;
+        String memoryInfo = String.format("%,5.2f GB (heap)", heapUsageGB);
+        long totalRssMemoryKB = getRss(pid);
+        if (totalRssMemoryKB != UNKNOWN) {
+            double totalRssMemoryGB = totalRssMemoryKB / 1024.0 / 1024.0;
+            memoryInfo = String.format("%s %,5.2f GB (rss)", memoryInfo, totalRssMemoryGB);
+        }
+        System.out.format("%s%12s: %,10.2f ms, %s%n", concurrentPrefix, name, time / 1000000d, memoryInfo);
     }
 
     public void print() {
@@ -103,7 +114,36 @@ public class Timer {
 
     /** Get total VM memory in bytes. */
     public long getTotalMemory() {
-        return totalMemory;
+        return totalHeapUsage;
+    }
+
+    private static long getRss(String pid) {
+        if (OS.isLinux()) {
+            try {
+                // Consider using /proc/$pid/statm, but we'd need to know page size for it to be
+                // useful as those numbers are in in virtual memory pages
+                Path procStatus = Paths.get(String.format("/proc/%s/status", pid));
+                String vmRSS = Files.lines(procStatus).filter(line -> line.startsWith("VmRSS:")).findFirst().orElse("");
+                String[] vmRSSFields = vmRSS.split("\\s+");
+                return Long.parseLong(vmRSSFields[1]); // VmRSS: <val> KB => <val>
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        return UNKNOWN;
+    }
+
+    private static class OS {
+
+        private static final String OS_PROP = System.getProperty("os.name", "Unknown").toLowerCase();
+
+        // no instances
+        private OS() {
+        }
+
+        static boolean isLinux() {
+            return OS_PROP.contains("linux");
+        }
     }
 
     public class StopTimer implements AutoCloseable {
