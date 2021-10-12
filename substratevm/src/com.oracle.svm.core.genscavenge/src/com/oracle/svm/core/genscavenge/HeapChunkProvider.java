@@ -283,7 +283,7 @@ final class HeapChunkProvider {
         return result;
     }
 
-    public boolean areUnalignedChunksZeroed() {
+    public static boolean areUnalignedChunksZeroed() {
         return CommittedMemoryProvider.get().areUnalignedChunksZeroed();
     }
 
