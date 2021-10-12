@@ -66,3 +66,16 @@ native-image -H:+StaticExecutableWithDynamicLibC [other arguments] Class
 ```
 
 > Note: This currently only works for `glibc`.
+
+## Frequently Asked Questions
+
+### What Docker image type is recommended to build a static native image?
+There are different docker images types you can convert a Java application into:
+* Slim
+* Distroless
+* Alpine
+* Scratch
+
+Whatever base image you choose is determined by what you want to run in container.
+Basically, with a static native image statically linked against `muslc`, you can dockerize into anything: from scratch, Alpine, Ubuntu, Oracle Linux, etc.
+With mostly static native image (distroless) linking statically everything except `libc`, you can dockerize into a distribution with the matching `libc` (currently `glibc` only), so Ubuntu, Oracle Linux,etc.
