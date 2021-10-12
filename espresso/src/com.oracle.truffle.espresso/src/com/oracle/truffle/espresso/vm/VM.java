@@ -146,8 +146,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
+import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -800,7 +800,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentThread();
         try {
-            Target_java_lang_Thread.fromRunnable(currentThread, meta, (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
+            meta.getThreadAccess().fromRunnable(currentThread, (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
@@ -816,7 +816,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         } catch (InterruptedException e) {
             profiler.profile(0);
-            Target_java_lang_Thread.setInterrupt(currentThread, false);
+            getThreadAccess().clearInterruptStatus(currentThread);
             throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
@@ -828,7 +828,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
             }
-            Target_java_lang_Thread.toRunnable(currentThread, meta, State.RUNNABLE);
+            meta.getThreadAccess().toRunnable(currentThread);
         }
     }
 
@@ -1519,8 +1519,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return JNI_OK;
         }
         getLogger().fine(() -> {
-            Meta meta = getMeta();
-            String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+            String guestName = getThreadAccess().getThreadName(currentThread);
             return "DetachCurrentThread: " + guestName;
         });
         // HotSpot will wait forever if the current VM this thread was attached to has exited
@@ -1540,8 +1539,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (lastJavaMethod != null) {
             // this thread is executing
             getLogger().warning(() -> {
-                Meta meta = getMeta();
-                String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                String guestName = getThreadAccess().getThreadName(currentThread);
                 return "DetachCurrentThread called while thread is still executing Java code (" + guestName + ")";
             });
             return JNI_ERR;
@@ -1555,12 +1553,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                 meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
             }
 
-            Target_java_lang_Thread.terminate(currentThread, meta);
+            getThreadAccess().terminate(currentThread);
         } catch (EspressoException e) {
             try {
                 StaticObject ex = e.getExceptionObject();
                 String exception = ex.getKlass().getExternalName();
-                String threadName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                String threadName = getThreadAccess().getThreadName(currentThread);
                 context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
                 Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
                 printStackTrace.invokeDirect(ex);
