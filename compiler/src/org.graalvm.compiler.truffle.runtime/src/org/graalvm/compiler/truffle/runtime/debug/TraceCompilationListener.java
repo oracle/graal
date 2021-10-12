@@ -56,17 +56,18 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         runtime.addListener(new TraceCompilationListener(runtime));
     }
 
-    public static final String TIER_FORMAT = " Tier %d ";
-    private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Scale %5.2f Elapsed %4dus ";
+    public static final String TIER_FORMAT = "Tier %d";
+    private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Load %5.2f Time %5dus";
     private static final String TARGET_FORMAT = "id=%-5d %-50s ";
+    public static final String COUNT_THRESHOLD_FORMAT = "Count/Thres  %9d/%9d";
     // @formatter:off
-    private static final String QUEUED_FORMAT   = "opt queued   " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Count/Thres  %8d/%8d | "    + QUEUE_FORMAT + "| Src %s | Time %d";
-    private static final String UNQUEUED_FORMAT = "opt unqueued " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Count/Thres  %8d/%8d | "    + QUEUE_FORMAT + "| Reason: %s | Src %s | Time %d";
-    private static final String START_FORMAT    = "opt start    " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Weight %8d | Rate %.5f | " + QUEUE_FORMAT + "| Src %s | Time %d";
-    private static final String DONE_FORMAT     = "opt done     " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Elapsed %22s | Src %s | Time %d";
-    private static final String FAILED_FORMAT   = "opt failed   " + TARGET_FORMAT + "|" + TIER_FORMAT + "| Elapsed %22s | Reason: %s | Src %s | Time %d";
-    private static final String INV_FORMAT      = "opt inv      " + TARGET_FORMAT + "| Reason %s | Src %s | Time %d";
-    private static final String DEOPT_FORMAT    = "opt deopt    " + TARGET_FORMAT + "| Src %s | Time %d";
+    private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|Timestamp %d|Src %s";
+    private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|Timestamp %d|Src %s|Reason %s";
+    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|Timestamp %d|Src %s";
+    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Timestamp %d|Src %s";
+    private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|Timestamp %d|Src %s";
+    private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + "                                                                                            |Timestamp %d|Src %s|Reason %s";
+    private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "                                                                                            |Timestamp %d|Src %s";
     // @formatter:on
 
     @Override
@@ -85,8 +86,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             1,
                             FixedPointMath.toDouble(scale),
                             0,
-                            formatSourceSection(target.getRootNode().getSourceSection()),
-                            System.nanoTime()));
+                            System.nanoTime(),
+                            formatSourceSection(target.getRootNode().getSourceSection())));
         }
     }
 
@@ -106,9 +107,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             0,
                             FixedPointMath.toDouble(scale),
                             0,
-                            reason,
+                            System.nanoTime(),
                             formatSourceSection(target.getRootNode().getSourceSection()),
-                            System.nanoTime()));
+                            reason));
         }
     }
 
@@ -124,8 +125,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                                 tier,
                                 compilationTime(),
                                 reason,
-                                formatSourceSection(target.getRootNode().getSourceSection()),
-                                System.nanoTime()));
+                                System.nanoTime(),
+                                formatSourceSection(target.getRootNode().getSourceSection())));
             }
             currentCompilation.set(null);
         }
@@ -145,8 +146,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             Math.abs(task.queueChange()),
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
                             task.time() / 1000,
-                            formatSourceSection(target.getRootNode().getSourceSection()),
-                            System.nanoTime()));
+                            System.nanoTime(),
+                            formatSourceSection(target.getRootNode().getSourceSection())));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
@@ -164,8 +165,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             log(target, String.format(DEOPT_FORMAT,
                             target.id,
                             target.getName(),
-                            formatSourceSection(target.getRootNode().getSourceSection()),
-                            System.nanoTime()));
+                            System.nanoTime(),
+                            formatSourceSection(target.getRootNode().getSourceSection())));
         }
     }
 
@@ -183,14 +184,41 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
+        int[] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
+        Times compilation = currentCompilation.get();
         log(target, String.format(DONE_FORMAT,
                         target.id,
                         target.getName(),
                         tier,
                         compilationTime(),
-                        formatSourceSection(target.getRootNode().getSourceSection()),
-                        System.nanoTime()));
+                        target.getNonTrivialNodeCount(),
+                        inlinedAndDispatched[0],
+                        inlinedAndDispatched[1],
+                        compilation.nodeCountPartialEval,
+                        graph == null ? 0 : graph.getNodeCount(),
+                        result == null ? 0 : result.getTargetCodeSize(),
+                        System.nanoTime(),
+                        formatSourceSection(target.getRootNode().getSourceSection())));
         currentCompilation.set(null);
+    }
+
+    private static int[] inlinedAndDispatched(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+        int calls = 0;
+        int inlinedCalls;
+        if (inliningDecision == null) {
+            CallCountVisitor visitor = new CallCountVisitor();
+            target.accept(visitor);
+            calls = visitor.calls;
+            inlinedCalls = 0;
+        } else {
+            calls = inliningDecision.countCalls();
+            inlinedCalls = inliningDecision.countInlinedCalls();
+        }
+        int dispatchedCalls = calls - inlinedCalls;
+        int[] inlinedAndDispatched = new int[2];
+        inlinedAndDispatched[0] = inlinedCalls;
+        inlinedAndDispatched[1] = dispatchedCalls;
+        return inlinedAndDispatched;
     }
 
     private String compilationTime() {
@@ -215,9 +243,9 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             log(target, String.format(INV_FORMAT,
                             target.id,
                             target.getName(),
-                            reason,
+                            System.nanoTime(),
                             formatSourceSection(target.getRootNode().getSourceSection()),
-                            System.nanoTime()));
+                            reason));
         }
     }
 
