@@ -124,7 +124,8 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle, @SuppressWarnings("unused") ClientHandle<TruffleCompilationTask> task) {
+    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
+                    @SuppressWarnings("unused") ClientHandle<TruffleCompilationTask> task) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onCompilationRetry(context.compilable, context.task);
     }
