@@ -92,9 +92,9 @@ final class CVLineRecord extends CVSymbolRecord {
         int pos = initialPos;
 
         /* Emit addr:section relocation records. */
-        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, symbolName, false, 1L);
+        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, symbolName, 1L);
         pos = CVUtil.putInt(0, buffer, pos);
-        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, symbolName, false, 1L);
+        cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, symbolName, 1L);
         pos = CVUtil.putShort((short) 0, buffer, pos);
 
         /* Emit flags. */

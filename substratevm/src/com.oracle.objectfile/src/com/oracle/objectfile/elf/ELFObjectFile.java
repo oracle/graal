@@ -35,6 +35,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
 import com.oracle.objectfile.LayoutDecision;
@@ -45,15 +48,13 @@ import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.DwarfARangesSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 
 /**
  * Represents an ELF object file (of any kind: relocatable, shared library, executable, core, ...).
@@ -469,9 +470,9 @@ public class ELFObjectFile extends ObjectFile {
          */
         class Struct {
 
-            IdentStruct ident = new IdentStruct();
-            ELFType type;
-            ELFMachine machine;
+            final IdentStruct ident;
+            final ELFType type;
+            final ELFMachine machine;
             int version;
             long entry;
             long phoff;
@@ -484,10 +485,10 @@ public class ELFObjectFile extends ObjectFile {
             short shnum;
             short shstrndx;
 
-            Struct() {
+            Struct(ELFType type, ELFMachine machine) {
                 ident = new IdentStruct();
-                type = ELFType.NONE;
-                machine = ELFMachine.NONE;
+                this.type = type;
+                this.machine = machine;
             }
 
             /**
@@ -618,7 +619,8 @@ public class ELFObjectFile extends ObjectFile {
         public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
             // we serialize ourselves by writing a Struct to a bytebuffer
             OutputAssembler oa = AssemblyBuffer.createOutputAssembler(getDataEncoding().toByteOrder());
-            Struct contents = new Struct(); // also creates ident struct, which we need to populate
+            /* Also creates ident struct, which we need to populate. */
+            Struct contents = new Struct(getType(), getMachine());
 
             // don't assign magic -- its default value is correct
             contents.ident.fileClass = getFileClass();
@@ -626,8 +628,6 @@ public class ELFObjectFile extends ObjectFile {
             contents.ident.version = getVersion();
             contents.ident.osabi = getOsAbi();
             contents.ident.abiVersion = (char) getAbiVersion();
-            contents.type = getType();
-            contents.machine = getMachine();
             contents.version = getVersion();
             contents.entry = 0;
             contents.shoff = (int) alreadyDecided.get(sht).getDecidedValue(LayoutDecision.Kind.OFFSET);
@@ -668,7 +668,7 @@ public class ELFObjectFile extends ObjectFile {
 
         @Override
         public int getOrDecideSize(Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
-            int size = (new Struct()).getWrittenSize();
+            int size = (new Struct(getType(), getMachine())).getWrittenSize();
             assert sizeHint == -1 || sizeHint == size;
             return size;
         }
@@ -1193,13 +1193,19 @@ public class ELFObjectFile extends ObjectFile {
          * decision set and causes an NPE during reloc section write. So we need to create the
          * relevant reloc sections here in advance.
          */
-        elfStrSectionImpl.getOrCreateRelocationElement(false);
-        elfAbbrevSectionImpl.getOrCreateRelocationElement(false);
-        frameSectionImpl.getOrCreateRelocationElement(false);
-        elfInfoSectionImpl.getOrCreateRelocationElement(false);
-        elfARangesSectionImpl.getOrCreateRelocationElement(false);
-        elfLineSectionImpl.getOrCreateRelocationElement(false);
+        elfStrSectionImpl.getOrCreateRelocationElement(0);
+        elfAbbrevSectionImpl.getOrCreateRelocationElement(0);
+        frameSectionImpl.getOrCreateRelocationElement(0);
+        elfInfoSectionImpl.getOrCreateRelocationElement(0);
+        elfARangesSectionImpl.getOrCreateRelocationElement(0);
+        elfLineSectionImpl.getOrCreateRelocationElement(0);
         /* Ok now we can populate the debug info model. */
         dwarfSections.installDebugInfo(debugInfoProvider);
+    }
+
+    @SuppressWarnings("unused")
+    static boolean useExplicitAddend(long addend) {
+        // For now, we are always using explicit addends
+        return true;
     }
 }

@@ -119,7 +119,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
@@ -141,7 +141,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             default:
                 throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
         }
-        relocs.addRelocationWithAddend(siteOffset, secondRelocation, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, secondRelocation, ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -170,9 +170,9 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -231,9 +231,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                     continue;
                 }
                 if (i == lastMovIndex) {
-                    relocs.addRelocationWithAddend(siteOffset, relocations[i], Long.valueOf(0), ref);
+                    relocs.addRelocationWithoutAddend(siteOffset, relocations[i], ref);
                 } else {
-                    relocs.addRelocationWithAddend(siteOffset, noCheckRelocations[i], Long.valueOf(0), ref);
+                    relocs.addRelocationWithoutAddend(siteOffset, noCheckRelocations[i], ref);
                 }
                 siteOffset = siteOffset + 4;
             }
