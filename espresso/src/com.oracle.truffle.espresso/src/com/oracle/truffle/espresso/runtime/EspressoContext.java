@@ -44,6 +44,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -693,13 +694,23 @@ public final class EspressoContext {
         return vm;
     }
 
-    public JImageLibrary jimageLibrary() {
+    private JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             EspressoError.guarantee(getJavaVersion().modulesEnabled(), "Jimage available for java >= 9");
             this.jimageLibrary = new JImageLibrary(this);
         }
         return jimageLibrary;
+    }
+
+    public JImageHelper createJImageHelper(String jimagePath) {
+        JImageLibrary library = jimageLibrary();
+        TruffleObject image = library.open(jimagePath);
+        if (InteropLibrary.getUncached().isNull(image)) {
+            logger.warning("jimage native library returned null?");
+            return null;
+        }
+        return new NativeJImageHelper(library, image);
     }
 
     public JavaVersion getJavaVersion() {

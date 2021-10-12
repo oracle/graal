@@ -51,21 +51,18 @@ public final class Classpath {
         final File pathFile = new File(name);
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
-        } else {
-            // regular file.
-
-            EspressoContext context = EspressoContext.get(null);
-            if (context.getJavaVersion().modulesEnabled()) {
-                JImageLibrary library = context.jimageLibrary();
-                TruffleObject image = library.open(name);
-                if (!InteropLibrary.getUncached().isNull(image)) {
-                    return new Modules(pathFile, library, image);
-                }
+        }
+        // regular file.
+        EspressoContext context = EspressoContext.get(null);
+        if (context.getJavaVersion().modulesEnabled()) {
+            JImageHelper helper = context.createJImageHelper(name);
+            if (helper != null) {
+                return new Modules(pathFile, helper);
             }
-            if (name.endsWith(".zip") || name.endsWith(".jar")) {
-                if (pathFile.exists() && pathFile.isFile()) {
-                    return new Archive(pathFile);
-                }
+        }
+        if (name.endsWith(".zip") || name.endsWith(".jar")) {
+            if (pathFile.exists() && pathFile.isFile()) {
+                return new Archive(pathFile);
             }
         }
         return new PlainFile(pathFile);
@@ -303,9 +300,9 @@ public final class Classpath {
 
         private JImageHelper helper;
 
-        Modules(File file, JImageLibrary library, TruffleObject jimage) {
+        Modules(File file, JImageHelper helper) {
             this.file = file;
-            this.helper = new JImageHelper(library, jimage);
+            this.helper = helper;
         }
 
         @Override

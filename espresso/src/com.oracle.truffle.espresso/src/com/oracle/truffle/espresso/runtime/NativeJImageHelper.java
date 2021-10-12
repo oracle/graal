@@ -23,8 +23,26 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-public interface JImageHelper {
-    void close();
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    byte[] getClassBytes(String name);
+public class NativeJImageHelper implements JImageHelper {
+
+    // pointer to native JImageFile
+    private final TruffleObject jimage;
+    private final JImageLibrary library;
+
+    NativeJImageHelper(JImageLibrary library, TruffleObject jimage) {
+        this.library = library;
+        this.jimage = jimage;
+    }
+
+    @Override
+    public void close() {
+        library.close(jimage);
+    }
+
+    @Override
+    public byte[] getClassBytes(String name) {
+        return library.getClassBytes(jimage, name);
+    }
 }
