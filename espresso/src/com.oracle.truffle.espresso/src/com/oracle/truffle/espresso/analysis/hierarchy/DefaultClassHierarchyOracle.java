@@ -60,13 +60,18 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     }
 
     private static void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
-        ObjectKlass currentKlass = newKlass;
-        do {
+        for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
+            addImplementor(superInterface, newKlass);
+        }
+
+        ObjectKlass currentKlass = newKlass.getSuperKlass();
+        while (currentKlass != null && currentKlass.getImplementor(classHierarchyInfoAccessor).hasValue().isValid()) {
+            currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
             currentKlass = currentKlass.getSuperKlass();
-        } while (currentKlass != null && currentKlass.getImplementor(classHierarchyInfoAccessor).hasValue().isValid());
+        }
     }
 
     private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
