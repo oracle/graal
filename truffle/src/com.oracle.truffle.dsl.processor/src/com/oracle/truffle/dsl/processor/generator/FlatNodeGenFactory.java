@@ -640,7 +640,7 @@ public class FlatNodeGenFactory {
         } catch (UnsupportedOperationException e) {
         }
         String cost = nodeInfo != null ? ElementUtils.getAnnotationValue(VariableElement.class, nodeInfo, "cost").getSimpleName().toString() : null;
-        if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
+        if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(clazz, "getCost")) {
             if (primaryNode) {
                 clazz.add(createGetCostMethod(false));
             }
@@ -712,7 +712,7 @@ public class FlatNodeGenFactory {
                 wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
-            if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
+            if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(uncached, "getCost")) {
                 uncached.add(createGetCostMethod(true));
             }
             CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
@@ -2913,6 +2913,11 @@ public class FlatNodeGenFactory {
 
         return executable;
 
+    }
+
+    private static boolean isUndeclaredOrOverrideable(TypeElement sourceType, String methodName) {
+        List<ExecutableElement> elements = ElementUtils.getDeclaredMethodsInSuperTypes(sourceType, methodName);
+        return elements.isEmpty() || !elements.iterator().next().getModifiers().contains(Modifier.FINAL);
     }
 
     private ExecutableElement createAccessChildMethod(NodeChildData child, boolean uncached) {
