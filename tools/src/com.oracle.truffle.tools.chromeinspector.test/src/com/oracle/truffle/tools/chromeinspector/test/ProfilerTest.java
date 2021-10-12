@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -105,7 +104,7 @@ public class ProfilerTest {
 
         @Override
         protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new NoSourceRootNode(languageInstance));
+            return new NoSourceRootNode(languageInstance).getCallTarget();
         }
 
         private final class NoSourceRootNode extends RootNode {
