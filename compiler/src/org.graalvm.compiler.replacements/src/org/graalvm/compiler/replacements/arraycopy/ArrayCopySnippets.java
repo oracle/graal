@@ -167,7 +167,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         elementKindCopiedCounter.add(length);
 
         // Don't lower until floating guards are fixed.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
+                        elementKind);
     }
 
     /**
