@@ -144,7 +144,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), handle(optionsEncoder(null), null, false), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleCallBoundaryMethod(getIsolateThread(), handle(), LibGraal.translate(method));
         }
     }
 
@@ -152,7 +152,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     public void installTruffleReservedOopMethod(ResolvedJavaMethod method) {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), handle(optionsEncoder(null), null, false), LibGraal.translate(method));
+            TruffleToLibGraalCalls.installTruffleReservedOopMethod(getIsolateThread(), handle(), LibGraal.translate(method));
         }
     }
 

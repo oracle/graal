@@ -465,7 +465,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             throw CompilerDirectives.shouldNotReachHere("bypassedReservedOop without field available. default fast thread locals should be used instead.");
         }
 
-        // finish initialization
         CompilationTask task = initializationTask;
         if (task != null) {
             while (waitForInit) {
@@ -478,17 +477,46 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     continue;
                 }
             }
-            // compiler init did install the methods
+            /*
+             * We were currently initializing. No need to reinstall the code stubs. Just try using
+             * them again has a very likely-hood of succeeding or if we do not wait for
+             * inititialization then the caller can use oop accessor methods
+             * (setJVMCIReservedReference0, getJVMCIReservedReference0) instead.
+             */
             return true;
         }
+
         if (!truffleCompilerInitialized) {
+            /*
+             * If the initialization did not yet complete here, then this means that initializing
+             * the compiler failed. We can therefore not continue installing the stubs. So we
+             * re-throw the compiler initialization error or we return false which will likely
+             * trigger an assertion error in the caller at a later point.
+             */
             if (truffleCompilerInitializationException != null) {
                 throw new AssertionError("Compiler initialization failed cannot continue.", truffleCompilerInitializationException);
             }
             return false;
         }
-        // otherwise stubs are installed as part of initialization.
+
+        /*
+         * If we reached this point we are not initializing anymore and the compiler is successfully
+         * initialized. If bypassedReservedOop was called this also means that we skipped the
+         * installed code for the JVMCI reserved oop accessor. This can happen if the debugger steps
+         * over the code and invalidates any installed Java code stub, the HotSpot code cache
+         * decides to clean up the the stub for the accessor method or this happened due to an
+         * initialization race condition. In all three cases the best we can do is to try to install
+         * the stub code again even if this means repeated compilation and installation of this
+         * method during debug-stepping. Unfortunately there is no known way to detect invalidation
+         * of HotSpot installed code reliably.
+         */
         installReservedOopMethods((HotSpotTruffleCompiler) truffleCompiler);
+
+        /*
+         * We have reinstalled the stubs. Returning true indicates that the caller should retry
+         * calling the stubs or use other available means like the oop accessor methods
+         * (setJVMCIReservedReference0, getJVMCIReservedReference0).
+         */
         return true;
     }
 
