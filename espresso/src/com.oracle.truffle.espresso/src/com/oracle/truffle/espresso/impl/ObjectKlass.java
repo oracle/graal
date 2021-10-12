@@ -47,7 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.LeafTypeAssumptionAccessor;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -1411,10 +1411,10 @@ public final class ObjectKlass extends Klass {
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
      * classes and corresponding assumptions.
      *
-     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
      * @return the assumption, indicating if this class is a leaf in class hierarchy.
+     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
      */
-    public LeafTypeAssumption getLeafTypeAssumption(LeafTypeAssumptionAccessor assumptionAccessor) {
+    public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
         Objects.requireNonNull(assumptionAccessor);
         return leafTypeAssumption;
     }

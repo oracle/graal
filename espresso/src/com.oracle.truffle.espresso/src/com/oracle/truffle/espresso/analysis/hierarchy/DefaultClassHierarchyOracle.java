@@ -46,8 +46,8 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
 
     private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
         ObjectKlass currentParent = newClass.getSuperKlass();
-        while (currentParent != null && currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().isValid()) {
-            currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().invalidate();
+        while (currentParent != null && currentParent.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().isValid()) {
+            currentParent.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
             currentParent = currentParent.getSuperKlass();
         }
     }

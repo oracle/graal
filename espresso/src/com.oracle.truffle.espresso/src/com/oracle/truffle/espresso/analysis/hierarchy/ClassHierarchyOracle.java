@@ -34,8 +34,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * The oracle is only valid within an {@link EspressoContext}.
  */
 public interface ClassHierarchyOracle {
-    final class LeafTypeAssumptionAccessor {
-        protected LeafTypeAssumptionAccessor() {
+    final class ClassHierarchyAccessor {
+        protected ClassHierarchyAccessor() {
         }
     }
 
