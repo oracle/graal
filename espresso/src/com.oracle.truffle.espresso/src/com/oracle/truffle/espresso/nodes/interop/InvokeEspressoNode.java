@@ -44,14 +44,15 @@ public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-        Method resolutionSeed = method;
-        if (resolutionSeed.isRemovedByRedefition()) {
+        Method.MethodVersion resolutionSeed = method.getMethodVersion();
+        if (!resolutionSeed.getAssumption().isValid()) {
+            // OK, we know it's a removed method then
             resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
                             method,
                             method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(),
-                            (StaticObject) receiver);
+                            (StaticObject) receiver).getMethodVersion();
         }
-        Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
+        Object result = executeMethod(resolutionSeed, receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
          * Espresso and unwrapped when going out)

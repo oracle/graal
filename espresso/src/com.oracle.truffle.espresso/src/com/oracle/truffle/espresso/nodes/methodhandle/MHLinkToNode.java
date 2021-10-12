@@ -35,8 +35,8 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -77,15 +77,18 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
     @Override
     public Object call(Object[] args) {
         assert (getMethod().isStatic());
-        Method resolutionSeed = getTarget(args);
-        Object[] basicArgs = unbasic(args, resolutionSeed.getParsedSignature(), 0, argCount - 1, hasReceiver);
+        Method.MethodVersion resolutionSeed = getTarget(args);
+        Object[] basicArgs = unbasic(args, resolutionSeed.getMethod().getParsedSignature(), 0, argCount - 1, hasReceiver);
         // method might have been redefined or removed by redefinition
-        if (resolutionSeed.isRemovedByRedefition()) {
-            Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getDeclaringKlass();
-            resolutionSeed = resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiverKlass, hasReceiver ? ((StaticObject) basicArgs[0]) : null);
+        if (!resolutionSeed.getAssumption().isValid()) {
+            if (resolutionSeed.getMethod().isRemovedByRedefition()) {
+                Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getMethod().getDeclaringKlass();
+                resolutionSeed = resolutionSeed.getMethod().getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed.getMethod(), receiverKlass,
+                                hasReceiver ? ((StaticObject) basicArgs[0]) : null).getMethodVersion();
+            }
         }
 
-        Method target = linker.linkTo(resolutionSeed, args);
+        Method target = linker.linkTo(resolutionSeed.getMethod(), args);
         Object result = executeCall(basicArgs, target.getMethodVersion());
         return rebasic(result, target.getReturnKind());
     }
@@ -157,10 +160,10 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         }
     }
 
-    private Method getTarget(Object[] args) {
+    private Method.MethodVersion getTarget(Object[] args) {
         assert args.length >= 1;
         StaticObject memberName = (StaticObject) args[args.length - 1];
         assert (memberName.getKlass().getType() == Symbol.Type.java_lang_invoke_MemberName);
-        return (Method) hiddenVmtarget.getHiddenObject(memberName);
+        return ((Method) hiddenVmtarget.getHiddenObject(memberName)).getMethodVersion();
     }
 }

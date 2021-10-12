@@ -143,7 +143,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // are encapsulated within the methodVersion
     @CompilationFinal private volatile MethodVersion methodVersion;
 
-    private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
+    private boolean removedByRedefinition;
 
     // Multiple maximally-specific interface methods. Fail on call.
     @CompilationFinal private boolean poisonPill = false;
@@ -1193,11 +1193,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public void removedByRedefinition() {
-        removedByRedefinition.invalidate();
+        removedByRedefinition = true;
     }
 
     public boolean isRemovedByRedefition() {
-        return !removedByRedefinition.isValid();
+        return removedByRedefinition;
     }
 
     public StaticObject makeMirror() {
