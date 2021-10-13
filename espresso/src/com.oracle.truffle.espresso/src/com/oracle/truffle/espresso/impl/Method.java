@@ -196,10 +196,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private Source source;
 
-    Method(Method method) {
+    Method(Assumption redefineAssumption, Method method) {
         this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
+        this.methodVersion = new MethodVersion(redefineAssumption, method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -219,10 +219,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         initRefKind();
     }
 
-    private Method(Method method, CodeAttribute split) {
+    private Method(Assumption redefineAssumption, Method method, CodeAttribute split) {
         this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
+        this.methodVersion = new MethodVersion(redefineAssumption, method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -241,12 +241,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         initRefKind();
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
-        this(declaringKlass, linkedMethod, linkedMethod.getRawSignature(), pool);
+    Method(Assumption redefineAssumption, ObjectKlass declaringKlass, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
+        this(redefineAssumption, declaringKlass, linkedMethod, linkedMethod.getRawSignature(), pool);
     }
 
-    Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
-        this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+    Method(Assumption redefineAssumption, ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
+        this.methodVersion = new MethodVersion(redefineAssumption, pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
         this.rawSignature = rawSignature;
 
@@ -963,7 +963,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Spawns a placeholder method for MH intrinsics
     public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
         assert isPolySignatureIntrinsic();
-        return new Method(declaringKlass, getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
+        return new Method(declaringKlass.getKlassVersion().getAssumption(), declaringKlass, getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
@@ -972,7 +972,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Method forceSplit() {
-        Method result = new Method(this, getCodeAttribute());
+        Method result = new Method(declaringKlass.getKlassVersion().getAssumption(), this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
@@ -1140,38 +1140,35 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public SharedRedefinitionContent redefine(ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
+    public SharedRedefinitionContent redefine(Assumption redefineAssumption, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(runtimePool, newLinkedMethod, newCodeAttribute);
-        oldVersion.getAssumption().invalidate();
+        methodVersion = new MethodVersion(redefineAssumption, runtimePool, newLinkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
         return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
     }
 
-    public void redefine(SharedRedefinitionContent content, Ids<Object> ids) {
+    public void redefine(Assumption redefineAssumption, SharedRedefinitionContent content, Ids<Object> ids) {
         // invalidate old version
         // install the new method version immediately
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(content.getPool(), content.getLinkedMethod(), content.codeAttribute);
-        oldVersion.getAssumption().invalidate();
+        methodVersion = new MethodVersion(redefineAssumption, content.getPool(), content.getLinkedMethod(), content.codeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    void onSubclassMethodChanged(Ids<Object> ids) {
+    public void invalidate(Assumption redefineAssumption, Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         // create a copy of the code attribute using the original
         // code of the old version. An obsolete method could be
         // running quickened bytecode and we can't safely patch
         // the bytecodes back to the original.
-        CodeAttribute newCodeAttribute = new CodeAttribute(codeAttribute);
-        methodVersion = new MethodVersion(oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
-        oldVersion.getAssumption().invalidate();
+        CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
+        methodVersion = new MethodVersion(redefineAssumption, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
     }
 
@@ -1179,7 +1176,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion version = methodVersion;
         if (!version.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (isRemovedByRedefition()) {
+            // we block until class redefinition is done
+            // unless we're the redefine thread
+            getContext().getClassRedefinition().check();
+            if (isRemovedByRedefition() || getContext().getClassRedefinition().inProgress()) {
                 // for a removed method, we return the latest known
                 // method version in case active frames try to
                 // retrieve information for obsolete methods
@@ -1267,7 +1267,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public final class MethodVersion implements MethodRef {
-        private final Assumption assumption;
+        private final Assumption redefineAssumption;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
@@ -1276,8 +1276,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal(dimensions = 1) //
         private volatile byte[] code = null;
 
-        MethodVersion(RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
-            this.assumption = Truffle.getRuntime().createAssumption();
+        MethodVersion(Assumption redefineAssumption, RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
+            this.redefineAssumption = redefineAssumption;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
@@ -1301,7 +1301,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public Assumption getAssumption() {
-            return assumption;
+            return redefineAssumption;
         }
 
         public CodeAttribute getCodeAttribute() {
@@ -1575,7 +1575,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean isObsolete() {
-            return !assumption.isValid();
+            return !redefineAssumption.isValid();
         }
 
         @Override

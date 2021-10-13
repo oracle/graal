@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -131,7 +132,7 @@ final class InterfaceTables {
     /**
      * Constructs the complete list of interfaces an interface needs to implement. Also initializes
      * itable indexes.
-     * 
+     *
      * @param thisInterfKlass The interface in question
      * @param declared The declared methods of the interface.
      * @return the requested klass array
@@ -188,7 +189,10 @@ final class InterfaceTables {
 
     /**
      * Performs second and third step of itable creation.
-     * 
+     *
+     * @param redefineAssumption the redefinition assumption for the klass for which we are creating
+     *            an itable
+     * @param self the klass for which we are creating an itable
      * @param vtable the vtable of the klass for which we are creating an itable
      * @param mirandas the mirandas of the klass for which we are creating an itable
      * @param declaredMethods the declared methods of the klass for which we are creating an itable
@@ -196,17 +200,17 @@ final class InterfaceTables {
      * @param iklassTable the interfaces directly and indirectly implemented by thisKlass
      * @return the final itable
      */
-    public static Method[][] fixTables(Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
+    public static Method[][] fixTables(Assumption redefineAssumption, ObjectKlass self, Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
         ArrayList<Method[]> tmpTables = new ArrayList<>();
 
         // Second step
         // Remember here that the interfaces are sorted, most specific at the end.
         for (int i = iklassTable.length - 1; i >= 0; i--) {
-            fixVTable(tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
+            fixVTable(redefineAssumption, self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
         }
         // Third step
         for (Entry[] entries : tables) {
-            tmpTables.add(getITable(entries, vtable, mirandas, declaredMethods));
+            tmpTables.add(getITable(redefineAssumption, self, entries, vtable, mirandas, declaredMethods));
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
     }
@@ -245,7 +249,7 @@ final class InterfaceTables {
         }
     }
 
-    private static void fixVTable(Entry[] table, Method[] vtable, Method[] mirandas, Method[] declared, Method[] interfMethods) {
+    private static void fixVTable(Assumption redefineAssumption, ObjectKlass self, Entry[] table, Method[] vtable, Method[] mirandas, Method[] declared, Method[] interfMethods) {
         for (int i = 0; i < table.length; i++) {
             Entry entry = table[i];
             int index = entry.index;
@@ -271,21 +275,21 @@ final class InterfaceTables {
             if (interfMethod.identity() == virtualMethod.identity()) {
                 continue;
             }
-            Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
+            Method result = resolveMaximallySpecific(redefineAssumption, self, virtualMethod, interfMethod);
             if (result != virtualMethod) {
-                updateEntry(vtable, mirandas, entry, index, virtualMethod, virtualize(result, virtualMethod.getVTableIndex()));
+                updateEntry(redefineAssumption, self, vtable, mirandas, entry, index, virtualMethod, virtualize(result, virtualMethod.getVTableIndex()));
             }
         }
     }
 
     private static Method virtualize(Method m, int index) {
         if (m.getVTableIndex() != index) {
-            return new Method(m);
+            return new Method(m.getDeclaringKlass().getKlassVersion().getAssumption(), m);
         }
         return m;
     }
 
-    private static void updateEntry(Method[] vtable, Method[] mirandas, Entry entry, int index, Method virtualMethod, Method toPut) {
+    private static void updateEntry(Assumption redefineAssumption, ObjectKlass self, Method[] vtable, Method[] mirandas, Entry entry, int index, Method virtualMethod, Method toPut) {
         switch (entry.loc) {
             case SUPERVTABLE:
                 vtable[index] = toPut;
@@ -296,7 +300,12 @@ final class InterfaceTables {
                 toPut.setVTableIndex(virtualMethod.getVTableIndex());
                 break;
             case MIRANDAS:
-                Method newMiranda = new Method(toPut);
+                Method newMiranda;
+                if (toPut.getDeclaringKlass() == self) {
+                    newMiranda = new Method(redefineAssumption, toPut);
+                } else {
+                    newMiranda = new Method(toPut.getDeclaringKlass().getKlassVersion().getAssumption(), toPut);
+                }
                 int vtableIndex = virtualMethod.getVTableIndex();
                 vtable[vtableIndex] = newMiranda;
                 mirandas[index] = newMiranda;
@@ -307,19 +316,34 @@ final class InterfaceTables {
         }
     }
 
-    private static Method[] getITable(Entry[] entries, Method[] vtable, Method[] mirandas, Method[] declared) {
+    private static Method[] getITable(Assumption redefineAssumption, ObjectKlass self, Entry[] entries, Method[] vtable, Method[] mirandas, Method[] declared) {
         int pos = 0;
         Method[] res = new Method[entries.length];
         for (Entry entry : entries) {
             switch (entry.loc) {
                 case SUPERVTABLE:
-                    res[pos] = new Method(vtable[entry.index]);
+                    Method m = vtable[entry.index];
+                    if (m.getDeclaringKlass() == self) {
+                        res[pos] = new Method(redefineAssumption, m);
+                    } else {
+                        res[pos] = new Method(m.getDeclaringKlass().getKlassVersion().getAssumption(), m);
+                    }
                     break;
                 case DECLARED:
-                    res[pos] = new Method(declared[entry.index]);
+                    m = declared[entry.index];
+                    if (m.getDeclaringKlass() == self) {
+                        res[pos] = new Method(redefineAssumption, m);
+                    } else {
+                        res[pos] = new Method(m.getDeclaringKlass().getKlassVersion().getAssumption(), m);
+                    }
                     break;
                 case MIRANDAS:
-                    res[pos] = new Method(mirandas[entry.index]);
+                    m = mirandas[entry.index];
+                    if (m.getDeclaringKlass() == self) {
+                        res[pos] = new Method(redefineAssumption, m);
+                    } else {
+                        res[pos] = new Method(m.getDeclaringKlass().getKlassVersion().getAssumption(), m);
+                    }
                     break;
             }
             res[pos].setITableIndex(pos);
@@ -353,7 +377,7 @@ final class InterfaceTables {
         }
         // This case should only happen during exploration of direct
         // superInterfaces and their interfaces
-        mirandas.add(new Method(im)); // Proxy
+        mirandas.add(new Method(im.getDeclaringKlass().getKlassVersion().getAssumption(), im)); // Proxy
         return new Entry(Location.MIRANDAS, mirandas.size() - 1);
 
     }
@@ -399,8 +423,12 @@ final class InterfaceTables {
      * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
      */
     public static Method resolveMaximallySpecific(Method m1, Method m2) {
-        Klass k1 = m1.getDeclaringKlass();
-        Klass k2 = m2.getDeclaringKlass();
+        return resolveMaximallySpecific(null, null, m1, m2);
+    }
+
+    private static Method resolveMaximallySpecific(Assumption redefineAssumption, ObjectKlass self, Method m1, Method m2) {
+        ObjectKlass k1 = m1.getDeclaringKlass();
+        ObjectKlass k2 = m2.getDeclaringKlass();
         if (k1.isAssignableFrom(k2)) {
             return m2;
         } else if (k2.isAssignableFrom(k1)) {
@@ -422,7 +450,12 @@ final class InterfaceTables {
             // it). (5.4.3.3.)
             //
             // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
-            Method m = new Method(m2);
+            Method m;
+            if (self != null && m2.getDeclaringKlass() == self) {
+                m = new Method(redefineAssumption, m2);
+            } else {
+                m = new Method(k2.getKlassVersion().getAssumption(), m2);
+            }
             m.setPoisonPill();
             return m;
         }

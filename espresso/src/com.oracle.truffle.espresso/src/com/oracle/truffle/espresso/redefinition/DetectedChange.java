@@ -43,6 +43,7 @@ public final class DetectedChange {
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
+    private final Set<Method> unchangedMethods = new HashSet<>();
     private boolean classInitializerChanged;
     private Map<ParserField, Field> mappedCompatibleFields = new HashMap<>();
 
@@ -103,6 +104,10 @@ public final class DetectedChange {
         return Collections.unmodifiableSet(removedMethods);
     }
 
+    public Set<Method> getUnchangedMethods() {
+        return Collections.unmodifiableSet(unchangedMethods);
+    }
+
     public void addNewMethod(ParserMethod method) {
         addedMethods.add(method);
     }
@@ -117,6 +122,10 @@ public final class DetectedChange {
 
     public void addNewMethods(List<ParserMethod> newMethods) {
         addedMethods.addAll(newMethods);
+    }
+
+    public void addUnchangedMethod(Method method) {
+        unchangedMethods.add(method);
     }
 
     public boolean clinitChanged() {

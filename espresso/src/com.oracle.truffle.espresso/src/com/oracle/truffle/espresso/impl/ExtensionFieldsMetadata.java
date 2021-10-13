@@ -38,7 +38,7 @@ public final class ExtensionFieldsMetadata {
     @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
     @CompilationFinal(dimensions = 1) private Field[] addedStaticFields = Field.EMPTY_ARRAY;
 
-    public void addNewStaticFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    public void addNewStaticFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (newFields.isEmpty()) {
@@ -52,7 +52,7 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    public void addNewInstanceFields(ObjectKlass holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    public void addNewInstanceFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (newFields.isEmpty()) {
@@ -66,7 +66,7 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    private static List<Field> initNewFields(ObjectKlass holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
         List<Field> toAdd = new ArrayList<>(instanceFields.size());
         for (ParserField newField : instanceFields) {
             LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REDEFINE_ADDED);

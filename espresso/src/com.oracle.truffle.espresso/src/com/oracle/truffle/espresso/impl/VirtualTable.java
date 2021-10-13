@@ -83,7 +83,7 @@ public final class VirtualTable {
                 override.invalidateLeaf();
                 int pos = override.getVTableIndex();
                 if (count > 1) {
-                    toSet = new Method(m);
+                    toSet = new Method(superKlass.getKlassVersion().getAssumption(), m);
                 }
                 toSet.setVTableIndex(pos, isRedefinition);
                 tmp.set(pos, toSet);

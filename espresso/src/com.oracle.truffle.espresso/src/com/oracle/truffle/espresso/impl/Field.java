@@ -51,22 +51,21 @@ public final class Field extends Member<Type> implements FieldRef {
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
     final LinkedField linkedField;
-    private final ObjectKlass holder;
+    private final ObjectKlass.KlassVersion holder;
 
     private final RuntimeConstantPool pool;
     @CompilationFinal private volatile Klass typeKlassCache;
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
-    private final Assumption needsReResolution = Truffle.getRuntime().createAssumption();
     private boolean removedByRedefinition;
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
-    public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
+    public Field(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this(holder, linkedField, pool, false);
     }
 
-    private Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isSynthetic) {
+    private Field(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isSynthetic) {
         this.linkedField = linkedField;
         this.holder = holder;
         this.pool = pool;
@@ -78,7 +77,9 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public static Field synthetic(Field field) {
-        return new Field(field.holder, field.linkedField, field.pool, true);
+        // update holder to latest klass version to ensure we
+        // only re-resolve again when the class is redefined
+        return new Field(field.holder.getKlass().getKlassVersion(), field.linkedField, field.pool, true);
     }
 
     @Override
@@ -92,11 +93,6 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public void removeByRedefintion() {
         removedByRedefinition = true;
-        needsReResolution.invalidate();
-    }
-
-    public void markNeedsNewResolution() {
-        needsReResolution.invalidate();
     }
 
     public boolean isRemoved() {
@@ -104,7 +100,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public boolean needsReResolution() {
-        return !needsReResolution.isValid();
+        return !holder.getAssumption().isValid();
     }
 
     public Attribute[] getAttributes() {
@@ -143,7 +139,7 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public ObjectKlass getDeclaringKlass() {
-        return holder;
+        return holder.getKlass();
     }
 
     /**
@@ -176,9 +172,9 @@ public final class Field extends Member<Type> implements FieldRef {
         synchronized (this) {
             Klass tk = typeKlassCache;
             if (tk == null) {
-                tk = holder.getMeta().resolveSymbolOrFail(getType(),
-                                holder.getDefiningClassLoader(),
-                                holder.protectionDomain());
+                tk = holder.getKlass().getMeta().resolveSymbolOrFail(getType(),
+                                holder.getKlass().getDefiningClassLoader(),
+                                holder.getKlass().protectionDomain());
                 typeKlassCache = tk;
             }
         }
@@ -1041,7 +1037,7 @@ public final class Field extends Member<Type> implements FieldRef {
         if (isStatic()) {
             extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
         } else {
-            Field extensionField = holder.getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
+            Field extensionField = holder.getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
             Object object = extensionField.getHiddenObject(instance);
             if (object == null) {
                 // create new instance Extension field object
@@ -1170,6 +1166,10 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
         return extensionShape;
+    }
+
+    public ObjectKlass.KlassVersion getKlassVersion() {
+        return holder;
     }
 
     /**

@@ -154,35 +154,17 @@ public final class ObjectKlass extends Klass {
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags(), info.klassID);
 
+        Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
         this.nest = info.dynamicNest;
         this.hostKlass = info.hostKlass;
-
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
         definingClassLoader = pool.getClassLoader();
-        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
-        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
-        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
-
-        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
-        staticFieldTable = new Field[lkStaticFields.length];
-
-        assert fieldTable.length == linkedKlass.getFieldTableLength();
-        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
-        localFieldTableIndex = skFieldTable.length;
-        for (int i = 0; i < lkInstanceFields.length; i++) {
-            Field instanceField = new Field(this, lkInstanceFields[i], pool);
-            fieldTable[localFieldTableIndex + i] = instanceField;
-        }
-        for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(this, lkStaticFields[i], pool);
-            staticFieldTable[i] = staticField;
-        }
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
         for (int i = 0; i < methods.length; i++) {
-            methods[i] = new Method(this, linkedMethods[i], pool);
+            methods[i] = new Method(redefineAssumption, this, linkedMethods[i], pool);
         }
 
         this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
@@ -199,7 +181,7 @@ public final class ObjectKlass extends Klass {
         ObjectKlass[] iKlassTable;
         Method[] mirandaMethods = null;
 
-        if (this.isInterface()) {
+        if (isInterface()) {
             InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, methods);
             vtable = icr.methodtable;
             iKlassTable = icr.klassTable;
@@ -208,7 +190,7 @@ public final class ObjectKlass extends Klass {
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
             vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, false);
-            itable = InterfaceTables.fixTables(vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
+            itable = InterfaceTables.fixTables(redefineAssumption, this, vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
         }
         if (superKlass != null) {
             superKlass.addSubType(this);
@@ -216,7 +198,26 @@ public final class ObjectKlass extends Klass {
         for (ObjectKlass superInterface : superInterfaces) {
             superInterface.addSubType(this);
         }
-        this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+        this.klassVersion = new KlassVersion(redefineAssumption, pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+
+        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
+        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
+
+        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        staticFieldTable = new Field[lkStaticFields.length];
+
+        assert fieldTable.length == linkedKlass.getFieldTableLength();
+        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
+        localFieldTableIndex = skFieldTable.length;
+        for (int i = 0; i < lkInstanceFields.length; i++) {
+            Field instanceField = new Field(klassVersion, lkInstanceFields[i], pool);
+            fieldTable[localFieldTableIndex + i] = instanceField;
+        }
+        for (int i = 0; i < lkStaticFields.length; i++) {
+            Field staticField = new Field(klassVersion, lkStaticFields[i], pool);
+            staticFieldTable[i] = staticField;
+        }
 
         // Only forcefully initialization of the mirror if necessary
         if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
@@ -1228,11 +1229,14 @@ public final class ObjectKlass extends Klass {
         return cache;
     }
 
-    public void redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses, Ids<Object> ids) {
+    public void redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, Ids<Object> ids) {
         ParserKlass parserKlass = packet.parserKlass;
         DetectedChange change = packet.detectedChange;
         KlassVersion oldVersion = klassVersion;
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), oldVersion.pool.getClassLoader());
+
+        // create new assumption for the new KlassVersion
+        Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
         // class structure
         ObjectKlass[] superInterfaces = getSuperInterfaces();
@@ -1241,25 +1245,6 @@ public final class ObjectKlass extends Klass {
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
         LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, getLinkedKlass());
-
-        // fields
-        if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
-            Map<ParserField, Field> compatibleFields = packet.detectedChange.getMappedCompatibleFields();
-
-            ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
-            // add new fields to the extension object
-            extension.addNewStaticFields(this, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
-            extension.addNewInstanceFields(this, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
-
-            // make sure all new fields trigger re-resolution of fields
-            // with same name + type in the full class hierarchy
-            markForReResolution(packet.detectedChange.getAddedStaticFields());
-            markForReResolution(packet.detectedChange.getAddedInstanceFields());
-        }
-
-        for (Field removedField : packet.detectedChange.getRemovedFields()) {
-            removedField.removeByRedefintion();
-        }
 
         // methods
         Method[][] itable = oldVersion.itable;
@@ -1272,22 +1257,27 @@ public final class ObjectKlass extends Klass {
         for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
             Method method = entry.getKey();
             ParserMethod newMethod = entry.getValue();
-            Method.SharedRedefinitionContent redefineContent = method.redefine(newMethod, packet.parserKlass, ids);
+            Method.SharedRedefinitionContent redefineContent = method.redefine(redefineAssumption, newMethod, packet.parserKlass, ids);
             JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
 
             // look in tables for copied methods that also needs to be invalidated
             if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
-                checkCopyMethods(method, itable, redefineContent, ids);
-                checkCopyMethods(method, vtable, redefineContent, ids);
-                checkCopyMethods(method, mirandaMethods, redefineContent, ids);
+                checkCopyMethods(redefineAssumption, method, itable, redefineContent, ids);
+                checkCopyMethods(redefineAssumption, method, vtable, redefineContent, ids);
+                checkCopyMethods(redefineAssumption, method, mirandaMethods, redefineContent, ids);
             }
         }
 
         Set<Method> removedMethods = change.getRemovedMethods();
         List<ParserMethod> addedMethods = change.getAddedMethods();
+        Set<Method> unchangedMethods = change.getUnchangedMethods();
 
         LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
         declaredMethods.removeAll(removedMethods);
+
+        for (Method unchangedMethod : unchangedMethods) {
+            unchangedMethod.invalidate(redefineAssumption, ids);
+        }
 
         // in case of an added/removed virtual method, we must also update the tables
         // which might have ripple implications on all subclasses
@@ -1296,7 +1286,7 @@ public final class ObjectKlass extends Klass {
         for (Method removedMethod : removedMethods) {
             virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
             ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
-            updateOverrideMethods(ids, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature());
+            checkSuperMethods(parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
             removedMethod.removedByRedefinition();
             removedMethod.getMethodVersion().getAssumption().invalidate();
             JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getDeclaringKlass().getName() + "." + removedMethod.getName());
@@ -1304,10 +1294,10 @@ public final class ObjectKlass extends Klass {
 
         for (ParserMethod addedMethod : addedMethods) {
             LinkedMethod linkedMethod = new LinkedMethod(addedMethod);
-            Method added = new Method(this, linkedMethod, pool);
+            Method added = new Method(redefineAssumption, this, linkedMethod, pool);
             declaredMethods.addLast(added);
             virtualMethodsModified |= isVirtual(addedMethod);
-            updateOverrideMethods(ids, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature());
+            checkSuperMethods(addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
             JDWP.LOGGER.fine(() -> "Added method " + added.getDeclaringKlass().getName() + "." + added.getName());
         }
 
@@ -1322,14 +1312,33 @@ public final class ObjectKlass extends Klass {
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
             vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
-            itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
+            itable = InterfaceTables.fixTables(redefineAssumption, this, vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 
         if (virtualMethodsModified) {
-            refreshSubClasses.addAll(getSubTypes());
+            invalidatedClasses.addAll(getSubTypes());
         }
 
-        klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(redefineAssumption, pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // fields
+        if (!packet.detectedChange.getAddedStaticFields().isEmpty() || !packet.detectedChange.getAddedInstanceFields().isEmpty()) {
+            Map<ParserField, Field> compatibleFields = packet.detectedChange.getMappedCompatibleFields();
+
+            ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
+            // add new fields to the extension object
+            extension.addNewStaticFields(klassVersion, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
+            extension.addNewInstanceFields(klassVersion, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
+
+            // make sure all new fields trigger re-resolution of fields
+            // with same name + type in the full class hierarchy
+            markForReResolution(packet.detectedChange.getAddedStaticFields(), invalidatedClasses);
+            markForReResolution(packet.detectedChange.getAddedInstanceFields(), invalidatedClasses);
+        }
+
+        for (Field removedField : packet.detectedChange.getRemovedFields()) {
+            removedField.removeByRedefintion();
+        }
 
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
@@ -1350,14 +1359,14 @@ public final class ObjectKlass extends Klass {
         return metadata;
     }
 
-    private void markForReResolution(List<ParserField> addedFields) {
+    private void markForReResolution(List<ParserField> addedFields, List<ObjectKlass> invalidatedClasses) {
         for (ParserField addedField : addedFields) {
             // search the super hierarchy
             ObjectKlass superClass = getSuperKlass();
             while (superClass != null) {
                 Field field = superClass.lookupDeclaredField(addedField.getName(), addedField.getType());
                 if (field != null) {
-                    field.markNeedsNewResolution();
+                    invalidatedClasses.add(superClass);
                 }
                 superClass = superClass.getSuperKlass();
             }
@@ -1367,27 +1376,27 @@ public final class ObjectKlass extends Klass {
             for (ObjectKlass subType : klass) {
                 Field field = subType.lookupDeclaredField(addedField.getName(), addedField.getType());
                 if (field != null) {
-                    field.markNeedsNewResolution();
+                    invalidatedClasses.add(subType);
                 }
             }
         }
     }
 
-    // used by some plugins during klass redefitnion
+    // used by some plugins during klass redefinition
     public void reRunClinit() {
         getClassInitializer().getCallTarget().call();
     }
 
-    private static void checkCopyMethods(Method method, Method[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+    private static void checkCopyMethods(Assumption redefineAssumption, Method method, Method[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
         for (Method[] methods : table) {
-            checkCopyMethods(method, methods, content, ids);
+            checkCopyMethods(redefineAssumption, method, methods, content, ids);
         }
     }
 
-    private static void checkCopyMethods(Method method, Method[] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+    private static void checkCopyMethods(Assumption redefineAssumption, Method method, Method[] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
         for (Method m : table) {
             if (m.identity() == method.identity() && m != method) {
-                m.redefine(content, ids);
+                m.redefine(redefineAssumption, content, ids);
             }
         }
     }
@@ -1401,23 +1410,25 @@ public final class ObjectKlass extends Klass {
     // if an added/removed method is an override of a super method
     // we need to invalidate the super class method, to allow
     // for new method dispatch lookup
-    private void updateOverrideMethods(Ids<Object> ids, int flags, Symbol<Name> methodName, Symbol<Signature> signature) {
+    private void checkSuperMethods(int flags, Symbol<Name> methodName, Symbol<Signature> signature, List<ObjectKlass> invalidatedClasses) {
         if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(methodName)) {
             ObjectKlass superKlass = getSuperKlass();
-
+            ObjectKlass currentKlass = this;
             while (superKlass != null) {
                 // look for the method
-                int vtableIndex = superKlass.findVirtualMethodIndex(methodName, signature, this);
+                int vtableIndex = superKlass.findVirtualMethodIndex(methodName, signature, currentKlass);
                 if (vtableIndex != -1) {
-                    superKlass.getVTable()[vtableIndex].onSubclassMethodChanged(ids);
+                    invalidatedClasses.add(superKlass);
                 }
+                currentKlass = superKlass;
                 superKlass = superKlass.getSuperKlass();
             }
         }
     }
 
-    public void onSuperKlassUpdate() {
+    public void refresh(Ids<Object> ids) {
         KlassVersion oldVersion = klassVersion;
+        Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
         Method[][] itable = oldVersion.itable;
         Method[] vtable;
@@ -1425,7 +1436,7 @@ public final class ObjectKlass extends Klass {
         Method[] mirandaMethods = oldVersion.mirandaMethods;
         Method[] newDeclaredMethods = oldVersion.declaredMethods;
 
-        if (this.isInterface()) {
+        if (isInterface()) {
             InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, newDeclaredMethods);
             vtable = icr.methodtable;
             iKlassTable = icr.klassTable;
@@ -1434,10 +1445,19 @@ public final class ObjectKlass extends Klass {
             iKlassTable = methodCR.klassTable;
             mirandaMethods = methodCR.mirandas;
             vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, true);
-            itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
+            itable = InterfaceTables.fixTables(redefineAssumption, this, vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
         }
 
-        klassVersion = new KlassVersion(oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+        klassVersion = new KlassVersion(redefineAssumption, oldVersion.pool, oldVersion.linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // invalidate all methods for this class due to class redefinition
+        for (Method mirandaMethod : mirandaMethods) {
+            mirandaMethod.invalidate(redefineAssumption, ids);
+        }
+
+        for (Method newDeclaredMethod : newDeclaredMethods) {
+            newDeclaredMethod.invalidate(redefineAssumption, ids);
+        }
 
         // flush caches before invalidating to avoid races
         // a potential thread fetching new reflection data
@@ -1510,9 +1530,9 @@ public final class ObjectKlass extends Klass {
         private final Method[] declaredMethods;
         private final Method[] mirandaMethods;
 
-        KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods,
+        KlassVersion(Assumption redefineAssumption, RuntimeConstantPool pool, LinkedKlass linkedKlass, Method[] declaredMethods, Method[] mirandaMethods,
                         Method[] vtable, Method[][] itable, ObjectKlass[] iKlassTable) {
-            this.assumption = Truffle.getRuntime().createAssumption();
+            this.assumption = redefineAssumption;
             this.pool = pool;
             this.linkedKlass = linkedKlass;
             this.declaredMethods = declaredMethods;

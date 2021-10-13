@@ -132,6 +132,10 @@ public final class ClassRedefinition {
         }
     }
 
+    public boolean inProgress() {
+        return locked;
+    }
+
     public boolean isRedefineThread() {
         return redefineThread == Thread.currentThread();
     }
@@ -212,7 +216,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    public int redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
+    public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -221,7 +225,7 @@ public final class ClassRedefinition {
                 case ADD_METHOD:
                 case REMOVE_METHOD:
                 case SCHEMA_CHANGE:
-                    doRedefineClass(packet, refreshSubClasses);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
@@ -298,13 +302,15 @@ public final class ClassRedefinition {
                         case NO_CHANGE:
                             if (isPatched) {
                                 checkForSpecialConstructor(collectedChanges, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
-                                break;
-                            }
-                            if (constantPoolChanged) {
+                            } else if (constantPoolChanged) {
                                 if (isObsolete(oldParserMethod, newMethod, oldParserKlass.getConstantPool(), newParserKlass.getConstantPool())) {
                                     result = ClassChange.CONSTANT_POOL_CHANGE;
                                     collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                                } else {
+                                    collectedChanges.addUnchangedMethod(oldMethod);
                                 }
+                            } else {
+                                collectedChanges.addUnchangedMethod(oldMethod);
                             }
                             break;
                         case METHOD_BODY_CHANGE:
@@ -436,6 +442,8 @@ public final class ClassRedefinition {
             if (matcher.matches()) {
                 newSpecialMethods.add(newMethod);
                 collectedChanges.addRemovedMethods(oldMethod);
+            } else {
+                bodyChanges.put(oldMethod, newMethod);
             }
         } else {
             // for class-name patched classes we have to redefine all methods
@@ -636,7 +644,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
         if (packet.info.isRenamed()) {
             // renaming a class is done by
@@ -655,7 +663,8 @@ public final class ClassRedefinition {
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
         }
-        oldKlass.redefineClass(packet, refreshSubClasses, ids);
+        oldKlass.redefineClass(packet, invalidatedClasses, ids);
+        redefinedClasses.add(oldKlass);
         if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
             context.rerunclinit(oldKlass);
         }
