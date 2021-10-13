@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_REDEFINE_ADDED;
+import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
@@ -61,7 +61,7 @@ final class LinkedField extends StaticProperty {
             case OBFUSCATED:
                 return parserField.withFlags(FIELD_ID_OBFUSCATE);
             case REDEFINE_ADDED:
-                return parserField.withFlags(ACC_REDEFINE_ADDED);
+                return parserField.withFlags(FIELD_REDEFINE_ADDED);
         }
         throw EspressoError.shouldNotReachHere();
     }
