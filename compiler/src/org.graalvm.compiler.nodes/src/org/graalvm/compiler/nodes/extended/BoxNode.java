@@ -211,7 +211,7 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
         @Override
         public void lower(LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
-                replaceAtAllUsages(value, this);
+                replaceAtAllUsages(value, true);
             }
         }
 

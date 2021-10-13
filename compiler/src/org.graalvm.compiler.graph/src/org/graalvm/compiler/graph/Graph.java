@@ -582,7 +582,11 @@ public class Graph {
                     inputChanged(node);
                     break;
                 case ZERO_USAGES:
+                    GraalError.guarantee(node.isAlive(), "must be alive");
                     usagesDroppedToZero(node);
+                    if (!node.isAlive()) {
+                        throw new GraalError("%s must not kill %s", this, node);
+                    }
                     break;
                 case NODE_ADDED:
                     nodeAdded(node);
