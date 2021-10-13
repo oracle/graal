@@ -141,7 +141,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public void updateSizeParameters() {
         PhysicalMemory.tryInitialize();
 
-        SizeParameters params = computeSizeParameters();
+        SizeParameters params = computeSizeParameters(sizes);
         SizeParameters previous = sizes;
         if (previous != null && params.equal(previous)) {
             return; // nothing to do
@@ -246,7 +246,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract long gcCount();
 
-    protected SizeParameters computeSizeParameters() {
+    protected SizeParameters computeSizeParameters(SizeParameters existing) {
         UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
@@ -328,7 +328,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord initialEden = initialYoung.subtract(initialSurvivor.multiply(2));
         initialEden = minSpaceSize(alignDown(initialEden));
 
-        return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
+        return SizeParameters.get(existing, maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
     }
 
     protected static final class SizeParameters {
@@ -339,7 +339,15 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         final UnsignedWord initialSurvivorSize;
         final UnsignedWord minHeapSize;
 
-        SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize,
+        static SizeParameters get(SizeParameters existing, UnsignedWord maxHeap, UnsignedWord maxYoung, UnsignedWord initialHeap,
+                        UnsignedWord initialEden, UnsignedWord initialSurvivor, UnsignedWord minHeap) {
+            if (existing != null && existing.matches(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap)) {
+                return existing;
+            }
+            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
+        }
+
+        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize,
                         UnsignedWord initialEdenSize, UnsignedWord initialSurvivorSize, UnsignedWord minHeapSize) {
             this.maxHeapSize = maxHeapSize;
             this.maxYoungSize = maxYoungSize;
@@ -385,8 +393,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean equal(SizeParameters other) {
-            return maxHeapSize.equal(other.maxHeapSize) && maxYoungSize.equal(other.maxYoungSize) && initialHeapSize.equal(other.initialHeapSize) &&
-                            initialEdenSize.equal(other.initialEdenSize) && initialSurvivorSize.equal(other.initialSurvivorSize) && minHeapSize.equal(other.minHeapSize);
+            return other == this || other.matches(maxHeapSize, maxYoungSize, initialHeapSize, initialEdenSize, initialSurvivorSize, minHeapSize);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        boolean matches(UnsignedWord maxHeap, UnsignedWord maxYoung, UnsignedWord initialHeap, UnsignedWord initialEden, UnsignedWord initialSurvivor, UnsignedWord minHeap) {
+            return maxHeapSize.equal(maxHeap) && maxYoungSize.equal(maxYoung) && initialHeapSize.equal(initialHeap) &&
+                            initialEdenSize.equal(initialEden) && initialSurvivorSize.equal(initialSurvivor) && minHeapSize.equal(minHeap);
         }
     }
 }
