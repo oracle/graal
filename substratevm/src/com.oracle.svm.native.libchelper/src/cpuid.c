@@ -25,8 +25,8 @@
 
 
 #if defined(__x86_64__) || defined(_WIN64)
-#include<stdint.h>
-#include<string.h>
+#include <stdint.h>
+#include <string.h>
 #include "amd64cpufeatures.h"
 #include "amd64hotspotcpuinfo.h"
 
@@ -550,17 +550,56 @@ void determineCPUFeatures(CPUFeatures *features)
 
 #elif defined(__aarch64__)
 
+/*
+ * The corresponding HotSpot code can be found in vm_version_bsd_aarch64.
+ */
+#if defined(__APPLE__)
+
+#include <stdint.h>
+#include <sys/sysctl.h>
+#include "aarch64cpufeatures.h"
+
+static uint32_t cpu_has(const char* optional) {
+  uint32_t val;
+  size_t len = sizeof(val);
+  if (sysctlbyname(optional, &val, &len, NULL, 0)) {
+    return 0;
+  }
+  return val;
+}
+
+void determineCPUFeatures(CPUFeatures* features) {
+  features->fFP = !!(cpu_has("hw.optional.floatingpoint"));
+  features->fASIMD = !!(cpu_has("hw.optional.neon"));
+  features->fEVTSTRM = 0;
+  features->fAES = 0;
+  features->fPMULL = 0;
+  features->fSHA1 = 0;
+  features->fSHA2 = 0;
+  features->fCRC32 = !!(cpu_has("hw.optional.armv8_crc32"));
+  features->fLSE = !!(cpu_has("hw.optional.armv8_1_atomics"));
+  features->fDCPOP = 0;
+  features->fSHA3 = 0;
+  features->fSHA512 = 0;
+  features->fSVE = 0;
+  features->fSVE2 = 0;
+  features->fSTXRPREFETCH = 0;
+  features->fA53MAC = 0;
+  features->fDMBATOMICS = 0;
+}
+
+/*
+ * The corresponding HotSpot code can be found in vm_version_aarch64 and
+ * vm_version_linux_aarch64.
+ */
+#elif defined(__linux__)
+
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "aarch64cpufeatures.h"
-
-/*
- * The corresponding HotSpot code can be found in vm_version_aarch64 and
- * vm_version_linux_aarch64.
- */
 
 #ifndef HWCAP_FP
 #define HWCAP_FP            (1L << 0)
@@ -675,6 +714,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   if (_cpu == CPU_CAVIUM && _model == 0xA1 && _variant == 0)
     features->fDMBATOMICS = 1;
 }
+#endif
 
 #else
 /*
