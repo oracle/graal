@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,7 +63,13 @@ public final class ImageHeapMap {
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create() {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>();
+        return new HostedImageHeapMap<>(Equivalence.DEFAULT);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static <K, V> EconomicMap<K, V> create(Equivalence strategy) {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
+        return new HostedImageHeapMap<>(strategy);
     }
 }
 
@@ -71,9 +78,9 @@ final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 
     final EconomicMap<Object, Object> runtimeMap;
 
-    HostedImageHeapMap() {
+    HostedImageHeapMap(Equivalence strategy) {
         super(new ConcurrentHashMap<>());
-        this.runtimeMap = EconomicMap.create();
+        this.runtimeMap = EconomicMap.create(strategy);
     }
 }
 
