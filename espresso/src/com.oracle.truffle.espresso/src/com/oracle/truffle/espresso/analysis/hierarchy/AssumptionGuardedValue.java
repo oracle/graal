@@ -28,6 +28,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Represents a value whose correctness is determined by the assumption. The value is safe to use if
  * and only if the assumption is valid.
@@ -38,12 +40,12 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * @param <T> Type of the stored value
  */
 abstract class AssumptionGuardedValue<T> {
-    @CompilationFinal protected Assumption hasValue;
-    @CompilationFinal protected T value;
+    @CompilationFinal protected AtomicReference<Assumption> hasValue;
+    @CompilationFinal protected AtomicReference<T> value;
 
     AssumptionGuardedValue(Assumption hasValue, T value) {
-        this.hasValue = hasValue;
-        this.value = value;
+        this.hasValue = new AtomicReference<>(hasValue);
+        this.value = new AtomicReference<>(value);
     }
 
     @TruffleBoundary
@@ -52,13 +54,13 @@ abstract class AssumptionGuardedValue<T> {
     }
 
     public T get() {
-        if (!hasValue.isValid()) {
+        if (!hasValue.get().isValid()) {
             reportInvalidValueAccess();
         }
-        return value;
+        return value.get();
     }
 
     public Assumption hasValue() {
-        return hasValue;
+        return hasValue.get();
     }
 }
