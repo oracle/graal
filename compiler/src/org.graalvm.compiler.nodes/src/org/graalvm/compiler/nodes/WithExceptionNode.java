@@ -90,8 +90,10 @@ public abstract class WithExceptionNode extends ControlSplitNode {
 
     public void killExceptionEdge() {
         AbstractBeginNode edge = exceptionEdge();
-        setExceptionEdge(null);
-        GraphUtil.killCFG(edge);
+        if (edge != null) {
+            setExceptionEdge(null);
+            GraphUtil.killCFG(edge);
+        }
     }
 
     @Override
