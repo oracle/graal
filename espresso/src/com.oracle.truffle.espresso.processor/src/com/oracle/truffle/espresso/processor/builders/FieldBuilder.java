@@ -34,7 +34,6 @@ public final class FieldBuilder extends AbstractCodeBuilder {
     public FieldBuilder(Object type, Object name) {
         this.name = name.toString();
         this.type = type.toString();
-        setIndentLevel(1);
     }
 
     public FieldBuilder withAnnotation(String annotation) {
@@ -52,16 +51,12 @@ public final class FieldBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         for (String annotation : annotations) {
-            sb.append(baseIndent).append(annotation);
-            sb.append(NEWLINE);
+            sb.append(annotation);
+            sb.appendLine();
         }
-        sb.append(baseIndent);
         modifierBuilder.buildImpl(sb);
-        sb.append(type);
-        sb.append(' ');
-        sb.append(name);
-        sb.append(SEMICOLON_NEWLINE);
+        sb.appendSpace(type).append(name).appendLine(SEMICOLON);
     }
 }

@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.processor;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
 import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
@@ -75,7 +76,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
     private static final String SUBSTITUTOR = "JavaSubstitution";
-    private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
@@ -135,24 +135,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return str.toString();
     }
 
-    private static String generateParameterTypes(List<String> types, String tabulation) {
-        StringBuilder str = new StringBuilder();
-        str.append("new String[]{");
-        boolean first = true;
+    private static String generateParameterTypes(List<String> types, int tabulation) {
+        IndentingStringBuilder sb = new IndentingStringBuilder(0);
+        sb.appendLine("new String[]{");
+        sb.setIndentLevel(tabulation + 1);
         for (String type : types) {
-            if (first) {
-                str.append("\n");
-                first = false;
-            } else {
-                str.append(",\n");
-            }
-            str.append(tabulation).append(TAB_1).append("\"").append(type).append("\"");
+            sb.append('\"').append(type).appendLine("\",");
         }
-        if (!first) {
-            str.append("\n").append(tabulation);
-        }
-        str.append("}");
-        return str.toString();
+        sb.lowerIndentLevel();
+        sb.append('}');
+        return sb.toString();
     }
 
     private void processElement(Element substitution) {
@@ -581,7 +573,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',')
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',')
                 .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',')
-                .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, TAB_4), ',')
+                .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',')
                 .addIndentedBodyLine(1, h.hasReceiver)
                 .addBodyLine(");")
                 ;

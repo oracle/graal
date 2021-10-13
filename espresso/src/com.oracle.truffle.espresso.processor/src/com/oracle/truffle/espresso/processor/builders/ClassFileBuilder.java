@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class ClassFileBuilder extends AbstractCodeBuilder {
+    public static final String PACKAGE = "package";
+    public static final String IMPORT = "import";
     public static final String COPYRIGHT = "/* Copyright (c) " + Year.now() + " Oracle and/or its affiliates. All rights reserved.\n" +
             " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
             " *\n" +
@@ -47,7 +49,7 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
             " * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n" +
             " * or visit www.oracle.com if you need additional information or have any\n" +
             " * questions.\n" +
-            " */\n\n";
+            " */\n";
 
     private boolean copyright;
     private String packageName;
@@ -81,38 +83,38 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
     }
 
     public String build() {
-        StringBuilder sb = new StringBuilder();
+        IndentingStringBuilder sb = new IndentingStringBuilder(0);
         buildImpl(sb);
         return sb.toString();
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         if (classes.size() == 0) {
             throw new IllegalStateException("Cannot build a file with no classes defined");
         }
 
         if (copyright) {
-            sb.append(COPYRIGHT);
+            sb.appendLine(COPYRIGHT);
         }
 
         if (packageName != null) {
-            sb.append("package ").append(packageName).append(SEMICOLON_NEWLINE);
+            sb.appendSpace(PACKAGE).append(packageName).appendLine(SEMICOLON);
         }
-        sb.append(NEWLINE);
+        sb.appendLine();
 
         for (List<String> imports : importGroups) {
             for (String importStr : imports) {
-                sb.append("import ").append(importStr).append(';').append(NEWLINE);
+                sb.appendSpace(IMPORT).append(importStr).appendLine(SEMICOLON);
             }
             if (imports.size() > 0) {
-                sb.append(NEWLINE);
+                sb.appendLine();
             }
         }
 
         for (ClassBuilder classBuilder : classes) {
             classBuilder.buildImpl(sb);
-            sb.append(NEWLINE);
+            sb.appendLine();
         }
     }
 }

@@ -36,14 +36,12 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     private String returnType = "void";
     private ModifierBuilder modifierBuilder = new ModifierBuilder();
     private final List<String> annotations = new ArrayList<>();
-    private final List<String> body = new ArrayList<>();
+    private final List<MethodBodyLine> body = new ArrayList<>();
     private final List<String> params = new ArrayList<>();
     private final List<String> templateParams = new ArrayList<>();
 
-
     public MethodBuilder(String methodName) {
         this.methodName = methodName;
-        setIndentLevel(1);
     }
 
     public MethodBuilder withModifiers(ModifierBuilder qualifiers) {
@@ -61,17 +59,12 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     public MethodBuilder addBodyLine(Object... parts) {
-        body.add(joinParts(parts));
+        body.add(new MethodBodyLine(joinParts(parts)));
         return this;
     }
 
     public MethodBuilder addIndentedBodyLine(int lvl, Object... parts) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < lvl; ++i) {
-            sb.append(TAB_1);
-        }
-        sb.append(joinParts(parts));
-        body.add(sb.toString());
+        body.add(new MethodBodyLine(joinParts(parts), lvl));
         return this;
     }
 
@@ -100,30 +93,41 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         for (String annotation : annotations) {
-            sb.append(baseIndent).append(annotation);
-            sb.append(NEWLINE);
+            sb.appendLine(annotation);
         }
-        sb.append(baseIndent);
         modifierBuilder.buildImpl(sb);
         if (templateParams.size() > 0) {
-            sb.append(TEMPLATE_OPEN);
-            joinPartsWith(sb, ", ", templateParams);
-            sb.append(TEMPLATE_CLOSE);
-            sb.append(' ');
+            sb.append(TEMPLATE_OPEN).join(", ", templateParams).appendSpace(TEMPLATE_CLOSE);
         }
         if (!constructor) {
-            sb.append(returnType).append(' ');
+            sb.appendSpace(returnType);
         }
         sb.append(methodName);
-        sb.append(PAREN_OPEN);
-        joinPartsWith(sb, ", ", params);
-        sb.append(PAREN_CLOSE).append(' ');
-        sb.append(BLOCK_OPEN).append(NEWLINE);
-        for (String line : body) {
-            sb.append(baseIndent).append(TAB_1).append(line).append(NEWLINE);
+        sb.append(PAREN_OPEN).join(", ", params).appendSpace(PAREN_CLOSE);
+        sb.appendLine(BLOCK_OPEN);
+        sb.raiseIndentLevel();
+        for (MethodBodyLine ln : body) {
+            sb.appendIndent(ln.additionalIndent);
+            sb.appendLine(ln.line);
         }
-        sb.append(baseIndent).append(BLOCK_CLOSE).append(NEWLINE);
+        sb.lowerIndentLevel();
+        sb.appendLine(BLOCK_CLOSE);
+    }
+
+
+    private static class MethodBodyLine {
+        String line;
+        int additionalIndent;
+
+        MethodBodyLine(String line) {
+            this.line = line;
+        }
+
+        MethodBodyLine(String line, int additionalIndent) {
+            this.line = line;
+            this.additionalIndent = additionalIndent;
+        }
     }
 }

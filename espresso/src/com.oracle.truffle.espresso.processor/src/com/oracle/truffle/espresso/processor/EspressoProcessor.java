@@ -257,10 +257,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String ARGS_NAME = "args";
     static final String ARG_NAME = "arg";
-    static final String TAB_1 = "    ";
-    static final String TAB_2 = TAB_1 + TAB_1;
-    static final String TAB_3 = TAB_2 + TAB_1;
-    static final String TAB_4 = TAB_3 + TAB_1;
 
     public static NativeType classToType(TypeKind typeKind) {
         // @formatter:off
@@ -580,7 +576,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
                 .withReturnType(substitutor)
                 .withParams(META_CLASS + META_VAR)
                 .addBodyLine("return new ", className, "(", META_VAR, ");"));
-        factory.setIndentLevel(1);
         return factory;
     }
 
