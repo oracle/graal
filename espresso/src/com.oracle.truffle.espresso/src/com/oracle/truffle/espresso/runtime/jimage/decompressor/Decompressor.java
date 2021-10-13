@@ -54,7 +54,6 @@ public final class Decompressor {
      * @param provider Strings provider
      * @param content The resource content to uncompress.
      * @return A fully uncompressed resource.
-     * @throws IOException
      */
     public byte[] decompressResource(ByteOrder order, ResourceDecompressor.StringsProvider provider,
                     byte[] content) throws IOException {
@@ -62,8 +61,9 @@ public final class Decompressor {
         Objects.requireNonNull(provider);
         Objects.requireNonNull(content);
         CompressedResourceHeader header;
+        byte[] currentContent = content;
         do {
-            header = CompressedResourceHeader.readFromResource(order, content);
+            header = CompressedResourceHeader.readFromResource(order, currentContent);
             if (header != null) {
                 ResourceDecompressor decompressor = pluginsCache.get(header.getDecompressorNameOffset());
                 if (decompressor == null) {
@@ -74,7 +74,7 @@ public final class Decompressor {
                     String storedContent = header.getStoredContent(provider);
                     Properties props = new Properties();
                     if (storedContent != null) {
-                        try (ByteArrayInputStream stream = new ByteArrayInputStream(storedContent.getBytes(StandardCharsets.UTF_8));) {
+                        try (ByteArrayInputStream stream = new ByteArrayInputStream(storedContent.getBytes(StandardCharsets.UTF_8))) {
                             props.loadFromXML(stream);
                         }
                     }
@@ -86,13 +86,13 @@ public final class Decompressor {
                     pluginsCache.put(header.getDecompressorNameOffset(), decompressor);
                 }
                 try {
-                    content = decompressor.decompress(provider, content,
+                    currentContent = decompressor.decompress(provider, currentContent,
                                     CompressedResourceHeader.getSize(), header.getUncompressedSize());
                 } catch (Exception ex) {
                     throw new IOException(ex);
                 }
             }
         } while (header != null);
-        return content;
+        return currentContent;
     }
 }

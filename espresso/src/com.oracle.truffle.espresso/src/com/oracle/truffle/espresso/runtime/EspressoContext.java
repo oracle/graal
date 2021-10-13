@@ -25,10 +25,12 @@ package com.oracle.truffle.espresso.runtime;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,7 +46,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.espresso.runtime.jimage.ImageReader;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -59,6 +61,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -204,6 +207,7 @@ public final class EspressoContext {
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
+    public final EspressoOptions.JImageMode jimageMode;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -316,6 +320,17 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
+
+
+        EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
+        if (requestedJImageMode == null) {
+            if (NativeAccessAllowed) {
+                requestedJImageMode = EspressoOptions.JImageMode.NATIVE;
+            } else {
+                requestedJImageMode = EspressoOptions.JImageMode.JAVA;
+            }
+        }
+        this.jimageMode = requestedJImageMode;
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
@@ -704,13 +719,23 @@ public final class EspressoContext {
     }
 
     public JImageHelper createJImageHelper(String jimagePath) {
-        JImageLibrary library = jimageLibrary();
-        TruffleObject image = library.open(jimagePath);
-        if (InteropLibrary.getUncached().isNull(image)) {
-            logger.warning("jimage native library returned null?");
-            return null;
+        if (jimageMode == EspressoOptions.JImageMode.NATIVE) {
+            JImageLibrary library = jimageLibrary();
+            TruffleObject image = library.open(jimagePath);
+            if (InteropLibrary.getUncached().isNull(image)) {
+                logger.warning("jimage native library returned null?");
+                return null;
+            }
+            return new NativeJImageHelper(library, image);
+        } else {
+            assert jimageMode == EspressoOptions.JImageMode.JAVA;
+            try {
+                return new JavaJImageHelper(ImageReader.open(Paths.get(jimagePath)), this);
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "failed to open jimage", e);
+                return null;
+            }
         }
-        return new NativeJImageHelper(library, image);
     }
 
     public JavaVersion getJavaVersion() {

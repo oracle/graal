@@ -65,10 +65,6 @@ public final class CompressedResourceHeader {
         return decompressorNameOffset;
     }
 
-    public int getContentOffset() {
-        return contentOffset;
-    }
-
     public String getStoredContent(ResourceDecompressor.StringsProvider provider) {
         Objects.requireNonNull(provider);
         if (contentOffset == -1) {
@@ -83,19 +79,6 @@ public final class CompressedResourceHeader {
 
     public long getResourceSize() {
         return compressedSize;
-    }
-
-    public byte[] getBytes(ByteOrder order) {
-        Objects.requireNonNull(order);
-        ByteBuffer buffer = ByteBuffer.allocate(SIZE);
-        buffer.order(order);
-        buffer.putInt(MAGIC);
-        buffer.putLong(compressedSize);
-        buffer.putLong(uncompressedSize);
-        buffer.putInt(decompressorNameOffset);
-        buffer.putInt(contentOffset);
-        buffer.put(isTerminal ? (byte) 1 : (byte) 0);
-        return buffer.array();
     }
 
     public static int getSize() {

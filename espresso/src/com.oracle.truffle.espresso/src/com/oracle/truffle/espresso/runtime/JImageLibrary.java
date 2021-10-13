@@ -211,12 +211,6 @@ class JImageLibrary implements ContextAccess {
         }
     }
 
-    private String packageToModule(TruffleObject jimage, String pkg) {
-        try (RawBuffer pkgBuffer = RawBuffer.getNativeString(pkg)) {
-            return NativeUtils.interopPointerToString((TruffleObject) execute(packageToModule, jimage, pkgBuffer.pointer()));
-        }
-    }
-
     private static String packageFromName(String name) {
         int lastSlash = name.lastIndexOf('/');
         if (lastSlash == -1) {

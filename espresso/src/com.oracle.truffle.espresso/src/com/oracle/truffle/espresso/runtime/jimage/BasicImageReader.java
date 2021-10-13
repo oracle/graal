@@ -85,71 +85,36 @@ public class BasicImageReader implements AutoCloseable {
         this.byteOrder = Objects.requireNonNull(byteOrder);
         this.name = this.imagePath.toString();
 
-        ByteBuffer map;
-
-        if (USE_JVM_MAP && BasicImageReader.class.getClassLoader() == null) {
-            // Check to see if the jvm has opened the file using libjimage
-            // native entry when loading the image for this runtime
-            map = NativeImageBuffer.getNativeMap(name);
-        } else {
-            map = null;
-        }
-
-        // Open the file only if no memory map yet or is 32 bit jvm
-        if (map != null && MAP_ALL) {
-            channel = null;
-        } else {
-            channel = FileChannel.open(imagePath, StandardOpenOption.READ);
-            // No lambdas during bootstrap
-            AccessController.doPrivileged(new PrivilegedAction<Void>() {
-                @Override
-                public Void run() {
-                    if (BasicImageReader.class.getClassLoader() == null) {
-                        try {
-                            Class<?> fileChannelImpl = Class.forName("sun.nio.ch.FileChannelImpl");
-                            Method setUninterruptible = fileChannelImpl.getMethod("setUninterruptible");
-                            setUninterruptible.invoke(channel);
-                        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
-                            // fall thru - will only happen on JDK-8 systems where this code
-                            // is only used by tools using jrt-fs (non-critical.)
-                        }
+        channel = FileChannel.open(imagePath, StandardOpenOption.READ);
+        // No lambdas during bootstrap
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            @Override
+            public Void run() {
+                if (BasicImageReader.class.getClassLoader() == null) {
+                    try {
+                        Class<?> fileChannelImpl = Class.forName("sun.nio.ch.FileChannelImpl");
+                        Method setUninterruptible = fileChannelImpl.getMethod("setUninterruptible");
+                        setUninterruptible.invoke(channel);
+                    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
+                        // fall thru - will only happen on JDK-8 systems where this code
+                        // is only used by tools using jrt-fs (non-critical.)
                     }
-
-                    return null;
                 }
-            });
-        }
 
-        // If no memory map yet and 64 bit jvm then memory map entire file
-        if (MAP_ALL && map == null) {
-            map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
-        }
-
-        // Assume we have a memory map to read image file header
-        ByteBuffer headerBuffer = map;
-        int headerSize = ImageHeader.getHeaderSize();
-
-        // If no memory map then read header from image file
-        if (headerBuffer == null) {
-            headerBuffer = ByteBuffer.allocateDirect(headerSize);
-            if (channel.read(headerBuffer, 0L) == headerSize) {
-                headerBuffer.rewind();
-            } else {
-                throw new IOException("\"" + name + "\" is not an image file");
+                return null;
             }
-        } else if (headerBuffer.capacity() < headerSize) {
+        });
+
+        ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
+
+        int headerSize = ImageHeader.getHeaderSize();
+        if (map.capacity() < headerSize) {
             throw new IOException("\"" + name + "\" is not an image file");
         }
 
         // Interpret the image file header
-        header = readHeader(intBuffer(headerBuffer, 0, headerSize));
+        header = readHeader(intBuffer(map, 0, headerSize));
         indexSize = header.getIndexSize();
-
-        // If no memory map yet then must be 32 bit jvm not previously mapped
-        if (map == null) {
-            // Just map the image index
-            map = channel.map(FileChannel.MapMode.READ_ONLY, 0, indexSize);
-        }
 
         memoryMap = map.asReadOnlyBuffer();
 
