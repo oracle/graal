@@ -26,25 +26,25 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 public final class ExtensionFieldsMetadata {
-    private static AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
     @CompilationFinal(dimensions = 1) private Field[] addedInstanceFields = Field.EMPTY_ARRAY;
     @CompilationFinal(dimensions = 1) private Field[] addedStaticFields = Field.EMPTY_ARRAY;
 
-    public void addNewStaticFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    public void addNewStaticFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+                    ClassRedefinition classRedefinition) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (newFields.isEmpty()) {
             return;
         }
-        List<Field> toAdd = initNewFields(holder, newFields, pool, compatibleFields);
+        List<Field> toAdd = initNewFields(holder, newFields, pool, compatibleFields, classRedefinition);
         int nextIndex = addedStaticFields.length;
         addedStaticFields = Arrays.copyOf(addedStaticFields, addedStaticFields.length + toAdd.size());
         for (Field field : toAdd) {
@@ -52,13 +52,14 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    public void addNewInstanceFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    public void addNewInstanceFields(ObjectKlass.KlassVersion holder, List<ParserField> newFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+                    ClassRedefinition classRedefinition) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (newFields.isEmpty()) {
             return;
         }
-        List<Field> toAdd = initNewFields(holder, newFields, pool, compatibleFields);
+        List<Field> toAdd = initNewFields(holder, newFields, pool, compatibleFields, classRedefinition);
         int nextIndex = addedInstanceFields.length;
         addedInstanceFields = Arrays.copyOf(addedInstanceFields, addedInstanceFields.length + toAdd.size());
         for (Field field : toAdd) {
@@ -66,10 +67,12 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields) {
+    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+                    ClassRedefinition classRedefinition) {
         List<Field> toAdd = new ArrayList<>(instanceFields.size());
         for (ParserField newField : instanceFields) {
-            LinkedField linkedField = new LinkedField(newField, nextAvailableFieldSlot.getAndDecrement(), LinkedField.IdMode.REDEFINE_ADDED);
+            int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
+            LinkedField linkedField = new LinkedField(newField, nextFieldSlot, LinkedField.IdMode.REDEFINE_ADDED);
             Field field = new Field(holder, linkedField, pool);
             toAdd.add(field);
 

@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
 import com.oracle.truffle.api.Assumption;
@@ -77,6 +78,7 @@ public final class ClassRedefinition {
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
     private ArrayList<Field> currentSyntheticFields;
+    private AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
 
     public Assumption getMissingFieldAssumption() {
         return missingFieldAssumption;
@@ -688,5 +690,9 @@ public final class ClassRedefinition {
             // Update to the latest version of the replacement method
             return replacementMethod;
         }
+    }
+
+    public int getNextAvailableFieldSlot() {
+        return nextAvailableFieldSlot.getAndDecrement();
     }
 }

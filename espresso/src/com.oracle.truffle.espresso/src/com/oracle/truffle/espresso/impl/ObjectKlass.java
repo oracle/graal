@@ -1327,8 +1327,8 @@ public final class ObjectKlass extends Klass {
 
             ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
             // add new fields to the extension object
-            extension.addNewStaticFields(klassVersion, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields);
-            extension.addNewInstanceFields(klassVersion, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields);
+            extension.addNewStaticFields(klassVersion, packet.detectedChange.getAddedStaticFields(), pool, compatibleFields, getContext().getClassRedefinition());
+            extension.addNewInstanceFields(klassVersion, packet.detectedChange.getAddedInstanceFields(), pool, compatibleFields, getContext().getClassRedefinition());
 
             // make sure all new fields trigger re-resolution of fields
             // with same name + type in the full class hierarchy
