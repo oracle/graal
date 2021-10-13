@@ -49,23 +49,22 @@ public class AnalysisFuture<V> extends FutureTask<V> {
         throw new GraalError(t);
     }
 
-    /** Run the task and wait for it to complete, if necessary. */
-    public void ensureDone() {
+    /** Run the task, wait for it to complete if necessary, then retrieve its result. */
+    public V ensureDone() {
         try {
             /*
-             * If the task is not done yet trigger its execution and call get(), which waits for the
-             * computation to complete, if necessary.
-             * 
-             * A task is "done" even if it failed with an exception. The exception is only reported
-             * when get() is invoked. That's why, to support this execution pattern without miss any
-             * exceptions, we report the error eagerly as a GraalError as soon as it is encountered.
+             * Trigger the task execution and call get(), which waits for the computation to
+             * complete, if necessary.
+             *
+             * A task is done even if it failed with an exception. The exception is only reported
+             * when get() is invoked. We report any error eagerly as a GraalError as soon as it is
+             * encountered.
              */
-            if (!isDone()) {
-                run();
-                get();
-            }
+            run();
+            return get();
         } catch (InterruptedException | ExecutionException e) {
-            AnalysisError.shouldNotReachHere(e);
+            throw AnalysisError.shouldNotReachHere(e);
         }
     }
+
 }

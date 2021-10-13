@@ -742,6 +742,12 @@ public class SVMHost implements HostVM {
                 return false;
             }
         }
+        if (element instanceof Class) {
+            Package p = ((Class<?>) element).getPackage();
+            if (p != null && !platformSupported(universe, p)) {
+                return false;
+            }
+        }
 
         Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
