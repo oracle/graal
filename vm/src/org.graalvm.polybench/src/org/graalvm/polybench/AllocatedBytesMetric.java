@@ -51,7 +51,7 @@ public final class AllocatedBytesMetric implements Metric {
 
     @Override
     public String unit() {
-        return "bytes";
+        return "B";
     }
 
     @Override
