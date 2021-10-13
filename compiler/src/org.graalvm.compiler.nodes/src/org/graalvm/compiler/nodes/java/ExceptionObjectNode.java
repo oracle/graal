@@ -39,7 +39,10 @@ import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -77,6 +80,10 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
+        if (isMarkerAndCanBeRemoved()) {
+            graph().removeFixed(this);
+            return;
+        }
         if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
             /*
              * Now the lowering to BeginNode+LoadExceptionNode can be performed, since no more
@@ -101,6 +108,31 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
             graph().removeFixed(this);
             loadException.lower(tool);
         }
+    }
+
+    /**
+     * Tests whether this is a placeholder node that can be removed.
+     *
+     * See {@code org.graalvm.compiler.replacements.SnippetTemplate.replaceExceptionObjectNode}
+     */
+    private boolean isMarkerAndCanBeRemoved() {
+        if (predecessor() instanceof WithExceptionNode) {
+            return false;
+        }
+        GraalError.guarantee(predecessor() instanceof ExceptionObjectNode, "Unexpected predecessor of %s: %s", this, predecessor());
+        GraalError.guarantee(getExceptionValueFromState(this) == getExceptionValueFromState((StateSplit) predecessor()), "predecessor of %s with unexpected state: %s", this, predecessor());
+        GraalError.guarantee(hasNoUsages(), "Unexpected usages of %s", this);
+        return true;
+    }
+
+    private static ValueNode getExceptionValueFromState(StateSplit exceptionObjectNode) {
+        if (exceptionObjectNode.asNode().graph().getFrameStateVerification() == FrameStateVerification.NONE) {
+            return null;
+        }
+        GraalError.guarantee(exceptionObjectNode.stateAfter() != null, "an exception handler needs a frame state");
+        GraalError.guarantee(exceptionObjectNode.stateAfter().stackSize() == 1 && exceptionObjectNode.stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
+                        "an exception handler's frame state must have only the exception on the stack");
+        return exceptionObjectNode.stateAfter().stackAt(0);
     }
 
     @Override

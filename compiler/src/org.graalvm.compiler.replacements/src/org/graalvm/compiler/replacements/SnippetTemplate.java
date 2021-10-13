@@ -88,7 +88,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
@@ -120,7 +119,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
-import org.graalvm.compiler.nodes.UnreachableControlSinkNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
@@ -129,6 +127,7 @@ import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -863,18 +862,7 @@ public class SnippetTemplate {
             } else if (unwindNodes.size() > 1) {
                 throw GraalError.shouldNotReachHere("Graph has more than one UnwindNode");
             } else {
-                UnwindNode unwindNode = unwindNodes.get(0);
-                GraalError.guarantee(unwindNode.predecessor() instanceof ExceptionObjectNode, "Currently only a single direct exception unwind path is supported in snippets");
-                ExceptionObjectNode exceptionObjectNode = (ExceptionObjectNode) unwindNode.predecessor();
-
-                /*
-                 * Replace the path to the UnwindNode with a stub to avoid any optimizations or
-                 * lowerings to modify it. Also removes the FrameState of the ExceptionObjectNode.
-                 */
-                unwindPath = snippetCopy.add(new BeginNode());
-                exceptionObjectNode.replaceAtPredecessor(unwindPath);
-                GraphUtil.killCFG(exceptionObjectNode);
-                unwindPath.setNext(snippetCopy.add(new UnreachableControlSinkNode()));
+                unwindPath = unwindNodes.get(0);
             }
 
             List<FallbackInvokeWithExceptionNode> fallbackInvokes = snippetCopy.getNodes().filter(FallbackInvokeWithExceptionNode.class).snapshot();
@@ -1296,7 +1284,7 @@ public class SnippetTemplate {
      * The node that will be replaced with the exception handler of the replacee node, or null if
      * the snippet does not have an exception handler path.
      */
-    private final FixedWithNextNode unwindPath;
+    private final UnwindNode unwindPath;
 
     /**
      * The fallback invoke (if any) of the snippet.
@@ -1772,13 +1760,45 @@ public class SnippetTemplate {
                                 "Using a snippet with an UnwindNode after floating reads would require support for the memory graph (unless the replacee has an exception edge)");
                 GraalError.guarantee(replacee instanceof WithExceptionNode, "Snippet has an UnwindNode, but replacee is not a node with an exception handler");
 
-                FixedWithNextNode unwindPathDuplicate = (FixedWithNextNode) duplicates.get(unwindPath);
-                WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
-                AbstractBeginNode exceptionEdge = withExceptionNode.exceptionEdge();
-                withExceptionNode.setExceptionEdge(null);
-                unwindPathDuplicate.replaceAtPredecessor(exceptionEdge);
-                GraphUtil.killCFG(unwindPathDuplicate);
-
+                // snippet exception handler
+                UnwindNode snippetUnwindDuplicate = (UnwindNode) duplicates.get(unwindPath);
+                ValueNode snippetExceptionValue = snippetUnwindDuplicate.exception();
+                FixedWithNextNode snippetUnwindPath = (FixedWithNextNode) snippetUnwindDuplicate.predecessor();
+                GraalError.guarantee(snippetExceptionValue instanceof ExceptionObjectNode, "Snippet exception object must be an %s: %s", ExceptionObjectNode.class.getSimpleName(),
+                                snippetExceptionValue);
+                GraalError.guarantee(snippetUnwindPath == snippetExceptionValue, "Snippet unwind predecessor must be the exception object %s: %s", snippetUnwindPath, snippetExceptionValue);
+                GraalError.guarantee(snippetUnwindPath instanceof StateSplit, "Snippet unwind predecessor must be a state split: %s", snippetUnwindPath);
+                GraphUtil.killCFG(snippetUnwindDuplicate);
+                // replacee exception handler
+                WithExceptionNode replaceeWithExceptionNode = (WithExceptionNode) replacee;
+                AbstractBeginNode exceptionEdge = replaceeWithExceptionNode.exceptionEdge();
+                if (exceptionEdge instanceof ExceptionObjectNode) {
+                    /*
+                     * The exception object node is a begin node, i.e., it can be used as an anchor
+                     * for other nodes, thus we need to re-route them to a valid anchor, i.e. the
+                     * begin node of the unwind block.
+                     */
+                    GraalError.guarantee(exceptionEdge.usages().filter(x -> x instanceof GuardedNode && ((GuardedNode) x).getGuard() == exceptionEdge).count() == 0,
+                                    "Must not have guards attached to exception object node %s", exceptionEdge);
+                    replaceeWithExceptionNode.setExceptionEdge(null);
+                    // replace the old exception object with the one
+                    exceptionEdge.replaceAtUsages(snippetExceptionValue);
+                    // fixup memory graph
+                    GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS),
+                                    "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
+                    GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
+                    // replace exceptionEdge with snippetUnwindPath
+                    replaceExceptionObjectNode(exceptionEdge, snippetUnwindPath);
+                } else {
+                    GraalError.guarantee(exceptionEdge instanceof UnreachableBeginNode, "Unexpected exception edge: %s", exceptionEdge);
+                    replaceeWithExceptionNode.setExceptionEdge(null);
+                    Node snippetUnwindPred = snippetUnwindPath.predecessor();
+                    GraalError.guarantee(snippetUnwindPred instanceof WithExceptionNode, "Unexpected exception producer: %s", snippetUnwindPred);
+                    WithExceptionNode snippetWithException = (WithExceptionNode) snippetUnwindPred;
+                    GraalError.guarantee(snippetWithException.exceptionEdge() == snippetUnwindPath, "Unexpected exception edge: %s", snippetWithException.exceptionEdge());
+                    snippetWithException.setExceptionEdge(exceptionEdge);
+                    GraphUtil.killCFG(snippetUnwindPath);
+                }
             } else {
                 /*
                  * Since the snippet unwindPath is null, a placeholder WithExceptionNode needs to be
@@ -1831,6 +1851,29 @@ public class SnippetTemplate {
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
         }
+    }
+
+    /**
+     * Replaces the original {@link ExceptionObjectNode} with the exception handling path from the
+     * snippet. Ideally, this should simply be the following:
+     *
+     * <pre>
+     * graph.replaceFixedWithFixed(originalExceptionEdge, replacementUnwindPath);
+     * </pre>
+     *
+     * Unfortunately, removing control flow paths during lowering might confuse the lowering phase.
+     * So until this is fixed (GR-34538), instead of deleting the original
+     * {@link ExceptionObjectNode}, we keep it and insert the new exception handling path just
+     * before it. {@link ExceptionObjectNode#lower} will notice this situation later and delete the
+     * node.
+     *
+     * @param originalExceptionEdge the {@link ExceptionObjectNode} that should be deleted
+     * @param replacementUnwindPath the replacement for the original {@link ExceptionObjectNode}
+     *
+     * @see ExceptionObjectNode#lower
+     */
+    public static void replaceExceptionObjectNode(AbstractBeginNode originalExceptionEdge, FixedWithNextNode replacementUnwindPath) {
+        replacementUnwindPath.setNext(originalExceptionEdge);
     }
 
     private EconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
