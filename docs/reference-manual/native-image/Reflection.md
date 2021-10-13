@@ -4,6 +4,12 @@ toc_group: native-image
 link_title: Reflection on Native Image
 permalink: /reference-manual/native-image/Reflection/
 ---
+
+* [Automatic Detection](#automatic-detection)
+* [Manual Configuration](#manual-configuration)
+* [Conditional Configuration](#conditional-configuration)
+* [Configuration with Features](#configuration-with-features)
+
 # Reflection Use in Native Images
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods, fields and their properties at run time.
@@ -128,7 +134,9 @@ Also, `-H:ReflectionConfigurationResources` can be specified to load one or seve
 
 ### Conditional Configuration
 
-With conditional configuraiton, a class configuration entry is applied only if a provided `condition` is satisfied. The only currently supported condition is `typeReachable`, which enables the configuration entry if the specified type is reachable through other code. For example, to support reflective access to `sun.misc.Unsafe.theUnsafe` only when `io.netty.util.internal.PlatformDependent0` is reachable, the configuration should look like:
+With conditional configuration, a class configuration entry is applied only if a provided `condition` is satisfied.
+The only currently supported condition is `typeReachable`, which enables the configuration entry if the specified type is reachable through other code.
+For example, to support reflective access to `sun.misc.Unsafe.theUnsafe` only when `io.netty.util.internal.PlatformDependent0` is reachable, the configuration should look like:
 
 ```json
 {
@@ -140,11 +148,14 @@ With conditional configuraiton, a class configuration entry is applied only if a
 }
 ```
 
-Conditional configuration is the *preferred* way to specify reflection configuration: if code doing a reflective access is not reachable, it is unnecessary to include its corresponding reflection entry. The consistent usage of `condition` results in *smaller binaries* and *better build times* as the image builder can selectively include reflectively accessed code.
+Conditional configuration is the **preferred** way to specify reflection configuration: if code doing a reflective access is not reachable, it is unnecessary to include its corresponding reflection entry.
+The consistent usage of `condition` results in *smaller binaries* and *better build times* as the image builder can selectively include reflectively accessed code.
 
-If a `condition` is omitted, the element is always included. When the same `condition` is used for two distinct elements in two configuration entries, both elements will be included when the condition is satisfied. When a configuration entry should be enabled if one of several types are reachable, it is necessary to add two configuration entries: one entry for each condition.
+If a `condition` is omitted, the element is always included.
+When the same `condition` is used for two distinct elements in two configuration entries, both elements will be included when the condition is satisfied.
+When a configuration entry should be enabled if one of several types are reachable, it is necessary to add two configuration entries: one entry for each condition.
 
-When used with [assisted configuration](BuildConfiguration.md#assisted-configuration-of-native-image-builds), conditional entries of existing configuration will not be fused with agent-collected entries as agent-collected entries.
+When used with [assisted configuration](BuildConfiguration.md#assisted-configuration-of-native-image-builds), conditional entries of existing configuration will not be fused with agent-collected entries.
 
 ### Configuration with Features
 
@@ -173,4 +184,6 @@ Reflection can be used without restrictions during a native image generation, fo
 At this point, code can collect information about methods and fields and store them in their own data structures, which are then reflection-free at run time.
 
 ### Unsafe Accesses
-The `Unsafe` class, although its use is discouraged, provides direct access to the memory of Java objects. The `Unsafe.objectFieldOffset()` method provides the offset of a field within a Java object. Note that the offsets that are queried during native image generation can be different from the offsets at run time.
+The `Unsafe` class, although its use is discouraged, provides direct access to the memory of Java objects.
+The `Unsafe.objectFieldOffset()` method provides the offset of a field within a Java object.
+Note that the offsets that are queried during native image generation can be different from the offsets at run time.
