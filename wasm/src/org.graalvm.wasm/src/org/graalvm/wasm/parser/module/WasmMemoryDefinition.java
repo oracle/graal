@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.parser.module;
 
-public final class ImportDescriptor {
-    public final String moduleName;
-    public final String memberName;
-    public final int identifier;
+public class WasmMemoryDefinition {
+    private final int min;
+    private final int max;
 
-    public ImportDescriptor(String moduleName, String memberName, int identifier) {
-        this.moduleName = moduleName;
-        this.memberName = memberName;
-        this.identifier = identifier;
+    public WasmMemoryDefinition(int min, int max) {
+        this.min = min;
+        this.max = max;
     }
 
-    @Override
-    public int hashCode() {
-        return moduleName.hashCode() ^ memberName.hashCode() ^ Integer.hashCode(identifier);
+    public int getMin() {
+        return min;
     }
 
-    @Override
-    public boolean equals(Object object) {
-        if (!(object instanceof ImportDescriptor)) {
-            return false;
-        }
-        final ImportDescriptor that = (ImportDescriptor) object;
-        return that.moduleName.equals(this.moduleName) && that.memberName.equals(this.memberName) && that.identifier == this.identifier;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("(import %s from %s)", memberName, moduleName);
+    public int getMax() {
+        return max;
     }
 }

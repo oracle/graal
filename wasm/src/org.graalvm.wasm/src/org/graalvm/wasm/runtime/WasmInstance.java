@@ -38,73 +38,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+package org.graalvm.wasm.runtime;
 
-@ExportLibrary(InteropLibrary.class)
-public class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
-    private final WasmContext context;
-    private final WasmFunction function;
-    private final CallTarget target;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
-    /**
-     * Represents a call target that is a WebAssembly function or an imported function.
-     *
-     * If the function is imported, then context UID and the function are set to {@code null}.
-     */
-    public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
-        Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
-        this.context = context;
-        this.function = function;
-        this.target = target;
+public class WasmInstance {
+    private final String name;
+
+    @CompilationFinal(dimensions = 1) private final WasmFunctionType[] functionTypes;
+    @CompilationFinal(dimensions = 1) private final WasmFunctionInstance[] functions;
+    @CompilationFinal private WasmTable table;
+    @CompilationFinal private WasmMemory memory;
+    @CompilationFinal(dimensions = 1) private final WasmGlobal[] globals;
+
+    public WasmInstance(String name, WasmFunctionType[] functionTypes, WasmFunctionInstance[] functions, WasmGlobal[] globals) {
+        this.name = name;
+        this.functionTypes = functionTypes;
+        this.functions = functions;
+        this.globals = globals;
     }
 
-    @Override
-    public String toString() {
-        return name();
+    public String getName() {
+        return name;
     }
 
-    public WasmContext context() {
-        return context;
+    public WasmFunctionType getFunctionType(int index) {
+        return functionTypes[index];
     }
 
-    public String name() {
-        if (function == null) {
-            return target.toString();
-        }
-        return function.name();
+    public void addFunction(int index, WasmFunctionInstance f) {
+        functions[index] = f;
     }
 
-    public WasmFunction function() {
-        return function;
+    public WasmFunctionInstance getFunction(int index) {
+        return functions[index];
     }
 
-    public CallTarget target() {
-        return target;
+    public void addTable(WasmTable t) {
+        assert this.table == null;
+        this.table = t;
     }
 
-    @ExportMessage
-    boolean isExecutable() {
-        return true;
+    public WasmTable getTable() {
+        return table;
     }
 
-    @ExportMessage
-    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
-        TruffleContext truffleContext = context.environment().getContext();
-        Object prev = truffleContext.enter(null);
-        try {
-            return callNode.execute(target, arguments);
-        } finally {
-            truffleContext.leave(null, prev);
-        }
+    public void addMemory(WasmMemory m) {
+        assert this.memory == null;
+        this.memory = m;
+    }
+
+    public WasmMemory getMemory() {
+        return memory;
+    }
+
+    public void addGlobal(int index, WasmGlobal g) {
+        globals[index] = g;
+    }
+
+    public WasmGlobal getGlobal(int index) {
+        return globals[index];
     }
 }

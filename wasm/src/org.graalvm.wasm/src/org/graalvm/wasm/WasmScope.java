@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,15 +50,16 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
 
 import java.util.Map;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"unused", "static-method"})
 public class WasmScope implements TruffleObject {
-    private Map<String, WasmInstance> instances;
+    private Map<String, WasmModuleInstance> instances;
 
-    public WasmScope(Map<String, WasmInstance> instances) {
+    public WasmScope(Map<String, WasmModuleInstance> instances) {
         this.instances = instances;
     }
 

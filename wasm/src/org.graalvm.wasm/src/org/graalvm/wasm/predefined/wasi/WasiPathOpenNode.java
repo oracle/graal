@@ -42,18 +42,18 @@ package org.graalvm.wasm.predefined.wasi;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class WasiPathOpenNode extends WasmBuiltinRootNode {
 
-    public WasiPathOpenNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public WasiPathOpenNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override

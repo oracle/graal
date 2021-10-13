@@ -40,24 +40,8 @@
  */
 package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.Truffle;
-import junit.framework.AssertionFailedError;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.test.options.WasmTestOptions;
-import org.graalvm.wasm.utils.cases.WasmCase;
-import org.graalvm.wasm.utils.cases.WasmCaseData;
-import org.junit.Assert;
+import static junit.framework.TestCase.fail;
+import static org.graalvm.wasm.WasmUtil.prepend;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -77,8 +61,27 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static junit.framework.TestCase.fail;
-import static org.graalvm.wasm.WasmUtil.prepend;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmOptions;
+import org.graalvm.wasm.runtime.WasmFunctionInstance;
+import org.graalvm.wasm.runtime.WasmGlobal;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.WasmTable;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
+import org.graalvm.wasm.test.options.WasmTestOptions;
+import org.graalvm.wasm.utils.cases.WasmCase;
+import org.graalvm.wasm.utils.cases.WasmCaseData;
+import org.junit.Assert;
+
+import com.oracle.truffle.api.Truffle;
+
+import junit.framework.AssertionFailedError;
 
 public abstract class WasmFileSuite extends AbstractWasmSuite {
 
@@ -146,7 +149,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static Value findMain(WasmContext wasmContext) {
-        for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+        for (final WasmModuleInstance instance : wasmContext.moduleInstances().values()) {
             final WasmFunctionInstance function = instance.inferEntryPoint();
             if (function != null) {
                 return Value.asValue(function);
@@ -214,18 +217,18 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     }
 
                     // Reset context state.
-                    final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
-                    if (reinitMemory) {
-                        for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            wasmContext.memories().memory(j).reset();
+                    final boolean reinitializeMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                    if (reinitializeMemory) {
+                        for (WasmMemory memory : wasmContext.getMemories()) {
+                            memory.reset();
                         }
-                        for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
-                            wasmContext.tables().table(j).reset();
+                        for (WasmTable table : wasmContext.getTables()) {
+                            table.reset();
                         }
                     }
-                    for (final WasmInstance instance : wasmContext.moduleInstances().values()) {
+                    for (final WasmModuleInstance instance : wasmContext.moduleInstances().values()) {
                         if (!instance.isBuiltin()) {
-                            wasmContext.reinitInstance(instance, reinitMemory);
+                            wasmContext.reinitializeInstance(instance, reinitializeMemory);
                         }
                     }
 
@@ -505,9 +508,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     }
 
     private static ContextState saveContext(WasmContext context) {
-        Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
-        final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final GlobalRegistry globals = context.globals().duplicate();
+        final WasmMemory[] memories = context.getMemories();
+        Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", memories.length <= 1);
+        final WasmMemory currentMemory = memories.length == 1 ? memories[0].duplicate() : null;
+        final WasmGlobal[] globals = context.getGlobalCopy();
         return new ContextState(currentMemory, globals, context.fdManager().size());
     }
 
@@ -528,12 +532,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         }
 
         // Compare globals
-        final GlobalRegistry firstGlobals = expectedState.globals();
-        final GlobalRegistry lastGlobals = actualState.globals();
-        Assert.assertEquals("Mismatch in global counts.", firstGlobals.count(), lastGlobals.count());
-        for (int address = 0; address < firstGlobals.count(); address++) {
-            long first = firstGlobals.loadAsLong(address);
-            long last = lastGlobals.loadAsLong(address);
+        final WasmGlobal[] firstGlobals = expectedState.globals();
+        final WasmGlobal[] lastGlobals = actualState.globals();
+        Assert.assertEquals("Mismatch in global counts.", firstGlobals.length, lastGlobals.length);
+        for (int address = 0; address < firstGlobals.length; address++) {
+            long first = firstGlobals[address].loadAsLong();
+            long last = lastGlobals[address].loadAsLong();
             Assert.assertEquals("Mismatch in global at " + address + ". ", first, last);
         }
 
@@ -543,10 +547,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static final class ContextState {
         private final WasmMemory memory;
-        private final GlobalRegistry globals;
+        private final WasmGlobal[] globals;
         private final int openedFdCount;
 
-        private ContextState(WasmMemory memory, GlobalRegistry globals, int openedFdCount) {
+        private ContextState(WasmMemory memory, WasmGlobal[] globals, int openedFdCount) {
             this.memory = memory;
             this.globals = globals;
             this.openedFdCount = openedFdCount;
@@ -556,7 +560,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             return memory;
         }
 
-        public GlobalRegistry globals() {
+        public WasmGlobal[] globals() {
             return globals;
         }
     }

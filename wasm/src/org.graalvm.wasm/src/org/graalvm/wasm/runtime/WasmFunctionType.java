@@ -38,20 +38,61 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.runtime;
 
-/**
- * Superclass for wasm entities that can hold embedder data.
- */
-public class EmbedderDataHolder {
-    private Object embedderData = WasmVoidResult.getInstance();
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.WasmType;
 
-    public void setEmbedderData(Object embedderData) {
-        this.embedderData = embedderData;
+import java.util.Arrays;
+import java.util.Objects;
+
+public class WasmFunctionType {
+    private final int index;
+    @CompilationFinal(dimensions = 1) private final byte[] parameterTypes;
+    private final byte returnType;
+
+    public WasmFunctionType(int index, byte[] parameterTypes, byte returnType) {
+        this.index = index;
+        this.parameterTypes = parameterTypes;
+        this.returnType = returnType;
     }
 
-    public Object getEmbedderData() {
-        return embedderData;
+    public int getIndex() {
+        return index;
     }
 
+    public byte getReturnType() {
+        return returnType;
+    }
+
+    public int getReturnCount() {
+        return returnType == WasmType.VOID_TYPE ? 0 : 1;
+    }
+
+    public byte[] getParameterTypes() {
+        return parameterTypes;
+    }
+
+    public int getParameterCount() {
+        return parameterTypes.length;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        WasmFunctionType that = (WasmFunctionType) o;
+        return returnType == that.returnType && Arrays.equals(parameterTypes, that.parameterTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(returnType);
+        result = 31 * result + Arrays.hashCode(parameterTypes);
+        return result;
+    }
 }

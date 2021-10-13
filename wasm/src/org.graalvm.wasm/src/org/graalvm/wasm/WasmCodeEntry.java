@@ -48,11 +48,13 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 import org.graalvm.wasm.collection.IntArrayList;
+import org.graalvm.wasm.runtime.WasmFunctionType;
 
 public final class WasmCodeEntry {
     private static final Object STACK_LOCALS_SLOT_INDEX = 0;
 
-    private final WasmFunction function;
+    private final WasmFunctionType functionType;
+    private final int functionIndex;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
@@ -62,16 +64,17 @@ public final class WasmCodeEntry {
     @CompilationFinal private int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    public WasmCodeEntry(WasmFunction function, byte[] data) {
-        this.function = function;
+    public WasmCodeEntry(WasmFunctionType functionType, int functionIndex, byte[] data) {
+        this.functionType = functionType;
+        this.functionIndex = functionIndex;
         this.data = data;
         this.localTypes = null;
         this.intConstants = null;
         this.profileCounters = null;
     }
 
-    public WasmFunction function() {
-        return function;
+    public WasmFunctionType getFunctionType() {
+        return functionType;
     }
 
     public byte[] data() {
@@ -137,7 +140,7 @@ public final class WasmCodeEntry {
     }
 
     public int functionIndex() {
-        return function.index();
+        return functionIndex;
     }
 
     /**

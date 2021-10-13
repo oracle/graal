@@ -43,7 +43,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
 import java.util.Objects;
 

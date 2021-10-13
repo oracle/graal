@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package org.graalvm.wasm.parser.module.imports;
 
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.runtime.WasmFunctionType;
 
-public final class WasmCallStubNode extends Node {
-    private WasmFunction function;
+public class WasmFunctionImport extends WasmImport {
+    private final WasmFunctionType functionType;
 
-    public WasmCallStubNode(WasmFunction function) {
-        this.function = function;
+    public WasmFunctionImport(int importIndex, String module, String name, WasmFunctionType functionType) {
+        super(importIndex, module, name);
+        this.functionType = functionType;
     }
 
-    public WasmFunction function() {
-        return function;
+    public WasmFunctionType getFunctionType() {
+        return functionType;
     }
 }

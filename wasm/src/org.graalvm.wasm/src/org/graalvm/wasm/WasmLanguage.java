@@ -44,7 +44,9 @@ import java.io.IOException;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.parser.module.WasmModule;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -75,15 +77,17 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = WasmContext.get(null);
-        final String moduleName = isFirst ? "main" : request.getSource().getName();
-        isFirst = false;
         final Source source = request.getSource();
         final byte[] data = source.getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data, null, source);
-        final WasmInstance instance = context.readInstance(module);
+        final WasmModule module = context.readModule(request.getSource().getName(), data, null, source);
+        final WasmModuleInstance instance = context.readInstance(module, null);
+        if (isFirst && context.hasWasi()) {
+            context.getWasiInstance().addMemory(instance.getMemory());
+            isFirst = false;
+        }
         return new RootNode(this) {
             @Override
-            public WasmInstance execute(VirtualFrame frame) {
+            public WasmModuleInstance execute(VirtualFrame frame) {
                 return instance;
             }
         }.getCallTarget();
@@ -102,8 +106,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected void finalizeContext(WasmContext context) {
         super.finalizeContext(context);
-        for (int i = 0; i < context.memories().count(); ++i) {
-            final WasmMemory memory = context.memories().memory(i);
+        for (final WasmMemory memory : context.getMemories()) {
             memory.close();
         }
         try {

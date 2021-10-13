@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,14 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class SetErrNoNode extends WasmBuiltinRootNode {
-    public SetErrNoNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public SetErrNoNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override
@@ -60,7 +60,7 @@ public class SetErrNoNode extends WasmBuiltinRootNode {
         int value = (int) args[0];
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.getMemory();
         memory.store_i32(this, 3120, value);
 
         return value;

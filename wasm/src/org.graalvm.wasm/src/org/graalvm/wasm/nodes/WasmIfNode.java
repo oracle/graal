@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,14 @@
  */
 package org.graalvm.wasm.nodes;
 
+import org.graalvm.wasm.WasmCodeEntry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.runtime.WasmInstance;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 
 public final class WasmIfNode extends WasmNode {
 

@@ -38,13 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.memory;
+package org.graalvm.wasm.runtime.memory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.wasm.EmbedderDataHolder;
+import org.graalvm.wasm.runtime.EmbedderDataHolder;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
@@ -113,7 +113,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * bytes to 0.
      * <p>
      * Note: this does not restore content from data section. For this, use
-     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     *
      */
     public abstract void reset();
 

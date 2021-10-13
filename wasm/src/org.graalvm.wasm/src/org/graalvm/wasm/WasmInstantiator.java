@@ -46,18 +46,42 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.memory.ByteArrayWasmMemory;
+import org.graalvm.wasm.runtime.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.BlockNode;
 import org.graalvm.wasm.parser.ir.CallNode;
-import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.ir.IfNode;
 import org.graalvm.wasm.parser.ir.LoopNode;
 import org.graalvm.wasm.parser.ir.ParserNode;
+import org.graalvm.wasm.parser.module.WasmDataDefinition;
+import org.graalvm.wasm.parser.module.WasmElementDefinition;
+import org.graalvm.wasm.parser.module.WasmExternalValue;
+import org.graalvm.wasm.parser.module.WasmFunctionDefinition;
+import org.graalvm.wasm.parser.module.WasmGlobalDefinition;
+import org.graalvm.wasm.parser.module.WasmMemoryDefinition;
+import org.graalvm.wasm.parser.module.WasmModule;
+import org.graalvm.wasm.parser.module.WasmTableDefinition;
+import org.graalvm.wasm.parser.module.imports.WasmFunctionImport;
+import org.graalvm.wasm.parser.module.imports.WasmGlobalImport;
+import org.graalvm.wasm.parser.module.imports.WasmMemoryImport;
+import org.graalvm.wasm.parser.module.imports.WasmTableImport;
+import org.graalvm.wasm.runtime.WasmFunctionInstance;
+import org.graalvm.wasm.runtime.WasmFunctionType;
+import org.graalvm.wasm.runtime.WasmGlobal;
+import org.graalvm.wasm.runtime.WasmTable;
 
 import java.util.List;
+import java.util.Map;
+
+import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -80,27 +104,48 @@ public class WasmInstantiator {
     }
 
     private final WasmLanguage language;
+    private final ModuleLimits limits;
 
     @TruffleBoundary
-    public WasmInstantiator(WasmLanguage language) {
+    public WasmInstantiator(WasmLanguage language, ModuleLimits limits) {
         this.language = language;
+        this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
     }
 
     @TruffleBoundary
-    public WasmInstance createInstance(WasmContext context, WasmModule module) {
-        WasmInstance instance = new WasmInstance(context, module);
-        int binarySize = instance.module().data().length;
+    public void reinitializeInstance(WasmModuleInstance instance, boolean resetMemory) {
+        final WasmModule module = instance.getModule();
+        if (resetMemory) {
+            if (instance.getMemory() != null) {
+                setMemoryData(module, instance);
+            }
+            if (instance.getTable() != null) {
+                setTableElements(module, instance);
+            }
+        }
+        WasmGlobalDefinition[] globals = module.getLocalGlobals();
+        for (int i = module.getGlobalImportCount(); i < module.getGlobalCount(); i++) {
+            WasmGlobal global = instance.getGlobal(i);
+            WasmGlobalDefinition definition = globals[i - module.getGlobalImportCount()];
+            global.storeLong(definition.getValueOrIndex());
+        }
+    }
+
+    @TruffleBoundary
+    public WasmModuleInstance createInstance(WasmContext context, WasmModule module, Map<String, WasmModuleInstance> externalInstances) {
+        int binarySize = module.getBinarySize();
+        final WasmModuleInstance instance = createInstance(module);
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
         if (binarySize < asyncParsingBinarySize) {
-            instantiateCodeEntries(context, instance);
+            instantiateModule(context, module, instance, externalInstances);
         } else {
             final Runnable parsing = new Runnable() {
                 @Override
                 public void run() {
-                    instantiateCodeEntries(context, instance);
+                    instantiateModule(context, module, instance, externalInstances);
                 }
             };
-            final String name = "wasm-parsing-thread(" + instance.name() + ")";
+            final String name = "wasm-parsing-thread(" + module.getName() + ")";
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
             final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
@@ -120,44 +165,331 @@ public class WasmInstantiator {
         return instance;
     }
 
-    private void instantiateCodeEntries(WasmContext context, WasmInstance instance) {
-        final CodeEntry[] codeEntries = instance.module().getCodeEntries();
-        if (codeEntries == null) {
-            return;
+    private static WasmModuleInstance createInstance(WasmModule module) {
+        final String[] exportNames = module.getExportNames();
+        final WasmExternalValue[] exports = module.getExports();
+        final WasmModuleInstance instance = new WasmModuleInstance(
+                        module,
+                        module.getFunctionTypes(),
+                        new WasmFunctionInstance[module.getFunctionCount()],
+                        new WasmGlobal[module.getGlobalCount()],
+                        exports.length,
+                        module.getName(),
+                        module.getFunctionNames());
+        for (int i = 0; i < exports.length; i++) {
+            instance.addExport(exportNames[i], exports[i]);
         }
-        for (int entry = 0; entry != codeEntries.length; ++entry) {
-            CodeEntry codeEntry = codeEntries[entry];
-            instantiateCodeEntry(instance, codeEntry);
-            context.linker().resolveCodeEntry(instance.module(), entry);
+        return instance;
+    }
+
+    private void instantiateModule(WasmContext context, WasmModule module, WasmModuleInstance instance, Map<String, WasmModuleInstance> externalInstances) {
+        // Validation is already done during decoding
+
+        checkAndDefineImports(module, instance, externalInstances);
+        initializeGlobalValues(module, instance);
+        allocateModule(context, module, instance);
+        checkTableElements(module, instance);
+        checkMemoryData(module, instance);
+        setTableElements(module, instance);
+        setMemoryData(module, instance);
+        if (module.getStartFunctionIndex() != -1) {
+            WasmFunctionInstance functionInstance = instance.getFunction(module.getStartFunctionIndex());
+            functionInstance.target().call();
         }
     }
 
-    private void instantiateCodeEntry(WasmInstance instance, CodeEntry codeEntry) {
-        final int functionIndex = codeEntry.getFunctionIndex();
-        final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data());
-        function.setCodeEntry(wasmCodeEntry);
+    private static WasmModuleInstance getExternalInstance(String moduleName, String instanceName, Map<String, WasmModuleInstance> externalInstances) {
+        if (externalInstances.containsKey(moduleName)) {
+            return externalInstances.get(moduleName);
+        }
+        throw WasmException.format(Failure.UNKNOWN_IMPORT, "Imported module %s of module %s does not match any provided external value", moduleName, instanceName);
+    }
+
+    private static WasmExternalValue getExternalValue(String moduleName, String name, String instanceName, WasmModuleInstance externalInstance) {
+        final WasmExternalValue externalValue = externalInstance.getExport(name);
+        if (externalValue == null) {
+            throw WasmException.format(Failure.UNKNOWN_IMPORT, "Import %s.%s of module %s does not match any provided external value", moduleName, name, instanceName);
+        }
+        return externalValue;
+    }
+
+    private static void checkAndDefineImports(WasmModule module, WasmModuleInstance instance, Map<String, WasmModuleInstance> externalInstances) {
+        final WasmFunctionImport[] functionImports = module.getFunctionImports();
+        if (functionImports != null) {
+            for (WasmFunctionImport i : functionImports) {
+                final String moduleName = i.getModule();
+                final String name = i.getName();
+                final WasmModuleInstance externalInstance = getExternalInstance(moduleName, instance.getName(), externalInstances);
+                final WasmExternalValue externalValue = getExternalValue(moduleName, name, instance.getName(), externalInstance);
+                if (externalValue.isFunction()) {
+                    final WasmFunctionType importType = i.getFunctionType();
+                    if (!externalValue.functionExists(externalInstance)) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "The provided external function index in module %s is not part of the store", instance.getName());
+                    }
+                    final WasmFunctionInstance externalFunctionInstance = externalValue.getFunction(externalInstance);
+                    final WasmFunctionType externalType = externalFunctionInstance.getFunctionType();
+                    if (importType != externalType) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Incompatible function type for import %s.%s in module %s", moduleName, name, instance.getName());
+                    }
+                    instance.addFunction(externalFunctionInstance);
+                } else {
+                    throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Expected import %s.%s in module %s to be a function", moduleName, name, instance.getName());
+                }
+            }
+        }
+
+        final WasmTableImport[] tableImports = module.getTableImports();
+        if (tableImports != null) {
+            for (WasmTableImport i : tableImports) {
+                final String moduleName = i.getModule();
+                final String name = i.getName();
+                final WasmModuleInstance externalInstance = getExternalInstance(moduleName, instance.getName(), externalInstances);
+                final WasmExternalValue externalValue = getExternalValue(moduleName, name, instance.getName(), externalInstance);
+                if (externalValue.isTable()) {
+                    if (!externalValue.tableExists(externalInstance)) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "The provided external table index in module %s is not part of the store", instance.getName());
+                    }
+                    final WasmTable externalTable = externalValue.getTable(externalInstance);
+                    assertUnsignedIntLessOrEqual(i.getMin(), externalTable.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                    assertUnsignedIntGreaterOrEqual(i.getMax(), externalTable.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                    instance.addTable(externalTable);
+                } else {
+                    throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Expected import %s.%s in module %s to be a table", moduleName, name, instance.getName());
+                }
+            }
+        }
+
+        final WasmMemoryImport[] memoryImports = module.getMemoryImports();
+        if (memoryImports != null) {
+            for (WasmMemoryImport i : memoryImports) {
+                final String moduleName = i.getModule();
+                final String name = i.getName();
+                final WasmModuleInstance externalInstance = getExternalInstance(moduleName, instance.getName(), externalInstances);
+                final WasmExternalValue externalValue = getExternalValue(moduleName, name, instance.getName(), externalInstance);
+                if (externalValue.isMemory()) {
+                    if (!externalValue.memoryExists(externalInstance)) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "The provided external memory in module %s is not part of the store", instance.getName());
+                    }
+                    final WasmMemory externalMemory = externalValue.getMemory(externalInstance);
+                    assertUnsignedIntLessOrEqual(i.getMin(), externalMemory.declaredMinSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                    assertUnsignedIntGreaterOrEqual(i.getMax(), externalMemory.declaredMaxSize(), Failure.INCOMPATIBLE_IMPORT_TYPE);
+                    instance.addMemory(externalMemory);
+                } else {
+                    throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Expected import %s.%s in module %s to be a memory", moduleName, name, instance.getName());
+                }
+            }
+        }
+
+        final WasmGlobalImport[] globalImports = module.getGlobalImports();
+        if (globalImports != null) {
+            for (WasmGlobalImport i : globalImports) {
+                final String moduleName = i.getModule();
+                final String name = i.getName();
+                final WasmModuleInstance externalInstance = getExternalInstance(moduleName, instance.getName(), externalInstances);
+                final WasmExternalValue externalValue = getExternalValue(moduleName, name, instance.getName(), externalInstance);
+                if (externalValue.isGlobal()) {
+                    if (!externalValue.globalExists(externalInstance)) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "The provided external global index in module %s is not part of the store", instance.getName());
+                    }
+                    final WasmGlobal externalGlobal = externalValue.getGlobal(externalInstance);
+                    if (i.getMutability() != externalGlobal.getMutability()) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Incompatible mutability for import %s.%s in module %s", moduleName, name, instance.getName());
+                    }
+                    if (i.getValueType() != externalGlobal.getValueType()) {
+                        throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Incompatible value type for import %s.%s in module %s", moduleName, name, instance.getName());
+                    }
+                    instance.addGlobal(externalGlobal);
+                } else {
+                    throw WasmException.format(Failure.INCOMPATIBLE_IMPORT_TYPE, "Expected import %s.%s in module %s to be a global", moduleName, name, instance.getName());
+                }
+            }
+        }
+    }
+
+    private static void initializeGlobalValues(WasmModule module, WasmModuleInstance instance) {
+        final WasmGlobalDefinition[] globals = module.getLocalGlobals();
+        if (globals == null) {
+            return;
+        }
+        for (WasmGlobalDefinition global : globals) {
+            if (!global.isInitialized()) {
+                WasmGlobal g = instance.getGlobal((int) global.getValueOrIndex());
+                global.initialize(g.loadAsLong());
+            }
+        }
+    }
+
+    private void allocateModule(WasmContext context, WasmModule module, WasmModuleInstance instance) {
+        final WasmFunctionDefinition[] functions = module.getLocalFunctions();
+
+        if (functions != null) {
+            // Create call targets for all functions
+            WasmRootNode[] functionRootNodes = new WasmRootNode[module.getLocalFunctionCount()];
+            int functionRootNodeIndex = 0;
+            int functionIndex = module.getFunctionImportCount();
+            for (WasmFunctionDefinition function : functions) {
+                WasmRootNode rootNode = allocateFunction(functionIndex, function, module, instance);
+                functionRootNodes[functionRootNodeIndex++] = rootNode;
+                String name = instance.getFunctionName(functionIndex);
+                if (name == null) {
+                    name = function.getName();
+                }
+                instance.addFunction(new WasmFunctionInstance(context, function.getFunctionType(), rootNode.getCallTarget(), name, functionIndex));
+                functionIndex++;
+            }
+
+            // Instantiate code entries of functions
+            functionRootNodeIndex = 0;
+            for (WasmFunctionDefinition function : functions) {
+                instantiateCodeEntry(function, functionRootNodes[functionRootNodeIndex++], instance.getInstance());
+            }
+        }
+
+        final WasmTableDefinition[] tables = module.getLocalTables();
+
+        if (tables != null) {
+            context.increaseTablesSize(tables.length);
+            for (WasmTableDefinition table : tables) {
+                final int maxAllowedSize = minUnsigned(table.getMax(), limits.tableInstanceSizeLimit());
+                limits.checkTableInstanceSize(table.getMin());
+                WasmTable t = new WasmTable(table.getMin(), table.getMax(), maxAllowedSize);
+                instance.addTable(t);
+                context.addTable(t);
+            }
+        }
+
+        final WasmMemoryDefinition[] memories = module.getLocalMemories();
+
+        if (memories != null) {
+            context.increaseMemoriesSize(memories.length);
+            for (WasmMemoryDefinition memory : memories) {
+                final int maxAllowedSize = minUnsigned(memory.getMax(), limits.memoryInstanceSizeLimit());
+                limits.checkMemoryInstanceSize(memory.getMin());
+                final WasmMemory wasmMemory;
+                if (context.environment().getOptions().get(WasmOptions.UseUnsafeMemory)) {
+                    wasmMemory = new UnsafeWasmMemory(memory.getMin(), memory.getMax(), maxAllowedSize);
+                } else {
+                    wasmMemory = new ByteArrayWasmMemory(memory.getMin(), memory.getMax(), maxAllowedSize);
+                }
+                instance.addMemory(wasmMemory);
+                context.addMemory(wasmMemory);
+            }
+        }
+
+        final WasmGlobalDefinition[] globals = module.getLocalGlobals();
+
+        if (globals != null) {
+            context.increaseGlobalsSize(globals.length);
+            for (WasmGlobalDefinition global : globals) {
+                WasmGlobal g = new WasmGlobal(global.getValueType(), global.getMutability(), global.getValueOrIndex());
+                instance.addGlobal(g);
+                context.addGlobal(g);
+            }
+        }
+    }
+
+    private static void checkTableElements(WasmModule module, WasmModuleInstance instance) {
+        final WasmElementDefinition[] elementDefinitions = module.getElementDefinitions();
+
+        if (elementDefinitions == null) {
+            return;
+        }
+        WasmTable table = instance.getTable();
+        for (WasmElementDefinition elementDefinition : elementDefinitions) {
+            int offset = elementDefinition.getOffsetOrIndex();
+            if (!elementDefinition.isInitialized()) {
+                offset = instance.getGlobal(offset).loadAsInt();
+                elementDefinition.setOffset(offset);
+            }
+            int[] functionIndices = elementDefinition.getFunctionIndices();
+
+            Assert.assertUnsignedIntLessOrEqual(offset, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(offset + functionIndices.length, table.size(), Failure.ELEMENTS_SEGMENT_DOES_NOT_FIT);
+        }
+    }
+
+    private static void setTableElements(WasmModule module, WasmModuleInstance instance) {
+        final WasmElementDefinition[] elementDefinitions = module.getElementDefinitions();
+
+        if (elementDefinitions == null) {
+            return;
+        }
+        WasmTable table = instance.getTable();
+        for (WasmElementDefinition elementDefinition : elementDefinitions) {
+            int offset = elementDefinition.getOffsetOrIndex();
+            int[] functionIndices = elementDefinition.getFunctionIndices();
+
+            for (int i = 0; i < functionIndices.length; i++) {
+                final int functionIndex = functionIndices[i];
+                final WasmFunctionInstance function = instance.getFunction(functionIndex);
+                table.initialize(i + offset, function);
+            }
+        }
+    }
+
+    private static void checkMemoryData(WasmModule module, WasmModuleInstance instance) {
+        final WasmDataDefinition[] dataDefinitions = module.getDataDefinitions();
+
+        if (dataDefinitions == null) {
+            return;
+        }
+        WasmMemory memory = instance.getMemory();
+        for (WasmDataDefinition dataDefinition : dataDefinitions) {
+            int offset = dataDefinition.getOffsetOrIndex();
+            if (!dataDefinition.isInitialized()) {
+                offset = instance.getGlobal(offset).loadAsInt();
+                dataDefinition.setOffset(offset);
+            }
+            byte[] data = dataDefinition.getData();
+
+            Assert.assertUnsignedIntLessOrEqual(offset, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+            Assert.assertUnsignedIntLessOrEqual(offset + data.length, WasmMath.toUnsignedIntExact(memory.byteSize()), Failure.DATA_SEGMENT_DOES_NOT_FIT);
+        }
+    }
+
+    private static void setMemoryData(WasmModule module, WasmModuleInstance instance) {
+        final WasmDataDefinition[] dataDefinitions = module.getDataDefinitions();
+
+        if (dataDefinitions == null) {
+            return;
+        }
+        WasmMemory memory = instance.getMemory();
+        for (WasmDataDefinition dataDefinition : dataDefinitions) {
+            int offset = dataDefinition.getOffsetOrIndex();
+            byte[] data = dataDefinition.getData();
+
+            for (int i = 0; i < data.length; i++) {
+                final byte b = data[i];
+                memory.store_i32_8(null, i + offset, b);
+            }
+        }
+    }
+
+    private WasmRootNode allocateFunction(int functionIndex, WasmFunctionDefinition functionDefinition, WasmModule module, WasmModuleInstance instance) {
+        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(functionDefinition.getFunctionType(), functionIndex, functionDefinition.getData());
 
         /*
          * Create the root node and create and set the call target for the body. This needs to be
          * done before translating the body block, because we need to be able to create direct call
          * nodes {@see TruffleRuntime#createDirectCallNode} during translation.
          */
-        WasmRootNode rootNode = new WasmRootNode(language, instance, wasmCodeEntry);
-        instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
+        WasmRootNode rootNode = new WasmRootNode(language, instance.getInstance(), wasmCodeEntry, module.getSource(), instance.getFunctionName(functionIndex));
         /*
          * Set the code entry local variables (which contain the parameters and the locals).
          */
-        wasmCodeEntry.setLocalTypes(codeEntry.getLocalTypes());
+        wasmCodeEntry.setLocalTypes(functionDefinition.getBody().getLocals());
+        return rootNode;
+    }
 
+    private void instantiateCodeEntry(WasmFunctionDefinition functionDefinition, WasmRootNode rootNode, WasmInstance instance) {
         /*
          * Translate and set the function body.
          */
-        WasmBlockNode bodyBlock = instantiateBlockNode(instance, rootNode.codeEntry(), codeEntry.getFunctionBlock());
+        WasmBlockNode bodyBlock = instantiateBlockNode(instance, rootNode.codeEntry(), functionDefinition.getBody().getFunctionBlock());
         rootNode.setBody(bodyBlock);
 
         /* Initialize the Truffle-related components required for execution. */
-        codeEntry.initializeTruffleComponents(rootNode);
+        functionDefinition.getBody().initializeTruffleComponents(rootNode);
     }
 
     private WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, BlockNode block) {
@@ -189,17 +521,7 @@ public class WasmInstantiator {
                 if (callNode.isIndirectCall()) {
                     child = WasmIndirectCallNode.create();
                 } else {
-                    // We deliberately do not create the call node during instantiation.
-                    //
-                    // If the call target is imported from another module,
-                    // then that other module might not have been parsed yet.
-                    // Therefore, the call node will be created lazily during linking,
-                    // after the call target from the other module exists.
-
-                    final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
-                    child = new WasmCallStubNode(function);
-                    final int stubIndex = childIndex;
-                    instance.module().addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
+                    child = Truffle.getRuntime().createDirectCallNode(instance.getFunction(callNode.getFunctionIndex()).target());
                 }
             }
             children[childIndex++] = child;

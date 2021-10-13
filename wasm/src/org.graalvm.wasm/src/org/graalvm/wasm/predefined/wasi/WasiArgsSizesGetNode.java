@@ -41,9 +41,9 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
@@ -52,8 +52,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
-    public WasiArgsSizesGetNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public WasiArgsSizesGetNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override

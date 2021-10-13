@@ -43,21 +43,21 @@ package org.graalvm.wasm.predefined.wasi;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Clockid;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
 
-    public WasiClockTimeGetNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public WasiClockTimeGetNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override

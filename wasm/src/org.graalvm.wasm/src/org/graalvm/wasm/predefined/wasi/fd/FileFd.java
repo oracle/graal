@@ -44,7 +44,7 @@ package org.graalvm.wasm.predefined.wasi.fd;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Fdflags;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;

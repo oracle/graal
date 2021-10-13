@@ -41,6 +41,7 @@
 
 package org.graalvm.wasm.parser.ir;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
@@ -50,24 +51,23 @@ import java.util.ArrayList;
  * Represents information about the code section of a wasm function.
  */
 public class CodeEntry {
-    private final int functionIndex;
     private final BlockNode functionBlock;
 
     private final int profileCount;
     private final int maxStackSize;
     private final IntArrayList intConstants;
     private final ArrayList<int[]> branchTables;
-    private final byte[] localTypes;
 
-    public CodeEntry(int functionIndex, BlockNode codeEntryBlock, int currentProfileCount, int currentMaxStackSize, IntArrayList currentIntConstants, ArrayList<int[]> currentBranchTables,
-                    byte[] localTypes) {
-        this.functionIndex = functionIndex;
+    @CompilationFinal(dimensions = 1) private byte[] locals;
+
+    public CodeEntry(BlockNode codeEntryBlock, int currentProfileCount, int currentMaxStackSize, IntArrayList currentIntConstants, ArrayList<int[]> currentBranchTables, byte[] locals) {
         this.functionBlock = codeEntryBlock;
         this.profileCount = currentProfileCount;
         this.maxStackSize = currentMaxStackSize;
         this.intConstants = currentIntConstants;
         this.branchTables = currentBranchTables;
-        this.localTypes = localTypes;
+
+        this.locals = locals;
     }
 
     public void initializeTruffleComponents(WasmRootNode rootNode) {
@@ -81,15 +81,11 @@ public class CodeEntry {
         rootNode.codeEntry().initStackLocals(rootNode.getFrameDescriptor(), maxStackSize);
     }
 
-    public int getFunctionIndex() {
-        return functionIndex;
-    }
-
     public BlockNode getFunctionBlock() {
         return functionBlock;
     }
 
-    public byte[] getLocalTypes() {
-        return localTypes;
+    public byte[] getLocals() {
+        return locals;
     }
 }

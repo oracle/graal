@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,17 +43,17 @@ package org.graalvm.wasm.predefined.spectest;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 import java.io.PrintStream;
 
 public class PrintNode extends WasmBuiltinRootNode {
 
-    public PrintNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public PrintNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override

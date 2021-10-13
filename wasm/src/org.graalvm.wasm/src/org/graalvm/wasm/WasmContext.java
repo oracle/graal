@@ -40,48 +40,65 @@
  */
 package org.graalvm.wasm;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.parser.module.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
+import org.graalvm.wasm.runtime.WasmFunctionType;
+import org.graalvm.wasm.runtime.WasmFunctionTypeStore;
+import org.graalvm.wasm.runtime.WasmGlobal;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.WasmTable;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 public final class WasmContext {
+    private static final WasmTable[] EMPTY_TABLES = new WasmTable[0];
+    private static final WasmMemory[] EMPTY_MEMORIES = new WasmMemory[0];
+    private static final WasmGlobal[] EMPTY_GLOBALS = new WasmGlobal[0];
+
     private final Env env;
     private final WasmLanguage language;
-    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
-    private int nextEquivalenceClass;
-    private final MemoryRegistry memoryRegistry;
-    private final GlobalRegistry globals;
-    private final TableRegistry tableRegistry;
-    private final Linker linker;
-    private final Map<String, WasmInstance> moduleInstances;
-    private int moduleNameCount;
+    @CompilationFinal private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
+
+    private final Map<String, WasmModuleInstance> moduleInstances;
+    @CompilationFinal(dimensions = 1) private WasmTable[] tables;
+    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
+    @CompilationFinal(dimensions = 1) private WasmGlobal[] globals;
+
+    @CompilationFinal private int tableIndex = 0;
+    @CompilationFinal private int memoryIndex = 0;
+    @CompilationFinal private int globalIndex = 0;
+
+    private final WasmFunctionTypeStore functionTypes;
+
+    @CompilationFinal private WasmModuleInstance wasi;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
-        this.equivalenceClasses = new HashMap<>();
-        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-        this.globals = new GlobalRegistry();
-        this.tableRegistry = new TableRegistry();
-        this.memoryRegistry = new MemoryRegistry();
-        this.moduleInstances = new LinkedHashMap<>();
-        this.linker = new Linker();
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
+
+        this.moduleInstances = new LinkedHashMap<>();
+        this.tables = EMPTY_TABLES;
+        this.memories = EMPTY_MEMORIES;
+        this.globals = EMPTY_GLOBALS;
+
+        this.functionTypes = new WasmFunctionTypeStore();
         instantiateBuiltinInstances();
     }
 
@@ -93,29 +110,59 @@ public final class WasmContext {
         return language;
     }
 
-    public MemoryRegistry memories() {
-        return memoryRegistry;
+    public WasmTable[] getTables() {
+        return tables;
     }
 
-    public GlobalRegistry globals() {
-        return globals;
+    public WasmMemory[] getMemories() {
+        return memories;
     }
 
-    public TableRegistry tables() {
-        return tableRegistry;
+    public void addTable(WasmTable table) {
+        tables[tableIndex++] = table;
     }
 
-    public Linker linker() {
-        return linker;
+    public void addMemory(WasmMemory memory) {
+        memories[memoryIndex++] = memory;
     }
 
-    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
-        Integer equivalenceClass = equivalenceClasses.get(type);
-        if (equivalenceClass == null) {
-            equivalenceClass = nextEquivalenceClass++;
-            equivalenceClasses.put(type, equivalenceClass);
+    public void addGlobal(WasmGlobal global) {
+        globals[globalIndex++] = global;
+    }
+
+    public void increaseTablesSize(int size) {
+        final WasmTable[] updatedTables = new WasmTable[tables.length + size];
+        System.arraycopy(tables, 0, updatedTables, 0, tables.length);
+        tables = updatedTables;
+    }
+
+    public void increaseMemoriesSize(int size) {
+        final WasmMemory[] updatedMemories = new WasmMemory[memories.length + size];
+        System.arraycopy(memories, 0, updatedMemories, 0, memories.length);
+        memories = updatedMemories;
+    }
+
+    public void increaseGlobalsSize(int size) {
+        final WasmGlobal[] updatedGlobals = new WasmGlobal[globals.length + size];
+        System.arraycopy(globals, 0, updatedGlobals, 0, globals.length);
+        globals = updatedGlobals;
+    }
+
+    public WasmGlobal[] getGlobalCopy() {
+        WasmGlobal[] copy = new WasmGlobal[globals.length];
+        for (int i = 0; i < globals.length; i++) {
+            final WasmGlobal global = globals[i];
+            copy[i] = new WasmGlobal(global.getValueType(), global.getMutability(), global.loadAsLong());
         }
-        return equivalenceClass;
+        return copy;
+    }
+
+    public WasmFunctionType getFunctionType(byte[] parameterTypes, byte returnType) {
+        return functionTypes.getFunctionType(parameterTypes, returnType);
+    }
+
+    public WasmFunctionType getFunctionType(byte[] parameterTypes, byte[] returnTypes) {
+        return functionTypes.getFunctionType(parameterTypes, returnTypes);
     }
 
     @SuppressWarnings("unused")
@@ -130,15 +177,15 @@ public final class WasmContext {
     /**
      * Returns the map with all the modules that have been parsed.
      */
-    public Map<String, WasmInstance> moduleInstances() {
+    public Map<String, WasmModuleInstance> moduleInstances() {
         return moduleInstances;
     }
 
-    public void register(WasmInstance instance) {
-        if (moduleInstances.containsKey(instance.name())) {
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
+    public void register(WasmModuleInstance instance) {
+        if (moduleInstances.containsKey(instance.getName())) {
+            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.getName() + "'.");
         }
-        moduleInstances.put(instance.name(), instance);
+        moduleInstances.put(instance.getName(), instance);
     }
 
     private void instantiateBuiltinInstances() {
@@ -154,8 +201,11 @@ public final class WasmContext {
             }
             final String name = parts[0];
             final String key = parts.length == 2 ? parts[1] : parts[0];
-            final WasmInstance module = BuiltinModule.createBuiltinInstance(language, this, name, key);
+            final WasmModuleInstance module = BuiltinModule.createBuiltinInstance(language, this, name, key, ModuleLimits.DEFAULTS);
             moduleInstances.put(name, module);
+            if (name.equals(BuiltinModule.WASI_NAME)) {
+                wasi = module;
+            }
         }
     }
 
@@ -170,36 +220,25 @@ public final class WasmContext {
     }
 
     public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
-        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits, source);
-        final BinaryParser reader = new BinaryParser(module, this);
-        reader.readModule();
-        return module;
+        final BinaryParser reader = new BinaryParser(this, data, moduleLimits);
+        return reader.readModule(moduleName, source);
     }
 
-    public WasmInstance readInstance(WasmModule module) {
-        if (moduleInstances.containsKey(module.name())) {
-            throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
+    public WasmModuleInstance readInstance(WasmModule module, ModuleLimits limits) {
+        if (moduleInstances.containsKey(module.getName())) {
+            throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.getName() + " is already instantiated in this context.");
         }
-        final WasmInstantiator translator = new WasmInstantiator(language);
-        final WasmInstance instance = translator.createInstance(this, module);
+        final WasmInstantiator instantiator = new WasmInstantiator(language, limits);
+        final WasmModuleInstance instance = instantiator.createInstance(this, module, moduleInstances);
         this.register(instance);
         return instance;
     }
 
-    public void reinitInstance(WasmInstance instance, boolean reinitMemory) {
+    public void reinitializeInstance(WasmModuleInstance instance, boolean reinitializeMemory) {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        final BinaryParser reader = new BinaryParser(instance.module(), this);
-        reader.resetGlobalState(this, instance);
-        if (reinitMemory) {
-            reader.resetMemoryState(this, instance);
-            reader.resetTableState(this, instance);
-            final WasmFunction startFunction = instance.symbolTable().startFunction();
-            if (startFunction != null) {
-                instance.target(startFunction.index()).call();
-            }
-        }
+        new WasmInstantiator(language, null).reinitializeInstance(instance, reinitializeMemory);
     }
 
     public WasmContextOptions getContextOptions() {
@@ -210,6 +249,14 @@ public final class WasmContext {
 
     public static WasmContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public boolean hasWasi() {
+        return wasi != null;
+    }
+
+    public WasmModuleInstance getWasiInstance() {
+        return wasi;
     }
 
 }

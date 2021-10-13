@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
-    // TODO: We should not cache the instance in the nodes, only the symbol table.
     private final WasmInstance wasmInstance;
     private final WasmCodeEntry codeEntry;
 

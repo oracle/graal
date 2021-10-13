@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,14 @@ package org.graalvm.wasm.predefined.emscripten;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 public class GetTimeOfDayNode extends WasmBuiltinRootNode {
-    public GetTimeOfDayNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public GetTimeOfDayNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class GetTimeOfDayNode extends WasmBuiltinRootNode {
         int ptr = (int) args[0];
 
         long now = getCurrentTime();
-        WasmMemory memory = instance.memory();
+        WasmMemory memory = instance.getMemory();
         memory.store_i32(this, ptr, (int) (now / 1000));
         memory.store_i32(this, ptr + 4, (int) (now % 1000 * 1000));
 

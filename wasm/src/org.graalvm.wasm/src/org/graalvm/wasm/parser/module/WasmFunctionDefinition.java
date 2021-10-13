@@ -38,38 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.globals;
+package org.graalvm.wasm.parser.module;
 
-import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.api.ValueType;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+import org.graalvm.wasm.runtime.WasmFunctionType;
 
-public class ExportedWasmGlobal extends WasmGlobal {
-    private final GlobalRegistry globals;
-    private final int address;
+public class WasmFunctionDefinition {
+    private final int index;
+    private final WasmFunctionType functionType;
+    @CompilationFinal(dimensions = 1) private byte[] data;
+    @CompilationFinal private CodeEntry body;
 
-    public ExportedWasmGlobal(ValueType valueType, boolean mutable, GlobalRegistry globals, int address) {
-        super(valueType, mutable);
-        this.globals = globals;
-        this.address = address;
+    public WasmFunctionDefinition(int index, WasmFunctionType functionType, byte[] data) {
+        this.index = index;
+        this.functionType = functionType;
+        this.data = data;
     }
 
-    @Override
-    public int loadAsInt() {
-        return globals.loadAsInt(address);
+    public WasmFunctionType getFunctionType() {
+        return functionType;
     }
 
-    @Override
-    public long loadAsLong() {
-        return globals.loadAsLong(address);
+    public byte[] getData() {
+        return data;
     }
 
-    @Override
-    public void storeInt(int value) {
-        globals.storeInt(address, value);
+    public CodeEntry getBody() {
+        return body;
     }
 
-    @Override
-    public void storeLong(long value) {
-        globals.storeLong(address, value);
+    public void setBody(CodeEntry body) {
+        this.body = body;
+    }
+
+    public String getName() {
+        return String.valueOf(index);
     }
 }

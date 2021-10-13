@@ -42,11 +42,6 @@
   (type (;0;) (func (result i32)))
   (type (;1;) (func (param i32) (result i32)))
   (import "man-in-the-middle" "twice_plus_three" (func (;0;) (type 1)))
-  (func (export "plus_three") (type 1)
-    local.get 0
-    i32.const 3
-    i32.add
-  )
   (func (export "_main") (type 0)
     i32.const 7
     call 0

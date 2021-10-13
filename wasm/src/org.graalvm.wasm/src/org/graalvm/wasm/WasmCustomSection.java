@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * Information about a custom section.
  */
@@ -57,10 +59,16 @@ public class WasmCustomSection {
      */
     private final int length;
 
-    public WasmCustomSection(String name, int offset, int length) {
+    /**
+     * Reference to the module data.
+     */
+    @CompilationFinal(dimensions = 1) private final byte[] data;
+
+    public WasmCustomSection(String name, int offset, int length, byte[] data) {
         this.name = name;
         this.offset = offset;
         this.length = length;
+        this.data = data;
     }
 
     /**
@@ -90,4 +98,12 @@ public class WasmCustomSection {
         return length;
     }
 
+    /**
+     * Returns the data containing the custom section.
+     *
+     * @return data containing custom section.
+     */
+    public byte[] getData() {
+        return data;
+    }
 }

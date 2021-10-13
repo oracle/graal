@@ -54,11 +54,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
@@ -72,9 +68,13 @@ import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
-import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.parser.module.WasmModule;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.runtime.WasmFunctionInstance;
+import org.graalvm.wasm.runtime.WasmGlobal;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.WasmTable;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
@@ -121,7 +121,7 @@ public class WasmJsApiSuite {
     public void testInstantiate() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithExports, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithExports, null);
             try {
                 final Object main = WebAssembly.instanceExport(instance, "main");
                 final Object result = InteropLibrary.getUncached(main).execute(main);
@@ -141,7 +141,7 @@ public class WasmJsApiSuite {
                                             "inc", new Executable(args -> ((int) args[0]) + 1)
                             }),
             });
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithImportsAndExports, importObject);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithImportsAndExports, importObject);
             try {
                 final Object addPlusOne = WebAssembly.instanceExport(instance, "addPlusOne");
                 final Object result = InteropLibrary.getUncached(addPlusOne).execute(addPlusOne, 17, 3);
@@ -162,7 +162,7 @@ public class WasmJsApiSuite {
                                             "defaultMemory", memory
                             }),
             });
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryImport, importObject);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMemoryImport, importObject);
             try {
                 final Object initZero = WebAssembly.instanceExport(instance, "initZero");
                 Assert.assertEquals("Must be zero initially.", 0, memory.load_i32(null, 0));
@@ -178,7 +178,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithExportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
+            WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
             try {
                 final WasmMemory memory = (WasmMemory) WebAssembly.instanceExport(instance, "memory");
                 final Object readZero = WebAssembly.instanceExport(instance, "readZero");
@@ -207,8 +207,8 @@ public class WasmJsApiSuite {
                                 public Object execute(VirtualFrame frame) {
                                     return 210;
                                 }
-                            }.getCallTarget()));
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
+                            }.getCallTarget(), null, 0));
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
             try {
                 final Object callFirst = WebAssembly.instanceExport(instance, "callFirst");
                 Object result = InteropLibrary.getUncached(callFirst).execute(callFirst);
@@ -223,7 +223,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithExportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableExport, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithTableExport, null);
             try {
                 final WasmTable table = (WasmTable) WebAssembly.instanceExport(instance, "defaultTable");
                 final Object result = InteropLibrary.getUncached().execute(WebAssembly.tableRead(table, 0), 9);
@@ -243,7 +243,7 @@ public class WasmJsApiSuite {
                                             "defaultGlobal", global
                             }),
             });
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithGlobalImport, importObject);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithGlobalImport, importObject);
             try {
                 InteropLibrary interop = InteropLibrary.getUncached();
                 final Object readGlobal1 = WebAssembly.instanceExport(instance, "readGlobal1");
@@ -282,7 +282,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithExportGlobal() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithGlobalExport, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithGlobalExport, null);
             try {
                 final WasmGlobal global = (WasmGlobal) WebAssembly.instanceExport(instance, "exportedGlobal");
                 Assert.assertEquals("Exported global must be 1096.", 1096, global.loadAsInt());
@@ -315,7 +315,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithUnicodeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithUnicodeExport, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithUnicodeExport, null);
             try {
                 final Object euroSignFn = WebAssembly.instanceExport(instance, "\u20AC");
                 final Object result = InteropLibrary.getUncached(euroSignFn).execute(euroSignFn);
@@ -331,7 +331,7 @@ public class WasmJsApiSuite {
         final byte[] exportMemoryTwice = compileWat("exportMemoryTwice", "(memory 1) (export \"a\" (memory 0)) (export \"b\" (memory 0))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             try {
                 final InteropLibrary lib = InteropLibrary.getUncached();
                 final Object memoryABuffer = WebAssembly.instanceExport(instance, "a");
@@ -350,7 +350,7 @@ public class WasmJsApiSuite {
         final byte[] exportMemoryTwice = compileWat("exportTableTwice", "(module (table 1 funcref) (export \"a\" (table 0)) (export \"b\" (table 0)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object f = new WasmFunctionInstance(context, null,
@@ -359,7 +359,7 @@ public class WasmJsApiSuite {
                                     public Object execute(VirtualFrame frame) {
                                         return 42;
                                     }
-                                }.getCallTarget());
+                                }.getCallTarget(), null, 0);
                 final Object writeTable = wasm.readMember("table_write");
                 final Object readTable = wasm.readMember("table_read");
                 final Object a = WebAssembly.instanceExport(instance, "a");
@@ -378,7 +378,7 @@ public class WasmJsApiSuite {
         final byte[] sameFunctionWithDifferentNames = compileWat("sameFunctionWithDifferentNames", "(module (func $f (result i32) i32.const 1) (export \"f1\" (func $f)) (export \"f2\" (func $f)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionWithDifferentNames, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, sameFunctionWithDifferentNames, null);
             final Object f1 = WebAssembly.instanceExport(instance, "f1");
             final Object f2 = WebAssembly.instanceExport(instance, "f2");
             Assert.assertTrue("Returned function instances must be reference equal", f1 == f2);
@@ -391,7 +391,7 @@ public class WasmJsApiSuite {
                         "(module (func $f (result i32) i32.const 1) (table 1 funcref) (elem (i32.const 0) $f) (export \"f\" (func $f)) (export \"t\" (table 0)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
             final Object f = WebAssembly.instanceExport(instance, "f");
             final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
             final Object fInTable = WebAssembly.tableRead(t, 0);
@@ -405,7 +405,7 @@ public class WasmJsApiSuite {
                         "(module (func $f (result i32) i32.const 1) (table 2 funcref) (elem (i32.const 0) $f) (elem (i32.const 1) $f) (export \"t\" (table 0)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, sameFunctionInExportAndTable, null);
             final WasmTable t = (WasmTable) WebAssembly.instanceExport(instance, "t");
             final Object f1 = WebAssembly.tableRead(t, 0);
             final Object f2 = WebAssembly.tableRead(t, 1);
@@ -419,7 +419,7 @@ public class WasmJsApiSuite {
         final byte[] m2 = compileWat("import", "(module (import \"m\" \"f\" (func $f (result i32))) (export \"f\" (func $f)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final WasmModuleInstance m1Instance = moduleInstantiate(wasm, m1, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
@@ -427,7 +427,7 @@ public class WasmJsApiSuite {
                 d.addMember("m", Dictionary.create(new Object[]{
                                 "f", m1Function
                 }));
-                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final WasmModuleInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
                 Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
                 final Object m1Value = lib.execute(m1Function);
@@ -449,7 +449,7 @@ public class WasmJsApiSuite {
                             "f", new Executable(args -> 2)
             }));
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
+            final WasmModuleInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
@@ -457,7 +457,7 @@ public class WasmJsApiSuite {
                 d.addMember("b", Dictionary.create(new Object[]{
                                 "f", m1Function
                 }));
-                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final WasmModuleInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Function = WebAssembly.instanceExport(m2Instance, "f");
                 Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
                 final Object m1Value = lib.execute(m1Function);
@@ -475,7 +475,7 @@ public class WasmJsApiSuite {
         final byte[] m2 = compileWat("import", "(module (import \"m\" \"t\" (table $t 1 funcref)) (export \"t\" (table $t)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final WasmModuleInstance m1Instance = moduleInstantiate(wasm, m1, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object m1Table = WebAssembly.instanceExport(m1Instance, "t");
@@ -484,7 +484,7 @@ public class WasmJsApiSuite {
                 d.addMember("m", Dictionary.create(new Object[]{
                                 "t", m1Table
                 }));
-                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final WasmModuleInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
                 Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
@@ -503,7 +503,7 @@ public class WasmJsApiSuite {
         final byte[] m2 = compileWat("import", "(module (import \"m\" \"f\" (func $f (result i32))) (table 1 funcref) (elem (i32.const 0) $f) (export \"t\" (table 0)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, null);
+            final WasmModuleInstance m1Instance = moduleInstantiate(wasm, m1, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
@@ -511,7 +511,7 @@ public class WasmJsApiSuite {
                 d.addMember("m", Dictionary.create(new Object[]{
                                 "f", m1Function
                 }));
-                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final WasmModuleInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
                 Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
@@ -534,7 +534,7 @@ public class WasmJsApiSuite {
                             "f", new Executable(args -> 2)
             }));
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
+            final WasmModuleInstance m1Instance = moduleInstantiate(wasm, m1, importObject);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object m1Function = WebAssembly.instanceExport(m1Instance, "f");
@@ -549,7 +549,7 @@ public class WasmJsApiSuite {
                                 "f", m1Function,
                                 "t", m1Table
                 }));
-                final WasmInstance m2Instance = moduleInstantiate(wasm, m2, d);
+                final WasmModuleInstance m2Instance = moduleInstantiate(wasm, m2, d);
                 final Object m2Table = WebAssembly.instanceExport(m2Instance, "t");
                 final Object m2Function = WebAssembly.tableRead((WasmTable) m2Table, 0);
                 Assert.assertTrue("Returned function instances must be reference equal", m1Function == m2Function);
@@ -604,7 +604,7 @@ public class WasmJsApiSuite {
     public void testTableInstanceOutOfBoundsGet() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             // We should be able to get element 1.
@@ -634,7 +634,7 @@ public class WasmJsApiSuite {
     public void testTableInstanceOutOfBoundsSet() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
@@ -645,7 +645,7 @@ public class WasmJsApiSuite {
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
                                 }
-                            }.getCallTarget());
+                            }.getCallTarget(), null, 0);
 
             // We should be able to set element 1.
             try {
@@ -674,7 +674,7 @@ public class WasmJsApiSuite {
     public void testTableInstanceGrowLimit() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
             // We should be able to grow the table to 10,000,000.
@@ -760,7 +760,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
             WasmModule module = wasm.moduleDecode(binaryWithMemoryExport);
-            WasmInstance instance = wasm.moduleInstantiate(module, new Dictionary());
+            WasmModuleInstance instance = wasm.moduleInstantiate(module, new Dictionary());
             try {
                 Object buffer = WebAssembly.instanceExport(instance, "memory");
 
@@ -931,7 +931,7 @@ public class WasmJsApiSuite {
 
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
-            WasmInstance exportInstance = moduleInstantiate(wasm, exportTable, null);
+            WasmModuleInstance exportInstance = moduleInstantiate(wasm, exportTable, null);
             try {
                 Object exportedTable = WebAssembly.instanceExport(exportInstance, "table");
 
@@ -940,7 +940,7 @@ public class WasmJsApiSuite {
                 tableImport.addMember("table", exportedTable);
                 importObject.addMember("tableImport", tableImport);
 
-                WasmInstance importInstance = moduleInstantiate(wasm, importTable, importObject);
+                WasmModuleInstance importInstance = moduleInstantiate(wasm, importTable, importObject);
 
                 Object testFunc = WebAssembly.instanceExport(importInstance, "testFunc");
                 Object result = InteropLibrary.getUncached().execute(testFunc, 0);
@@ -972,7 +972,7 @@ public class WasmJsApiSuite {
     public void testFuncTypeTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableExport, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithTableExport, null);
             try {
                 final Object funcType = wasm.readMember("func_type");
                 final WasmTable table = (WasmTable) WebAssembly.instanceExport(instance, "defaultTable");
@@ -993,7 +993,7 @@ public class WasmJsApiSuite {
     public void testFuncTypeExport() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
             try {
                 final Object funcType = wasm.readMember("func_type");
                 final Object fn = WebAssembly.instanceExport(instance, "readZero");
@@ -1009,9 +1009,9 @@ public class WasmJsApiSuite {
         final byte[] source = compileWat("data", "(module (func (export \"func\") (param i32 i64) (result f32) f32.const 0))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmInstance instance = moduleInstantiate(wasm, source, null);
+            final WasmModuleInstance instance = moduleInstantiate(wasm, source, null);
             final WasmFunctionInstance fn = (WasmFunctionInstance) WebAssembly.instanceExport(instance, "func");
-            final String fnType = WebAssembly.functionTypeToString(fn.function());
+            final String fnType = WebAssembly.functionTypeToString(fn.getFunctionType(), fn.getFunctionIndex());
             Assert.assertEquals("func_type", "0(i32 i64)f32", fnType);
         });
     }
@@ -1105,7 +1105,7 @@ public class WasmJsApiSuite {
     public void testFunctionEmbedderData() throws IOException {
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
-            WasmInstance instance = moduleInstantiate(wasm, binaryWithExports, null);
+            WasmModuleInstance instance = moduleInstantiate(wasm, binaryWithExports, null);
             Object fn = WebAssembly.instanceExport(instance, "main");
             checkEmbedderData(fn);
         });
@@ -1342,7 +1342,7 @@ public class WasmJsApiSuite {
                                             "global8", WebAssembly.globalAlloc(ValueType.i32, false, 9),
                             }),
             });
-            WasmInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);
+            WasmModuleInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);
             try {
                 InteropLibrary lib = InteropLibrary.getUncached();
                 Object sum = lib.execute(WebAssembly.instanceExport(instance, "sum"));
@@ -1696,7 +1696,7 @@ public class WasmJsApiSuite {
                     (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x02, (byte) 0x05, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x00,
     };
 
-    private static WasmInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
+    private static WasmModuleInstance moduleInstantiate(WebAssembly wasm, byte[] source, Object importObject) {
         final WasmModule module = wasm.moduleDecode(source);
         return wasm.moduleInstantiate(module, importObject);
     }

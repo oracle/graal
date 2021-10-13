@@ -41,25 +41,26 @@
 package org.graalvm.wasm.api;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.wasm.SymbolTable;
+import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.globals.WasmGlobal;
-import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.runtime.WasmFunctionInstance;
+import org.graalvm.wasm.constants.ExportIdentifier;
+import org.graalvm.wasm.parser.module.WasmExternalValue;
+import org.graalvm.wasm.runtime.WasmFunctionType;
+import org.graalvm.wasm.runtime.WasmGlobal;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.WasmModuleInstance;
+import org.graalvm.wasm.runtime.WasmTable;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ImportModule extends BuiltinModule {
-    private final HashMap<String, Pair<WasmFunction, Object>> functions;
-    private final HashMap<String, WasmMemory> memories;
+    private final HashMap<String, Pair<WasmFunctionType, Object>> functions;
     private final HashMap<String, WasmTable> tables;
+    private final HashMap<String, WasmMemory> memories;
     private final HashMap<String, WasmGlobal> globals;
 
     public ImportModule() {
@@ -70,39 +71,59 @@ public class ImportModule extends BuiltinModule {
     }
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), functions.size());
-        for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
-            final String functionName = entry.getKey();
-            final Pair<WasmFunction, Object> info = entry.getValue();
-            final WasmFunction function = info.getLeft();
-            final SymbolTable.FunctionType type = function.type();
-            if (info.getRight() instanceof WasmFunctionInstance) {
-                defineExportedFunction(instance, functionName, type.paramTypes(), type.returnTypes(), (WasmFunctionInstance) info.getRight());
+    protected WasmModuleInstance createInstance(WasmLanguage language, WasmContext context, String name, ModuleLimits limits) {
+        final int exportSize = functions.size() + tables.size() + memories.size() + globals.size();
+        WasmModuleInstance instance = new WasmModuleInstance(
+                        null,
+                        null,
+                        new WasmFunctionInstance[functions.size()],
+                        new WasmGlobal[globals.size()],
+                        exportSize,
+                        name,
+                        null);
+        int exportIndex = 0;
+        for (Map.Entry<String, Pair<WasmFunctionType, Object>> function : functions.entrySet()) {
+            final String functionName = function.getKey();
+            final Pair<WasmFunctionType, Object> functionInfo = function.getValue();
+            final WasmFunctionType functionType = functionInfo.getLeft();
+            final Object f = functionInfo.getRight();
+            final WasmFunctionInstance functionInstance;
+            if (f instanceof WasmFunctionInstance) {
+                functionInstance = (WasmFunctionInstance) f;
             } else {
-                defineFunction(instance, functionName, type.paramTypes(), type.returnTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+                functionInstance = new WasmFunctionInstance(context, functionType, new ExecuteInParentContextNode(context.language(), instance.getInstance(), f).getCallTarget(), functionName,
+                                instance.getNextFunctionIndex());
             }
+            final int index = instance.addFunction(functionInstance);
+            final WasmExternalValue externalValue = new WasmExternalValue(exportIndex++, (byte) ExportIdentifier.FUNCTION, index);
+            instance.addExport(functionName, externalValue);
         }
-        for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
-            final String memoryName = entry.getKey();
-            final WasmMemory memory = entry.getValue();
-            defineExternalMemory(instance, memoryName, memory);
+        for (Map.Entry<String, WasmTable> table : tables.entrySet()) {
+            final String tableName = table.getKey();
+            final WasmTable t = table.getValue();
+            instance.addTable(t);
+            final WasmExternalValue externalValue = new WasmExternalValue(exportIndex++, (byte) ExportIdentifier.TABLE, -1);
+            instance.addExport(tableName, externalValue);
         }
-        for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
-            final String tableName = entry.getKey();
-            final WasmTable table = entry.getValue();
-            defineExternalTable(instance, tableName, table);
+        for (Map.Entry<String, WasmMemory> memory : memories.entrySet()) {
+            final String memoryName = memory.getKey();
+            final WasmMemory m = memory.getValue();
+            instance.addMemory(m);
+            final WasmExternalValue externalValue = new WasmExternalValue(exportIndex++, (byte) ExportIdentifier.MEMORY, -1);
+            instance.addExport(memoryName, externalValue);
         }
-        for (Map.Entry<String, WasmGlobal> entry : globals.entrySet()) {
-            final String globalName = entry.getKey();
-            final WasmGlobal global = entry.getValue();
-            defineExternalGlobal(instance, globalName, global);
+        for (Map.Entry<String, WasmGlobal> global : globals.entrySet()) {
+            final String globalName = global.getKey();
+            final WasmGlobal g = global.getValue();
+            final int index = instance.addGlobal(g);
+            final WasmExternalValue externalValue = new WasmExternalValue(exportIndex++, (byte) ExportIdentifier.GLOBAL, index);
+            instance.addExport(globalName, externalValue);
         }
         return instance;
     }
 
-    public void addFunction(String name, Pair<WasmFunction, Object> info) {
-        functions.put(name, info);
+    public void addFunction(String name, Pair<WasmFunctionType, Object> function) {
+        functions.put(name, function);
     }
 
     public void addMemory(String name, WasmMemory memory) {

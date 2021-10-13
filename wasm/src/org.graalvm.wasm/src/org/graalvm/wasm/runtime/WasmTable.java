@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.runtime;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.constants.Sizes;
@@ -104,7 +104,6 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
      * elements to {@code null}.
      * <p>
      * Note: this does not restore content from elements section. For this, use
-     * {@link org.graalvm.wasm.BinaryParser#resetTableState}.
      */
     public void reset() {
         elements = new Object[declaredMinSize];

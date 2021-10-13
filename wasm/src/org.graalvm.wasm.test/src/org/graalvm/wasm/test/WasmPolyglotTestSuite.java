@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.runtime.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 

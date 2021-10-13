@@ -38,41 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.parser.module.imports;
 
-package org.graalvm.wasm.globals;
+public class WasmGlobalImport extends WasmImport {
+    private final byte mutability;
+    private final byte valueType;
 
-import org.graalvm.wasm.api.ValueType;
-
-public class DefaultWasmGlobal extends WasmGlobal {
-    private long globalValue;
-
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, int value) {
-        super(valueType, mutable);
-        storeInt(value);
+    public WasmGlobalImport(int importIndex, String module, String name, byte mutability, byte valueType) {
+        super(importIndex, module, name);
+        this.mutability = mutability;
+        this.valueType = valueType;
     }
 
-    public DefaultWasmGlobal(ValueType valueType, boolean mutable, long value) {
-        super(valueType, mutable);
-        storeLong(value);
+    public byte getMutability() {
+        return mutability;
     }
 
-    @Override
-    public int loadAsInt() {
-        return (int) globalValue;
-    }
-
-    @Override
-    public long loadAsLong() {
-        return globalValue;
-    }
-
-    @Override
-    public void storeInt(int value) {
-        this.globalValue = value;
-    }
-
-    @Override
-    public void storeLong(long value) {
-        this.globalValue = value;
+    public byte getValueType() {
+        return valueType;
     }
 }

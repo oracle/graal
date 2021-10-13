@@ -169,12 +169,13 @@ public class WasmLauncher extends AbstractLanguageLauncher {
     }
 
     private Value detectEntryPoint(Context context) {
+        final String moduleName = file.getName();
         if (customEntryPoint != null) {
-            return context.getBindings(getLanguageId()).getMember("main").getMember(customEntryPoint);
+            return context.getBindings(getLanguageId()).getMember(moduleName).getMember(customEntryPoint);
         }
-        Value candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_start");
+        Value candidate = context.getBindings(getLanguageId()).getMember(moduleName).getMember("_start");
         if (candidate == null) {
-            candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_main");
+            candidate = context.getBindings(getLanguageId()).getMember(moduleName).getMember("_main");
         }
         return candidate;
     }

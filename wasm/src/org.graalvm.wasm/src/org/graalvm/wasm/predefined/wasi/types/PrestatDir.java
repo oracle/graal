@@ -46,7 +46,7 @@
 package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
 /** The contents of a $prestat when type is {@code preopentype::dir}. */
 public final class PrestatDir {

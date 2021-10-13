@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,48 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.WasmType;
 
-public class MemoryRegistry {
-    private static final int INITIAL_MEMORIES_SIZE = 4;
+import java.util.Arrays;
 
-    @CompilationFinal(dimensions = 1) private WasmMemory[] memories;
-    private int numMemories;
+public class WasmFunctionTypeStore {
+    private static final int INITIAL_FUNCTION_TYPE_COUNT = 16;
 
-    public MemoryRegistry() {
-        this.memories = new WasmMemory[INITIAL_MEMORIES_SIZE];
-        this.numMemories = 0;
-    }
+    @CompilationFinal(dimensions = 1) private WasmFunctionType[] functionTypes = new WasmFunctionType[INITIAL_FUNCTION_TYPE_COUNT];
+    private int functionTypeCount = 0;
 
     private void ensureCapacity() {
-        if (numMemories == memories.length) {
-            final WasmMemory[] updatedMemories = new WasmMemory[memories.length * 2];
-            System.arraycopy(memories, 0, updatedMemories, 0, memories.length);
-            memories = updatedMemories;
+        if (functionTypeCount == functionTypes.length) {
+            final WasmFunctionType[] updatedFunctionTypes = new WasmFunctionType[functionTypes.length * 2];
+            System.arraycopy(functionTypes, 0, updatedFunctionTypes, 0, functionTypes.length);
+            functionTypes = updatedFunctionTypes;
         }
     }
 
-    public int count() {
-        return numMemories;
+    public WasmFunctionType getFunctionType(byte[] parameterTypes, byte[] returnTypes) {
+        final byte returnType;
+        if (returnTypes.length == 0) {
+            returnType = WasmType.VOID_TYPE;
+        } else {
+            returnType = returnTypes[0];
+        }
+        return getFunctionType(parameterTypes, returnType);
     }
 
-    public int register(WasmMemory memory) {
+    public WasmFunctionType getFunctionType(byte[] parameterTypes, byte returnType) {
+        for (WasmFunctionType f : functionTypes) {
+            if (f != null && f.getReturnType() == returnType && Arrays.equals(f.getParameterTypes(), parameterTypes)) {
+                return f;
+            }
+        }
         ensureCapacity();
-        final int index = numMemories;
-        memories[index] = memory;
-        numMemories++;
-        return index;
+        WasmFunctionType f = new WasmFunctionType(functionTypeCount, parameterTypes, returnType);
+        functionTypes[functionTypeCount] = f;
+        functionTypeCount++;
+        return f;
     }
 
-    public int registerExternal(WasmMemory externalMemory) {
-        return register(externalMemory);
-    }
-
-    public WasmMemory memory(int index) {
-        assert index < numMemories;
-        return memories[index];
+    public WasmFunctionType getFunctionType(int index) {
+        assert Integer.compareUnsigned(index, functionTypes.length) < 0;
+        return functionTypes[index];
     }
 }

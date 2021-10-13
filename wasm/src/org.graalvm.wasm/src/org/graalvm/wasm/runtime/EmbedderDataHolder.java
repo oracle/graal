@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,48 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm;
+package org.graalvm.wasm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.WasmVoidResult;
 
-public class TableRegistry {
-    private static final int INITIAL_TABLES_SIZE = 8;
+/**
+ * Superclass for wasm entities that can hold embedder data.
+ */
+public class EmbedderDataHolder {
+    @CompilationFinal private Object embedderData = WasmVoidResult.getInstance();
 
-    @CompilationFinal(dimensions = 1) private WasmTable[] tables;
-    private int numTables;
-
-    public TableRegistry() {
-        this.tables = new WasmTable[INITIAL_TABLES_SIZE];
-        this.numTables = 0;
+    public void setEmbedderData(Object embedderData) {
+        this.embedderData = embedderData;
     }
 
-    private void ensureCapacity() {
-        if (numTables == tables.length) {
-            final WasmTable[] updatedTables = new WasmTable[tables.length * 2];
-            System.arraycopy(tables, 0, updatedTables, 0, tables.length);
-            tables = updatedTables;
-        }
-    }
-
-    public int tableCount() {
-        return numTables;
-    }
-
-    public int register(WasmTable table) {
-        ensureCapacity();
-        final int index = numTables;
-        tables[index] = table;
-        numTables++;
-        return index;
-    }
-
-    public int registerExternal(WasmTable table) {
-        return register(table);
-    }
-
-    public WasmTable table(int index) {
-        assert index < numTables;
-        return tables[index];
+    public Object getEmbedderData() {
+        return embedderData;
     }
 
 }

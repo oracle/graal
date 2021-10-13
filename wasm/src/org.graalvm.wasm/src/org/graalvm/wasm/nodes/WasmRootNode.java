@@ -42,12 +42,12 @@ package org.graalvm.wasm.nodes;
 
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
@@ -64,13 +65,19 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     private final WasmCodeEntry codeEntry;
     private final SourceSection sourceSection;
     @Child private WasmNode body;
+    private final String name;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
+    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry, Source source, String name) {
         super(language);
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.body = null;
-        this.sourceSection = instance.module().source().createUnavailableSection();
+        if (source != null) {
+            this.sourceSection = source.createUnavailableSection();
+        } else {
+            this.sourceSection = null;
+        }
+        this.name = name;
     }
 
     protected final WasmContext getContext() {
@@ -86,17 +93,9 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         return false;
     }
 
-    public void tryInitialize(WasmContext context) {
-        // We want to ensure that linking always precedes the running of the WebAssembly code.
-        // This linking should be as late as possible, because a WebAssembly context should
-        // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(instance);
-    }
-
     @Override
     public final Object execute(VirtualFrame frame) {
         final WasmContext context = getContext();
-        tryInitialize(context);
         return executeWithContext(frame, context);
     }
 
@@ -167,7 +166,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame, long[] stacklocals) {
         Object[] args = frame.getArguments();
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
+        int numArgs = body.instance().getFunction(codeEntry.functionIndex()).getFunctionType().getParameterCount();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
         for (int i = 0; i != numArgs; ++i) {
             final Object arg = args[i];
@@ -191,7 +190,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @ExplodeLoop
     private void initializeLocals(long[] stacklocals) {
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
+        int numArgs = body.instance().getFunction(codeEntry.functionIndex()).getFunctionType().getParameterCount();
         for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
             byte type = body.codeEntry().localType(i);
             switch (type) {
@@ -223,10 +222,10 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
 
     @Override
     public String getName() {
-        if (codeEntry == null) {
+        if (codeEntry == null && name == null) {
             return "function";
         }
-        return codeEntry.function().name();
+        return name != null ? name : "wasm-function:" + codeEntry.functionIndex();
     }
 
     @Override
@@ -234,7 +233,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         if (codeEntry == null) {
             return getName();
         }
-        return codeEntry.function().moduleName() + "." + getName();
+        return instance.getName() + "." + getName();
     }
 
     @Override

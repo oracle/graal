@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.memory;
+package org.graalvm.wasm.runtime.memory;
 
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;

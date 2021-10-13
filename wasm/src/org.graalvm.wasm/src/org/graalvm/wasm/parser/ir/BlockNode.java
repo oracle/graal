@@ -43,8 +43,8 @@ package org.graalvm.wasm.parser.ir;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.nodes.WasmBlockNode;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 import java.util.List;
 

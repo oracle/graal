@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,21 @@
  */
 package org.graalvm.wasm.predefined.testutil;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.Assert;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+
+import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Save the array of bytes to a file with the specified name. Such a file is later available to the
@@ -84,8 +85,9 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
     @CompilerDirectives.TruffleBoundary
     private void saveFile(int filenamePtr, int dataPtr, int size) {
         final WasmContext context = getContext();
-        Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.", Failure.UNSPECIFIED_MALFORMED);
-        final WasmMemory memory = context.memories().memory(0);
+        WasmMemory[] memories = context.getMemories();
+        Assert.assertIntLessOrEqual(memories.length, 1, "Currently, dumping works with only 1 memory.", Failure.UNSPECIFIED_MALFORMED);
+        final WasmMemory memory = memories[0];
 
         // Read the file name.
         String filename = readFileName(memory, filenamePtr);

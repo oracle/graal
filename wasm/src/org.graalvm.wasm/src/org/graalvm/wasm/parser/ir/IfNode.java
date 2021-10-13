@@ -42,9 +42,9 @@
 package org.graalvm.wasm.parser.ir;
 
 import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.nodes.WasmBlockNode;
 import org.graalvm.wasm.nodes.WasmIfNode;
+import org.graalvm.wasm.runtime.WasmInstance;
 
 /**
  * Represents information about a wasm if structure.

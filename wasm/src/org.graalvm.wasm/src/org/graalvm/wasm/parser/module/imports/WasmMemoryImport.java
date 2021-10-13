@@ -38,36 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package org.graalvm.wasm.parser.module.imports;
 
-package org.graalvm.wasm.globals;
+public class WasmMemoryImport extends WasmImport {
+    private final int min;
+    private final int max;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import org.graalvm.wasm.EmbedderDataHolder;
-import org.graalvm.wasm.api.ValueType;
-
-public abstract class WasmGlobal extends EmbedderDataHolder implements TruffleObject {
-
-    private final ValueType valueType;
-    private final boolean mutable;
-
-    protected WasmGlobal(ValueType valueType, boolean mutable) {
-        this.valueType = valueType;
-        this.mutable = mutable;
+    public WasmMemoryImport(int importIndex, String module, String name, int min, int max) {
+        super(importIndex, module, name);
+        this.min = min;
+        this.max = max;
     }
 
-    public ValueType getValueType() {
-        return valueType;
+    public int getMin() {
+        return min;
     }
 
-    public boolean isMutable() {
-        return mutable;
+    public int getMax() {
+        return max;
     }
-
-    public abstract int loadAsInt();
-
-    public abstract long loadAsLong();
-
-    public abstract void storeInt(int value);
-
-    public abstract void storeLong(long value);
 }

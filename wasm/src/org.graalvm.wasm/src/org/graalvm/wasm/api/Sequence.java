@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -52,10 +50,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public class Sequence<T> implements TruffleObject {
-    private final List<T> list;
+    private final T[] items;
 
-    public Sequence(List<T> list) {
-        this.list = list;
+    public Sequence(T[] items) {
+        this.items = items;
     }
 
     @SuppressWarnings({"unused"})
@@ -68,7 +66,7 @@ public class Sequence<T> implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     public long getArraySize() {
-        return list.size();
+        return items.length;
     }
 
     @SuppressWarnings({"unused"})
@@ -97,7 +95,7 @@ public class Sequence<T> implements TruffleObject {
         if (!isArrayElementReadable(index)) {
             throw InvalidArrayIndexException.create(index);
         }
-        return list.get((int) index);
+        return items[(int) index];
     }
 
     @SuppressWarnings({"unused", "static-method"})

@@ -225,18 +225,18 @@ import static org.graalvm.wasm.constants.Instructions.SELECT;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 
 import org.graalvm.wasm.BinaryStreamParser;
-import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
-import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.runtime.WasmFunctionInstance;
+import org.graalvm.wasm.runtime.WasmFunctionType;
+import org.graalvm.wasm.runtime.WasmGlobal;
+import org.graalvm.wasm.runtime.WasmInstance;
+import org.graalvm.wasm.runtime.WasmTable;
+import org.graalvm.wasm.runtime.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -246,7 +246,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -336,10 +335,6 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return profileCount;
     }
 
-    public int startOfset() {
-        return startOffset;
-    }
-
     @Override
     public Object initialLoopStatus() {
         return 0;
@@ -385,7 +380,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = numLocals + initialStackPointer;
         int profileOffset = initialProfileOffset;
         int offset = startOffset;
-        WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance().getMemory();
         check(data.length, (1 << 31) - 1);
         check(intConstants.length, (1 << 31) - 1);
         check(profileCounters.length, (1 << 31) - 1);
@@ -572,12 +567,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    WasmFunction function = instance().symbolTable().function(functionIndex);
-                    byte returnType = function.returnType();
+                    WasmFunctionType functionType = instance().getFunction(functionIndex).getFunctionType();
+                    byte returnType = functionType.getReturnType();
                     CompilerAsserts.partialEvaluationConstant(returnType);
-                    int numArgs = function.numArguments();
 
-                    Object[] args = createArgumentsForCall(stacklocals, function.typeIndex(), numArgs, stackPointer);
+                    Object[] args = createArgumentsForCall(stacklocals, functionType, stackPointer);
                     stackPointer -= args.length;
 
                     Object result = executeDirectCall(childrenOffset, args);
@@ -621,8 +615,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final SymbolTable symtab = instance().symbolTable();
-                    final WasmTable table = instance().table();
+                    final WasmTable table = instance().getTable();
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(stacklocals, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
@@ -637,12 +630,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         throw WasmException.format(Failure.UNINITIALIZED_ELEMENT, this, "Table element at index %d is uninitialized.", elementIndex);
                     }
                     final WasmFunctionInstance functionInstance;
-                    final WasmFunction function;
+                    final WasmFunctionType functionType;
                     final CallTarget target;
                     final WasmContext functionInstanceContext;
                     if (element instanceof WasmFunctionInstance) {
                         functionInstance = (WasmFunctionInstance) element;
-                        function = functionInstance.function();
+                        functionType = functionInstance.getFunctionType();
                         target = functionInstance.target();
                         functionInstanceContext = functionInstance.context();
                     } else {
@@ -658,7 +651,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    int expectedTypeEquivalenceClass = symtab.equivalenceClass(expectedFunctionTypeIndex);
+                    WasmFunctionType expectedFunctionType = instance().getFunctionType(expectedFunctionTypeIndex);
 
                     // Consume the ZERO_TABLE constant at the end of the CALL_INDIRECT
                     // instruction.
@@ -667,25 +660,24 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Validate that the function type matches the expected type.
                     boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(profileCounters, profileOffset++, functionInstanceContext == context);
                     if (functionFromCurrentContext) {
-                        // We can do a quick equivalence-class check.
-                        if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                        // We can do a quick equivalence check.
+                        if (expectedFunctionType != functionType) {
                             errorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            failFunctionTypeCheck(functionType.getIndex(), functionInstance.name(), expectedFunctionTypeIndex);
                         }
                     } else {
                         // The table is coming from a different context, so do a slow check.
                         // If the Wasm function is set to null, then the check must be performed
                         // in the body of the function. This is done when the function is
                         // provided externally (e.g. comes from a different language).
-                        if (function != null && !function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
+                        if (functionType != null && !functionType.equals(expectedFunctionType)) {
                             errorBranch();
-                            failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            failFunctionTypeCheck(functionType.getIndex(), functionInstance.name(), expectedFunctionTypeIndex);
                         }
                     }
 
                     // Invoke the resolved function.
-                    int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
-                    Object[] args = createArgumentsForCall(stacklocals, expectedFunctionTypeIndex, numArgs, stackPointer);
+                    Object[] args = createArgumentsForCall(stacklocals, expectedFunctionType, stackPointer);
                     stackPointer -= args.length;
 
                     // Enter function's context when it is not from the current one
@@ -714,7 +706,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in
                     // the future.
-                    byte returnType = instance().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
+                    byte returnType = expectedFunctionType.getReturnType();
                     CompilerAsserts.partialEvaluationConstant(returnType);
                     switch (returnType) {
                         case WasmType.I32_TYPE: {
@@ -803,7 +795,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int offsetDelta = length(valueLength);
                     offset += offsetDelta;
                     // endregion
-                    global_get(context, stacklocals, stackPointer, index);
+                    global_get(stacklocals, stackPointer, index);
                     stackPointer++;
                     break;
                 }
@@ -815,7 +807,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
                     stackPointer--;
-                    global_set(context, stacklocals, stackPointer, index);
+                    global_set(stacklocals, stackPointer, index);
                     break;
                 }
                 case I32_LOAD: {
@@ -1449,10 +1441,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @TruffleBoundary
-    private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
+    private void failFunctionTypeCheck(int functionIndex, String name, int expectedFunctionTypeIndex) {
         throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
-                        "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
+                        "Actual (type %d of function %s) and expected (type %d in module) types differ in the indirect call.",
+                        functionIndex, name, expectedFunctionTypeIndex, instance().getName());
     }
 
     private void check(int v, int limit) {
@@ -1627,8 +1619,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     // Checkstyle: stop method name check
 
-    private void global_set(WasmContext context, long[] stack, int stackPointer, int index) {
-        byte type = instance().symbolTable().globalValueType(index);
+    private void global_set(long[] stack, int stackPointer, int index) {
+        final WasmGlobal global = instance().getGlobal(index);
+        byte type = global.getValueType();
         CompilerAsserts.partialEvaluationConstant(type);
         // For global.set, we don't need to make sure that the referenced global is
         // mutable.
@@ -1637,15 +1630,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             case WasmType.I32_TYPE:
             case WasmType.F32_TYPE: {
                 int value = popInt(stack, stackPointer);
-                int address = instance().globalAddress(index);
-                context.globals().storeInt(address, value);
+                global.storeInt(value);
                 break;
             }
             case WasmType.I64_TYPE:
             case WasmType.F64_TYPE: {
                 long value = pop(stack, stackPointer);
-                int address = instance().globalAddress(index);
-                context.globals().storeLong(address, value);
+                global.storeLong(value);
                 break;
             }
             default: {
@@ -1654,21 +1645,20 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         }
     }
 
-    private void global_get(WasmContext context, long[] stack, int stackPointer, int index) {
-        byte type = instance().symbolTable().globalValueType(index);
+    private void global_get(long[] stack, int stackPointer, int index) {
+        final WasmGlobal global = instance().getGlobal(index);
+        byte type = global.getValueType();
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
             case WasmType.I32_TYPE:
             case WasmType.F32_TYPE: {
-                int address = instance().globalAddress(index);
-                int value = context.globals().loadAsInt(address);
+                int value = global.loadAsInt();
                 pushInt(stack, stackPointer, value);
                 break;
             }
             case WasmType.I64_TYPE:
             case WasmType.F64_TYPE: {
-                int address = instance().globalAddress(index);
-                long value = context.globals().loadAsLong(address);
+                long value = global.loadAsLong();
                 push(stack, stackPointer, value);
                 break;
             }
@@ -3018,21 +3008,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return condition != 0;
     }
 
-    @TruffleBoundary
-    public void resolveCallNode(int childOffset) {
-        final WasmFunction function = ((WasmCallStubNode) children[childOffset]).function();
-        final CallTarget target = instance().target(function.index());
-        children[childOffset] = Truffle.getRuntime().createDirectCallNode(target);
-    }
-
     @ExplodeLoop
-    private Object[] createArgumentsForCall(long[] stack, int functionTypeIndex, int numArgs, int stackPointerOffset) {
-        CompilerAsserts.partialEvaluationConstant(numArgs);
-        Object[] args = new Object[numArgs];
+    private Object[] createArgumentsForCall(long[] stack, WasmFunctionType functionType, int stackPointerOffset) {
+        int parameterCount = functionType.getParameterCount();
+        CompilerAsserts.partialEvaluationConstant(parameterCount);
+        byte[] parameters = functionType.getParameterTypes();
+        Object[] args = new Object[parameterCount];
         int stackPointer = stackPointerOffset;
-        for (int i = numArgs - 1; i >= 0; --i) {
+        for (int i = parameterCount - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = instance().symbolTable().functionTypeArgumentTypeAt(functionTypeIndex, i);
+            byte type = parameters[i];
             CompilerAsserts.partialEvaluationConstant(type);
             switch (type) {
                 case WasmType.I32_TYPE:

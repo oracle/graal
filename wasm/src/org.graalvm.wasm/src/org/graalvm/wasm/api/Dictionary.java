@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import java.util.Arrays;
-
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -108,7 +106,7 @@ public class Dictionary implements TruffleObject {
             keys[i++] = key;
         }
         assert i == keys.length;
-        return new Sequence<>(Arrays.asList(keys));
+        return new Sequence<>(keys);
     }
 
     @SuppressWarnings({"unused", "static-method"})
