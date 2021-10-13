@@ -22,7 +22,18 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
+import javax.swing.*;
+
 public final class ModifierBuilder extends AbstractCodeBuilder {
+    public static String PUBLIC = "public";
+    public static String PRIVATE = "private";
+    public static String ABSTRACT = "abstract";
+    public static String STATIC = "static";
+    public static String FINAL = "final";
+    public static String VOLATILE = "volatile";
+    public static String NATIVE = "native";
+    public static String OVERRIDE = "override";
+
     private boolean qualifiedAsPublic;
     private boolean qualifiedAsPrivate;
     private boolean qualifiedAsStatic;
@@ -85,7 +96,7 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         if (qualifiedAsPublic && qualifiedAsPrivate) {
             throw new IllegalStateException("Cannot qualify as both public and private");
         }
@@ -102,31 +113,31 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
         }
 
         if (qualifiedAsPublic) {
-            sb.append("public ");
+            sb.appendSpace(PUBLIC);
         } else if (qualifiedAsPrivate) {
-            sb.append("private ");
+            sb.appendSpace(PRIVATE);
         }
 
         if (qualifiedAsAbstract) {
-            sb.append("abstract ");
+            sb.appendSpace(ABSTRACT);
         } else if (qualifiedAsStatic) {
-            sb.append("static ");
+            sb.appendSpace(STATIC);
         }
 
         if (qualifiedAsFinal) {
-            sb.append("final ");
+            sb.appendSpace(FINAL);
         }
 
         if (qualifiedAsVolatile) {
-            sb.append("volatile ");
+            sb.appendSpace(VOLATILE);
         }
 
         if (qualifiedAsNative) {
-            sb.append("native ");
+            sb.appendSpace(NATIVE);
         }
 
         if (qualifiedAsOverride) {
-            sb.append("override ");
+            sb.appendSpace(OVERRIDE);
         }
     }
 }

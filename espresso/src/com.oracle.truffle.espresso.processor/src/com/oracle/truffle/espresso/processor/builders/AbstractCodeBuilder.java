@@ -22,30 +22,14 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
-import java.util.Arrays;
 import java.util.Collection;
 
 public abstract class AbstractCodeBuilder {
     public static final char PAREN_OPEN = '(';
     public static final char PAREN_CLOSE = ')';
-    public static final char NEWLINE = '\n';
-    public static final String SEMICOLON_NEWLINE = ";" + NEWLINE;
-    public static final String TAB_1 = "    ";
+    public static final char SEMICOLON = ';';
     public static final char BLOCK_OPEN = '{';
     public static final char BLOCK_CLOSE = '}';
-
-    protected int tabLevel = 0;
-    protected String baseIndent = "";
-
-    public void setIndentLevel(int lvl) {
-        if (lvl < 0 || lvl > 10) {
-            throw new IllegalArgumentException("Invalid indent level");
-        }
-        final char[] array = new char[lvl * TAB_1.length()];
-        Arrays.fill(array, ' ');
-        this.baseIndent = new String(array);
-        this.tabLevel = lvl;
-    }
 
     protected String joinParts(Object... parts) {
         StringBuilder sb = new StringBuilder();
@@ -69,5 +53,5 @@ public abstract class AbstractCodeBuilder {
         return sb;
     }
 
-    abstract void buildImpl(StringBuilder sb);
+    abstract void buildImpl(IndentingStringBuilder isb);
 }

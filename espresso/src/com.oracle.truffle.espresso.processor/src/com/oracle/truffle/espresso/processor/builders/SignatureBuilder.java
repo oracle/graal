@@ -17,14 +17,14 @@ public final class SignatureBuilder extends AbstractCodeBuilder {
     }
 
     public String build() {
-        StringBuilder sb = new StringBuilder();
+        IndentingStringBuilder sb = new IndentingStringBuilder(0);
         buildImpl(sb);
         return sb.toString();
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         sb.append(name);
-        sb.append(PAREN_OPEN).append(String.join(", ", params)).append(PAREN_CLOSE);
+        sb.append(PAREN_OPEN).join(", ", params).append(PAREN_CLOSE);
     }
 }

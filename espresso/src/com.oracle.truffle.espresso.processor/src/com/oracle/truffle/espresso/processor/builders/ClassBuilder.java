@@ -30,6 +30,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class ClassBuilder extends AbstractCodeBuilder {
+    private static final String CLASS = "class";
+    private static final String EXTENDS = "extends";
+    private static final String IMPLEMENTS = "implements";
+
     private final String className;
     private JavadocBuilder javaDoc;
     private ModifierBuilder modifierBuilder = new ModifierBuilder();
@@ -59,13 +63,13 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public ClassBuilder withAnnotation(Object... annotationParts) {
-        annotations.add(joinParts(annotationParts));
+    public ClassBuilder withAnnotation(String... annotationParts) {
+        annotations.add(String.join("", annotationParts));
         return this;
     }
 
-    public ClassBuilder withSuperInterfaces(Object... superInterfaces) {
-        this.superInterfaces.addAll(Arrays.stream(superInterfaces).map(Object::toString).collect(Collectors.toList()));
+    public ClassBuilder withSuperInterfaces(String... superInterfaces) {
+        this.superInterfaces.addAll(Arrays.stream(superInterfaces).collect(Collectors.toList()));
         return this;
     }
 
@@ -92,41 +96,31 @@ public final class ClassBuilder extends AbstractCodeBuilder {
     }
 
     @Override
-    void buildImpl(StringBuilder sb) {
+    void buildImpl(IndentingStringBuilder sb) {
         if (javaDoc != null) {
-            sb.append(baseIndent);
             javaDoc.buildImpl(sb);
         }
 
         for (String annotation : annotations) {
-            sb.append(baseIndent).append(annotation);
-            sb.append(NEWLINE);
+            sb.appendLine(annotation);
         }
 
-        sb.append(baseIndent);
         modifierBuilder.buildImpl(sb);
-        sb.append("class ").append(className);
+        sb.appendSpace(CLASS).append(className);
         if (superClass != null) {
-            sb.append(" extends ").append(superClass);
+            sb.appendSpace().appendSpace(EXTENDS).append(superClass);
         }
         if (superInterfaces.size() > 0) {
-            sb.append(" implements ");
-            joinPartsWith(sb, ", ", superInterfaces);
+            sb.appendSpace().appendSpace(IMPLEMENTS).join(", ", superInterfaces);
         }
-        sb.append(' ').append(BLOCK_OPEN).append(NEWLINE);
+        sb.appendSpace().appendLine(BLOCK_OPEN);
 
-        AbstractCodeBuilder prevMember = null;
+        sb.raiseIndentLevel();
         for (AbstractCodeBuilder member : members) {
-            if (prevMember instanceof FieldBuilder && member instanceof FieldBuilder) {
-                sb.deleteCharAt(sb.length() - 1);
-            }
-            member.setIndentLevel(tabLevel + 1);
             member.buildImpl(sb);
-            sb.append(NEWLINE);
-            prevMember = member;
+            sb.appendLine();
         }
-
-        sb.deleteCharAt(sb.length() - 1);
-        sb.append(baseIndent).append(BLOCK_CLOSE).append(NEWLINE);
+        sb.lowerIndentLevel();
+        sb.appendLine(BLOCK_CLOSE);
     }
 }
