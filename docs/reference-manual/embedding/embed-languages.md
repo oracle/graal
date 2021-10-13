@@ -19,7 +19,7 @@ permalink: /reference-manual/embed-languages/
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
-* [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
+* [Enterprise Sandbox Resource Limits](#enterprise-sandbox-resource-limits)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -632,5 +632,5 @@ In this code:
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
 
-<!-- Configure Sandbox Resource Limits -->
+<!-- Enterprise Sandbox Resource Limits -->
 {% include_relative sandbox-options.md %}
