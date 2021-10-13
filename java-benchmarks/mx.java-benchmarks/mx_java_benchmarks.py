@@ -1850,16 +1850,16 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
-        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance >= '11':
+        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
             # GR-33879
             # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
 
         if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
-            if mx.get_jdk().javaCompliance >= '11':
+            if mx.get_jdk().javaCompliance > '11':
                 del benchmarks["neo4j-analytics"]
         else:
-            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance >= '15':
+            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance > '15':
                 del benchmarks["neo4j-analytics"]
         return benchmarks
 
