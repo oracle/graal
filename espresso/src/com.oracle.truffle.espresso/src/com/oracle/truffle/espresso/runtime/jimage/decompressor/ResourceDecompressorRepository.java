@@ -23,8 +23,6 @@
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -43,33 +41,21 @@ public final class ResourceDecompressorRepository {
     private ResourceDecompressorRepository() {
     }
 
-    private static final Map<String, ResourceDecompressorFactory> factories = new HashMap<>();
-
-    static {
-        registerReaderProvider(new ZipDecompressorFactory());
-        registerReaderProvider(new StringSharingDecompressorFactory());
-    }
-
     /**
      * Build a new decompressor for the passed name.
      * 
      * @param properties Contains plugin configuration.
      * @param name The plugin name to build.
      * @return A decompressor or null if not found
-     * @throws IOException
      */
-    public static ResourceDecompressor newResourceDecompressor(Properties properties,
-                    String name) throws IOException {
-
-        ResourceDecompressorFactory fact = factories.get(name);
-        if (fact != null) {
-            return fact.newDecompressor(properties);
+    public static ResourceDecompressor newResourceDecompressor(@SuppressWarnings("unused") Properties properties, String name) {
+        switch (name) {
+            case ZipDecompressor.NAME:
+                return new ZipDecompressor();
+            case StringSharingDecompressor.NAME:
+                return new StringSharingDecompressor();
         }
         return null;
-    }
-
-    private static void registerReaderProvider(ResourceDecompressorFactory factory) {
-        factories.put(factory.getName(), factory);
     }
 
 }

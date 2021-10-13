@@ -33,8 +33,6 @@ package com.oracle.truffle.espresso.runtime.jimage;
 public interface ImageStrings {
     String get(int offset);
 
-    int add(final String string);
-
     /**
      * If there's a string at {@code offset} matching in full a substring of {@code string} starting
      * at {@code stringOffset}, return the length of that string. Otherwise returns -1. Optional

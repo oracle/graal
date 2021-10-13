@@ -31,7 +31,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 /**
  *
@@ -44,6 +43,7 @@ import java.util.Properties;
  *           the shipped JDK by tools running on JDK 8.
  */
 public class StringSharingDecompressor implements ResourceDecompressor {
+    public static final String NAME = "compact-cp";
 
     public static final int EXTERNALIZED_STRING = 23;
     public static final int EXTERNALIZED_STRING_DESCRIPTOR = 25;
@@ -92,10 +92,8 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     }
 
     @SuppressWarnings("fallthrough")
-    public static byte[] normalize(StringsProvider provider, byte[] transformed,
-                    int offset) throws IOException {
-        DataInputStream stream = new DataInputStream(new ByteArrayInputStream(transformed,
-                        offset, transformed.length - offset));
+    public static byte[] normalize(StringsProvider provider, byte[] transformed, int offset) throws IOException {
+        DataInputStream stream = new DataInputStream(new ByteArrayInputStream(transformed, offset, transformed.length - offset));
         ByteArrayOutputStream outStream = new ByteArrayOutputStream(transformed.length);
         DataOutputStream out = new DataOutputStream(outStream);
         byte[] header = new byte[8]; // maginc/4, minor/2, major/2
@@ -148,8 +146,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
         return outStream.toByteArray();
     }
 
-    private static String reconstruct(StringsProvider reader, DataInputStream cr)
-                    throws IOException {
+    private static String reconstruct(StringsProvider reader, DataInputStream cr) throws IOException {
         int descIndex = CompressIndexes.readInt(cr);
         String desc = reader.getString(descIndex);
         byte[] encodedDesc = getEncoded(desc);
@@ -188,8 +185,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
         result.put(encoded, 0, buffer.position());
         ByteArrayInputStream stream = new ByteArrayInputStream(result.array());
         DataInputStream inStream = new DataInputStream(stream);
-        String str = inStream.readUTF();
-        return str;
+        return inStream.readUTF();
     }
 
     public static byte[] getEncoded(String pre) throws IOException {
@@ -209,7 +205,8 @@ public class StringSharingDecompressor implements ResourceDecompressor {
         return safeAdd(current, bytes);
     }
 
-    private static ByteBuffer safeAdd(ByteBuffer current, byte[] bytes) {
+    private static ByteBuffer safeAdd(ByteBuffer start, byte[] bytes) {
+        ByteBuffer current = start;
         if (current.remaining() < bytes.length) {
             ByteBuffer newBuffer = ByteBuffer.allocate((current.capacity() + bytes.length) * 2);
             newBuffer.order(ByteOrder.BIG_ENDIAN);
@@ -222,10 +219,10 @@ public class StringSharingDecompressor implements ResourceDecompressor {
 
     @Override
     public String getName() {
-        return StringSharingDecompressorFactory.NAME;
+        return NAME;
     }
 
-    public StringSharingDecompressor(Properties properties) {
+    public StringSharingDecompressor() {
 
     }
 

@@ -27,15 +27,15 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.PackageTable;
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.jimage.ImageLocation;
-import com.oracle.truffle.espresso.runtime.jimage.ImageReader;
 
 public class JavaJImageHelper implements JImageHelper {
-    private final ImageReader reader;
+    private final BasicImageReader reader;
 
     private final EspressoContext context;
 
-    public JavaJImageHelper(ImageReader reader, EspressoContext context) {
+    public JavaJImageHelper(BasicImageReader reader, EspressoContext context) {
         this.reader = reader;
         this.context = context;
     }

@@ -85,8 +85,7 @@ public final class CompressedResourceHeader {
         return SIZE;
     }
 
-    public static CompressedResourceHeader readFromResource(ByteOrder order,
-                    byte[] resource) {
+    public static CompressedResourceHeader readFromResource(ByteOrder order, byte[] resource) {
         Objects.requireNonNull(order);
         Objects.requireNonNull(resource);
         if (resource.length < getSize()) {
@@ -103,7 +102,6 @@ public final class CompressedResourceHeader {
         int decompressorNameOffset = buffer.getInt();
         int contentIndex = buffer.getInt();
         byte isTerminal = buffer.get();
-        return new CompressedResourceHeader(size, uncompressedSize,
-                        decompressorNameOffset, contentIndex, isTerminal == 1);
+        return new CompressedResourceHeader(size, uncompressedSize, decompressorNameOffset, contentIndex, isTerminal == 1);
     }
 }

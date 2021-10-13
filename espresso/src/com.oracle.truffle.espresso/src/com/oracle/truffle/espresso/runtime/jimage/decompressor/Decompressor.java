@@ -55,8 +55,7 @@ public final class Decompressor {
      * @param content The resource content to uncompress.
      * @return A fully uncompressed resource.
      */
-    public byte[] decompressResource(ByteOrder order, ResourceDecompressor.StringsProvider provider,
-                    byte[] content) throws IOException {
+    public byte[] decompressResource(ByteOrder order, ResourceDecompressor.StringsProvider provider, byte[] content) throws IOException {
         Objects.requireNonNull(order);
         Objects.requireNonNull(provider);
         Objects.requireNonNull(content);
@@ -86,8 +85,7 @@ public final class Decompressor {
                     pluginsCache.put(header.getDecompressorNameOffset(), decompressor);
                 }
                 try {
-                    currentContent = decompressor.decompress(provider, currentContent,
-                                    CompressedResourceHeader.getSize(), header.getUncompressedSize());
+                    currentContent = decompressor.decompress(provider, currentContent, CompressedResourceHeader.getSize(), header.getUncompressedSize());
                 } catch (Exception ex) {
                     throw new IOException(ex);
                 }

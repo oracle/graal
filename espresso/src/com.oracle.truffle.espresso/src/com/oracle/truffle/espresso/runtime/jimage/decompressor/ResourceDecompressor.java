@@ -34,8 +34,8 @@ package com.oracle.truffle.espresso.runtime.jimage.decompressor;
  */
 public interface ResourceDecompressor {
 
-    public interface StringsProvider {
-        public String getString(int offset);
+    interface StringsProvider {
+        String getString(int offset);
     }
 
     /**
@@ -43,7 +43,7 @@ public interface ResourceDecompressor {
      * 
      * @return The decompressor name.
      */
-    public String getName();
+    String getName();
 
     /**
      * Decompress a resource.
@@ -53,8 +53,6 @@ public interface ResourceDecompressor {
      * @param offset Resource content offset
      * @param originalSize Uncompressed size
      * @return Uncompressed resource
-     * @throws Exception
      */
-    public byte[] decompress(StringsProvider strings, byte[] content, int offset,
-                    long originalSize) throws Exception;
+    byte[] decompress(StringsProvider strings, byte[] content, int offset, long originalSize) throws Exception;
 }

@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.runtime.jimage;
 
-import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Objects;
 
@@ -49,12 +48,6 @@ public final class ImageHeader {
     private final int locationsSize;
     private final int stringsSize;
 
-    public ImageHeader(int resourceCount, int tableCount,
-                    int locationsSize, int stringsSize) {
-        this(MAGIC, MAJOR_VERSION, MINOR_VERSION, 0, resourceCount,
-                        tableCount, locationsSize, stringsSize);
-    }
-
     public ImageHeader(int magic, int majorVersion, int minorVersion,
                     int flags, int resourceCount,
                     int tableLength, int locationsSize, int stringsSize) {
@@ -76,8 +69,7 @@ public final class ImageHeader {
         Objects.requireNonNull(buffer);
 
         if (buffer.capacity() != HEADER_SLOTS) {
-            throw new InternalError(
-                            "jimage header not the correct size: " + buffer.capacity());
+            throw new InternalError("jimage header not the correct size: " + buffer.capacity());
         }
 
         int magic = buffer.get(0);
@@ -92,23 +84,6 @@ public final class ImageHeader {
 
         return new ImageHeader(magic, majorVersion, minorVersion, flags,
                         resourceCount, tableLength, locationsSize, stringsSize);
-    }
-
-    public void writeTo(ImageStream stream) {
-        Objects.requireNonNull(stream);
-        stream.ensure(getHeaderSize());
-        writeTo(stream.getBuffer());
-    }
-
-    public void writeTo(ByteBuffer buffer) {
-        Objects.requireNonNull(buffer);
-        buffer.putInt(magic);
-        buffer.putInt(majorVersion << 16 | minorVersion);
-        buffer.putInt(flags);
-        buffer.putInt(resourceCount);
-        buffer.putInt(tableLength);
-        buffer.putInt(locationsSize);
-        buffer.putInt(stringsSize);
     }
 
     public int getMagic() {
@@ -164,17 +139,14 @@ public final class ImageHeader {
     }
 
     int getOffsetsOffset() {
-        return getRedirectOffset() +
-                        getRedirectSize();
+        return getRedirectOffset() + getRedirectSize();
     }
 
     int getLocationsOffset() {
-        return getOffsetsOffset() +
-                        getOffsetsSize();
+        return getOffsetsOffset() + getOffsetsSize();
     }
 
     int getStringsOffset() {
-        return getLocationsOffset() +
-                        getLocationsSize();
+        return getLocationsOffset() + getLocationsSize();
     }
 }

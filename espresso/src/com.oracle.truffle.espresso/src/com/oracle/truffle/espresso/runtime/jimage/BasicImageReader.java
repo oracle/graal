@@ -22,23 +22,16 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Objects;
-import java.util.stream.IntStream;
 
-import jdk.internal.jimage.decompressor.Decompressor;
+import com.oracle.truffle.espresso.runtime.jimage.decompressor.Decompressor;
 
 /**
  * @implNote This class needs to maintain JDK 8 source compatibility.
@@ -48,23 +41,6 @@ import jdk.internal.jimage.decompressor.Decompressor;
  *           the shipped JDK by tools running on JDK 8.
  */
 public class BasicImageReader implements AutoCloseable {
-    @SuppressWarnings("removal")
-    private static boolean isSystemProperty(String key, String value, String def) {
-        // No lambdas during bootstrap
-        return AccessController.doPrivileged(
-                        new PrivilegedAction<Boolean>() {
-                            @Override
-                            public Boolean run() {
-                                return value.equals(System.getProperty(key, def));
-                            }
-                        });
-    }
-
-    static private final boolean IS_64_BIT = isSystemProperty("sun.arch.data.model", "64", "32");
-    static private final boolean USE_JVM_MAP = isSystemProperty("jdk.image.use.jvm.map", "true", "true");
-    static private final boolean MAP_ALL = isSystemProperty("jdk.image.map.all", "true", IS_64_BIT ? "true" : "false");
-
-    private final Path imagePath;
     private final ByteOrder byteOrder;
     private final String name;
     private final ByteBuffer memoryMap;
@@ -78,32 +54,13 @@ public class BasicImageReader implements AutoCloseable {
     private final ImageStringsReader stringsReader;
     private final Decompressor decompressor;
 
-    @SuppressWarnings("removal")
     protected BasicImageReader(Path path, ByteOrder byteOrder)
                     throws IOException {
-        this.imagePath = Objects.requireNonNull(path);
+        Path imagePath = Objects.requireNonNull(path);
         this.byteOrder = Objects.requireNonNull(byteOrder);
-        this.name = this.imagePath.toString();
+        this.name = imagePath.toString();
 
         channel = FileChannel.open(imagePath, StandardOpenOption.READ);
-        // No lambdas during bootstrap
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            @Override
-            public Void run() {
-                if (BasicImageReader.class.getClassLoader() == null) {
-                    try {
-                        Class<?> fileChannelImpl = Class.forName("sun.nio.ch.FileChannelImpl");
-                        Method setUninterruptible = fileChannelImpl.getMethod("setUninterruptible");
-                        setUninterruptible.invoke(channel);
-                    } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
-                        // fall thru - will only happen on JDK-8 systems where this code
-                        // is only used by tools using jrt-fs (non-critical.)
-                    }
-                }
-
-                return null;
-            }
-        });
 
         ByteBuffer map = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size());
 
@@ -131,12 +88,8 @@ public class BasicImageReader implements AutoCloseable {
         decompressor = new Decompressor();
     }
 
-    protected BasicImageReader(Path imagePath) throws IOException {
-        this(imagePath, ByteOrder.nativeOrder());
-    }
-
-    public static BasicImageReader open(Path imagePath) throws IOException {
-        return new BasicImageReader(imagePath, ByteOrder.nativeOrder());
+    public static BasicImageReader open(Path path) throws IOException {
+        return new BasicImageReader(path, ByteOrder.nativeOrder());
     }
 
     public ImageHeader getHeader() {
@@ -176,24 +129,12 @@ public class BasicImageReader implements AutoCloseable {
         return slice(buffer, offset, size).order(byteOrder).asIntBuffer();
     }
 
-    public static void releaseByteBuffer(ByteBuffer buffer) {
-        Objects.requireNonNull(buffer);
-
-        if (!MAP_ALL) {
-            ImageBufferCache.releaseBuffer(buffer);
-        }
-    }
-
     public String getName() {
         return name;
     }
 
     public ByteOrder getByteOrder() {
         return byteOrder;
-    }
-
-    public Path getImagePath() {
-        return imagePath;
     }
 
     @Override
@@ -207,83 +148,61 @@ public class BasicImageReader implements AutoCloseable {
         return stringsReader;
     }
 
-    public ImageLocation findLocation(String module, String name) {
-        int index = getLocationIndex(module, name);
+    public ImageLocation findLocation(String module, String path) {
+        int index = getLocationIndex(module, path);
         if (index < 0) {
             return null;
         }
         long[] attributes = getAttributes(offsets.get(index));
-        if (!ImageLocation.verify(module, name, attributes, stringsReader)) {
+        // Make sure result is not a false positive.
+        if (!ImageLocation.verify(module, path, attributes, stringsReader)) {
             return null;
         }
         return new ImageLocation(attributes, stringsReader);
     }
 
-    public ImageLocation findLocation(String name) {
-        int index = getLocationIndex(name);
+    public ImageLocation findLocation(String path) {
+        int index = getLocationIndex(path);
         if (index < 0) {
             return null;
         }
         long[] attributes = getAttributes(offsets.get(index));
-        if (!ImageLocation.verify(name, attributes, stringsReader)) {
+        if (!ImageLocation.verify(path, attributes, stringsReader)) {
             return null;
         }
         return new ImageLocation(attributes, stringsReader);
-    }
-
-    public boolean verifyLocation(String module, String name) {
-        int index = getLocationIndex(module, name);
-        if (index < 0) {
-            return false;
-        }
-        int locationOffset = offsets.get(index);
-        return ImageLocation.verify(module, name, locations, locationOffset, stringsReader);
     }
 
     // Details of the algorithm used here can be found in
     // jdk.tools.jlink.internal.PerfectHashBuilder.
-    public int getLocationIndex(String name) {
+    public int getLocationIndex(String path) {
         int count = header.getTableLength();
-        int index = redirect.get(ImageStringsReader.hashCode(name) % count);
+        int index = redirect.get(ImageStringsReader.hashCode(path) % count);
         if (index < 0) {
             // index is twos complement of location attributes index.
             return -index - 1;
         } else if (index > 0) {
             // index is hash seed needed to compute location attributes index.
-            return ImageStringsReader.hashCode(name, index) % count;
+            return ImageStringsReader.hashCode(path, index) % count;
         } else {
             // No entry.
             return -1;
         }
     }
 
-    private int getLocationIndex(String module, String name) {
+    private int getLocationIndex(String module, String path) {
         int count = header.getTableLength();
-        int index = redirect.get(ImageStringsReader.hashCode(module, name) % count);
+        int index = redirect.get(ImageStringsReader.hashCode(module, path) % count);
         if (index < 0) {
             // index is twos complement of location attributes index.
             return -index - 1;
         } else if (index > 0) {
             // index is hash seed needed to compute location attributes index.
-            return ImageStringsReader.hashCode(module, name, index) % count;
+            return ImageStringsReader.hashCode(module, path, index) % count;
         } else {
             // No entry.
             return -1;
         }
-    }
-
-    public String[] getEntryNames() {
-        int[] attributeOffsets = new int[offsets.capacity()];
-        offsets.get(attributeOffsets);
-        return IntStream.of(attributeOffsets)
-                        .filter(o -> o != 0)
-                        .mapToObj(o -> ImageLocation.readFrom(this, o).getFullName())
-                        .sorted()
-                        .toArray(String[]::new);
-    }
-
-    ImageLocation getLocation(int offset) {
-        return ImageLocation.readFrom(this, offset);
     }
 
     public long[] getAttributes(int offset) {
@@ -307,11 +226,10 @@ public class BasicImageReader implements AutoCloseable {
         return ImageStringsReader.stringFromByteBufferMatches(strings, offset, string, stringOffset);
     }
 
-    private byte[] getBufferBytes(ByteBuffer buffer) {
+    private static byte[] getBufferBytes(ByteBuffer buffer) {
         Objects.requireNonNull(buffer);
         byte[] bytes = new byte[buffer.limit()];
         buffer.get(bytes);
-
         return bytes;
     }
 
@@ -324,53 +242,17 @@ public class BasicImageReader implements AutoCloseable {
             throw new IndexOutOfBoundsException("Bad size: " + size);
         }
 
-        if (MAP_ALL) {
-            ByteBuffer buffer = slice(memoryMap, (int) offset, (int) size);
-            buffer.order(ByteOrder.BIG_ENDIAN);
+        ByteBuffer buffer = slice(memoryMap, (int) offset, (int) size);
+        buffer.order(byteOrder);
 
-            return buffer;
-        } else {
-            if (channel == null) {
-                throw new InternalError("Image file channel not open");
-            }
-
-            ByteBuffer buffer = ImageBufferCache.getBuffer(size);
-            int read;
-            try {
-                read = channel.read(buffer, offset);
-                buffer.rewind();
-            } catch (IOException ex) {
-                ImageBufferCache.releaseBuffer(buffer);
-                throw new RuntimeException(ex);
-            }
-
-            if (read != size) {
-                ImageBufferCache.releaseBuffer(buffer);
-                throw new RuntimeException("Short read: " + read +
-                                " instead of " + size + " bytes");
-            }
-
-            return buffer;
-        }
-    }
-
-    public byte[] getResource(String name) {
-        Objects.requireNonNull(name);
-        ImageLocation location = findLocation(name);
-
-        return location != null ? getResource(location) : null;
+        return buffer;
     }
 
     public byte[] getResource(ImageLocation loc) {
         ByteBuffer buffer = getResourceBuffer(loc);
-
         if (buffer != null) {
-            byte[] bytes = getBufferBytes(buffer);
-            ImageBufferCache.releaseBuffer(buffer);
-
-            return bytes;
+            return getBufferBytes(buffer);
         }
-
         return null;
     }
 
@@ -381,13 +263,11 @@ public class BasicImageReader implements AutoCloseable {
         long uncompressedSize = loc.getUncompressedSize();
 
         if (compressedSize < 0 || Integer.MAX_VALUE < compressedSize) {
-            throw new IndexOutOfBoundsException(
-                            "Bad compressed size: " + compressedSize);
+            throw new IndexOutOfBoundsException("Bad compressed size: " + compressedSize);
         }
 
         if (uncompressedSize < 0 || Integer.MAX_VALUE < uncompressedSize) {
-            throw new IndexOutOfBoundsException(
-                            "Bad uncompressed size: " + uncompressedSize);
+            throw new IndexOutOfBoundsException("Bad uncompressed size: " + uncompressedSize);
         }
 
         if (compressedSize == 0) {
@@ -395,29 +275,16 @@ public class BasicImageReader implements AutoCloseable {
         } else {
             ByteBuffer buffer = readBuffer(offset, compressedSize);
 
-            if (buffer != null) {
-                byte[] bytesIn = getBufferBytes(buffer);
-                ImageBufferCache.releaseBuffer(buffer);
-                byte[] bytesOut;
+            byte[] bytesIn = getBufferBytes(buffer);
+            byte[] bytesOut;
 
-                try {
-                    bytesOut = decompressor.decompressResource(byteOrder,
-                                    (int strOffset) -> getString(strOffset), bytesIn);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-
-                return ByteBuffer.wrap(bytesOut);
+            try {
+                bytesOut = decompressor.decompressResource(byteOrder, this::getString, bytesIn);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
+
+            return ByteBuffer.wrap(bytesOut).order(byteOrder);
         }
-
-        return null;
-    }
-
-    public InputStream getResourceStream(ImageLocation loc) {
-        Objects.requireNonNull(loc);
-        byte[] bytes = getResource(loc);
-
-        return new ByteArrayInputStream(bytes);
     }
 }

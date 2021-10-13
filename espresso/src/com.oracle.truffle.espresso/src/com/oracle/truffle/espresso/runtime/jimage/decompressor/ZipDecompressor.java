@@ -36,10 +36,11 @@ import java.util.zip.Inflater;
  *           the shipped JDK by tools running on JDK 8.
  */
 final class ZipDecompressor implements ResourceDecompressor {
+    public static final String NAME = "zip";
 
     @Override
     public String getName() {
-        return ZipDecompressorFactory.NAME;
+        return NAME;
     }
 
     static byte[] decompress(byte[] bytesIn, int offset) throws Exception {
@@ -64,7 +65,6 @@ final class ZipDecompressor implements ResourceDecompressor {
     @Override
     public byte[] decompress(StringsProvider reader, byte[] content, int offset,
                     long originalSize) throws Exception {
-        byte[] decompressed = decompress(content, offset);
-        return decompressed;
+        return decompress(content, offset);
     }
 }

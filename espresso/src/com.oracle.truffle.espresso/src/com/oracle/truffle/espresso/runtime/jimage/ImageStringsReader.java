@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.runtime.jimage;
 
-import java.io.UTFDataFormatException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -55,11 +54,6 @@ public class ImageStringsReader implements ImageStrings {
         return reader.match(offset, string, stringOffset);
     }
 
-    @Override
-    public int add(final String string) {
-        throw new InternalError("Can not add strings at runtime");
-    }
-
     public static int hashCode(String s) {
         return hashCode(s, HASH_MULTIPLIER);
     }
@@ -73,17 +67,19 @@ public class ImageStringsReader implements ImageStrings {
     }
 
     public static int hashCode(String module, String name, int seed) {
-        seed = (seed * HASH_MULTIPLIER) ^ ('/');
-        seed = unmaskedHashCode(module, seed);
-        seed = (seed * HASH_MULTIPLIER) ^ ('/');
-        seed = unmaskedHashCode(name, seed);
-        return seed & POSITIVE_MASK;
+        int value = seed;
+        value = (value * HASH_MULTIPLIER) ^ ('/');
+        value = unmaskedHashCode(module, value);
+        value = (value * HASH_MULTIPLIER) ^ ('/');
+        value = unmaskedHashCode(name, value);
+        return value & POSITIVE_MASK;
     }
 
     public static int unmaskedHashCode(String s, int seed) {
         int slen = s.length();
         byte[] buffer = null;
 
+        int value = seed;
         for (int i = 0; i < slen; i++) {
             int uch = s.charAt(i);
 
@@ -103,87 +99,16 @@ public class ImageStringsReader implements ImageStrings {
                 buffer[n] = (byte) ((mask << 1) | uch);
 
                 do {
-                    seed = (seed * HASH_MULTIPLIER) ^ (buffer[n--] & 0xFF);
+                    value = (value * HASH_MULTIPLIER) ^ (buffer[n--] & 0xFF);
                 } while (0 <= n);
             } else if (uch == 0) {
-                seed = (seed * HASH_MULTIPLIER) ^ (0xC0);
-                seed = (seed * HASH_MULTIPLIER) ^ (0x80);
+                value = (value * HASH_MULTIPLIER) ^ (0xC0);
+                value = (value * HASH_MULTIPLIER) ^ (0x80);
             } else {
-                seed = (seed * HASH_MULTIPLIER) ^ (uch);
+                value = (value * HASH_MULTIPLIER) ^ (uch);
             }
         }
-        return seed;
-    }
-
-    static int charsFromMUTF8Length(byte[] bytes, int offset, int count) {
-        int length = 0;
-
-        for (int i = offset; i < offset + count; i++) {
-            byte ch = bytes[i];
-
-            if (ch == 0) {
-                break;
-            }
-
-            if ((ch & 0xC0) != 0x80) {
-                length++;
-            }
-        }
-
-        return length;
-    }
-
-    static void charsFromMUTF8(char[] chars, byte[] bytes, int offset, int count) throws UTFDataFormatException {
-        int j = 0;
-
-        for (int i = offset; i < offset + count; i++) {
-            byte ch = bytes[i];
-
-            if (ch == 0) {
-                break;
-            }
-
-            boolean is_unicode = (ch & 0x80) != 0;
-            int uch = ch & 0x7F;
-
-            if (is_unicode) {
-                int mask = 0x40;
-
-                while ((uch & mask) != 0) {
-                    ch = bytes[++i];
-
-                    if ((ch & 0xC0) != 0x80) {
-                        throw new UTFDataFormatException("bad continuation 0x" + Integer.toHexString(ch));
-                    }
-
-                    uch = ((uch & ~mask) << 6) | (ch & 0x3F);
-                    mask <<= 6 - 1;
-                }
-
-                if ((uch & 0xFFFF) != uch) {
-                    throw new UTFDataFormatException("character out of range \\u" + Integer.toHexString(uch));
-                }
-            }
-
-            chars[j++] = (char) uch;
-        }
-    }
-
-    public static String stringFromMUTF8(byte[] bytes, int offset, int count) {
-        int length = charsFromMUTF8Length(bytes, offset, count);
-        char[] chars = new char[length];
-
-        try {
-            charsFromMUTF8(chars, bytes, offset, count);
-        } catch (UTFDataFormatException ex) {
-            throw new InternalError("Attempt to convert non modified UTF-8 byte sequence", ex);
-        }
-
-        return new String(chars);
-    }
-
-    public static String stringFromMUTF8(byte[] bytes) {
-        return stringFromMUTF8(bytes, 0, bytes.length);
+        return value;
     }
 
     /**
@@ -196,8 +121,9 @@ public class ImageStringsReader implements ImageStrings {
 
         int limit = buffer.limit();
         boolean asciiOnly = true;
-        while (offset < limit) {
-            byte ch = buffer.get(offset++);
+        int currentOffset = offset;
+        while (currentOffset < limit) {
+            byte ch = buffer.get(currentOffset++);
 
             if (ch < 0) {
                 asciiOnly = false;
@@ -216,8 +142,9 @@ public class ImageStringsReader implements ImageStrings {
         int j = 0;
 
         int limit = buffer.limit();
-        while (offset < limit) {
-            byte ch = buffer.get(offset++);
+        int currentOffset = offset;
+        while (currentOffset < limit) {
+            byte ch = buffer.get(currentOffset++);
 
             if (ch == 0) {
                 return;
@@ -230,7 +157,7 @@ public class ImageStringsReader implements ImageStrings {
                 int mask = 0x40;
 
                 while ((uch & mask) != 0) {
-                    ch = buffer.get(offset++);
+                    ch = buffer.get(currentOffset++);
 
                     if ((ch & 0xC0) != 0x80) {
                         throw new InternalError("Bad continuation in " +
@@ -253,12 +180,9 @@ public class ImageStringsReader implements ImageStrings {
         throw new InternalError("No terminating zero byte for modified UTF-8 byte sequence");
     }
 
-    public static String stringFromByteBuffer(ByteBuffer buffer) {
-        return stringFromByteBuffer(buffer, 0);
-    }
-
     /* package-private */
-    static String stringFromByteBuffer(ByteBuffer buffer, int offset) {
+    static String stringFromByteBuffer(ByteBuffer buffer, int startOffset) {
+        int offset = startOffset;
         int length = charsFromByteBufferLength(buffer, offset);
         if (length > 0) {
             byte[] asciiBytes = new byte[length];
@@ -279,6 +203,7 @@ public class ImageStringsReader implements ImageStrings {
         // ASCII fast-path
         int limit = buffer.limit();
         int current = offset;
+        int stringCurrent = stringOffset;
         int slen = string.length();
         while (current < limit) {
             byte ch = buffer.get(current);
@@ -290,11 +215,11 @@ public class ImageStringsReader implements ImageStrings {
                 // non-ASCII byte, run slow-path from current offset
                 break;
             }
-            if (slen <= stringOffset || string.charAt(stringOffset) != (char) ch) {
+            if (slen <= stringCurrent || string.charAt(stringCurrent) != (char) ch) {
                 // No match
                 return -1;
             }
-            stringOffset++;
+            stringCurrent++;
             current++;
         }
         // invariant: remainder of the string starting at current is non-ASCII,
@@ -303,83 +228,10 @@ public class ImageStringsReader implements ImageStrings {
         char[] chars = new char[length];
         charsFromByteBuffer(chars, buffer, current);
         for (int i = 0; i < length; i++) {
-            if (string.charAt(stringOffset++) != chars[i]) {
+            if (string.charAt(stringCurrent++) != chars[i]) {
                 return -1;
             }
         }
         return length;
-    }
-
-    static int mutf8FromStringLength(String s) {
-        int length = 0;
-        int slen = s.length();
-
-        for (int i = 0; i < slen; i++) {
-            char ch = s.charAt(i);
-            int uch = ch & 0xFFFF;
-
-            if ((uch & ~0x7F) != 0) {
-                int mask = ~0x3F;
-                int n = 0;
-
-                do {
-                    n++;
-                    uch >>= 6;
-                    mask >>= 1;
-                } while ((uch & mask) != 0);
-
-                length += n + 1;
-            } else if (uch == 0) {
-                length += 2;
-            } else {
-                length++;
-            }
-        }
-
-        return length;
-    }
-
-    static void mutf8FromString(byte[] bytes, int offset, String s) {
-        int j = offset;
-        byte[] buffer = null;
-        int slen = s.length();
-
-        for (int i = 0; i < slen; i++) {
-            char ch = s.charAt(i);
-            int uch = ch & 0xFFFF;
-
-            if ((uch & ~0x7F) != 0) {
-                if (buffer == null) {
-                    buffer = new byte[8];
-                }
-                int mask = ~0x3F;
-                int n = 0;
-
-                do {
-                    buffer[n++] = (byte) (0x80 | (uch & 0x3F));
-                    uch >>= 6;
-                    mask >>= 1;
-                } while ((uch & mask) != 0);
-
-                buffer[n] = (byte) ((mask << 1) | uch);
-
-                do {
-                    bytes[j++] = buffer[n--];
-                } while (0 <= n);
-            } else if (uch == 0) {
-                bytes[j++] = (byte) 0xC0;
-                bytes[j++] = (byte) 0x80;
-            } else {
-                bytes[j++] = (byte) uch;
-            }
-        }
-    }
-
-    public static byte[] mutf8FromString(String string) {
-        int length = mutf8FromStringLength(string);
-        byte[] bytes = new byte[length];
-        mutf8FromString(bytes, 0, string);
-
-        return bytes;
     }
 }

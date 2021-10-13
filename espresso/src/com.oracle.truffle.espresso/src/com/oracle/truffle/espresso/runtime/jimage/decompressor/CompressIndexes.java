@@ -101,32 +101,4 @@ public class CompressIndexes {
         return result;
     }
 
-    public static byte[] compress(int value) {
-        // Only positive values are supported.
-        if (value < 0) {
-            throw new IllegalArgumentException("value < 0");
-        }
-
-        // Determine number of significant digits.
-        int width = 32 - Integer.numberOfLeadingZeros(value);
-        // Determine number of byte to represent. Allow for header if
-        // compressed.
-        int size = Math.min(((width + HEADER_WIDTH - 1) >> 3) + 1, Integer.BYTES);
-
-        // Allocate result buffer.
-        byte[] result = new byte[size];
-
-        // Insert significant bytes in result.
-        for (int i = 0; i < size; i++) {
-            result[i] = (byte) (value >> ((size - i - 1) * Byte.SIZE));
-        }
-
-        // If compressed, mark and insert size.
-        if (size < Integer.BYTES) {
-            result[0] |= (byte) (COMPRESSED_FLAG | (size << HEADER_SHIFT));
-        }
-
-        return result;
-    }
-
 }

@@ -46,7 +46,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.runtime.jimage.ImageReader;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -102,6 +101,7 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
@@ -320,7 +320,6 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
-
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (requestedJImageMode == null) {
@@ -730,7 +729,7 @@ public final class EspressoContext {
         } else {
             assert jimageMode == EspressoOptions.JImageMode.JAVA;
             try {
-                return new JavaJImageHelper(ImageReader.open(Paths.get(jimagePath)), this);
+                return new JavaJImageHelper(BasicImageReader.open(Paths.get(jimagePath)), this);
             } catch (IOException e) {
                 logger.log(Level.WARNING, "failed to open jimage", e);
                 return null;
