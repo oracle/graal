@@ -166,6 +166,10 @@ class LibGraalOptions {
             "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
             "This option exists for the purpose of testing fatal error handling in libgraal.")
     static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+    @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
+            "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
+            "This option exists for the purpose of testing callbacks in this context.")
+            static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
     // @formatter:on
 }
 
@@ -678,7 +682,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
         try {
-            // Unregister this isolate if it was create as a peer
+            // Unregister this isolate if it was created as a peer
             if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
                 long offset = runtime.getVMConfig().jniEnvironmentOffset;
                 long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
@@ -690,6 +694,21 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
                 args.setLong(IsolateUtil.getIsolateID());
                 env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+
+                String callback = LibGraalOptions.OnShutdownCallback.getValue();
+                if (callback != null) {
+                    int lastDot = callback.lastIndexOf('.');
+                    if (lastDot < 1 || lastDot == callback.length() - 1) {
+                        throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
+                    }
+                    String cbClassName = callback.substring(0, lastDot);
+                    String cbMethodName = callback.substring(lastDot + 1);
+                    JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
+                                    JNIUtil.getBinaryName(cbClassName), true);
+                    JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
+                    env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
+                    JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+                }
             }
         } catch (Throwable t) {
             t.printStackTrace(TTY.out);

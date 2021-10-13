@@ -1081,7 +1081,7 @@ public final class CompileTheWorld {
      * Implemented by
      * {@code com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.compileMethod}.
      */
-    static native long compileMethodInLibgraal(long isolateThread,
+    public static native long compileMethodInLibgraal(long isolateThread,
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,

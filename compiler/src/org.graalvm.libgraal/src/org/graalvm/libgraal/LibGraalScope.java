@@ -26,6 +26,7 @@ package org.graalvm.libgraal;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope ensures
@@ -53,6 +54,9 @@ public final class LibGraalScope implements AutoCloseable {
 
     private final LibGraalScope parent;
     private final Shared shared;
+
+    private static final AtomicInteger nextId = new AtomicInteger(1);
+    private final int id;
 
     /**
      * Gets the current scope.
@@ -128,6 +132,7 @@ public final class LibGraalScope implements AutoCloseable {
         if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
+        id = nextId.getAndIncrement();
         parent = currentScope.get();
         if (parent == null) {
             long[] isolateBox = {0};
@@ -141,6 +146,11 @@ public final class LibGraalScope implements AutoCloseable {
             shared = parent.shared;
         }
         currentScope.set(this);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("LibGraalScope@%d[isolate=%s, isolateThread=0x%x, parent=%s]", id, shared.isolate, shared.isolateThread, parent);
     }
 
     /**
@@ -159,6 +169,7 @@ public final class LibGraalScope implements AutoCloseable {
         if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
+        id = nextId.getAndIncrement();
         parent = currentScope.get();
         if (parent == null) {
             long isolateThread = getIsolateThreadIn(isolateAddress);
