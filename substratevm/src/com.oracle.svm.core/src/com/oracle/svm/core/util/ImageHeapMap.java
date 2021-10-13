@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
 /**
@@ -60,6 +61,7 @@ public final class ImageHeapMap {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create() {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
         return new HostedImageHeapMap<>();
     }
 }
@@ -78,8 +80,6 @@ final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 @AutomaticFeature
 final class ImageHeapMapFeature implements Feature {
 
-    private boolean afterAnalysis;
-
     private final Set<HostedImageHeapMap<?, ?>> allInstances = ConcurrentHashMap.newKeySet();
 
     @Override
@@ -90,7 +90,7 @@ final class ImageHeapMapFeature implements Feature {
     private Object imageHeapMapTransformer(Object obj) {
         if (obj instanceof HostedImageHeapMap) {
             HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
-            if (afterAnalysis) {
+            if (BuildPhaseProvider.isAnalysisFinished()) {
                 VMError.guarantee(allInstances.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
             } else {
                 allInstances.add(hostedImageHeapMap);
@@ -108,11 +108,6 @@ final class ImageHeapMapFeature implements Feature {
                 access.requireAnalysisIteration();
             }
         }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        afterAnalysis = true;
     }
 
     @Override
