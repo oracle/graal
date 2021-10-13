@@ -358,11 +358,6 @@ public abstract class ObjectFile {
      * Interface implemented by objects implementing a specific relocation method and size.
      */
     public interface RelocationMethod {
-
-        boolean canUseImplicitAddend();
-
-        boolean canUseExplicitAddend();
-
         /*
          * If we were implementing a linker, we'd have a method something like
          *
@@ -412,10 +407,9 @@ public abstract class ObjectFile {
          * @param k the kind of fixup to be applied
          * @param symbolName the name of the symbol whose value is used to compute the fixed-up
          *            bytes
-         * @param useImplicitAddend whether the current bytes are to be used as an addend
-         * @param explicitAddend a full-width addend, or null if useImplicitAddend is true
+         * @param addend a full-width addend, or 0 if unneeded
          */
-        void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, long addend);
 
         /**
          * Force the creation of a relocation section/element for this section, and return it. This
@@ -423,13 +417,12 @@ public abstract class ObjectFile {
          * which leads to unpredictable results (e.g. not appearing in the ELF SHT, if the SHT was
          * written before the section was created).
          *
-         * @param useImplicitAddend whether the relocation section of interest is for implicit
-         *            addends
+         * @param addend whether a full-width addend, or 0 if unneeded
          *
          * @return the element which will hold relocation records (of the argument-specified kind)
          *         for this section
          */
-        Element getOrCreateRelocationElement(boolean useImplicitAddend);
+        Element getOrCreateRelocationElement(long addend);
     }
 
     /**
@@ -446,7 +439,7 @@ public abstract class ObjectFile {
          * passed a buffer. It uses the byte array accessed by {@link #getContent} and
          * {@link #setContent}.
          */
-        void markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, RelocationKind k, String symbolName, long addend);
     }
 
     public interface NobitsSectionImpl extends ElementImpl {
