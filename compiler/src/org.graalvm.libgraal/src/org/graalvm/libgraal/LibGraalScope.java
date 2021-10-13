@@ -43,12 +43,30 @@ public final class LibGraalScope implements AutoCloseable {
     static class Shared {
         final DetachAction detachAction;
         final LibGraalIsolate isolate;
-        final long isolateThread;
+        private long isolateThread;
 
         Shared(DetachAction detachAction, LibGraalIsolate isolate, long isolateThread) {
             this.detachAction = detachAction;
             this.isolate = isolate;
             this.isolateThread = isolateThread;
+        }
+
+        public long getIsolateThread() {
+            if (isolateThread == 0L) {
+                throw new IllegalStateException(Thread.currentThread() + " is no longer attached to " + isolate);
+            }
+            return isolateThread;
+        }
+
+        public long detach() {
+            long res = getIsolateThread();
+            isolateThread = 0L;
+            return res;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("isolate=%s, isolateThread=0x%x, detachAction=%s", isolate, isolateThread, detachAction);
         }
     }
 
@@ -82,7 +100,7 @@ public final class LibGraalScope implements AutoCloseable {
      * @throws IllegalStateException if the current thread is not attached to libgraal
      */
     public static long getIsolateThread() {
-        return current().shared.isolateThread;
+        return current().shared.getIsolateThread();
     }
 
     /**
@@ -150,7 +168,7 @@ public final class LibGraalScope implements AutoCloseable {
 
     @Override
     public String toString() {
-        return String.format("LibGraalScope@%d[isolate=%s, isolateThread=0x%x, parent=%s]", id, shared.isolate, shared.isolateThread, parent);
+        return String.format("LibGraalScope@%d[%s, parent=%s]", id, shared, parent);
     }
 
     /**
@@ -234,19 +252,26 @@ public final class LibGraalScope implements AutoCloseable {
      * Gets the address of the isolate thread associated with this scope.
      */
     public long getIsolateThreadAddress() {
-        return shared.isolateThread;
+        return shared.getIsolateThread();
     }
 
     @Override
     public void close() {
+        // Reset the currentScope thread local before detaching. Detaching may trigger HotSpot to
+        // shutdown the libgraal isolate. That involves re-attaching the current thread to the
+        // libgraal isolate with a *new* isolate thread for calling
+        // HotSpotJVMCIRuntime.shutdown(). In the scope of the latter call, if a new LibGraalScope
+        // is opened, it must not see this LibGraalScope as its parent otherwise it will use the
+        // closed and discarded isolate thread (i.e. this.shared.isolateThread).
+        currentScope.set(parent);
         if (parent == null && shared.detachAction != null) {
+            long isolateThread = shared.detach();
             if (shared.detachAction == DetachAction.DETACH) {
-                detachThreadFrom(shared.isolateThread);
+                detachThreadFrom(isolateThread);
             } else {
                 LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         }
-        currentScope.set(parent);
     }
 
     // Shared support for the LibGraal overlays
