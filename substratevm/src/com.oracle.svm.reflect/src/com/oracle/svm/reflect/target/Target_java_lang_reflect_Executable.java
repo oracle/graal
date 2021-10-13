@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
@@ -120,17 +121,21 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.parameters != null) {
             return holder.parameters;
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             assert !hasRealParameterData;
             holder.parameters = synthesizeAllParams();
             return holder.parameters;
         }
+        throw VMError.shouldNotReachHere();
     }
 
     @Substitute
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
         Map<Class<? extends Annotation>, Annotation> declAnnos;
         if ((declAnnos = declaredAnnotations) == null) {
+            if (!RuntimeReflectionConstructors.hasQueriedMethods()) {
+                throw VMError.shouldNotReachHere();
+            }
             // Checkstyle: stop
             synchronized (this) {
                 if ((declAnnos = declaredAnnotations) == null) {
@@ -153,6 +158,9 @@ public final class Target_java_lang_reflect_Executable {
     @Substitute
     @SuppressWarnings({"unused", "hiding", "static-method"})
     Annotation[][] parseParameterAnnotations(byte[] parameterAnnotations) {
+        if (!RuntimeReflectionConstructors.hasQueriedMethods()) {
+            throw VMError.shouldNotReachHere();
+        }
         return Target_sun_reflect_annotation_AnnotationParser.parseParameterAnnotations(
                         parameterAnnotations,
                         CodeInfoDecoder.getMetadataPseudoConstantPool(),
@@ -164,7 +172,7 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReceiverType != null) {
             return (AnnotatedType) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedReceiverType);
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             if (Modifier.isStatic(this.getModifiers())) {
                 return null;
             }
@@ -177,6 +185,7 @@ public final class Target_java_lang_reflect_Executable {
             holder.annotatedReceiverType = annotatedRecvType;
             return annotatedRecvType;
         }
+        throw VMError.shouldNotReachHere();
     }
 
     @Substitute
@@ -184,7 +193,7 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedParameterTypes != null) {
             return (AnnotatedType[]) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedParameterTypes);
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             AnnotatedType[] annotatedParamTypes = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedTypes(typeAnnotations,
                             CodeInfoDecoder.getMetadataPseudoConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),
@@ -194,6 +203,7 @@ public final class Target_java_lang_reflect_Executable {
             holder.annotatedParameterTypes = annotatedParamTypes;
             return annotatedParamTypes;
         }
+        throw VMError.shouldNotReachHere();
     }
 
     @Substitute
@@ -201,7 +211,7 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReturnType != null) {
             return (AnnotatedType) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedReturnType);
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             AnnotatedType annotatedRetType = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(typeAnnotations,
                             CodeInfoDecoder.getMetadataPseudoConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),
@@ -211,6 +221,7 @@ public final class Target_java_lang_reflect_Executable {
             holder.annotatedReturnType = annotatedRetType;
             return annotatedRetType;
         }
+        throw VMError.shouldNotReachHere();
     }
 
     @Substitute
@@ -218,7 +229,7 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedExceptionTypes != null) {
             return (AnnotatedType[]) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedExceptionTypes);
-        } else {
+        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             AnnotatedType[] annotatedExcTypes = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedTypes(typeAnnotations,
                             CodeInfoDecoder.getMetadataPseudoConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),
@@ -228,6 +239,7 @@ public final class Target_java_lang_reflect_Executable {
             holder.annotatedExceptionTypes = annotatedExcTypes;
             return annotatedExcTypes;
         }
+        throw VMError.shouldNotReachHere();
     }
 
     public static final class ParameterAnnotationsComputer implements CustomFieldValueComputer {

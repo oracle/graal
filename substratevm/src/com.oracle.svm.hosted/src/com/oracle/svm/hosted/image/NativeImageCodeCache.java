@@ -53,6 +53,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
@@ -82,6 +83,7 @@ import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -91,6 +93,7 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -230,15 +233,32 @@ public abstract class NativeImageCodeCache {
 
         if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
             for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
+                if (SubstitutionReflectivityFilter.shouldExclude(queriedMethod, (AnalysisMetaAccess) imageHeap.getMetaAccess().getWrapped(), imageHeap.getAnalysisUniverse())) {
+                    continue;
+                }
                 HostedMethod method = imageHeap.getMetaAccess().optionalLookupJavaMethod(queriedMethod);
                 if (method != null) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, queriedMethod);
+                    codeInfoEncoder.prepareMetadataForMethod(method, queriedMethod, true);
                 }
             }
-        } else {
+            for (Object method : ImageSingletons.lookup(RuntimeReflectionSupport.class).getHiddenMethods()) {
+                AnalysisMethod hiddenMethod = (AnalysisMethod) method;
+                JavaType[] parameterTypes = hiddenMethod.getSignature().toParameterTypes(null);
+                Class<?>[] parameterClasses = new Class<?>[parameterTypes.length];
+                for (int i = 0; i < parameterTypes.length; ++i) {
+                    parameterClasses[i] = imageHeap.getUniverse().lookup(parameterTypes[i]).getHub().getHostedJavaClass();
+                }
+                codeInfoEncoder.prepareHiddenMethodMetadata(imageHeap.getUniverse().lookup(hiddenMethod.getDeclaringClass()), hiddenMethod.getName(), parameterClasses);
+            }
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
                 if (method.getWrapped().isReachable() && method.hasJavaMethod()) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, method.getJavaMethod());
+                    Executable reflectMethod = method.getJavaMethod();
+                    if (SubstitutionReflectivityFilter.shouldExclude(reflectMethod, (AnalysisMetaAccess) imageHeap.getMetaAccess().getWrapped(), imageHeap.getAnalysisUniverse())) {
+                        continue;
+                    }
+                    codeInfoEncoder.prepareMetadataForMethod(method, method.getJavaMethod(), false);
                 }
             }
         }

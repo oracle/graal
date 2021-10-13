@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -161,7 +160,6 @@ public class AnalysisUniverse implements Universe {
 
     public void setAnalysisDataValid(boolean dataIsValid) {
         if (dataIsValid) {
-            buildSubTypes();
             collectMethodImplementations();
         }
         analysisDataValid = dataIsValid;
@@ -574,38 +572,8 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
-    public void buildSubTypes() {
-        Map<AnalysisType, Set<AnalysisType>> allSubTypes = new HashMap<>();
-        AnalysisType objectType = null;
-        for (AnalysisType type : getTypes()) {
-            allSubTypes.put(type, new HashSet<>());
-            if (type.isInstanceClass() && type.getSuperclass() == null) {
-                objectType = type;
-            }
-        }
-        assert objectType != null;
-
-        for (AnalysisType type : getTypes()) {
-            if (type.getSuperclass() != null) {
-                allSubTypes.get(type.getSuperclass()).add(type);
-            }
-            if (type.isInterface() && type.getInterfaces().length == 0) {
-                allSubTypes.get(objectType).add(type);
-            }
-            for (AnalysisType interf : type.getInterfaces()) {
-                allSubTypes.get(interf).add(type);
-            }
-        }
-
-        for (AnalysisType type : getTypes()) {
-            Set<AnalysisType> subTypesSet = allSubTypes.get(type);
-            type.subTypes = subTypesSet.toArray(new AnalysisType[subTypesSet.size()]);
-        }
-    }
-
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
-
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
@@ -629,9 +597,12 @@ public class AnalysisUniverse implements Universe {
     }
 
     private static boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations, boolean includeInlinedMethods) {
-        assert holder.subTypes != null : holder;
         boolean holderOrSubtypeInstantiated = holder.isInstantiated();
-        for (AnalysisType subClass : holder.subTypes) {
+        for (AnalysisType subClass : holder.getSubTypes()) {
+            if (subClass.equals(holder)) {
+                /* Subtypes include the holder type itself. The holder is processed below. */
+                continue;
+            }
             holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
         }
 
@@ -640,35 +611,47 @@ public class AnalysisUniverse implements Universe {
          * method. The method cannot be marked as invoked.
          */
         if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
-            AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
-            if (aResolved != null) {
+            try {
+                AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
+                if (aResolved != null) {
+                    /*
+                     * aResolved == null means that the method in the base class was called, but
+                     * never with this holder.
+                     */
+                    if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
+                        implementations.add(aResolved);
+                    }
+                }
+            } catch (UnsupportedFeatureException e) {
                 /*
-                 * aResolved == null means that the method in the base class was called, but never
-                 * with this holder.
+                 * Failing the lookup for subclass implementations is acceptable when the method is
+                 * never called. This happens because an AnalysisMethod object can be created during
+                 * any lookup for a method, including when it is not reachable.
                  */
-                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
-                    implementations.add(aResolved);
+                if (method.isReachable()) {
+                    throw e;
                 }
             }
         }
         return holderOrSubtypeInstantiated;
     }
 
-    public static Set<AnalysisType> getSubtypes(AnalysisType baseType) {
-        LinkedHashSet<AnalysisType> result = new LinkedHashSet<>();
-        result.add(baseType);
+    /**
+     * Collect and returns *all* subtypes of this type, not only the immediate subtypes. The
+     * immediate sub-types are updated continuously as the universe is expanded and can be accessed
+     * using {@link AnalysisType#getSubTypes()}.
+     */
+    public static Set<AnalysisType> getAllSubtypes(AnalysisType baseType) {
+        HashSet<AnalysisType> result = new HashSet<>();
         collectSubtypes(baseType, result);
         return result;
     }
 
     private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
-        assert baseType.subTypes != null : baseType;
-        for (AnalysisType subType : baseType.subTypes) {
-            if (result.contains(subType)) {
-                continue;
+        for (AnalysisType subType : baseType.getSubTypes()) {
+            if (result.add(subType)) {
+                collectSubtypes(subType, result);
             }
-            result.add(subType);
-            collectSubtypes(subType, result);
         }
     }
 

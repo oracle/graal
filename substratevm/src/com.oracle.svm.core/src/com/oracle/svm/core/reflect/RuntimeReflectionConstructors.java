@@ -29,6 +29,10 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 // Checkstyle: resume
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+
 public interface RuntimeReflectionConstructors {
     Method newMethod(Class<?> declaringClass,
                     String name,
@@ -54,4 +58,9 @@ public interface RuntimeReflectionConstructors {
                     byte[] typeAnnotations,
                     String[] reflectParameterNames,
                     int[] reflectParameterModifiers);
+
+    @Fold
+    static boolean hasQueriedMethods() {
+        return !ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods().isEmpty();
+    }
 }
