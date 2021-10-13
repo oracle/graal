@@ -26,10 +26,10 @@ package com.oracle.svm.core.jdk.localization.substitutions.modes;
 
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -37,7 +37,8 @@ public class SubstituteLoadLookup implements Predicate<String> {
 
     @Override
     public boolean test(String className) {
-        return LocalizationSupport.optimizedMode() || LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue();
+        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
+        return support.optimizedMode() || support.substituteLoadLookup();
     }
 
 }

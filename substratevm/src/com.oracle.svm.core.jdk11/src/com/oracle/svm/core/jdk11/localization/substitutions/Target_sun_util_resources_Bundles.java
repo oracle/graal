@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11.substitutions;
-
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk11.Target_java_lang_Module_JDK11OrLater;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
-import org.graalvm.nativeimage.ImageSingletons;
+package com.oracle.svm.core.jdk11.localization.substitutions;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-@TargetClass(value = java.util.ResourceBundle.class, onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
-public final class Target_java_util_ResourceBundle {
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
+import org.graalvm.nativeimage.ImageSingletons;
 
-    /**
-     * Currently there is no support for the module system at run time. Module arguments are
-     * therefore ignored.
-     */
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
+//Checkstyle: stop
+import sun.util.resources.Bundles.Strategy;
+//Checkstyle: resume
+
+@TargetClass(value = sun.util.resources.Bundles.class, onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_sun_util_resources_Bundles {
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
+
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
-    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
-        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
-    }
-
-    @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
+    private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

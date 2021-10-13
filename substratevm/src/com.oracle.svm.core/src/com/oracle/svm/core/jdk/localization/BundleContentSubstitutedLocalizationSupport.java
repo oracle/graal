@@ -42,6 +42,7 @@ import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import org.graalvm.compiler.debug.GraalError;
 
 // Checkstyle: stop
@@ -50,8 +51,6 @@ import org.graalvm.nativeimage.Platforms;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 // Checkstyle: resume
-
-import static com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils.extractContent;
 
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
@@ -70,6 +69,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         super(defaultLocale, locales, defaultCharset);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
+    }
+
+    @Override
+    public boolean substituteLoadLookup() {
+        return true;
     }
 
     @Override
@@ -96,7 +100,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         if (!isInDefaultLocale && shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
             return GzipBundleCompression.compress(bundle);
         }
-        Map<String, Object> content = extractContent(bundle);
+        Map<String, Object> content = BundleSerializationUtils.extractContent(bundle);
         return new ExtractedBundle(content);
     }
 
