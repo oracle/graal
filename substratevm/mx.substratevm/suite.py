@@ -1062,7 +1062,7 @@ suite = {
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
-            "javaCompliance": "1.8",
+            "javaCompliance": "8+",
         },
     },
 
