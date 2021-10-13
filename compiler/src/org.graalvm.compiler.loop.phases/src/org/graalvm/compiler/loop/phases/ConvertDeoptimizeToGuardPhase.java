@@ -110,6 +110,11 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
         }
 
         new DeadCodeEliminationPhase(Optional).apply(graph);
+
+        if (!graph.isAfterStage(StageFlag.DEOPT_TO_GUARD)) {
+            // ran multiple times, we just wanna set it the first time
+            graph.setAfterStage(StageFlag.DEOPT_TO_GUARD);
+        }
     }
 
     private static void trySplitFixedGuard(FixedGuardNode fixedGuard, CoreProviders context, LazyValue<LoopsData> lazyLoops) {
