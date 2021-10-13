@@ -67,6 +67,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -110,6 +111,8 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -2566,6 +2569,8 @@ public class ContextPreInitializationTest {
         private EventBinding<?> verifyContextLocalBinding;
 
         final ContextLocal<TruffleContext> contextLocal = createContextLocal((c) -> c);
+        final ContextThreadLocal<TruffleContext> contextThreadLocal = createContextThreadLocal((c, t) -> c);
+        private final Set<Pair<TruffleContext, Thread>> initializedThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         @Override
         protected void onCreate(Env env) {
@@ -2576,16 +2581,17 @@ public class ContextPreInitializationTest {
 
                     public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onContextCreated(TruffleContext context) {
@@ -2594,15 +2600,43 @@ public class ContextPreInitializationTest {
 
                     public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onContextClosed(TruffleContext context) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
                 }, false);
                 performAction(null, null);
             }
+            env.getInstrumenter().attachThreadsActivationListener(new ThreadsActivationListener() {
+                @Override
+                public void onEnterThread(TruffleContext context) {
+                    // tests that locals are initialized
+                    contextLocal.get(context);
+                    contextThreadLocal.get(context);
+                }
+
+                @Override
+                public void onLeaveThread(TruffleContext context) {
+                    // tests that locals are initialized
+                    contextLocal.get(context);
+                    contextThreadLocal.get(context);
+                }
+            });
+            env.getInstrumenter().attachThreadsListener(new ThreadsListener() {
+                @Override
+                public void onThreadInitialized(TruffleContext context, Thread thread) {
+                    assertTrue(initializedThreads.add(Pair.create(context, thread)));
+                }
+
+                @Override
+                public void onThreadDisposed(TruffleContext context, Thread thread) {
+                    // tests that onThreadInitialized was called
+                    assertTrue(initializedThreads.contains(Pair.create(context, thread)));
+                }
+            }, true);
         }
 
         @Override
@@ -2687,6 +2721,7 @@ public class ContextPreInitializationTest {
         protected Map<String, Consumer<Event>> getActions() {
             return actions;
         }
+
     }
 
     @TruffleInstrument.Registration(id = ContextPreInitializationSecondInstrument.ID, name = ContextPreInitializationSecondInstrument.ID, services = Service.class)

@@ -884,12 +884,7 @@ public class SnippetTemplate {
                 fallbackInvoke = fallbackInvokes.get(0);
             }
 
-            CanonicalizerPhase canonicalizer;
-            if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
-                canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
-            } else {
-                canonicalizer = CanonicalizerPhase.create();
-            }
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
 
             /*-
              * Mirror the behavior of normal compilations here (without aggressive optimizations
@@ -1192,12 +1187,7 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = providers.getLoopsDataProvider().getLoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    CanonicalizerPhase canonicalizer = null;
-                    if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
-                        canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
-                    } else {
-                        canonicalizer = CanonicalizerPhase.create();
-                    }
+                    CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                     try {
                         LoopTransformations.fullUnroll(loop, providers, canonicalizer);
                     } catch (RetryableBailoutException e) {

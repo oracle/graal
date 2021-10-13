@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.graph.MemoryKillMarker;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
@@ -36,6 +37,6 @@ import org.graalvm.word.LocationIdentity;
  * i.e., nodes in the memory graph that mark the last accesses to such a location, like a
  * {@linkplain MemoryPhiNode} node.
  */
-public interface MemoryKill extends ValueNodeInterface {
+public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
 
 }

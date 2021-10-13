@@ -31,13 +31,12 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -45,6 +44,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -56,6 +58,8 @@ import com.oracle.svm.core.util.VMError;
  * {@link Target_java_lang_ClassLoader class loaders}.
  */
 public final class Resources {
+
+    public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
 
     public static Resources singleton() {
         return ImageSingletons.lookup(Resources.class);
@@ -121,6 +125,15 @@ public final class Resources {
         addEntry(resourceDirName, true, content.getBytes());
     }
 
+    /**
+     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
+     * convert <code>resourceName</code> to canonical variant.
+     */
+    public static String toCanonicalForm(String resourceName) {
+        NativeImageResourcePath path = new NativeImageResourcePath(null, resourceName.getBytes(StandardCharsets.UTF_8), true);
+        return new String(NativeImageResourcePath.getResolved(path));
+    }
+
     public static ResourceStorageEntry get(String name) {
         return singleton().resources.get(name);
     }
@@ -144,7 +157,8 @@ public final class Resources {
         if (resourceName == null) {
             return null;
         }
-        Enumeration<URL> urls = createURLs(resourceName);
+
+        Enumeration<URL> urls = createURLs(toCanonicalForm(resourceName));
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
@@ -153,7 +167,8 @@ public final class Resources {
         if (resourceName == null) {
             return null;
         }
-        ResourceStorageEntry entry = Resources.get(resourceName);
+
+        ResourceStorageEntry entry = Resources.get(toCanonicalForm(resourceName));
         if (entry == null) {
             return null;
         }
@@ -165,14 +180,16 @@ public final class Resources {
         if (resourceName == null) {
             return null;
         }
-        ResourceStorageEntry entry = Resources.get(resourceName);
+
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        ResourceStorageEntry entry = Resources.get(canonicalResourceName);
         if (entry == null) {
             return Collections.emptyEnumeration();
         }
         int numberOfResources = entry.getData().size();
         List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
         for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(resourceName, index));
+            resourcesURLs.add(createURL(canonicalResourceName, index));
         }
         return Collections.enumeration(resourcesURLs);
     }

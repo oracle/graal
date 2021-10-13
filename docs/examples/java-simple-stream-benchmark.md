@@ -30,15 +30,15 @@ This application is a small benchmark of the Java Stream API. It demonstrates ho
   Note that your paths are likely to be different depending on the download location.
 
 2&#46; Download or clone the repository and navigate into the `java-simple-stream-benchmark` directory:
-```shell
-git clone https://github.com/graalvm/graalvm-demos
-cd graalvm-demos/java-simple-stream-benchmark
-```
+  ```shell
+  git clone https://github.com/graalvm/graalvm-demos
+  cd graalvm-demos/java-simple-stream-benchmark
+  ```
 
 3&#46; Build the benchmark. You can manually execute `mvn package`, but there is also a `build.sh` script included for your convenience:
-```shell
-./build.sh
-```
+  ```shell
+  ./build.sh
+  ```
 Now you are all set to execute the benchmark and compare the results between different JVMs.
 
 ## Running the Benchmark

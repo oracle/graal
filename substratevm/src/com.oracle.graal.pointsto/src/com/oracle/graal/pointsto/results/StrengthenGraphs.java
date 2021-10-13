@@ -283,7 +283,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
-            FixedNode node = invoke.asNode();
+            FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
             InvokeTypeFlow invokeFlow = originalFlows.getInvokeFlow(invoke);
@@ -390,7 +390,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
                             ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
         }
 

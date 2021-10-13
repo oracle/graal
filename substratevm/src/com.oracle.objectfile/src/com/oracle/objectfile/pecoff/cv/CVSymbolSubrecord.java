@@ -297,11 +297,11 @@ abstract class CVSymbolSubrecord {
             pos = CVUtil.putInt(debugEnd, buffer, pos);
             pos = CVUtil.putInt(typeIndex, buffer, pos);
             if (buffer != null) {
-                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, externalName, false, 1L);
+                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECREL_4, externalName, 1L);
             }
             pos = CVUtil.putInt(0, buffer, pos);
             if (buffer != null) {
-                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, externalName, false, 1L);
+                cvDebugInfo.getCVSymbolSection().markRelocationSite(pos, ObjectFile.RelocationKind.SECTION_2, externalName, 1L);
             }
             pos = CVUtil.putShort((short) 0, buffer, pos);
             pos = CVUtil.putByte(flags, buffer, pos);

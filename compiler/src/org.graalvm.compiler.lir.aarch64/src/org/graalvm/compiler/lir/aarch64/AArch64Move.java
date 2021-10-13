@@ -33,7 +33,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
@@ -64,7 +63,6 @@ import org.graalvm.compiler.lir.StandardOp.NullCheck;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.MemoryBarriers;
@@ -672,8 +670,8 @@ public class AArch64Move {
             this.lirKindTool = lirKindTool;
         }
 
-        public static boolean hasBase(OptionValues options, CompressEncoding encoding) {
-            return GeneratePIC.getValue(options) || encoding.hasBase();
+        public static boolean hasBase(CompressEncoding encoding) {
+            return encoding.hasBase();
         }
 
         public final Value getInput() {
@@ -688,8 +686,8 @@ public class AArch64Move {
             return asRegister(result);
         }
 
-        protected final Register getBaseRegister(CompilationResultBuilder crb) {
-            return hasBase(crb.getOptions(), encoding) ? asRegister(baseRegister) : Register.None;
+        protected final Register getBaseRegister() {
+            return hasBase(encoding) ? asRegister(baseRegister) : Register.None;
         }
 
         protected final int getShift() {
@@ -718,7 +716,7 @@ public class AArch64Move {
         protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register resultRegister = getResultRegister();
             Register ptr = asRegister(getInput());
-            Register base = getBaseRegister(crb);
+            Register base = getBaseRegister();
             // result = (ptr - base) >> shift
             if (!encoding.hasBase()) {
                 if (encoding.hasShift()) {
@@ -759,7 +757,7 @@ public class AArch64Move {
         protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register inputRegister = asRegister(getInput());
             Register resultRegister = getResultRegister();
-            Register base = encoding.hasBase() ? getBaseRegister(crb) : null;
+            Register base = encoding.hasBase() ? getBaseRegister() : null;
 
             // result = base + (ptr << shift)
             if (nonNull || base == null) {

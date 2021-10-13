@@ -44,9 +44,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @State(Scope.Thread)
 public abstract class GraphState {
 
+    final GraalState graal;
+
     @SuppressWarnings("try")
     public GraphState() {
-        GraalState graal = new GraalState();
+        graal = new GraalState();
         DebugContext debug = graal.debug;
         ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethodFromMethodSpec(getClass()));
         StructuredGraph structuredGraph = null;

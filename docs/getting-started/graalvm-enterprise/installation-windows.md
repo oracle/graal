@@ -36,17 +36,17 @@ Optionally, you can specify GraalVM Enterprise as the JRE or JDK installation in
 
 ## Supported Functionalities
 
-The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](/reference-manual/graalvm-updater/) tool, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](/reference-manual/native-image/), [Java on Trufle](/reference-manual/java-on-truffle/), WebAssembly, and Node.js support.
+The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
+Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Trufle](../../reference-manual/java-on-truffle/README.md), WebAssembly, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
-
-To start using Native Image on Windows, install Visual Studio and Microsoft Visual C++(MSVC). There are two installation options:
-  * Install the Visual Studio Code Build Tools with the Windows 10 SDK
-  * Install Visual Studio Code with the Windows 10 SDK
-
+On Windows, Native Image requires Visual Studio Code and Microsoft Visual C++(MSVC).
 You can use Visual Studio 2017 version 15.9 or later.
+There are two installation options:
+- Install the Visual Studio Code Build Tools with the Windows 10 SDK
+- Install Visual Studio Code with the Windows 10 SDK
 
-Lastly, on Windows, the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
-Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for step-by-step instructions.
+The last prerequisite is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
+On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+
+Step by step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).

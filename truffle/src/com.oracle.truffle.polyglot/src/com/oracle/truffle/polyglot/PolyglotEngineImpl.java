@@ -1635,12 +1635,23 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             throw PolyglotImpl.guestToHostException(this, t);
         }
         boolean hasContextBindings;
+        boolean hasThreadBindings;
         try {
             if (replayEvents) { // loaded context
-                // we might have new instruments to run with a preinitialized context
+                /*
+                 * There might be new instruments to run with a preinitialized context and these
+                 * instruments might define context locals and context thread locals. The
+                 * instruments were created during the context loading before the context was added
+                 * to the engine's contexts set, and so the instrument creation did not update the
+                 * context's locals and thread locals. Since the context loading needs to enter the
+                 * context on the current thread for patching, we need to update both the context
+                 * locals and context thread locals.
+                 */
                 synchronized (context) {
                     context.resizeContextLocals(this.contextLocalLocations);
                     context.initializeInstrumentContextLocals(context.contextLocals);
+                    context.resizeContextThreadLocals(this.contextThreadLocalLocations);
+                    context.initializeInstrumentContextThreadLocals();
                 }
             } else { // is new context
                 try {
@@ -1661,12 +1672,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
             hasContextBindings = EngineAccessor.INSTRUMENT.hasContextBindings(this);
+            hasThreadBindings = EngineAccessor.INSTRUMENT.hasThreadBindings(this);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
         }
-        if (replayEvents && hasContextBindings) {
-            // replace events for preinitialized contexts
-            // events must be replayed without engine lock.
+        if (replayEvents && (hasContextBindings || hasThreadBindings)) {
+            /*
+             * Replay events for preinitialized contexts. Events must be replayed without engine
+             * lock. The events to replay are the context events and also the thread initialization
+             * event for the current thread which was initialized for context patching.
+             */
             final Object[] prev;
             try {
                 prev = enter(context);

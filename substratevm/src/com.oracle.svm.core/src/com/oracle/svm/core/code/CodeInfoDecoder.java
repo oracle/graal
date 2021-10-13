@@ -568,9 +568,9 @@ public final class CodeInfoDecoder {
 
             int modifiers = dataReader.getUVInt();
 
-            int paramCount = dataReader.getUVInt();
-            Class<?>[] paramTypes = new Class<?>[paramCount];
-            for (int j = 0; j < paramCount; ++j) {
+            int paramTypeCount = dataReader.getUVInt();
+            Class<?>[] paramTypes = new Class<?>[paramTypeCount];
+            for (int j = 0; j < paramTypeCount; ++j) {
                 int paramTypeIndex = dataReader.getSVInt();
                 paramTypes[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), paramTypeIndex);
             }
@@ -606,27 +606,27 @@ public final class CodeInfoDecoder {
                 typeAnnotations[j] = (byte) dataReader.getS1();
             }
 
-            boolean parameterDataPresent = dataReader.getU1() == 1;
-            String[] parameterNames = null;
-            int[] parameterModifiers = null;
-            if (parameterDataPresent) {
-                int parameterCount = dataReader.getUVInt();
-                parameterNames = new String[parameterCount];
-                parameterModifiers = new int[parameterCount];
-                for (int j = 0; j < paramCount; ++j) {
-                    int parameterNameIndex = dataReader.getSVInt();
-                    parameterNames[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), parameterNameIndex);
-                    parameterModifiers[j] = dataReader.getS4();
+            boolean reflectParameterDataPresent = dataReader.getU1() == 1;
+            String[] reflectParameterNames = null;
+            int[] reflectParameterModifiers = null;
+            if (reflectParameterDataPresent) {
+                int reflectParameterCount = dataReader.getUVInt();
+                reflectParameterNames = new String[reflectParameterCount];
+                reflectParameterModifiers = new int[reflectParameterCount];
+                for (int j = 0; j < reflectParameterCount; ++j) {
+                    int reflectParameterNameIndex = dataReader.getSVInt();
+                    reflectParameterNames[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), reflectParameterNameIndex);
+                    reflectParameterModifiers[j] = dataReader.getS4();
                 }
             }
 
             if (name.equals("<init>")) {
                 assert returnType == void.class;
                 methods[i] = ImageSingletons.lookup(RuntimeReflectionConstructors.class).newConstructor(declaringClass, paramTypes, exceptionTypes, modifiers, signature,
-                                annotations, parameterAnnotations, typeAnnotations, parameterNames, parameterModifiers);
+                                annotations, parameterAnnotations, typeAnnotations, reflectParameterNames, reflectParameterModifiers);
             } else {
                 methods[i] = ImageSingletons.lookup(RuntimeReflectionConstructors.class).newMethod(declaringClass, name, paramTypes, returnType, exceptionTypes, modifiers, signature,
-                                annotations, parameterAnnotations, null, typeAnnotations, parameterNames, parameterModifiers);
+                                annotations, parameterAnnotations, null, typeAnnotations, reflectParameterNames, reflectParameterModifiers);
             }
         }
         return methods;

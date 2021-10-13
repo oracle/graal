@@ -31,16 +31,16 @@ The following GraalVM language runtimes and utilities are available for installa
 
 Tools/Utilities:
 
-* [Native Image](/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
-* [LLVM toolchain](/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM
-* [Java on Truffle](/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
+* [Native Image](native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
+* [LLVM toolchain](llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM
 
 Runtimes:
-* [Node.js](/reference-manual/js/) -- Node.js 14.17.6 compatible
-* [Python](/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](/ruby/README.md) -- Ruby 2.7.4 compatible
-* [R](/r/README.md) -- GNU R 4.0.3 compatible
-* [Wasm](/wasm/README.md) -- WebAssembly (Wasm)
+* [Java on Truffle](java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
+* [Node.js](js/README.md) -- Node.js 14.16.1 compatible
+* [Python](python/README.md) -- Python 3.8.5-compatible
+* [Ruby](ruby/README.md) -- Ruby 2.7.3-compatible
+* [R](r/README.md) -- GNU R 4.0.3-compatible
+* [Wasm](wasm/README.md) -- WebAssembly (Wasm)
 
 GraalVM Updater verifies whether or not the version of a component is appropriate for the current GraalVM installation.
 Components are released for each GraalVM distribution with respective updates, and those downloaded for previous release(s) cannot be used with newer ones.

@@ -17,10 +17,9 @@ permalink: /reference-manual/embed-languages/
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
-* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
+* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
-
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -30,7 +29,7 @@ You can use the tabs beneath each code example to choose between JavaScript, R, 
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
-GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/).
+GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
 These languages are henceforth referenced as **guest languages**.
 
 Complete the steps in this section to create a sample polyglot application that runs on GraalVM and demonstrates programming language interoperability.

@@ -13,15 +13,15 @@ Here you will also find a more sophisticated example displaying GraalVM's abilit
 ## Preparation
 
 1&#46; Download or clone the repository and navigate into the `native-list-dir` directory:
-```shell
-git clone https://github.com/graalvm/graalvm-demos
-cd graalvm-demos/native-list-dir
-```
-There are two Java classes, but you will start by building `ListDir.java` for the purposes of this demo.
-You can manually execute `javac ListDir.java`, and there is also a `build.sh` script included for your convenience.
+  ```shell
+  git clone https://github.com/graalvm/graalvm-demos
+  cd graalvm-demos/native-list-dir
+  ```
+  There are two Java classes, but you will start by building `ListDir.java` for the purposes of this demo.
+  You can manually execute `javac ListDir.java`, and there is also a `build.sh` script included for your convenience.
 
-Note that you can use any JDK for compiling the Java classes.
-However, we refer to `javac` from GraalVM in the build script to simplify the prerequisites so another JDK does not need to be installed.
+  Note that you can use any JDK for compiling the Java classes.
+  However, we refer to `javac` from GraalVM in the build script to simplify the prerequisites so another JDK does not need to be installed.
 
 2&#46; [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
   On Linux:
@@ -42,14 +42,14 @@ However, we refer to `javac` from GraalVM in the build script to simplify the pr
   Note that your paths are likely to be different depending on the download location.
 
 3&#46; [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) by running.
-```bash
-gu install native-image
-```
+  ```bash
+  gu install native-image
+  ```
 
 4&#46; Then execute:
-```shell
-./build.sh
-```
+  ```shell
+  ./build.sh
+  ```
 
 The `build.sh` script creates a native executable from the Java class.
 

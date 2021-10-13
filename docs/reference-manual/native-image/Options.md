@@ -6,29 +6,23 @@ permalink: /reference-manual/native-image/Options/
 ---
 # Native Image Options
 
-The `native-image` builder needs to provide the classpath for all classes
-using the familiar option from the `java` launcher: `-cp` is followed by a list
-of directories or JAR files, separated by `:`. The name of the class containing
-the `main` method is the last argument, or you can use `-jar` and provide a JAR
-file that specifies the main method in its manifest.
+The `native-image` builder needs to provide the classpath for all classes using the familiar option from the `java` launcher: `-cp` is followed by a list of directories or JAR files, separated by `:`.
+The name of the class containing the `main` method is the last argument, or you can use `-jar` and provide a JAR file that specifies the main method in its manifest.
 
 The syntax of the `native-image` command is:
 
-- `native-image [options] class [imagename] [options]` to build an executable file for a class in the
-current working directory. Invoking it executes the native-compiled code of that
+- `native-image [options] class [imagename] [options]` to build an executable file for a class in the current working directory. Invoking it executes the native-compiled code of that
 class.
 
 - `native-image [options] -jar jarfile [imagename] [options]` to build an image for a JAR file.
 
 The options passed to `native-image` are evaluated left-to-right. For more information, see [Native Image Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
 
-The options fall into four categories:
-image generation options, macro options, non-standard options, and server options.
+The options fall into four categories: image generation options, macro options, non-standard options, and server options.
 Non-standard and server options are subject to change through a deprecation cycle.
 
-Command-line help is available. Run `native-image --help` to get
-the commands overview, and `native-image --help-extra` to print help on non-standard,
-macro, and server options.
+Command-line help is available.
+Run `native-image --help` to get the commands overview, and `native-image --help-extra` to print help on non-standard, macro, and server options.
 
 ### Options to Native Image Builder
 
@@ -94,7 +88,7 @@ instantiation is traced for.
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
 * `--tool:profiler`: add profiling support to a GraalVM supported language
 
-The `--language:python`, `--language:ruby` and `--language:R` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater/) guide).
+The `--language:python`, `--language:ruby` and `--language:R` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](../graalvm-updater.md) guide).
 
 ### Non-standard Options
 * `--expert-options`: list image build options for experts

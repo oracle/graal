@@ -113,6 +113,7 @@ public final class UnsignedUtils {
 
     @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord clamp(UnsignedWord value, UnsignedWord min, UnsignedWord max) {
+        assert min.belowOrEqual(max);
         return min(max(value, min), max);
     }
 

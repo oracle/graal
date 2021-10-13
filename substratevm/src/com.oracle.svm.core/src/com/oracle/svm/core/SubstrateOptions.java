@@ -278,7 +278,7 @@ public class SubstrateOptions {
      * Object and array allocation options.
      */
     @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(3);
+    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(4);
 
     @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
@@ -288,6 +288,14 @@ public class SubstrateOptions {
 
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
+
+    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
+                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
+                    "Each Java thread has its own allocation point.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(192);
+
+    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
     /*
      * Isolate tear down options.
@@ -306,17 +314,6 @@ public class SubstrateOptions {
     public static final long getTearDownFailureNanos() {
         return TearDownFailureNanos.getValue().longValue();
     }
-
-    /*
-     * The default value is derived by taking the common value from HotSpot configs.
-     */
-    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
-                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
-                    "Each Java thread has its own allocation point.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(256);
-
-    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(16);
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
     public static final HostedOptionKey<Integer> MaxUnrolledObjectZeroingStores = new HostedOptionKey<>(8);
@@ -620,4 +617,7 @@ public class SubstrateOptions {
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Limit method reflection metadata to configuration entries instead of including it for all reachable methods")//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
+
+    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
+    public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 }

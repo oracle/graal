@@ -34,7 +34,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -49,7 +48,7 @@ import com.oracle.svm.core.util.VMError;
  * Holder for localization information that is computed during image generation and used at run
  * time.
  *
- * @see LocalizationFeature
+ * For more details, see LocalizationFeature
  */
 public class LocalizationSupport {
 
@@ -63,20 +62,25 @@ public class LocalizationSupport {
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
+    public final Charset defaultCharset;
+
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
+        this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 
-    @Fold
-    public static boolean optimizedMode() {
-        return LocalizationFeature.Options.LocalizationOptimizedMode.getValue();
+    public boolean optimizedMode() {
+        return false;
     }
 
-    @Fold
-    public static boolean jvmMode() {
+    public boolean jvmMode() {
         return !optimizedMode();
+    }
+
+    public boolean substituteLoadLookup() {
+        return false;
     }
 
     public OptimizedLocalizationSupport asOptimizedSupport() {

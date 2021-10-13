@@ -82,7 +82,7 @@ import sun.misc.Unsafe;
  * only performed if assertions are enabled.
  */
 @NodeInfo
-public abstract class Node implements Cloneable, Formattable, NodeInterface {
+public abstract class Node implements Cloneable, Formattable {
 
     private static final Unsafe UNSAFE = getUnsafe();
 
@@ -302,11 +302,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     final int id() {
         return id;
-    }
-
-    @Override
-    public Node asNode() {
-        return this;
     }
 
     /**
@@ -618,10 +613,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
                 maybeNotifyZeroUsages(oldInput);
             }
         }
-    }
-
-    protected void updateUsagesInterface(NodeInterface oldInput, NodeInterface newInput) {
-        updateUsages(oldInput == null ? null : oldInput.asNode(), newInput == null ? null : newInput.asNode());
     }
 
     /**

@@ -7,17 +7,13 @@ permalink: /tools/profiling/
 
 # Profiling Command Line Tools
 
-GraalVM **profiling command line tools** help you optimize your code
-through analysis of CPU and memory usage.
+GraalVM **profiling command line tools** help you optimize your code through analysis of CPU and memory usage.
 
-Most applications spend 80% of their runtime in 20% of the code. For this
-reason, to optimize the code, it is essential to know where the application
-spends its time. In this section, we use an example application to demonstrate
-the three main profiling capabilities that GraalVM offers: CPU Tracer, CPU
-Sampler, and Memory Tracer.
+Most applications spend 80% of their runtime in 20% of the code.
+For this reason, to optimize the code, it is essential to know where the application spends its time.
+In this section, we use an example application to demonstrate the three main profiling capabilities that GraalVM offers: CPU Tracer, CPU Sampler, and Memory Tracer.
 
-This example application uses a basic prime
-number calculator based on the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes)
+This example application uses a basic prime number calculator based on the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes)
 algorithm.
 
 1. Copy the following code into a new file named `primes.js`:
@@ -90,15 +86,28 @@ algorithm.
       Total Time: Time spent somewhere on the stack.
     ----------------------------------------------------------------------------------------------
     Thread[main,5,main]
+<<<<<<< HEAD
      Name       ||             Total Time    ||              Self Time    || Location
     ----------------------------------------------------------------------------------------------
      accept     ||             2150ms  86.0% ||             2150ms  86.0% || primes.js~13-22:191-419
      next       ||             2470ms  98.8% ||              320ms  12.8% || primes.js~31-37:537-737
      :program   ||             2500ms 100.0% ||               30ms   1.2% || primes.js~1-46:0-982
     ----------------------------------------------------------------------------------------------
+=======
+     Name              |             Total Time    ||              Self Time    || Location
+    ----------------------------------------------------------------------------------------------------
+     accept            |             7330ms  88.8% ||             7330ms  88.8% || primes.js~13-22:191-419
+     :program          |             8250ms 100.0% ||              420ms   5.1% || primes.js~1-46:0-982
+     next              |             7820ms  94.8% ||              250ms   3.0% || primes.js~31-37:537-737
+     DivisibleByFilter |              440ms   5.3% ||              240ms   2.9% || primes.js~7-23:66-421
+     AcceptFilter      |               20ms   0.2% ||               10ms   0.1% || primes.js~1-5:0-63
+     Primes            |               20ms   0.2% ||                0ms   0.0% || primes.js~25-38:424-739
+    ----------------------------------------------------------------------------------------------------
+>>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
     ```
 
     By default the sampler prints an execution time histogram for each JavaScript function.
+<<<<<<< HEAD
     You can produce a flame graph in SVG format by specifying that with the `--cpusampler.Output=flamegraph` option:
 
     ```shell
@@ -106,14 +115,20 @@ algorithm.
     ```
 
     It should produce something like this:
+=======
+    You can produce a flame graph in SVG format by doing
+    ```shell
+    js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
+    ```
+    which should produce something like this
+>>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
 
     ![](img/profiler_flamegraph.png)
 
     You can zoom into the graph by clicking on elements.
 
-    By default, CPU sampling takes a sample every 10 milliseconds. From the
-    result, we can see that roughly 89% of the time is spent
-    in the `DivisibleByFilter.accept` function.
+    By default, CPU sampling takes a sample every 10 milliseconds.
+    From the result, we can see that roughly 89% of the time is spent in the `DivisibleByFilter.accept` function.
 
     ```javascript
     accept(n) {
@@ -129,8 +144,12 @@ algorithm.
     ```
     Now use the CPU Tracer to collect execution counts of each statement:
 
+<<<<<<< HEAD
 4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=accept`
 to collect execution counts for all statements in methods ending with `accept`:
+=======
+4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept` to collect execution counts for all statements in methods ending with `accept`:
+>>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
     ```shell
     js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=accept
     Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
@@ -154,14 +173,10 @@ to collect execution counts for all statements in methods ending with `accept`:
     -----------------------------------------------------------------------------------------
     ```
 
-    The output shows execution counters for each statement, instead of timing
-    information. Tracing histograms often provides insights into the behavior
-    of the algorithm that needs optimization.
+    The output shows execution counters for each statement, instead of timing information.
+    Tracing histograms often provides insights into the behavior of the algorithm that needs optimization.
 
-5. Run `js primes.js --experimental-options --memtracer` to display source code locations and
-counts of reported allocations. Note that the Memory Tracer tool for capturing allocations is currently an
-experimental feature in GraalVM. As such, `--memtracer` must
-be preceded by the `--experimental-options` command line option.
+5. Run `js primes.js --experimental-options --memtracer` to display source code locations and counts of reported allocations. Note that the Memory Tracer tool for capturing allocations is currently an experimental feature in GraalVM. As such, `--memtracer` must be preceded by the `--experimental-options` command line option.
     ```shell
     js primes.js --experimental-options --memtracer
     Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
@@ -178,21 +193,15 @@ be preceded by the `--experimental-options` command line option.
    --------------------------------------------------------
     ```
 
-    This output shows the number of allocations which were recorded per function.
-    For each prime number that was computed, the program allocates one object in
-    `next` and one in `constructor` of `DivisibleByFilter`. Allocations are recorded
-    independently of whether they could get eliminated by the compiler.
+    This output shows the number of allocations which were recorded per function. For each prime number that was computed, the program allocates one object in `next` and one in `constructor` of `DivisibleByFilter`.
+    Allocations are recorded independently of whether they could get eliminated by the compiler.
 
-    The GraalVM compiler is particularly powerful in optimizing allocations and can push
-    allocations into infrequent branches to increase execution performance. The
-    GraalVM team plans to add information about memory optimizations to the
-    memory tracer in the future.
+    The GraalVM compiler is particularly powerful in optimizing allocations and can push allocations into infrequent branches to increase execution performance.
+    The GraalVM team plans to add information about memory optimizations to the memory tracer in the future.
 
 ## Tools Options
-Use the `--help:tools` option in all guest language launchers to display
-reference information for CPU Sampler, CPU Tracer, and Memory Tracer.
-
-The current set of available options is as follows:
+Use the `--help:tools` option in all guest language launchers to display reference information for CPU Sampler, CPU Tracer, and Memory Tracer.
+The current set of available options is as follows.
 
 ### CPU Sampler Options
 

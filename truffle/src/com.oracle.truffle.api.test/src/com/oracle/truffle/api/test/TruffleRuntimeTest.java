@@ -109,6 +109,7 @@ public class TruffleRuntimeTest {
         assertNotNull(runtime.getName());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testCreateCallTarget() {
         RootNode rootNode = createTestRootNode(null);

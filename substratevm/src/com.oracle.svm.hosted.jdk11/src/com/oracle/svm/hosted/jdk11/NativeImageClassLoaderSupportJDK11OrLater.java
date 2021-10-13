@@ -93,7 +93,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
     }
 
-    private void adjustBootLayerQualifiedExports(ModuleLayer layer) {
+    private static void adjustBootLayerQualifiedExports(ModuleLayer layer) {
         /*
          * For all qualified exports packages of modules in the the boot layer we check if layer
          * contains modules that satisfy such qualified exports. If we find a match we perform a
@@ -129,7 +129,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return singleClassloader;
     }
 
-    private void implAddReadsAllUnnamed(Module module) {
+    private static void implAddReadsAllUnnamed(Module module) {
         try {
             Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
             ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupportJDK11OrLater.class);

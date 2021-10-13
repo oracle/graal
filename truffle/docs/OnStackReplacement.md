@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: truffle
-link_title: On-Stack Replacement 
+link_title: On-Stack Replacement
 permalink: /graalvm-as-a-platform/language-implementation-framework/OnStackReplacement/
 ---
 # On-Stack Replacement (OSR)
@@ -15,7 +15,7 @@ On-stack replacement (OSR) is a technique used in Truffle to "break out" of the 
 Truffle supports OSR for both AST interpreters (i.e., ASTs with `LoopNode`s) and bytecode interpreters (i.e., nodes with dispatch loops).
 In either case, Truffle uses heuristics to detect when a long-running loop is being interpreted and can perform OSR to speed up execution.
 
-## OSR for AST interpreters 
+## OSR for AST interpreters
 
 Languages using standard Truffle APIs get OSR for free on Graal.
 The runtime tracks the number of times a `LoopNode` (created using `TruffleRuntime.createLoopNode(RepeatingNode)`) executes in the interpreter.
@@ -33,9 +33,9 @@ A bytecode dispatch node typically looks something like the following:
 ```java
 class BytecodeDispatchNode extends Node {
   @CompilationFinal byte[] bytecode;
-  
+
   ...
-  
+
   @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
   Object execute(VirtualFrame frame) {
     int bci = 0;
@@ -81,7 +81,7 @@ The example above can be refactored to support OSR as follows:
 class BytecodeDispatchNode extends Node implements BytecodeOSRNode {
   @CompilationFinal byte[] bytecode;
   @CompilationFinal private Object osrMetadata;
-  
+
   ...
 
   Object execute(VirtualFrame frame) {
@@ -176,4 +176,3 @@ For example, in the compilation log, a bytecode OSR entry may look something lik
 ```
 
 See [Debugging](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md) for more details on debugging Graal compilations.
-

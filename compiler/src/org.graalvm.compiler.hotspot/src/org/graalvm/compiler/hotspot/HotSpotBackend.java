@@ -53,7 +53,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantStubCall;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
@@ -62,7 +61,6 @@ import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
-import org.graalvm.compiler.hotspot.word.MethodCountersPointer;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -351,45 +349,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      */
     public static final HotSpotForeignCallDescriptor NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, TLAB_LOCATIONS, "new_instance_or_null", Object.class,
                     KlassPointer.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_STRING_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, TLAB_LOCATIONS, "resolve_string_by_symbol", Object.class,
-                    Word.class, Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_DYNAMIC_INVOKE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, any(), "resolve_dynamic_invoke", Object.class, Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_KLASS_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, any(), "resolve_klass_by_symbol", Word.class, Word.class,
-                    Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor INITIALIZE_KLASS_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "initialize_klass_by_symbol", Word.class,
-                    Word.class,
-                    Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
-                    "resolve_method_by_symbol_and_load_counters", Word.class, Word.class, Word.class,
-                    Word.class);
-
-    /**
-     * Tiered support.
-     */
-    public static final HotSpotForeignCallDescriptor INVOCATION_EVENT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "invocation_event", void.class,
-                    MethodCountersPointer.class);
-    public static final HotSpotForeignCallDescriptor BACKEDGE_EVENT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "backedge_event", void.class, MethodCountersPointer.class,
-                    int.class, int.class);
 
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);

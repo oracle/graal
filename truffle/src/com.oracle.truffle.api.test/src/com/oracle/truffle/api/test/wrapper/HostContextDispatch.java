@@ -43,7 +43,9 @@ package com.oracle.truffle.api.test.wrapper;
 import java.time.Duration;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 
@@ -77,11 +79,13 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value eval(Object receiver, String language, Object sourceImpl) {
+    public Value eval(Object receiver, String language, Source source) {
         HostContext context = (HostContext) receiver;
-
-        String languageId = polyglot.getSourceDispatch().getLanguage(sourceImpl);
-        String characters = polyglot.getSourceDispatch().getCharacters(sourceImpl).toString();
+        APIAccess apiAccess = polyglot.getAPIAccess();
+        AbstractSourceDispatch sourceDispatch = apiAccess.getDispatch(source);
+        Object sourceImpl = apiAccess.getReceiver(source);
+        String languageId = sourceDispatch.getLanguage(sourceImpl);
+        String characters = sourceDispatch.getCharacters(sourceImpl).toString();
 
         long remoteValue = hostToGuest.remoteEval(context.remoteContext, languageId, characters);
         return context.localContext.asValue(new HostGuestValue(hostToGuest, context.remoteContext, remoteValue));
@@ -105,7 +109,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value parse(Object receiver, String language, Object sourceImpl) {
+    public Value parse(Object receiver, String language, Source source) {
         throw new UnsupportedOperationException();
     }
 

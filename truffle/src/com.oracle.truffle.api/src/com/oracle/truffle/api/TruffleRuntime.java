@@ -71,15 +71,16 @@ public interface TruffleRuntime {
 
     /**
      * Creates a new call target for a given root node if none exists. Otherwise, the existing call
-     * target is returned. Note that this method is only kept for backward compatibility and will
-     * soon be deprecated. Please use {@link RootNode#getCallTarget()} instead.
+     * target is returned.
      *
      * @param rootNode the root node whose
      *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
      *            represents the entry point
      * @return the new call target object
      * @since 0.8 or earlier
+     * @deprecated Use {@link RootNode#getCallTarget()}.
      */
+    @Deprecated
     RootCallTarget createCallTarget(RootNode rootNode);
 
     /**

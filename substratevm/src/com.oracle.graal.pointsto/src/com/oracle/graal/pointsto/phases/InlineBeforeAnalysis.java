@@ -258,7 +258,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             }
             killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
             assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
-            invokeData.invokePredecessor.setNext(invokeData.invoke.asNode());
+            invokeData.invokePredecessor.setNext(invokeData.invoke.asFixedNode());
 
             if (inlineScope.exceptionPlaceholderNode != null) {
                 assert invokeData.invoke instanceof InvokeWithExceptionNode;

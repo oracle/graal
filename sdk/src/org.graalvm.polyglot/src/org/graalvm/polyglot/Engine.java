@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -85,9 +84,10 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 
@@ -624,13 +624,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source newSource(Object receiver) {
-            return new Source(receiver);
+        public Source newSource(AbstractSourceDispatch dispatch, Object receiver) {
+            return new Source(dispatch, receiver);
         }
 
         @Override
-        public SourceSection newSourceSection(Source source, Object receiver) {
-            return new SourceSection(source, receiver);
+        public SourceSection newSourceSection(Source source, AbstractSourceSectionDispatch dispatch, Object receiver) {
+            return new SourceSection(source, dispatch, receiver);
         }
 
         @Override
@@ -654,6 +654,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public AbstractSourceDispatch getDispatch(Source source) {
+            return source.dispatch;
+        }
+
+        @Override
+        public AbstractSourceSectionDispatch getDispatch(SourceSection sourceSection) {
+            return sourceSection.dispatch;
+        }
+
+        @Override
         public ResourceLimitEvent newResourceLimitsEvent(Context context) {
             return new ResourceLimitEvent(context);
         }
@@ -666,6 +676,16 @@ public final class Engine implements AutoCloseable {
         @Override
         public Object getReceiver(ResourceLimits value) {
             return value.receiver;
+        }
+
+        @Override
+        public Object getReceiver(Source source) {
+            return source.receiver;
+        }
+
+        @Override
+        public Object getReceiver(SourceSection sourceSection) {
+            return sourceSection.receiver;
         }
 
         @Override
@@ -786,7 +806,7 @@ public final class Engine implements AutoCloseable {
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
@@ -859,8 +879,6 @@ public final class Engine implements AutoCloseable {
 
     private static class PolyglotInvalid extends AbstractPolyglotImpl {
 
-        private final EmptySource source = new EmptySource(this);
-
         /**
          * Forces ahead-of-time initialization.
          *
@@ -869,6 +887,7 @@ public final class Engine implements AutoCloseable {
         static boolean AOT;
 
         static {
+            @SuppressWarnings("deprecation")
             Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
                 public Boolean run() {
                     return Boolean.getBoolean("com.oracle.graalvm.isaot");
@@ -919,16 +938,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractSourceDispatch getSourceDispatch() {
-            return source;
-        }
-
-        @Override
-        public AbstractSourceSectionDispatch getSourceSectionDispatch() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public Class<?> loadLanguageClass(String className) {
             return null;
         }
@@ -956,168 +965,40 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
-        static class EmptySource extends AbstractSourceDispatch {
-
-            protected EmptySource(AbstractPolyglotImpl engineImpl) {
-                super(engineImpl);
-            }
-
-            @Override
-            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                            throws IOException {
-                throw noPolyglotImplementationFound();
-            }
-
-            @Override
-            public String getLanguage(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String findLanguage(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findLanguage(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String getMimeType(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String findLanguage(String mimeType) {
-                return null;
-            }
-
-            @Override
-            public String getName(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String getPath(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean isInteractive(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public URL getURL(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public URI getURI(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Reader getReader(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public InputStream getInputStream(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLength(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CharSequence getCharacters(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CharSequence getCharacters(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineCount(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineNumber(Object impl, int offset) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getColumnNumber(Object impl, int offset) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineStartOffset(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineLength(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String toString(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int hashCode(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean equals(Object impl, Object otherImpl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean isInternal(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public ByteSequence getBytes(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean hasCharacters(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean hasBytes(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-        }
-
         @Override
         public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
+        }
+
+        @Override
+        public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                        throws IOException {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public String findLanguage(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(String mimeType) {
+            return null;
         }
 
     }

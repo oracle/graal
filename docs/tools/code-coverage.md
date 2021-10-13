@@ -12,10 +12,9 @@ GraalVM provides a **code coverage command line tool** that lets users record an
 Code coverage, as a percentage of source code lines, functions, or statements covered, is an important metric for understanding a particular source code execution, and is commonly associated with test quality (test coverage).
 Providing a visual coverage overview for individual lines of code shows the developer which code paths are covered and which are not, giving insight into the character of the execution which can, for example, inform further testing efforts.
 
-The example application below will be used to demonstrate GraalVM's code
-coverage capabilities. This application defines a
-`getPrime` function that calculates the n-th prime using a basic prime number
-calculator based on the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes) algorithm. It also has a somewhat naive cache of the first 20 prime numbers.
+The example application below will be used to demonstrate GraalVM's code coverage capabilities.
+This application defines a `getPrime` function that calculates the n-th prime using a basic prime number calculator based on the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes) algorithm.
+It also has a somewhat naive cache of the first 20 prime numbers.
 
 1. Copy the following code into a new file named `primes.js`:
 

@@ -36,7 +36,6 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -115,11 +114,6 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
-    }
-
-    @Override
-    public FixedNode asFixedNode() {
-        return this;
     }
 
     @Override

@@ -247,10 +247,7 @@ suite = {
         "com.oracle.svm.core.jdk15": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.core",
-                "com.oracle.svm.core.jdk11"
-            ],
+            "dependencies": ["com.oracle.svm.core.jdk11"],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
@@ -408,8 +405,11 @@ suite = {
                 "com.oracle.svm.core",
                 "com.oracle.graal.pointsto",
             ],
+            "requiresConcealed": {
+                "java.base": ["sun.util.resources"],
+            },
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.36.1",
+            "checkstyleVersion": "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -441,7 +441,11 @@ suite = {
             "requires" : ["java.instrument"],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
-                "java.base" : ["jdk.internal.module"],
+                "java.base": [
+                    "jdk.internal.module",
+                    "sun.text.spi",
+                    "sun.util.resources"
+                ],
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",

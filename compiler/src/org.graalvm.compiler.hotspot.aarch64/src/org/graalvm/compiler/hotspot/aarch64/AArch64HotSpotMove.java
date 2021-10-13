@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.aarch64;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -137,9 +136,8 @@ public class AArch64HotSpotMove {
             Register resultRegister = asRegister(result);
             Register ptr = asRegister(input);
             Register base = (isRegister(baseRegister) ? asRegister(baseRegister) : zr);
-            boolean pic = GeneratePIC.getValue(crb.getOptions());
             // result = (ptr - base) >> shift
-            if (!pic && !encoding.hasBase()) {
+            if (!encoding.hasBase()) {
                 if (encoding.hasShift()) {
                     masm.lsr(64, resultRegister, ptr, encoding.getShift());
                 } else {
@@ -188,8 +186,7 @@ public class AArch64HotSpotMove {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register inputRegister = asRegister(input);
             Register resultRegister = asRegister(result);
-            boolean pic = GeneratePIC.getValue(crb.getOptions());
-            Register base = pic || encoding.hasBase() ? asRegister(baseRegister) : null;
+            Register base = encoding.hasBase() ? asRegister(baseRegister) : null;
             emitUncompressCode(masm, inputRegister, resultRegister, base, encoding.getShift(), nonNull);
         }
 
@@ -220,34 +217,12 @@ public class AArch64HotSpotMove {
         }
     }
 
-    //
-    // private static void decompressPointer(CompilationResultBuilder crb, ARMv8MacroAssembler masm,
-    // Register result,
-    // Register ptr, long base, int shift, int alignment) {
-    // assert base != 0 || shift == 0 || alignment == shift;
-    // // result = heapBase + ptr << alignment
-    // Register heapBase = ARMv8.heapBaseRegister;
-    // // if result == 0, we make sure that it will still be 0 at the end, so that it traps when
-    // // loading storing a value.
-    // masm.cmp(32, ptr, 0);
-    // masm.add(64, result, heapBase, ptr, ARMv8Assembler.ExtendType.UXTX, alignment);
-    // masm.cmov(64, result, result, ARMv8.zr, ARMv8Assembler.ConditionFlag.NE);
-    // }
-
-    public static void decodeKlassPointer(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register ptr, CompressEncoding encoding) {
+    public static void decodeKlassPointer(AArch64MacroAssembler masm, Register result, Register ptr, CompressEncoding encoding) {
         try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            boolean pic = GeneratePIC.getValue(crb.getOptions());
-            if (pic || encoding.hasBase() || encoding.getShift() != 0) {
-                if (pic) {
-                    masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
-                    masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
-                    crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
-                } else {
-                    masm.mov(scratch, encoding.getBase());
-                    masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
-                }
+            if (encoding.hasBase() || encoding.getShift() != 0) {
+                masm.mov(scratch, encoding.getBase());
+                masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
             }
         }
     }

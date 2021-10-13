@@ -901,7 +901,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 masm.adrpLdr(srcSize, resultReg, resultReg);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
-                Register baseReg = getBaseRegister(crb);
+                Register baseReg = getBaseRegister();
                 assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
                 masm.add(64, resultReg, baseReg, resultReg, ShiftType.LSL, getShift());
             }

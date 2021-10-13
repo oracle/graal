@@ -6,7 +6,7 @@ The following document describes how to configure sandbox resource limits using 
 
 In general all resource limit options are prefixed with `sandbox` option group and they can be listed using the help of any language launcher provided in GraalVM, e.g., `js --help:tools`.
 Polyglot options can be provided through the language launcher, using the polyglot embedding API of the Graal SDK, or on the JVM using a system property.
-For better understanding of the examples it is recommended to read the [polyglot embedding guide](/reference-manual/embed-languages/) of the reference manual first.
+For better understanding of the examples it is recommended to read the [polyglot embedding guide](embed-languages.md) of the reference manual first.
 
 Currently all sandbox options are experimental therefore in these examples it is assumed that experimental options are enabled (e.g., with `--experimental-options`).
 The options are a best effort approach to limiting resource usage of guest applications.

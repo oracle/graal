@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.ComparableWord;
 
@@ -34,20 +36,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * A pointer to the compiled code of a method.
  */
-public class MethodPointer implements CFunctionPointer {
-
+public final class MethodPointer implements CFunctionPointer {
     private final ResolvedJavaMethod method;
 
-    public static CFunctionPointer factory(ResolvedJavaMethod method) {
-        if (method == null) {
-            return null;
-        } else {
-            return new MethodPointer(method);
-        }
-    }
-
-    protected MethodPointer(ResolvedJavaMethod method) {
-        assert method != null;
+    public MethodPointer(ResolvedJavaMethod method) {
+        Objects.requireNonNull(method);
         this.method = method;
     }
 

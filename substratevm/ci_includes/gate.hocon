@@ -18,11 +18,11 @@ gate-svm-js: {
 }
 
 builds += [
-  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
     timelimit: "35:00"
   }
-  ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
+  ${labsjdk-ce-17} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
   ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
@@ -35,12 +35,11 @@ builds += [
       }
     }
     environment : {
-      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
       PATH : "$MUSL_LIBS/bin:$PATH"
     }
     run: [
       ["$MUSL_LIBS/fix_paths.sh"]
-      ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
+      ${svm-cmd-gate} ["build,helloworld,test,nativeimagehelp,muslcbuild"]
     ]
   }
   ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
@@ -49,25 +48,20 @@ builds += [
       ${svm-cmd-gate} ["build,hellomodule,test"]
     ]
   }
-  ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
     name: "gate-svm-style-fullbuild"
     timelimit: "45:00"
     environment : {
-      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
       MX_BUILD_EXPLODED : "true" # test native-image MX_BUILD_EXPLODED compatibility
     }
     run: [
-      ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
+      ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit"]
     ]
   }
-  ${oraclejdk8} ${svm-common-gate} ${svm-common-windows-oraclejdk8} {
+  ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} {
     name: "gate-svm-windows-basics"
-    environment: {
-      PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
-      MAVEN_REPO_LOCAL : "$BUILD_DIR\.m2"
-    }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,svmjunit,maven"]
+      ${svm-cmd-gate} ["build,helloworld,test,svmjunit"]
     ]
   }
 ]

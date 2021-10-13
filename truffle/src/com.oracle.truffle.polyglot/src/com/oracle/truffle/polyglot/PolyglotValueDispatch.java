@@ -154,10 +154,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    final AbstractPolyglotImpl impl;
+    final PolyglotImpl impl;
     final PolyglotEngineImpl engine;
 
-    PolyglotValueDispatch(AbstractPolyglotImpl impl, PolyglotEngineImpl engine) {
+    PolyglotValueDispatch(PolyglotImpl impl, PolyglotEngineImpl engine) {
         super(impl);
         this.impl = impl;
         this.engine = engine;
@@ -2016,7 +2016,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
 
-        InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
+        InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
             super(polyglot, languageInstance.getEngine());
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));

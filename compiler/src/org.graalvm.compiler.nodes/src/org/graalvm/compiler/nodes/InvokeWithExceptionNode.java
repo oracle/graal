@@ -85,11 +85,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public FixedNode asFixedNode() {
-        return this;
-    }
-
-    @Override
     public CallTargetNode callTarget() {
         return callTarget;
     }

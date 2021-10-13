@@ -258,7 +258,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
             if (dataPatch.reference instanceof DataSectionReference) {
                 DataSectionReference ref = (DataSectionReference) dataPatch.reference;
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
-                patch.patchCode(pcDisplacement, compiledBytes);
+                patch.patchCode(code.rawValue(), pcDisplacement, compiledBytes);
             } else if (dataPatch.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();

@@ -111,7 +111,7 @@ public class DevirtualizeCallsPhase extends Phase {
         String message = String.format("The call to %s is not reachable when called from %s.%n", targetMethod.format("%H.%n(%P)"), graph.method().format("%H.%n(%P)"));
         AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason(message));
         FixedGuardNode node = new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, speculation, true);
-        graph.addBeforeFixed(invoke.asNode(), graph.add(node));
+        graph.addBeforeFixed(invoke.asFixedNode(), graph.add(node));
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After dead invoke %s", invoke);
     }
 
@@ -136,7 +136,7 @@ public class DevirtualizeCallsPhase extends Phase {
          * anchor the receiver to the place of the original invoke.
          */
         ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
-        graph.addBeforeFixed(invoke.asNode(), anchor);
+        graph.addBeforeFixed(invoke.asFixedNode(), anchor);
         Stamp anchoredReceiverStamp = StampFactory.object(TypeReference.createWithoutAssumptions(singleCallee.getDeclaringClass()));
         ValueNode anchoredReceiver = graph.unique(new PiNode(invoke.getReceiver(), anchoredReceiverStamp, anchor));
         invoke.callTarget().replaceFirstInput(invoke.getReceiver(), anchoredReceiver);

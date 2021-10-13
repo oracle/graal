@@ -7,11 +7,15 @@ permalink: /tools/graalvm-insight/
 
 # GraalVM Insight
 
+* [Start Using GraalVM Insight](#start-using-graalvm-insight)
+* [Polyglot Tracing](#polyglot-tracing)
+* [Inspecting Values](#inspecting-values)
+
 GraalVM Insight is a multipurpose, flexible tool for writing reliable microservices solutions that traces program runtime behavior and gathers insights.
 
 The dynamic nature of the tool helps users to selectively apply tracing pointcuts on already running applications with no loss of performance.
-Insight also provides detailed access to runtime behavior of a program, allowing users to inspect values and types at invocation or allocation sites.
-GraalVM Insight further permits users to modify computed values, interrupt execution, and quickly experiment with behavioral changes without modifying the application code.
+GraalVM Insight also provides detailed access to runtime behavior of a program, allowing users to inspect values and types at invocation or allocation sites.
+The tool further permits users to modify computed values, interrupt execution, and quickly experiment with behavioral changes without modifying the application code.
 
 This page provides information on GraalVM Insight as of the 20.1 version.
 To learn about Insight on versions 20.0 and 19.3, proceed [here](https://github.com/oracle/graal/blob/release/graal-vm/20.0/tools/docs/T-Trace.md).
@@ -158,9 +162,9 @@ With Ruby: 42
 
 ## Inspecting Values
 
-GraalVM Insight not only allows one to trace where the program execution is happening, it also offers access to values of local variables and function arguments during
-program execution.
+GraalVM Insight not only allows one to trace where the program execution is happening, it also offers access to values of local variables and function arguments during program execution.
 You can, for example, write an instrument that shows the value of argument `n` in the function `fib`:
+
 ```javascript
 insight.on('enter', function(ctx, frame) {
    print('fib for ' + frame.n);
@@ -172,6 +176,7 @@ insight.on('enter', function(ctx, frame) {
 
 This instrument uses the second function argument, `frame`, to get access to values of local variables inside every instrumented function.
 The above script also uses `rootNameFilter` to apply its hook only to the function named `fib`:
+
 ```javascript
 function fib(n) {
   if (n < 1) return 0;

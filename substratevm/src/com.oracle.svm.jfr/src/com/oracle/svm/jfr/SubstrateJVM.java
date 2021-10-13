@@ -403,7 +403,6 @@ class SubstrateJVM {
         }
     }
 
-    /** See {@link JVM#getChunkStartNanos}. */
     public long getChunkStartNanos() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {

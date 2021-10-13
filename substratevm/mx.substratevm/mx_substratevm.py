@@ -443,6 +443,12 @@ def native_unittests_task():
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
+    if svm_java_compliance() == '17':
+        # The following tests fail with --builder-on-modulepath enabled (GR-34117)
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.jdk11.jfr.*')
+        if mx.is_windows():
+            mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
+
     native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args)
 
 
@@ -1032,6 +1038,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         )
     ],
     jlink=False,
+    installable_id='native-image',
+    installable=True,
+    priority=10,
 ))
 
 

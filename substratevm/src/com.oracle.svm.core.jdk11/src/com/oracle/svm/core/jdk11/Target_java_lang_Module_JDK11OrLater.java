@@ -43,6 +43,13 @@ import java.util.Objects;
 @TargetClass(value = java.lang.Module.class, onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module_JDK11OrLater {
 
+    @SuppressWarnings({"unused", "static-method"})
+    @Substitute
+    public boolean isReflectivelyExportedOrOpen(String pn, Module other, boolean open) {
+        // This workaround should be removed once GR-34444 is fixed.
+        return true;
+    }
+
     @SuppressWarnings("static-method")
     @Substitute
     public InputStream getResourceAsStream(String name) {

@@ -1253,16 +1253,16 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    public Value parse(String languageId, Object sourceImpl) {
+    public Value parse(String languageId, org.graalvm.polyglot.Source source) {
         PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
-            Source source = (Source) sourceImpl;
+            Source truffleSource = (Source) getAPIAccess().getReceiver(source);
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
-            CallTarget target = languageContext.parseCached(null, source, null);
-            return languageContext.asValue(new PolyglotParsedEval(languageContext, source, target));
+            CallTarget target = languageContext.parseCached(null, truffleSource, null);
+            return languageContext.asValue(new PolyglotParsedEval(languageContext, truffleSource, target));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(languageContext, e, true);
         } finally {
@@ -1281,15 +1281,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return languageContext;
     }
 
-    public Value eval(String languageId, Object sourceImpl) {
+    public Value eval(String languageId, org.graalvm.polyglot.Source source) {
         PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
-            Source source = (Source) sourceImpl;
+            Source truffleSource = (Source) getAPIAccess().getReceiver(source);
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
-            CallTarget target = languageContext.parseCached(null, source, null);
+            CallTarget target = languageContext.parseCached(null, truffleSource, null);
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
             Value hostValue;
             try {
@@ -1297,7 +1297,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } catch (NullPointerException | ClassCastException e) {
                 throw new AssertionError(String.format("Language %s returned an invalid return value %s. Must be an interop value.", languageId, result), e);
             }
-            if (source.isInteractive()) {
+            if (truffleSource.isInteractive()) {
                 printResult(languageContext, result);
             }
             return hostValue;
@@ -2616,6 +2616,14 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    void initializeInstrumentContextThreadLocals() {
+        for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
+            if (instrument.isCreated()) {
+                invokeContextThreadLocalFactory(instrument.contextThreadLocalLocations);
+            }
+        }
+    }
+
     /**
      * Updates the current thread locals from {@link PolyglotThreadInfo#contextThreadLocals}.
      */
@@ -2758,6 +2766,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     void replayInstrumentationEvents() {
         notifyContextCreated();
+        EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, creatorTruffleContext, Thread.currentThread());
         for (PolyglotLanguageContext lc : contexts) {
             LanguageInfo language = lc.language.info;
             if (lc.eventsEnabled && lc.env != null) {

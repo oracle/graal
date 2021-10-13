@@ -161,9 +161,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value newValue(AbstractValueDispatch dispatch, Object context, Object receiver);
 
-        public abstract Source newSource(Object receiver);
+        public abstract Source newSource(AbstractSourceDispatch dispatch, Object receiver);
 
-        public abstract SourceSection newSourceSection(Source source, Object receiver);
+        public abstract SourceSection newSourceSection(Source source, AbstractSourceSectionDispatch dispatch, Object receiver);
 
         public abstract PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver);
 
@@ -179,6 +179,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getReceiver(ResourceLimits value);
 
+        public abstract Object getReceiver(Source source);
+
+        public abstract Object getReceiver(SourceSection sourceSection);
+
         public abstract AbstractValueDispatch getDispatch(Value value);
 
         public abstract Object getContext(Value value);
@@ -192,6 +196,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract AbstractEngineDispatch getDispatch(Engine engine);
 
         public abstract AbstractContextDispatch getDispatch(Context context);
+
+        public abstract AbstractSourceDispatch getDispatch(Source source);
+
+        public abstract AbstractSourceSectionDispatch getDispatch(SourceSection sourceSection);
 
         public abstract ResourceLimitEvent newResourceLimitsEvent(Context context);
 
@@ -294,9 +302,18 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract void resetPreInitializedEngine();
 
-    public abstract AbstractSourceDispatch getSourceDispatch();
+    public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException;
 
-    public abstract AbstractSourceSectionDispatch getSourceSectionDispatch();
+    public abstract String findLanguage(File file) throws IOException;
+
+    public abstract String findLanguage(URL url) throws IOException;
+
+    public abstract String findLanguage(String mimeType);
+
+    public abstract String findMimeType(File file) throws IOException;
+
+    public abstract String findMimeType(URL url) throws IOException;
 
     /**
      * Returns the default host dispatch of this polyglot abstraction.
@@ -345,9 +362,6 @@ public abstract class AbstractPolyglotImpl {
             this.engineImpl = engineImpl;
         }
 
-        public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                        throws IOException;
-
         public abstract String getName(Object impl);
 
         public abstract String getPath(Object impl);
@@ -385,16 +399,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean equals(Object impl, Object otherImpl);
 
         public abstract boolean isInternal(Object impl);
-
-        public abstract String findLanguage(File file) throws IOException;
-
-        public abstract String findLanguage(URL url) throws IOException;
-
-        public abstract String findLanguage(String mimeType);
-
-        public abstract String findMimeType(File file) throws IOException;
-
-        public abstract String findMimeType(URL url) throws IOException;
 
         public abstract ByteSequence getBytes(Object impl);
 
@@ -454,9 +458,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean initializeLanguage(Object receiver, String languageId);
 
-        public abstract Value eval(Object receiver, String language, Object sourceImpl);
+        public abstract Value eval(Object receiver, String language, Source source);
 
-        public abstract Value parse(Object receiver, String language, Object sourceImpl);
+        public abstract Value parse(Object receiver, String language, Source source);
 
         public abstract void close(Object receiver, boolean cancelIfExecuting);
 

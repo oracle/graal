@@ -815,9 +815,6 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
         else:
             return "dacapo-{}".format(self.workloadSize())
 
-    def version(self):
-        return super(DaCapoBenchmarkSuite, self).version()
-
     def defaultSuiteVersion(self):
         return "9.12-MR1-bach"
 
@@ -1313,7 +1310,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
-    
+
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(SpecJvm2008BenchmarkSuite, self).vmArgs(bmSuiteArgs)
         if java_home_jdk().javaCompliance >= '16' and \
@@ -1865,9 +1862,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance >= '15':
                 del benchmarks["neo4j-analytics"]
         return benchmarks
-
-    def version(self):
-        return super(RenaissanceBenchmarkSuite, self).version()
 
     def defaultSuiteVersion(self):
         #  return self.availableSuiteVersions()[-1]

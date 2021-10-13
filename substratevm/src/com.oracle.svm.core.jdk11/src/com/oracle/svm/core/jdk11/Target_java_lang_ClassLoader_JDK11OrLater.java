@@ -41,11 +41,10 @@ public final class Target_java_lang_ClassLoader_JDK11OrLater {
 
     /**
      * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_jdk_internal_loader_BootLoader_JDK11OrLater#CLASS_LOADER_VALUE_MAP} for resetting of the
-     * boot class loader.
+     * {@link Target_jdk_internal_loader_BootLoader_JDK11OrLater#CLASS_LOADER_VALUE_MAP} for
+     * resetting of the boot class loader.
      */
-    @Alias
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @TargetElement(onlyWith = JDK11OrLater.class)//
     ConcurrentHashMap<?, ?> classLoaderValueMap;
 
@@ -53,6 +52,7 @@ public final class Target_java_lang_ClassLoader_JDK11OrLater {
     @TargetElement(onlyWith = JDK11OrLater.class)
     native Stream<Package> packages();
 
+    @SuppressWarnings("static-method")
     @Substitute
     public Target_java_lang_Module_JDK11OrLater getUnnamedModule() {
         return ClassLoaderUtil.unnamedModuleReference.get();

@@ -11,7 +11,7 @@ toc_group: graalvm-as-a-platform
 We have found that the easiest way to get started with implementing your own language is by extending an existing language such as SimpleLanguage.
 [SimpleLanguage](https://github.com/graalvm/simplelanguage) is a demonstration language built using the [Language API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/package-summary.html).
 The SimpleLanguage project provides a showcase on how to use the Language APIs for writing your own language.
-It aims to use most of the available [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
+It aims to use most of the available [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
 
 To start, ensure [Maven3](https://maven.apache.org/download.cgi) and GraalVM are available in your system.
 
@@ -29,12 +29,7 @@ For macOS, use:
 export JAVA_HOME=/path/to/graalvm/Contents/Home
 export PATH=/path/to/graalvm/Contents/Home/bin:$PATH
 ```
-4. Execute `mvn package` from the SimpleLanguage folder to build the language.
-The command also builds a `slnative` executable in the `simplelanguage/native`
-directory and a `sl-component.jar` language component which later can be installed
-into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
-Please verify ithat the `native-image` plugin is available in your GraalVM distribution
-to avoid build failure:
+4. Execute `mvn package` from the SimpleLanguage folder to build the language. The command also builds a `slnative` executable in the `simplelanguage/native` directory and a `sl-component.jar` language component which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool. Please verify ithat the `native-image` plugin is available in your GraalVM distribution to avoid build failure:
 ```shell
 gu list
 gu install native-image
@@ -53,7 +48,8 @@ The SimpleLanguage demonstration language is licensed under the [Universal Permi
 
 ## IDE Setup
 
-The [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs. If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
+The [Truffle framework](../../truffle/docs/README.md) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs.
+If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
 
 ### Eclipse
 
@@ -141,7 +137,8 @@ sys     0m0.000s
 
 This snipped shows a timed execution of a "Hello World" program using the `sl` launcher script, which runs SimpleLanguage on GraalVM, using Native Image.
 We can see that when running on GraalVM the execution takes 405ms.
-Since our SimpleLanguage program does just one print statement, we can conclude that almost all of this time is spent starting up GraalVM and initializing the language itself. When using the native executable we see that the execution takes only 4ms, showing two orders of magnitude faster startup than running on GraalVM.
+Since our SimpleLanguage program does just one print statement, we can conclude that almost all of this time is spent starting up GraalVM and initializing the language itself.
+When using the native executable we see that the execution takes only 4ms, showing two orders of magnitude faster startup than running on GraalVM.
 
 For more information on the `native-image` tool consider reading the [reference manual](../reference-manual/native-image/README.md).
 
@@ -252,7 +249,7 @@ A sample POM using `--upgrade-module-path` to export Language API packages can b
 
 ### Other JVM Implementations
 
-Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](/graalvm-as-a-platform/language-implementation-framework/), other JVM implementations need additional JARs to be present on the class path.
+Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](../../truffle/docs/README.md), other JVM implementations need additional JARs to be present on the class path.
 These are the Language API and GraalVM SDK JARs available from Maven Central.
 
 Assuming `JAVA_HOME` points to a stock JDK installation, and that the current working directory is the `simplelanguage` directory and the Language API and GraalVM SDK JARs are present in that directory, one can execute SimpleLanguage with the following command:

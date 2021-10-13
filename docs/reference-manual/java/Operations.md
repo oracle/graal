@@ -18,15 +18,15 @@ That means the GraalVM Enterprise compiler is deployed as a native shared librar
 
 In this mode, the compiler uses memory separate from the HotSpot heap, and it runs compiled from the start.
 Therefore it has execution properties similar to other native HotSpot compilers such as C1 and C2.
-Currently, this is the **default mode** of operation. It can be disabled with `-XX:-UseJVMCINativeLibrary`.
+Currently, this is the **default mode** of operation.
+It can be disabled with `-XX:-UseJVMCINativeLibrary`.
 
 ## Measuring Performance
 
 The first thing to be sure of when measuring performance is to ensure the JVM is using the GraalVM Enterprise compiler.
-In the GraalVM binary, the JVM is configured to use the GraalVM compiler
-as the top tier compiler by default. You can confirm this by adding `-Dgraal.ShowConfiguration=info`
-to the command line. It will produce a line of output similar to the one below
-when the compiler is initialized:
+In the GraalVM binary, the JVM is configured to use the GraalVM compiler as the top tier compiler by default.
+You can confirm this by adding `-Dgraal.ShowConfiguration=info` to the command line.
+It will produce a line of output similar to the one below when the compiler is initialized:
 
 ```shell
 Using Graal compiler configuration 'community' provided by org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory loaded from jar:file:/Users/dsimon/graal/graal/compiler/mxbuild/dists/graal.jar!/org/graalvm/compiler/hotspot/CommunityCompilerConfigurationFactory.class
@@ -133,7 +133,7 @@ HotSpotCompilation-1221        Lorg/graalvm/compiler/hotspot/amd64/AMD64HotSpotL
 # Failed to write core dump. Core dumps have been disabled. To enable core dumping, try "ulimit -c unlimited" before starting Java again
 ```
 Here we see that the crash happened in a different method than the first crash.
-As such, we expand the filter argument to be `-Dgraal.MethodFilter= NodeLIRBuilder.matchComplexExpressions,AMD64HotSpotLIRGenerator.getResult` and run again.
+As such, we expand the filter argument to be `-Dgraal.MethodFilter=NodeLIRBuilder.matchComplexExpressions,AMD64HotSpotLIRGenerator.getResult` and run again.
 
 When the VM crashes in this way, it does not execute the shutdown code that archives the GraalVM compiler diagnostic output or delete the directory it was written to.
 This must be done manually after the crash.

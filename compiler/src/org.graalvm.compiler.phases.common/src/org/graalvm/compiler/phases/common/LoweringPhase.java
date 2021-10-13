@@ -111,11 +111,6 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             updateUsagesInterface(this.guard, guard);
             this.guard = guard;
         }
-
-        @Override
-        public ValueNode asNode() {
-            return this;
-        }
     }
 
     @Override

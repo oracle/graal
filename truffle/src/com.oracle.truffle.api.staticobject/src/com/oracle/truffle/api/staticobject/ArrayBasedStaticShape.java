@@ -87,6 +87,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     }
 
     @Override
+    @SuppressWarnings("cast")
     Object getStorage(Object obj, boolean primitive) {
         Object receiverObject = cast(obj, storageClass, false);
         if (safetyChecks) {
@@ -125,6 +126,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         }
     }
 
+    @SuppressWarnings("cast")
     private boolean checkShape(Object receiverObject) {
         ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getShapeOffset()), ArrayBasedStaticShape.class, false);
         if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {

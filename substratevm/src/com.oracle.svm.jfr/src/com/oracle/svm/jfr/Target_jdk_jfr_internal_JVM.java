@@ -117,7 +117,7 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().getClassId(clazz);
     }
 
-    /** See {@link JVM#getClassIdNonIntrinsic}. */
+    /** See JVM.getClassIdNonIntrinsic(Class). */
     @Substitute
     @TargetElement(onlyWith = JDK16OrEarlier.class)
     public static long getClassIdNonIntrinsic(Class<?> clazz) {
@@ -286,14 +286,13 @@ public final class Target_jdk_jfr_internal_JVM {
         return 1;
     }
 
-    /** See {@link JVM#getChunkStartNanos}. */
+    /** See {@link SubstrateJVM#getChunkStartNanos}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class)
     public long getChunkStartNanos() {
         return SubstrateJVM.get().getChunkStartNanos();
     }
 
-    /** See {@link JVM#setHandler}. */
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class)
     public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, EventHandler handler) {
@@ -302,7 +301,7 @@ public final class Target_jdk_jfr_internal_JVM {
         throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
     }
 
-    /** See {@link JVM#getHandler}. */
+    /** See {@link SubstrateJVM#getHandler}. */
     @Substitute
     @TargetElement(onlyWith = JDK15OrLater.class)
     public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
@@ -385,21 +384,18 @@ public final class Target_jdk_jfr_internal_JVM {
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
-    /** See {@link JVM#include}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //
     public void include(Thread thread) {
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
-    /** See {@link JVM#exclude}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //
     public void exclude(Thread thread) {
         // Temporarily do nothing. This is used for JFR streaming.
     }
 
-    /** See {@link JVM#isExcluded}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //
     public boolean isExcluded(Thread thread) {
@@ -407,7 +403,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return false;
     }
 
-    /** See {@link JVM#markChunkFinal}. */
     @Substitute
     @TargetElement(onlyWith = JDK14OrLater.class) //
     public void markChunkFinal() {

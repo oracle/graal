@@ -429,7 +429,7 @@ public final class MachOObjectFile extends ObjectFile {
         return relocs;
     }
 
-    public MachORelocationElement getOrCreateRelocationElement(@SuppressWarnings("unused") boolean useImplicitAddend) {
+    public MachORelocationElement getOrCreateRelocationElement() {
         if (relocs == null) {
             final Segment64Command containingSegment = getOrCreateSegment(getUnnamedSegmentName(), null, false, false);
             relocs = new MachORelocationElement(containingSegment);

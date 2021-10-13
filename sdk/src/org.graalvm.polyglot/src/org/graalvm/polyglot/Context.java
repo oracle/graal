@@ -396,7 +396,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return dispatch.eval(receiver, source.getLanguage(), source.receiver);
+        return dispatch.eval(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -477,7 +477,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return dispatch.parse(receiver, source.getLanguage(), source.receiver);
+        return dispatch.parse(receiver, source.getLanguage(), source);
     }
 
     /**

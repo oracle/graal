@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -32,11 +31,13 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+
 /**
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
 @NodeInfo
-public abstract class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
+public abstract class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider, NewArrayInterface {
 
     public static final NodeClass<AbstractNewArrayNode> TYPE = NodeClass.create(AbstractNewArrayNode.class);
     @Input protected ValueNode length;
@@ -53,6 +54,11 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
     protected AbstractNewArrayNode(NodeClass<? extends AbstractNewArrayNode> c, Stamp stamp, ValueNode length, boolean fillContents, FrameState stateBefore) {
         super(c, stamp, fillContents, stateBefore);
         this.length = length;
+    }
+
+    @Override
+    public final AbstractNewArrayNode asNewArrayNode() {
+        return this;
     }
 
     /**

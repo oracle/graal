@@ -38,7 +38,7 @@ import com.oracle.svm.core.jdk11.ModuleUtil;
 @TargetClass(value = Module.class, onlyWith = JDK15OrLater.class)
 public final class Target_java_lang_Module_JDK15OrLater {
 
-    //Checkstyle: allow synchronization
+    // Checkstyle: allow synchronization
     @Substitute
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         if (Arrays.stream(pns).anyMatch(Objects::isNull)) {

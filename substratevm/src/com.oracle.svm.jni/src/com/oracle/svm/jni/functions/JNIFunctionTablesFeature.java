@@ -192,7 +192,7 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMethod hostedTrampoline = access.getUniverse().lookup(analysisTrampoline);
         hostedTrampoline.compilationInfo.setCustomParseFunction(trampolineMethod.createCustomParseFunction());
         hostedTrampoline.compilationInfo.setCustomCompileFunction(trampolineMethod.createCustomCompileFunction());
-        return MethodPointer.factory(hostedTrampoline);
+        return new MethodPointer(hostedTrampoline);
     }
 
     private static ResolvedJavaMethod getSingleMethod(MetaAccessProvider metaAccess, Class<?> holder) {
@@ -203,7 +203,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {
         AnalysisMethod stub = CEntryPointCallStubSupport.singleton().getStubForMethod(method.getWrapped());
-        return MethodPointer.factory(access.getUniverse().lookup(stub));
+        return new MethodPointer(access.getUniverse().lookup(stub));
     }
 
     private void fillJNIInvocationInterfaceTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
@@ -236,7 +236,7 @@ public class JNIFunctionTablesFeature implements Feature {
             HostedMethod hostedMethod = access.getUniverse().lookup(analysisMethod);
 
             int offset = field.getOffsetInfo().getProperty();
-            setFunctionPointerTable(table, offset, MethodPointer.factory(hostedMethod));
+            setFunctionPointerTable(table, offset, new MethodPointer(hostedMethod));
         }
         for (CallVariant variant : CallVariant.values()) {
             CFunctionPointer trampoline = prepareCallTrampoline(access, variant, false);

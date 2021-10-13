@@ -27,11 +27,9 @@ package org.graalvm.compiler.hotspot.aarch64;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -68,12 +66,6 @@ public final class AArch64HotSpotLoadAddressOp extends AArch64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("unexpected kind: " + kind);
         }
-        if (crb.compilationResult.isImmutablePIC()) {
-            Register dst = asRegister(result);
-            masm.adrpAdd(dst);
-            masm.ldr(size, dst, AArch64Address.createBaseRegisterOnlyAddress(size, dst));
-        } else {
-            masm.ldr(size, asRegister(result), masm.getPlaceholder(-1));
-        }
+        masm.ldr(size, asRegister(result), masm.getPlaceholder(-1));
     }
 }

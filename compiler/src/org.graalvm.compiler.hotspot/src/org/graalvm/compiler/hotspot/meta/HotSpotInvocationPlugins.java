@@ -31,23 +31,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.phases.AheadOfTimeVerificationPhase;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -89,29 +83,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
             }
         }
-        if (GraalOptions.ImmutableCode.getValue(b.getOptions())) {
-            for (Node node : newNodes) {
-                if (node.hasUsages() && node instanceof ConstantNode) {
-                    ConstantNode c = (ConstantNode) node;
-                    if (c.getStackKind() == JavaKind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
-                        if (isClass(c)) {
-                            // This will be handled later by LoadJavaMirrorWithKlassPhase
-                        } else {
-                            // Tolerate uses in unused FrameStates
-                            if (node.usages().filter((n) -> !(n instanceof FrameState) || n.hasUsages()).isNotEmpty()) {
-                                throw new AssertionError("illegal constant node in AOT: " + node);
-                            }
-                        }
-                    }
-                }
-            }
-        }
         super.checkNewNodes(b, plugin, newNodes);
-    }
-
-    private static boolean isClass(ConstantNode node) {
-        ResolvedJavaType type = StampTool.typeOrNull(node);
-        return type != null && "Ljava/lang/Class;".equals(type.getName());
     }
 
     @Override

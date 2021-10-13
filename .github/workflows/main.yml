@@ -31,6 +31,7 @@ env:
   MX_GIT_CACHE: refcache
   MX_PYTHON_VERSION: 3
   JAVA_HOME: ${{ github.workspace }}/jdk
+  JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
 
 jobs:
@@ -148,16 +149,6 @@ jobs:
 
           # the style gate needs the full commit history for checking copyright years
           git fetch --unshallow
-        fi
-
-        if [[ ${GATE} == *fullbuild* ]]
-        then
-          # Only test JDT on JDK8
-          if [ "${JDK}" == "openjdk8" ]
-          then
-            export JDT=${MX_PATH}/ecj.jar
-            wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
-          fi
         fi
 
         echo ${JAVA_HOME}
