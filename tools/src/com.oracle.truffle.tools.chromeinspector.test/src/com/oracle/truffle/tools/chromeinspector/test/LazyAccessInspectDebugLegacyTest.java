@@ -35,8 +35,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -234,8 +232,8 @@ public class LazyAccessInspectDebugLegacyTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 TruffleObject obj = new LazyReadObject();
-                FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
-                frame.setObject(slot, obj);
+                int slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("o");
+                frame.setAuxiliarySlot(slot, obj);
                 return statement.execute(frame);
             }
 

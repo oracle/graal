@@ -30,10 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -42,11 +39,11 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {
-    public static final NodeClass<VirtualFrameIsNode> TYPE = NodeClass.create(VirtualFrameIsNode.class);
+public final class VirtualFrameGetTagNode extends VirtualFrameAccessorNode implements Virtualizable {
+    public static final NodeClass<VirtualFrameGetTagNode> TYPE = NodeClass.create(VirtualFrameGetTagNode.class);
 
-    public VirtualFrameIsNode(Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag, type);
+    public VirtualFrameGetTagNode(Receiver frame, int frameSlotIndex) {
+        super(TYPE, StampFactory.forKind(JavaKind.Byte), frame, frameSlotIndex, 0, VirtualFrameAccessType.Indexed);
     }
 
     @Override
@@ -58,15 +55,7 @@ public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implement
 
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 ValueNode actualTag = tool.getEntry(tagVirtual, frameSlotIndex);
-                if (actualTag.isConstant()) {
-                    tool.replaceWith(getConstant(actualTag.asJavaConstant().asInt() == accessTag ? 1 : 0));
-                } else {
-                    LogicNode comparison = new IntegerEqualsNode(actualTag, getConstant(accessTag));
-                    tool.addNode(comparison);
-                    ConditionalNode result = new ConditionalNode(comparison, getConstant(1), getConstant(0));
-                    tool.addNode(result);
-                    tool.replaceWith(result);
-                }
+                tool.replaceWith(actualTag);
                 return;
             }
         }

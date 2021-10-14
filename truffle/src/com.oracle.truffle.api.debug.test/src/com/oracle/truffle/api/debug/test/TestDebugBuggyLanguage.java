@@ -48,8 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -285,17 +283,17 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
         @CompilerDirectives.TruffleBoundary
         private void boundary(MaterializedFrame frame) {
-            FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Int);
+            int slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("a");
             String text = statementSection.getCharacters().toString();
             int index = 0;
             while (!Character.isDigit(text.charAt(index))) {
                 index++;
             }
             int errNum = Integer.parseInt(text.substring(index));
-            frame.setInt(slot, errNum);
+            frame.setAuxiliarySlot(slot, errNum);
             TruffleObject obj = new ErrorObject(text.substring(0, index).trim(), errNum);
-            slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
-            frame.setObject(slot, obj);
+            slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("o");
+            frame.setAuxiliarySlot(slot, obj);
         }
 
         @Override

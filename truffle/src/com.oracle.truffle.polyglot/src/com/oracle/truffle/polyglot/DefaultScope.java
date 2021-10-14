@@ -51,7 +51,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -63,12 +63,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A default {@link FrameSlot}-based implementation of variables contained in the frame.
+ * A default {@link com.oracle.truffle.api.frame.FrameSlot}-based implementation of variables
+ * contained in the frame.
  */
 final class DefaultScope {
 
-    private static boolean isInternal(FrameSlot slot) {
-        Object identifier = slot.getIdentifier();
+    private static boolean isInternal(Object identifier) {
         if (identifier == null) {
             return true;
         }
@@ -78,43 +78,19 @@ final class DefaultScope {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     static Object getVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-        List<? extends FrameSlot> slots;
-        if (frame == null) {
-            slots = root.getFrameDescriptor().getSlots();
-        } else {
-            slots = frame.getFrameDescriptor().getSlots();
-            // Filter out slots with null values:
-            List<FrameSlot> nonNulls = null;
-            int lastI = 0;
-            for (int i = 0; i < slots.size(); i++) {
-                FrameSlot slot = slots.get(i);
-                if (!InteropLibrary.isValidValue(frame.getValue(slot)) || isInternal(slot)) {
-                    if (nonNulls == null) {
-                        nonNulls = new ArrayList<>(slots.size());
-                    }
-                    nonNulls.addAll(slots.subList(lastI, i));
-                    lastI = i + 1;
-                }
-            }
-            if (nonNulls != null) {
-                if (lastI < slots.size()) {
-                    nonNulls.addAll(slots.subList(lastI, slots.size()));
-                }
-                slots = nonNulls;
+        LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
+        FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
+        for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
+            if (!isInternal(slot.getIdentifier()) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
+                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
             }
         }
-        Map<String, FrameSlot> slotsMap;
-        if (slots.isEmpty()) {
-            slotsMap = Collections.emptyMap();
-        } else if (slots.size() == 1) {
-            FrameSlot slot = slots.get(0);
-            slotsMap = Collections.singletonMap(Objects.toString(slot.getIdentifier()), slot);
-        } else {
-            slotsMap = new LinkedHashMap<>(slots.size());
-            for (FrameSlot slot : slots) {
-                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
+        for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
+            if (!isInternal(entry.getKey()) && (frame == null || InteropLibrary.isValidValue(frame.getAuxiliarySlot(entry.getValue())))) {
+                slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
             }
         }
         return new VariablesMapObject(slotsMap, root, frame, language);
@@ -127,12 +103,12 @@ final class DefaultScope {
     @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
-        final Map<String, ? extends FrameSlot> slots;
+        final Map<String, Object> slots;
         final RootNode root;
         final Frame frame;
         private final Class<? extends TruffleLanguage<?>> language;
 
-        private VariablesMapObject(Map<String, ? extends FrameSlot> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+        private VariablesMapObject(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
@@ -167,17 +143,22 @@ final class DefaultScope {
             return true;
         }
 
+        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         Object readMember(String member) throws UnknownIdentifierException {
             if (frame == null) {
                 return NullValue.INSTANCE;
             }
-            FrameSlot slot = slots.get(member);
+            Object slot = slots.get(member);
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                return frame.getValue(slot);
+                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
+                    return frame.getValue((com.oracle.truffle.api.frame.FrameSlot) slot);
+                } else {
+                    return frame.getAuxiliarySlot((int) slot);
+                }
             }
         }
 
@@ -199,17 +180,22 @@ final class DefaultScope {
             return slots.containsKey(member) && frame != null;
         }
 
+        @SuppressWarnings("deprecation")
         @ExportMessage
         @TruffleBoundary
         void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
             if (frame == null) {
                 throw UnsupportedMessageException.create();
             }
-            FrameSlot slot = slots.get(member);
+            Object slot = slots.get(member);
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                frame.setObject(slot, value);
+                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
+                    frame.setObject((com.oracle.truffle.api.frame.FrameSlot) slot, value);
+                } else {
+                    frame.setAuxiliarySlot((int) slot, value);
+                }
             }
         }
 

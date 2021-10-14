@@ -63,7 +63,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -72,6 +71,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 public class StackTraceTest {
 
     @BeforeClass
@@ -184,7 +184,7 @@ public class StackTraceTest {
                     public Object visitFrame(FrameInstance frameInstance) {
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                        FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
+                        com.oracle.truffle.api.frame.FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
                         Assert.assertEquals(42, readOnlyFrame.getValue(slot));
 
                         Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);

@@ -50,7 +50,6 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -262,13 +261,17 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             checkFrameIsEmpty(context, frame.materialize());
         }
 
+        @SuppressWarnings("deprecation")
         @TruffleBoundary
         private static void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
             Node node = context.getInstrumentedNode();
             if (!hasParentRootTag(node) &&
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
-                for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+                for (com.oracle.truffle.api.frame.FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+                    Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
+                }
+                for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
                     Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
                 }
             }

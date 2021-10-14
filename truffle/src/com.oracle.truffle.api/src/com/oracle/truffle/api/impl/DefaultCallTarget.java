@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -77,7 +78,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
+        final VirtualFrame frame = new FrameWithoutBoxing(rootNode.getFrameDescriptor(), args);
         DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
         try {
             Object toRet = rootNode.execute(frame);

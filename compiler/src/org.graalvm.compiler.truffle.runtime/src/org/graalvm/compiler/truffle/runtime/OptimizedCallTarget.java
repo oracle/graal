@@ -57,6 +57,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;

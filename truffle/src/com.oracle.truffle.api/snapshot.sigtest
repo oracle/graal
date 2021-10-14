@@ -46,8 +46,8 @@ innr public abstract interface static !annotation CompilationFinal
 innr public abstract interface static !annotation TruffleBoundary
 innr public abstract interface static !annotation ValueType
 meth public static <%0 extends java.lang.Object> {%%0} castExact(java.lang.Object,java.lang.Class<{%%0}>)
-meth public static boolean hasNextTier()
 meth public static <%0 extends java.lang.Object> {%%0} interpreterOnly(java.util.concurrent.Callable<{%%0}>) throws java.lang.Exception
+meth public static boolean hasNextTier()
 meth public static boolean inCompilationRoot()
 meth public static boolean inCompiledCode()
 meth public static boolean inInterpreter()
@@ -750,57 +750,144 @@ supr java.lang.Object
 hfds frame,location,target
 
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
-meth public abstract boolean getBoolean(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
+meth public abstract boolean getBoolean(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isBoolean(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isByte(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isDouble(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isFloat(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isInt(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isLong(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract boolean isObject(com.oracle.truffle.api.frame.FrameSlot)
-meth public abstract byte getByte(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
+ anno 0 java.lang.Deprecated()
+meth public abstract byte getByte(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
 meth public abstract com.oracle.truffle.api.frame.MaterializedFrame materialize()
-meth public abstract double getDouble(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
-meth public abstract float getFloat(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
-meth public abstract int getInt(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
-meth public abstract java.lang.Object getObject(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
+meth public abstract double getDouble(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
+meth public abstract float getFloat(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
+meth public abstract int getInt(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
+meth public abstract java.lang.Object getObject(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object getValue(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract java.lang.Object[] getArguments()
-meth public abstract long getLong(com.oracle.truffle.api.frame.FrameSlot) throws com.oracle.truffle.api.frame.FrameSlotTypeException
+meth public abstract long getLong(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setBoolean(com.oracle.truffle.api.frame.FrameSlot,boolean)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setByte(com.oracle.truffle.api.frame.FrameSlot,byte)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setDouble(com.oracle.truffle.api.frame.FrameSlot,double)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setFloat(com.oracle.truffle.api.frame.FrameSlot,float)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setInt(com.oracle.truffle.api.frame.FrameSlot,int)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setLong(com.oracle.truffle.api.frame.FrameSlot,long)
+ anno 0 java.lang.Deprecated()
 meth public abstract void setObject(com.oracle.truffle.api.frame.FrameSlot,java.lang.Object)
+ anno 0 java.lang.Deprecated()
+meth public boolean getBoolean(int)
+meth public boolean isBoolean(int)
+meth public boolean isByte(int)
+meth public boolean isDouble(int)
+meth public boolean isFloat(int)
+meth public boolean isInt(int)
+meth public boolean isLong(int)
+meth public boolean isObject(int)
+meth public byte getByte(int)
+meth public byte getTag(int)
+meth public double getDouble(int)
+meth public float getFloat(int)
+meth public int getInt(int)
+meth public java.lang.Object getAuxiliarySlot(int)
+meth public java.lang.Object getObject(int)
+meth public java.lang.Object getValue(int)
+meth public long getLong(int)
 meth public void clear(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
+meth public void clear(int)
+meth public void copy(int,int)
+meth public void setAuxiliarySlot(int,java.lang.Object)
+meth public void setBoolean(int,boolean)
+meth public void setByte(int,byte)
+meth public void setDouble(int,double)
+meth public void setFloat(int,float)
+meth public void setInt(int,int)
+meth public void setLong(int,long)
+meth public void setObject(int,java.lang.Object)
+meth public void swap(int,int)
 
 CLSS public final com.oracle.truffle.api.frame.FrameDescriptor
 cons public init()
 cons public init(java.lang.Object)
+innr public final static Builder
 intf java.lang.Cloneable
 meth public com.oracle.truffle.api.Assumption getNotInFrameAssumption(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.Assumption getVersion()
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameDescriptor copy()
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot addFrameSlot(java.lang.Object,java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot findFrameSlot(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot findOrAddFrameSlot(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot findOrAddFrameSlot(java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlot findOrAddFrameSlot(java.lang.Object,java.lang.Object,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.frame.FrameSlotKind getFrameSlotKind(com.oracle.truffle.api.frame.FrameSlot)
+ anno 0 java.lang.Deprecated()
+meth public com.oracle.truffle.api.frame.FrameSlotKind getSlotKind(int)
+meth public int findOrAddAuxiliarySlot(java.lang.Object)
+meth public int getNumberOfAuxiliarySlots()
+meth public int getNumberOfSlots()
 meth public int getSize()
+ anno 0 java.lang.Deprecated()
 meth public java.lang.Object getDefaultValue()
+meth public java.lang.Object getSlotInfo(int)
+meth public java.lang.Object getSlotName(int)
 meth public java.lang.String toString()
 meth public java.util.List<? extends com.oracle.truffle.api.frame.FrameSlot> getSlots()
+ anno 0 java.lang.Deprecated()
+meth public java.util.Map<java.lang.Object,java.lang.Integer> getAuxiliarySlots()
 meth public java.util.Set<java.lang.Object> getIdentifiers()
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.frame.FrameDescriptor$Builder newBuilder()
+meth public static com.oracle.truffle.api.frame.FrameDescriptor$Builder newBuilder(int)
+meth public void disableAuxiliarySlot(java.lang.Object)
 meth public void removeFrameSlot(java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth public void setFrameSlotKind(com.oracle.truffle.api.frame.FrameSlot,com.oracle.truffle.api.frame.FrameSlotKind)
+ anno 0 java.lang.Deprecated()
+meth public void setSlotKind(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds NEVER_PART_OF_COMPILATION_MESSAGE,defaultValue,identifierToNotInFrameAssumptionMap,identifierToSlotMap,lock,materializeCalled,size,slots,version
+hfds EMPTY_BYTE_ARRAY,NEVER_PART_OF_COMPILATION_MESSAGE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,disabledAuxiliarySlots,identifierToNotInFrameAssumptionMap,identifierToSlotMap,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,size,slots,version
+
+CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
+ outer com.oracle.truffle.api.frame.FrameDescriptor
+meth public com.oracle.truffle.api.frame.FrameDescriptor build()
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
+meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
+meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
+supr java.lang.Object
+hfds DEFAULT_CAPACITY,defaultValue,infos,names,size,tags
 
 CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstance
 innr public final static !enum FrameAccess
@@ -824,6 +911,7 @@ CLSS public abstract interface com.oracle.truffle.api.frame.FrameInstanceVisitor
 meth public abstract {com.oracle.truffle.api.frame.FrameInstanceVisitor%0} visitFrame(com.oracle.truffle.api.frame.FrameInstance)
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlot
+ anno 0 java.lang.Deprecated()
 intf java.lang.Cloneable
 meth public com.oracle.truffle.api.frame.FrameSlotKind getKind()
  anno 0 java.lang.Deprecated()
@@ -847,16 +935,19 @@ fld public final static com.oracle.truffle.api.frame.FrameSlotKind Illegal
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Int
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Long
 fld public final static com.oracle.truffle.api.frame.FrameSlotKind Object
+meth public static com.oracle.truffle.api.frame.FrameSlotKind fromTag(byte)
 meth public static com.oracle.truffle.api.frame.FrameSlotKind valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.frame.FrameSlotKind[] values()
 supr java.lang.Enum<com.oracle.truffle.api.frame.FrameSlotKind>
+hfds VALUES
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlotTypeException
 cons public init()
-supr com.oracle.truffle.api.nodes.SlowPathException
+supr java.lang.IllegalStateException
 hfds serialVersionUID
 
 CLSS public final com.oracle.truffle.api.frame.FrameUtil
+ anno 0 java.lang.Deprecated()
 meth public static boolean getBooleanSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
 meth public static byte getByteSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
 meth public static double getDoubleSafe(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.FrameSlot)
@@ -1148,7 +1239,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds GIL_LOCK,parent
+hfds GIL_LOCK,PARENT_LIMIT,parent
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.nodes.Node$Child
  outer com.oracle.truffle.api.nodes.Node
@@ -1524,6 +1615,14 @@ CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+
+CLSS public java.lang.IllegalStateException
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.RuntimeException
+hfds serialVersionUID
 
 CLSS public java.lang.Object
 cons public init()

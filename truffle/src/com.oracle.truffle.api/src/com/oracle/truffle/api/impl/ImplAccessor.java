@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,51 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.WasmCodeEntry;
+final class ImplAccessor extends Accessor {
 
-public interface WasmNodeInterface {
-    WasmCodeEntry codeEntry();
+    private static final ImplAccessor ACCESSOR = new ImplAccessor();
 
-    /* Stack operations */
-
-    default void push(long[] stack, int slot, long value) {
-        stack[slot] = value;
+    private ImplAccessor() {
     }
 
-    default void pushInt(long[] stack, int slot, int value) {
-        push(stack, slot, value & 0xffffffffL);
+    static FrameSupport frameSupportAccessor() {
+        return ACCESSOR.framesSupport();
     }
-
-    default void pushFloat(long[] stack, int slot, float value) {
-        pushInt(stack, slot, Float.floatToRawIntBits(value));
-    }
-
-    default void pushDouble(long[] stack, int slot, double value) {
-        push(stack, slot, Double.doubleToRawLongBits(value));
-    }
-
-    default long pop(long[] stack, int slot) {
-        long result = stack[slot];
-        if (CompilerDirectives.inCompiledCode()) {
-            // Needed to avoid keeping track of popped slots in FrameStates.
-            stack[slot] = 0L;
-        }
-        return result;
-    }
-
-    default int popInt(long[] stack, int slot) {
-        return (int) pop(stack, slot);
-    }
-
-    default float popAsFloat(long[] stack, int slot) {
-        return Float.intBitsToFloat(popInt(stack, slot));
-    }
-
-    default double popAsDouble(long[] stack, int slot) {
-        return Double.longBitsToDouble(pop(stack, slot));
-    }
-
 }

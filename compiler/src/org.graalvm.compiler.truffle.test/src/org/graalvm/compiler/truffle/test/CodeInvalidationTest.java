@@ -43,7 +43,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -101,18 +100,19 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     static final class WhileLoopNode extends BaseNode {
 
         @Child private LoopNode loop;
 
-        @CompilerDirectives.CompilationFinal FrameSlot loopIndexSlot;
-        @CompilerDirectives.CompilationFinal FrameSlot loopResultSlot;
+        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopIndexSlot;
+        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopResultSlot;
 
         WhileLoopNode(Object loopCount, BaseNode child) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
         }
 
-        FrameSlot getLoopIndex() {
+        com.oracle.truffle.api.frame.FrameSlot getLoopIndex() {
             if (loopIndexSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
@@ -120,7 +120,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             return loopIndexSlot;
         }
 
-        FrameSlot getResult() {
+        com.oracle.truffle.api.frame.FrameSlot getResult() {
             if (loopResultSlot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());

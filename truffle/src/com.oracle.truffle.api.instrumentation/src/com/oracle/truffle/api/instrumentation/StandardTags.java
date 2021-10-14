@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.instrumentation;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
@@ -123,10 +122,10 @@ public final class StandardTags {
     /**
      * Marks program locations as root of a function, method or closure. The root prolog should be
      * executed by this node. In particular, when the implementation copies
-     * {@link Frame#getArguments()} into {@link FrameSlot}s, it should do it here for the
-     * instrumentation to work correctly. As a result, local scope might be incomplete for
-     * instruments, as the prolog does not run before this node is entered and epilog may do
-     * destructions before this node is exited.
+     * {@link Frame#getArguments()} into frame slots, it should do it here for the instrumentation
+     * to work correctly. As a result, local scope might be incomplete for instruments, as the
+     * prolog does not run before this node is entered and epilog may do destructions before this
+     * node is exited.
      * <p>
      * Use case descriptions:
      * <ul>
@@ -153,9 +152,8 @@ public final class StandardTags {
     /**
      * Marks program locations as bodies of a function, method or closure. The root prolog and
      * epilog is not a part of this node, what makes a difference from {@link RootTag}. In
-     * particular, when the implementation copies {@link Frame#getArguments()} into
-     * {@link FrameSlot}s, it should do it before this node for the instrumentation to work
-     * correctly.
+     * particular, when the implementation copies {@link Frame#getArguments()} into frame slots, it
+     * should do it before this node for the instrumentation to work correctly.
      * <p>
      * Use case descriptions:
      * <ul>
