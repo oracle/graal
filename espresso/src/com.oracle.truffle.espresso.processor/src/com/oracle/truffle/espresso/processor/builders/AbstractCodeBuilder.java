@@ -22,36 +22,12 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
-import java.util.Collection;
-
 public abstract class AbstractCodeBuilder {
     public static final char PAREN_OPEN = '(';
     public static final char PAREN_CLOSE = ')';
     public static final char SEMICOLON = ';';
     public static final char BLOCK_OPEN = '{';
     public static final char BLOCK_CLOSE = '}';
-
-    protected String joinParts(Object... parts) {
-        StringBuilder sb = new StringBuilder();
-        for (Object part : parts) {
-            sb.append(part);
-        }
-        return sb.toString();
-    }
-
-    protected StringBuilder joinPartsWith(StringBuilder sb, String delimiter, Collection<String> parts) {
-        return joinPartsWith(sb, delimiter, parts.toArray());
-    }
-
-    protected StringBuilder joinPartsWith(StringBuilder sb, String delimiter, Object... parts) {
-        for (Object part : parts) {
-            sb.append(part).append(delimiter);
-        }
-        if (parts.length > 0) {
-            sb.delete(sb.length() - delimiter.length(), sb.length());
-        }
-        return sb;
-    }
 
     abstract void buildImpl(IndentingStringBuilder isb);
 }

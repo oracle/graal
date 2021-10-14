@@ -30,50 +30,53 @@ public final class ClassFileBuilder extends AbstractCodeBuilder {
     public static final String PACKAGE = "package";
     public static final String IMPORT = "import";
     public static final String COPYRIGHT = "/* Copyright (c) " + Year.now() + " Oracle and/or its affiliates. All rights reserved.\n" +
-            " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
-            " *\n" +
-            " * This code is free software; you can redistribute it and/or modify it\n" +
-            " * under the terms of the GNU General Public License version 2 only, as\n" +
-            " * published by the Free Software Foundation.\n" +
-            " *\n" +
-            " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
-            " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
-            " * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License\n" +
-            " * version 2 for more details (a copy is included in the LICENSE file that\n" +
-            " * accompanied this code).\n" +
-            " *\n" +
-            " * You should have received a copy of the GNU General Public License version\n" +
-            " * 2 along with this work; if not, write to the Free Software Foundation,\n" +
-            " * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.\n" +
-            " *\n" +
-            " * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n" +
-            " * or visit www.oracle.com if you need additional information or have any\n" +
-            " * questions.\n" +
-            " */\n";
+                    " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
+                    " *\n" +
+                    " * This code is free software; you can redistribute it and/or modify it\n" +
+                    " * under the terms of the GNU General Public License version 2 only, as\n" +
+                    " * published by the Free Software Foundation.\n" +
+                    " *\n" +
+                    " * This code is distributed in the hope that it will be useful, but WITHOUT\n" +
+                    " * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n" +
+                    " * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License\n" +
+                    " * version 2 for more details (a copy is included in the LICENSE file that\n" +
+                    " * accompanied this code).\n" +
+                    " *\n" +
+                    " * You should have received a copy of the GNU General Public License version\n" +
+                    " * 2 along with this work; if not, write to the Free Software Foundation,\n" +
+                    " * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.\n" +
+                    " *\n" +
+                    " * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n" +
+                    " * or visit www.oracle.com if you need additional information or have any\n" +
+                    " * questions.\n" +
+                    " */\n";
 
     private boolean copyright;
     private String packageName;
     private final List<List<String>> importGroups = new ArrayList<>();
     private final List<ClassBuilder> classes = new ArrayList<>();
 
-    public ClassFileBuilder inPackage(String packageName) {
-        this.packageName = packageName;
+    public ClassFileBuilder() {
         importGroups.add(new ArrayList<>());
+    }
+
+    public ClassFileBuilder inPackage(String pkg) {
+        packageName = pkg;
         return this;
     }
 
     public ClassFileBuilder withImport(String pkg) {
-        this.importGroups.get(0).add(pkg);
+        importGroups.get(0).add(pkg);
         return this;
     }
 
     public ClassFileBuilder withImportGroup(List<String> imports) {
-        this.importGroups.add(imports);
+        importGroups.add(imports);
         return this;
     }
 
     public ClassFileBuilder withClass(ClassBuilder classBuilder) {
-        this.classes.add(classBuilder);
+        classes.add(classBuilder);
         return this;
     }
 

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.processor.builders;
 
-import javax.swing.*;
-
 public final class ModifierBuilder extends AbstractCodeBuilder {
     public static String PUBLIC = "public";
     public static String PRIVATE = "private";
@@ -44,21 +42,35 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
     private boolean qualifiedAsOverride;
 
     public ModifierBuilder asPublic() {
+        if (qualifiedAsPrivate) {
+            throw new IllegalStateException("Cannot qualify as both public and private");
+        }
         this.qualifiedAsPublic = true;
         return this;
     }
 
     public ModifierBuilder asPrivate() {
+        if (qualifiedAsPublic) {
+            throw new IllegalStateException("Cannot qualify as both public and private");
+        } else if (qualifiedAsAbstract) {
+            throw new IllegalStateException("Cannot qualify as both abstract and private");
+        }
         this.qualifiedAsPrivate = true;
         return this;
     }
 
     public ModifierBuilder asStatic() {
+        if (qualifiedAsAbstract) {
+            throw new IllegalStateException("Cannot qualify as both abstract and static");
+        }
         this.qualifiedAsStatic = true;
         return this;
     }
 
     public ModifierBuilder asFinal() {
+        if (qualifiedAsAbstract) {
+            throw new IllegalStateException("Cannot qualify as both abstract and final");
+        }
         this.qualifiedAsFinal = true;
         return this;
     }
@@ -97,21 +109,6 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
 
     @Override
     void buildImpl(IndentingStringBuilder sb) {
-        if (qualifiedAsPublic && qualifiedAsPrivate) {
-            throw new IllegalStateException("Cannot qualify as both public and private");
-        }
-        if (qualifiedAsAbstract) {
-            if (qualifiedAsPrivate) {
-                throw new IllegalStateException("Cannot qualify as both abstract and private");
-            }
-            if (qualifiedAsStatic) {
-                throw new IllegalStateException("Cannot qualify as both abstract and static");
-            }
-            if (qualifiedAsFinal) {
-                throw new IllegalStateException("Cannot qualify as both abstract and final");
-            }
-        }
-
         if (qualifiedAsPublic) {
             sb.appendSpace(PUBLIC);
         } else if (qualifiedAsPrivate) {

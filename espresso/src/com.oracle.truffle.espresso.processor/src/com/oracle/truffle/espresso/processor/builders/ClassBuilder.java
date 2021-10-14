@@ -55,11 +55,11 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public ClassBuilder withSuperClass(String superClass) {
+    public ClassBuilder withSuperClass(String superClassName) {
         if (this.superClass != null) {
             throw new IllegalStateException("Super class is already set");
         }
-        this.superClass = superClass;
+        superClass = superClassName;
         return this;
     }
 
@@ -68,30 +68,28 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public ClassBuilder withSuperInterfaces(String... superInterfaces) {
-        this.superInterfaces.addAll(Arrays.stream(superInterfaces).collect(Collectors.toList()));
+    public ClassBuilder withSuperInterfaces(String... interfaces) {
+        superInterfaces.addAll(Arrays.stream(interfaces).collect(Collectors.toList()));
         return this;
     }
 
     public ClassBuilder withField(FieldBuilder fieldBuilder) {
-        if (fieldBuilder != null) {
-            this.members.add(fieldBuilder);
-        }
+        members.add(fieldBuilder);
         return this;
     }
 
     public ClassBuilder withInnerClass(ClassBuilder innerClass) {
-        this.members.add(innerClass);
+        members.add(innerClass);
         return this;
     }
 
     public ClassBuilder withMethod(MethodBuilder methodBuilder) {
-        this.members.add(methodBuilder);
+        members.add(methodBuilder);
         return this;
     }
 
-    public ClassBuilder withJavaDoc(JavadocBuilder javaDoc) {
-        this.javaDoc = javaDoc;
+    public ClassBuilder withJavaDoc(JavadocBuilder javaDocBuilder) {
+        javaDoc = javaDocBuilder;
         return this;
     }
 
@@ -113,7 +111,7 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         if (superInterfaces.size() > 0) {
             sb.appendSpace().appendSpace(IMPLEMENTS).join(", ", superInterfaces);
         }
-        sb.appendSpace().appendLine(BLOCK_OPEN);
+        sb.appendSpace().appendLine(BLOCK_OPEN).appendLine();
 
         sb.raiseIndentLevel();
         for (AbstractCodeBuilder member : members) {

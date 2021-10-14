@@ -54,17 +54,17 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     public MethodBuilder withReturnType(String type) {
-        this.returnType = type;
+        returnType = type;
         return this;
     }
 
     public MethodBuilder addBodyLine(Object... parts) {
-        body.add(new MethodBodyLine(joinParts(parts)));
+        body.add(new MethodBodyLine(parts));
         return this;
     }
 
     public MethodBuilder addIndentedBodyLine(int lvl, Object... parts) {
-        body.add(new MethodBodyLine(joinParts(parts), lvl));
+        body.add(new MethodBodyLine(parts, lvl));
         return this;
     }
 
@@ -73,18 +73,18 @@ public final class MethodBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public MethodBuilder withParams(String... params) {
-        this.params.addAll(Arrays.asList(params));
+    public MethodBuilder withParams(String... ps) {
+        params.addAll(Arrays.asList(ps));
         return this;
     }
 
-    public MethodBuilder withTemplateParams(String... params) {
-        this.templateParams.addAll(Arrays.asList(params));
+    public MethodBuilder withTemplateParams(String... ps) {
+        templateParams.addAll(Arrays.asList(ps));
         return this;
     }
 
     public MethodBuilder asConstructor() {
-        this.constructor = true;
+        constructor = true;
         return this;
     }
 
@@ -110,22 +110,28 @@ public final class MethodBuilder extends AbstractCodeBuilder {
         sb.raiseIndentLevel();
         for (MethodBodyLine ln : body) {
             sb.appendIndent(ln.additionalIndent);
-            sb.appendLine(ln.line);
+            for (Object part : ln.line) {
+                if (part instanceof AbstractCodeBuilder) {
+                    ((AbstractCodeBuilder) part).buildImpl(sb);
+                } else {
+                    sb.append(part.toString());
+                }
+            }
+            sb.appendLine();
         }
         sb.lowerIndentLevel();
         sb.appendLine(BLOCK_CLOSE);
     }
 
-
     private static class MethodBodyLine {
-        String line;
+        Object[] line;
         int additionalIndent;
 
-        MethodBodyLine(String line) {
-            this.line = line;
+        MethodBodyLine(Object[] lineContents) {
+            line = lineContents;
         }
 
-        MethodBodyLine(String line, int additionalIndent) {
+        MethodBodyLine(Object[] line, int additionalIndent) {
             this.line = line;
             this.additionalIndent = additionalIndent;
         }
