@@ -1132,6 +1132,8 @@ public class SnippetTemplate {
 
             curDeoptNodes.removeIf(x -> x.asNode().isDeleted());
             curSideEffectNodes.removeIf(x -> x.asNode().isDeleted());
+            // ExceptionObjectNodes are handled explicitly
+            curSideEffectNodes.removeIf(ExceptionObjectNode.class::isInstance);
             this.sideEffectNodes = curSideEffectNodes;
             this.deoptNodes = curDeoptNodes;
             this.placeholderStampedNodes = curPlaceholderStampedNodes;
