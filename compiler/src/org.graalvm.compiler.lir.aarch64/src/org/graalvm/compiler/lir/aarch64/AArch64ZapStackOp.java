@@ -29,6 +29,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -59,7 +60,8 @@ public final class AArch64ZapStackOp extends AArch64LIRInstruction {
         for (int i = 0; i < zappedStack.length; i++) {
             StackSlot slot = zappedStack[i];
             if (slot != null) {
-                AArch64Move.const2stack(crb, masm, slot, zapValues[i]);
+                AArch64Kind moveKind = (AArch64Kind) crb.target.arch.getPlatformKind(zapValues[i].getJavaKind());
+                AArch64Move.const2stack(moveKind, crb, masm, slot, zapValues[i]);
             }
         }
     }

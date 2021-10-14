@@ -370,7 +370,7 @@ public class AArch64ControlFlow {
             } else {
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register scratchReg = scratch.getRegister();
-                    AArch64Move.const2reg(crb, masm, scratchReg, jc);
+                    AArch64Move.const2reg((AArch64Kind) key.getPlatformKind(), crb, masm, scratchReg, jc);
                     masm.cmp(cmpSize, asRegister(key), scratchReg);
                 }
             }
