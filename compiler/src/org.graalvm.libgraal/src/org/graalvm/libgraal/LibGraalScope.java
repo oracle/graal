@@ -228,6 +228,13 @@ public final class LibGraalScope implements AutoCloseable {
 
     @Override
     public void close() {
+        // Reset the currentScope thread local before detaching. Detaching may trigger HotSpot to
+        // shutdown the libgraal isolate. That involves re-attaching the current thread to the
+        // libgraal isolate with a *new* isolate thread for calling
+        // HotSpotJVMCIRuntime.shutdown(). In the scope of the latter call, if a new LibGraalScope
+        // is opened, it must not see this LibGraalScope as its parent otherwise it will use the
+        // closed and discarded isolate thread (i.e. this.shared.isolateThread).
+        currentScope.set(parent);
         if (parent == null && shared.detachAction != null) {
             if (shared.detachAction == DetachAction.DETACH) {
                 detachThreadFrom(shared.isolateThread);
@@ -235,7 +242,6 @@ public final class LibGraalScope implements AutoCloseable {
                 LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         }
-        currentScope.set(parent);
     }
 
     // Shared support for the LibGraal overlays
