@@ -439,7 +439,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Checks whether this node has only usages of that type.
+     * Checks whether this node has only usages of a given {@link InputType}.
      *
      * @param type the type of usages to look for
      */
@@ -457,7 +457,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Checks whether this node has usages of that type.
+     * Checks whether this node has usages of a given {@link InputType}.
      *
      * @param type the type of usages to look for
      */
