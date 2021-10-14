@@ -1584,7 +1584,13 @@ public class SnippetTemplate {
      * if it is a memory kill, its {@link WithExceptionNode#next()} and
      * {@link WithExceptionNode#exceptionEdge()} edges should start with a memory kill as well
      * ({@link org.graalvm.compiler.nodes.KillingBeginNode}, {@link ExceptionObjectNode}) or be
-     * {@linkplain UnreachableBeginNode unreachable}.
+     * {@linkplain org.graalvm.compiler.nodes.UnreachableBeginNode unreachable}.
+     *
+     * Knowing that there are no memory usages simplifies the handling of {@link WithExceptionNode}
+     * after {@link FloatingReadPhase} because we can simply ignore the memory graph. If this
+     * changes in the future, we need to rewire the memory graph on the exception edge, just as we
+     * do for the return path of the snippet for replacees other than {@link WithExceptionNode}.
+     * This guarantee ensures that we do not forget that.
      */
     private static void verifyWithExceptionNode(ValueNode node) {
         if (node instanceof WithExceptionNode) {
