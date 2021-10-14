@@ -249,20 +249,20 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static String generateStruct(String strName, List<String> members, List<NativeType> typesList, int length, String className) {
-        ClassFileBuilder structFile = new ClassFileBuilder()
-                .withCopyright()
-                .inPackage(STRUCTS_PACKAGE)
-                .withImportGroup(Collections.singletonList(IMPORT_BYTEBUFFER))
-                .withImportGroup(Collections.singletonList(IMPORT_TRUFFLE_OBJECT))
-                .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_ENV, IMPORT_RAW_POINTER));
+        ClassFileBuilder structFile = new ClassFileBuilder() //
+                        .withCopyright() //
+                        .inPackage(STRUCTS_PACKAGE) //
+                        .withImportGroup(Collections.singletonList(IMPORT_BYTEBUFFER)) //
+                        .withImportGroup(Collections.singletonList(IMPORT_TRUFFLE_OBJECT)) //
+                        .withImportGroup(Arrays.asList(IMPORT_STATIC_OBJECT, IMPORT_JNI_ENV, IMPORT_RAW_POINTER));
 
         String wrapperName = className + WRAPPER;
 
         // Java struct declaration
-        ClassBuilder struct = new ClassBuilder(className)
-                .withAnnotation(SUPPRESS_UNUSED)
-                .withQualifiers(new ModifierBuilder().asPublic().asFinal())
-                .withSuperClass(STRUCT_STORAGE_CLASS + "<" + className + "." + wrapperName + ">");
+        ClassBuilder struct = new ClassBuilder(className) //
+                        .withAnnotation(SUPPRESS_UNUSED) //
+                        .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withSuperClass(STRUCT_STORAGE_CLASS + "<" + className + "." + wrapperName + ">");
 
         // Generate the fields:
         // - One to store the struct size
@@ -291,9 +291,9 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static void generateConstructor(ClassBuilder struct, String strName, List<String> members, String className) {
-        MethodBuilder constructor = new MethodBuilder(className)
-                .withParams(argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG))
-                .asConstructor();
+        MethodBuilder constructor = new MethodBuilder(className) //
+                        .withParams(argument(MEMBER_OFFSET_GETTER_CLASS, MEMBER_OFFSET_GETTER_ARG)) //
+                        .asConstructor();
 
         constructor.addBodyLine("super(", call(MEMBER_OFFSET_GETTER_ARG, GET_INFO, new String[]{stringify(strName)}), ");");
         for (String member : members) {
@@ -304,14 +304,14 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static void generateWrapper(ClassBuilder struct, List<String> members, List<NativeType> typesList, int length, String wrapperName) {
-        ClassBuilder wrapper = new ClassBuilder(wrapperName)
-                .withQualifiers(new ModifierBuilder().asPublic().asFinal())
-                .withSuperClass(STRUCT_WRAPPER_CLASS);
+        ClassBuilder wrapper = new ClassBuilder(wrapperName) //
+                        .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withSuperClass(STRUCT_WRAPPER_CLASS);
 
-        MethodBuilder wrapperConstructor = new MethodBuilder(wrapperName)
-                .asConstructor()
-                .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR))
-                .addBodyLine(call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE}), ';');
+        MethodBuilder wrapperConstructor = new MethodBuilder(wrapperName) //
+                        .asConstructor() //
+                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine(call(null, "super", new String[]{JNI_ENV_ARG, PTR, STRUCT_SIZE}), ';');
         wrapper.withMethod(wrapperConstructor);
 
         for (int i = 0; i < length; i++) {
@@ -322,14 +322,14 @@ public class StructsProcessor extends AbstractProcessor {
             String argType = nativeTypeToArgType(type);
             String methodName = toMemberName(removeUnderscores(member));
 
-            MethodBuilder getter = new MethodBuilder(methodName)
-                    .withModifiers(new ModifierBuilder().asPublic())
-                    .withReturnType(argType)
-                    .addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
-            MethodBuilder setter = new MethodBuilder(methodName)
-                    .withModifiers(new ModifierBuilder().asPublic())
-                    .withParams(argument(argType, VALUE))
-                    .addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
+            MethodBuilder getter = new MethodBuilder(methodName) //
+                            .withModifiers(new ModifierBuilder().asPublic()) //
+                            .withReturnType(argType) //
+                            .addBodyLine("return ", call(null, GET + callSuffix, new String[]{member}), ';');
+            MethodBuilder setter = new MethodBuilder(methodName) //
+                            .withModifiers(new ModifierBuilder().asPublic()) //
+                            .withParams(argument(argType, VALUE)) //
+                            .addBodyLine(call(null, PUT + callSuffix, new String[]{member, VALUE}), ';');
             wrapper.withMethod(getter);
             wrapper.withMethod(setter);
         }
@@ -338,24 +338,24 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static void generateWrapMethod(ClassBuilder struct, String wrapperClass) {
-        MethodBuilder wrapMethod = new MethodBuilder("wrap")
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic())
-                .withReturnType(wrapperClass)
-                .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR))
-                .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_ENV_ARG, PTR}), ';');
+        MethodBuilder wrapMethod = new MethodBuilder("wrap") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withReturnType(wrapperClass) //
+                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, PTR)) //
+                        .addBodyLine("return new ", call(null, wrapperClass, new String[]{JNI_ENV_ARG, PTR}), ';');
         struct.withMethod(wrapMethod);
     }
 
     private static String generateStructCollector(List<String> structs) {
-        ClassFileBuilder structCollectorFile = new ClassFileBuilder()
-                .withCopyright()
-                .inPackage(STRUCTS_PACKAGE)
-                .withImportGroup(Arrays.asList(IMPORT_INTEROP_LIBRARY, IMPORT_TRUFFLE_OBJECT))
-                .withImportGroup(Collections.singletonList(IMPORT_JNI_ENV));
+        ClassFileBuilder structCollectorFile = new ClassFileBuilder() //
+                        .withCopyright() //
+                        .inPackage(STRUCTS_PACKAGE) //
+                        .withImportGroup(Arrays.asList(IMPORT_INTEROP_LIBRARY, IMPORT_TRUFFLE_OBJECT)) //
+                        .withImportGroup(Collections.singletonList(IMPORT_JNI_ENV));
 
-        ClassBuilder structCollector = new ClassBuilder(STRUCTS_CLASS)
-                .withQualifiers(new ModifierBuilder().asPublic().asFinal());
+        ClassBuilder structCollector = new ClassBuilder(STRUCTS_CLASS) //
+                        .withQualifiers(new ModifierBuilder().asPublic().asFinal());
 
         generateCollectorFieldDeclaration(structCollector, structs);
         generateColectorConstructor(structCollector, structs);
@@ -371,13 +371,13 @@ public class StructsProcessor extends AbstractProcessor {
     }
 
     private static void generateColectorConstructor(ClassBuilder collector, List<String> structs) {
-        MethodBuilder constructor = new MethodBuilder(STRUCTS_CLASS)
-                .asConstructor()
-                .withModifiers(new ModifierBuilder().asPublic())
-                .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET))
-                .addBodyLine(INTEROP_LIBRARY, ' ', assignment(LIBRARY, call(INTEROP_LIBRARY, GET_UNCACHED, EMPTY_ARGS)))
-                .addBodyLine(MEMBER_OFFSET_GETTER_CLASS, ' ', assignment(MEMBER_OFFSET_GETTER_ARG,
-                        "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET})));
+        MethodBuilder constructor = new MethodBuilder(STRUCTS_CLASS) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withParams(argument(JNI_ENV_CLASS, JNI_ENV_ARG), argument(TRUFFLE_OBJECT, MEMBER_INFO_PTR), argument(TRUFFLE_OBJECT, LOOKUP_MEMBER_OFFSET)) //
+                        .addBodyLine(INTEROP_LIBRARY, ' ', assignment(LIBRARY, call(INTEROP_LIBRARY, GET_UNCACHED, EMPTY_ARGS))) //
+                        .addBodyLine(MEMBER_OFFSET_GETTER_CLASS, ' ', assignment(MEMBER_OFFSET_GETTER_ARG,
+                                        "new " + call(null, NATIVE_MEMBER_OFFSET_GETTER_CLASS, new String[]{LIBRARY, MEMBER_INFO_PTR, LOOKUP_MEMBER_OFFSET})));
 
         generateOptionalMemberInfo(constructor, structs);
 
@@ -393,7 +393,7 @@ public class StructsProcessor extends AbstractProcessor {
             constructor.addBodyLine(assignment(decapitalize(MEMBER_INFO), "new " + call(null, MEMBER_INFO, new String[]{MEMBER_OFFSET_GETTER_ARG})));
             structs.remove(MEMBER_INFO);
             constructor.addBodyLine(assignment(MEMBER_OFFSET_GETTER_ARG, "new " + call(null, JAVA_MEMBER_OFFSET_GETTER_CLASS,
-                    new String[]{JNI_ENV_ARG, MEMBER_INFO_PTR, "this"})));
+                            new String[]{JNI_ENV_ARG, MEMBER_INFO_PTR, "this"})));
         }
     }
 

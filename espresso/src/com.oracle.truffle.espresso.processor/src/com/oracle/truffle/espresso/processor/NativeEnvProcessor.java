@@ -63,8 +63,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     private static final String SUBSTITUTOR = "CallableFromNative";
 
     private static final String ENV_ARG_NAME = "env";
-    private static final String INVOKE = "invoke(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
-    private static final String INVOKEDIRECT = "invokeDirect(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
@@ -439,16 +437,15 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     @Override
     ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY)
-                .asConstructor()
-                .withModifiers(new ModifierBuilder().asPublic())
-                .addBodyLine("super(")
-                .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',')
-                .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',')
-                .addIndentedBodyLine(1, parameterTypeName.size(), ',')
-                .addIndentedBodyLine(1, h.prependEnv)
-                .addBodyLine(");")
-                ;
+        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .addBodyLine("super(") //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',') //
+                        .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',') //
+                        .addIndentedBodyLine(1, parameterTypeName.size(), ',') //
+                        .addIndentedBodyLine(1, h.prependEnv) //
+                        .addBodyLine(");");
         factoryBuilder.withMethod(factoryConstructor);
         return factoryBuilder;
     }
@@ -456,11 +453,11 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     @Override
     ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        MethodBuilder invoke = new MethodBuilder("invoke")
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType("Object")
-                .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+        MethodBuilder invoke = new MethodBuilder("invoke") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("Object") //
+                        .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
         if (h.needsHandlify || !h.isStatic) {
             invoke.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
         }
@@ -483,11 +480,11 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         classBuilder.withMethod(invoke);
 
         if (h.reachableForAutoSubstitution) {
-            MethodBuilder invokeDirect = new MethodBuilder("invokeDirect")
-                    .withOverrideAnnotation()
-                    .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                    .withReturnType("Object")
-                    .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+            MethodBuilder invokeDirect = new MethodBuilder("invokeDirect") //
+                            .withOverrideAnnotation() //
+                            .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                            .withReturnType("Object") //
+                            .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
             if (!h.isStatic) {
                 invokeDirect.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
             }

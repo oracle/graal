@@ -244,7 +244,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String META_ARG_CALL = "meta";
     private static final String SET_META = "this." + META_VAR + " = " + META_VAR + ";";
 
-    static final String PROFILE_CLASS = "SubstitutionProfiler ";
+    static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
 
     static final String ESPRESSO_CONTEXT_CLASS = "EspressoContext ";
@@ -505,11 +505,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
         }
     }
 
-    private static JavadocBuilder generateGeneratedBy(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
+    private static JavadocBuilder generateGeneratedBy(String className, List<String> parameterTypes, SubstitutionHelper helper) {
         JavadocBuilder javadocBuilder = new JavadocBuilder();
 
         if (helper.isNodeTarget()) {
-            javadocBuilder.addGeneratedBy(JavadocBuilder.link(helper.getNodeTarget().getQualifiedName()));
+            javadocBuilder.addGeneratedByLine(helper.getNodeTarget().getQualifiedName());
             return javadocBuilder;
         }
 
@@ -519,7 +519,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             linkSignature.addParam(param);
         }
         if (helper.hasMetaInjection) {
-            linkSignature.addParam(META_CLASS);
+            linkSignature.addParam(META_TYPE);
         }
         if (helper.hasProfileInjection) {
             linkSignature.addParam(PROFILE_CLASS);
@@ -528,16 +528,16 @@ public abstract class EspressoProcessor extends BaseProcessor {
             linkSignature.addParam(ESPRESSO_CONTEXT_CLASS);
         }
 
-        javadocBuilder.addLine(JavadocBuilder.link(linkSignature.build()));
+        javadocBuilder.addGeneratedByLine(linkSignature);
         return javadocBuilder;
     }
 
-    static String generateNativeSignature(NativeType[] signature) {
+    static SignatureBuilder generateNativeSignature(NativeType[] signature) {
         SignatureBuilder sb = new SignatureBuilder("NativeSignature.create");
         for (NativeType t : signature) {
             sb.addParam("NativeType." + t);
         }
-        return sb.build();
+        return sb;
     }
 
     // @formatter:off
@@ -565,17 +565,17 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     // @formatter:on
     private ClassBuilder generateFactory(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        ClassBuilder factory = new ClassBuilder(FACTORY)
-                .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)")
-                .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal())
-                .withSuperClass(substitutor + "." + FACTORY);
+        ClassBuilder factory = new ClassBuilder(FACTORY) //
+                        .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)") //
+                        .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //
+                        .withSuperClass(substitutor + "." + FACTORY);
         generateFactoryConstructor(factory, className, targetMethodName, parameterTypeName, helper);
-        factory.withMethod(new MethodBuilder(CREATE)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType(substitutor)
-                .withParams(META_CLASS + META_VAR)
-                .addBodyLine("return new ", className, "(", META_VAR, ");"));
+        factory.withMethod(new MethodBuilder(CREATE) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType(substitutor) //
+                        .withParams(META_CLASS + META_VAR) //
+                        .addBodyLine("return new ", className, "(", META_VAR, ");"));
         return factory;
     }
 
@@ -583,41 +583,38 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Injects meta data in the substitutor's field, so the Meta be passed along during substitution
      * invocation.
      */
-    private static FieldBuilder generateMetaInstanceField(SubstitutionHelper helper) {
+    private static void generateMetaInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
         if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR)
-                    .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
-            return field;
+            FieldBuilder field = new FieldBuilder(META_TYPE, META_VAR) //
+                            .withQualifiers(new ModifierBuilder().asPrivate().asFinal());
+            cb.withField(field);
         }
-        return null;
     }
 
-    private static FieldBuilder generateChildInstanceField(SubstitutionHelper helper) {
+    private static void generateChildInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
         if (helper.isNodeTarget()) {
-            FieldBuilder field = new FieldBuilder(helper.getNodeTarget().getSimpleName(), "node")
-                    .withAnnotation("@Child")
-                    .withQualifiers(new ModifierBuilder().asPrivate());
-            return field;
+            FieldBuilder field = new FieldBuilder(helper.getNodeTarget().getSimpleName(), "node") //
+                            .withAnnotation("@Child") //
+                            .withQualifiers(new ModifierBuilder().asPrivate());
+            cb.withField(field);
         }
-        return null;
     }
 
     /**
      * Generates the constructor for the substitutor.
      */
     private static MethodBuilder generateConstructor(String substitutorName, SubstitutionHelper helper) {
-        MethodBuilder constructor = new MethodBuilder(substitutorName)
-                .asConstructor()
-                .withModifiers(new ModifierBuilder().asPrivate())
-                .withParams(META_TYPE + " " + META_VAR)
-                ;
+        MethodBuilder constructor = new MethodBuilder(substitutorName) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPrivate()) //
+                        .withParams(META_TYPE + " " + META_VAR);
 
         if (helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             constructor.addBodyLine(SET_META);
         }
         if (helper.isNodeTarget()) {
             TypeElement enclosing = (TypeElement) helper.getNodeTarget().getEnclosingElement();
-            constructor.addBodyLine("this.node = ", enclosing.getQualifiedName(), "Factory.", helper.getNodeTarget().getSimpleName(), "NodeGen" , ".create();");
+            constructor.addBodyLine("this.node = ", enclosing.getQualifiedName(), "Factory.", helper.getNodeTarget().getSimpleName(), "NodeGen", ".create();");
         }
         return constructor;
     }
@@ -636,11 +633,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Generates isTrivial getter.
      */
     private static MethodBuilder generateIsTrivial(SubstitutionHelper helper) {
-        MethodBuilder isTrivialMethod = new MethodBuilder(IS_TRIVIAL)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic())
-                .withReturnType("boolean")
-                .addBodyLine("return ", isTrivial(helper.getTarget(), helper.getImplAnnotation()), ';');
+        MethodBuilder isTrivialMethod = new MethodBuilder(IS_TRIVIAL) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .withReturnType("boolean") //
+                        .addBodyLine("return ", isTrivial(helper.getTarget(), helper.getImplAnnotation()), ';');
         return isTrivialMethod;
     }
 
@@ -672,9 +669,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * @return The string forming the substitutor.
      */
     String spawnSubstitutor(String substitutorName, String targetPackage, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        ClassFileBuilder substitutorFile = new ClassFileBuilder()
-                .withCopyright()
-                .inPackage(targetPackage);
+        ClassFileBuilder substitutorFile = new ClassFileBuilder() //
+                        .withCopyright() //
+                        .inPackage(targetPackage);
 
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
@@ -691,19 +688,19 @@ public abstract class EspressoProcessor extends BaseProcessor {
             }
         }
 
-        ClassBuilder substitutorClass = new ClassBuilder(substitutorName)
-                .withSuperClass(substitutor)
-                .withJavaDoc(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper))
-                .withQualifiers(new ModifierBuilder().asPublic().asFinal())
-                .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
+        ClassBuilder substitutorClass = new ClassBuilder(substitutorName) //
+                        .withSuperClass(substitutor) //
+                        .withJavaDoc(generateGeneratedBy(className, parameterTypeName, helper)) //
+                        .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
         if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
-            substitutorClass.withField(generateMetaInstanceField(helper));
-            substitutorClass.withField(generateChildInstanceField(helper));
+            generateMetaInstanceField(substitutorClass, helper);
+            generateChildInstanceField(substitutorClass, helper);
         }
 
-        MethodBuilder constructor = generateConstructor(substitutorName, helper)
-                .withAnnotation(SUPPRESS_UNUSED);
+        MethodBuilder constructor = generateConstructor(substitutorName, helper) //
+                        .withAnnotation(SUPPRESS_UNUSED);
         substitutorClass.withMethod(constructor);
 
         if (helper.hasProfileInjection) {
@@ -724,12 +721,12 @@ public abstract class EspressoProcessor extends BaseProcessor {
     /**
      * Injects override of 'shouldSplit()' methods.
      */
-    private MethodBuilder generateShouldSplit() {
-        MethodBuilder method = new MethodBuilder(SHOULD_SPLIT)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType("boolean")
-                .addBodyLine("return true;");
+    private static MethodBuilder generateShouldSplit() {
+        MethodBuilder method = new MethodBuilder(SHOULD_SPLIT) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("boolean") //
+                        .addBodyLine("return true;");
         return method;
     }
 
@@ -737,11 +734,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Injects override of 'split()' methods.
      */
     private MethodBuilder generateSplit() {
-        MethodBuilder method = new MethodBuilder(SPLIT)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType(substitutor)
-                .addBodyLine("return new ", FACTORY, "().", CREATE, "(", META_VAR, ");");
+        MethodBuilder method = new MethodBuilder(SPLIT) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType(substitutor) //
+                        .addBodyLine("return new ", FACTORY, "().", CREATE, "(", META_VAR, ");");
         return method;
     }
 

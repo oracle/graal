@@ -111,10 +111,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     }
 
-    private static String extractArg(int index, String clazz, String tabulation) {
-        return tabulation + clazz + " " + ARG_NAME + index + " = " + castTo(ARGS_NAME + "[" + index + "]", clazz) + ";\n";
-    }
-
     private String extractInvocation(String className, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
@@ -566,22 +562,21 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     @Override
     ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY)
-                .asConstructor()
-                .withModifiers(new ModifierBuilder().asPublic())
-                .addBodyLine("super(")
-                .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',')
-                .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',')
-                .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',')
-                .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',')
-                .addIndentedBodyLine(1, h.hasReceiver)
-                .addBodyLine(");")
-                ;
+        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .addBodyLine("super(") //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',') //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',') //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',') //
+                        .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',') //
+                        .addIndentedBodyLine(1, h.hasReceiver) //
+                        .addBodyLine(");");
         factoryBuilder.withMethod(factoryConstructor);
 
         if (h.nameProvider != null) {
             factoryBuilder.withMethod(generateGetMethodNames(h.guestMethodName, h));
-            factoryBuilder.withMethod(generateSubstitutionClassNames(h.guestMethodName, h));
+            factoryBuilder.withMethod(generateSubstitutionClassNames(h));
         }
 
         if (h.versionFilter != null) {
@@ -593,46 +588,43 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     private static MethodBuilder generateGetMethodNames(String targetMethodName, SubstitutorHelper h) {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
-        MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType("String[]")
-                .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");")
-                ;
+        MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("String[]") //
+                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");");
         return getMethodNamesMethod;
     }
 
-    private static MethodBuilder generateSubstitutionClassNames(String targetMethodName, SubstitutorHelper h) {
+    private static MethodBuilder generateSubstitutionClassNames(SubstitutorHelper h) {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
-        MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType("String[]")
-                .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();")
-                ;
+        MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("String[]") //
+                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();");
         return substitutionClassNamesMethod;
     }
 
     private static MethodBuilder generateIsValidFor(SubstitutorHelper h) {
         String versionFilter = h.versionFilter.toString();
-        MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD)
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withReturnType("boolean")
-                .withParams(JAVA_VERSION + " version")
-                .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);")
-                ;
+        MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("boolean") //
+                        .withParams(JAVA_VERSION + " version") //
+                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);");
         return generateIsValidForMethod;
     }
 
     @Override
     ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        MethodBuilder invoke = new MethodBuilder("invoke")
-                .withOverrideAnnotation()
-                .withModifiers(new ModifierBuilder().asPublic().asFinal())
-                .withParams("Object[] " + ARGS_NAME)
-                .withReturnType("Object");
+        MethodBuilder invoke = new MethodBuilder("invoke") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withParams("Object[] " + ARGS_NAME) //
+                        .withReturnType("Object");
         int argIndex = 0;
         for (String argType : parameterTypeName) {
             invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", castTo(ARGS_NAME + "[" + argIndex + "]", argType), ";");
