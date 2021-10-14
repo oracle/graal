@@ -473,7 +473,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(true);
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//

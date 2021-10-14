@@ -128,9 +128,7 @@ public final class VMOperationControl {
         VMOperationControl control = get();
         assert control.mainQueues.isEmpty();
 
-        Thread thread = new Thread(null, control.dedicatedVMOperationThread, "VMOperationThread", SubstrateOptions.InternalThreadStackSize.getValue());
-        thread.setDaemon(true);
-        thread.start();
+        control.dedicatedVMOperationThread.start();
         control.dedicatedVMOperationThread.waitUntilStarted();
     }
 
@@ -366,11 +364,18 @@ public final class VMOperationControl {
      * only one that may initiate a safepoint. Therefore, it never gets blocked at a safepoint.
      */
     public static class VMOperationThread implements Runnable {
+        private final Thread thread;
         private volatile IsolateThread isolateThread;
         private boolean stopped;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOperationThread() {
+            thread = new Thread(this, "VMOperationThread");
+            thread.setDaemon(true);
+        }
+
+        public void start() {
+            thread.start();
         }
 
         @Override

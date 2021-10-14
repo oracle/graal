@@ -152,17 +152,10 @@ public final class ThreadLocalAllocation {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-            UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
 
             // the instance either is a frame instance or the size can be read from the hub
-            if (!hub.isStoredContinuationClass()) {
-                assert size.equal(hub.getLayoutEncoding());
-            }
+            assert hub.isStoredContinuationClass() || size.equal(hub.getLayoutEncoding());
             Object result = slowPathNewInstanceWithoutAllocating(hub, size);
-            /*
-             * If a collection happened, do follow-up tasks now that allocation, etc., is allowed.
-             */
-            HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
             runSlowPathHooks();
             return result;
         } finally {
@@ -170,8 +163,14 @@ public final class ThreadLocalAllocation {
         }
     }
 
-    /** Use the end of slow-path allocation as a place to run periodic hook code. */
+    /**
+     * NOTE: All code that is transitively reachable from this method may get executed as a side
+     * effect of an allocation slow path. To prevent hard to debug transient issues, we execute as
+     * little code as possible in this method (see {@link GCImpl#doReferenceHandling()} for more
+     * details). Multiple threads may execute this method concurrently.
+     */
     private static void runSlowPathHooks() {
+        GCImpl.doReferenceHandling();
         GCImpl.getPolicy().updateSizeParameters();
     }
 
@@ -213,12 +212,7 @@ public final class ThreadLocalAllocation {
                 throw new OutOfMemoryError("Array allocation too large.");
             }
 
-            UnsignedWord gcEpoch = HeapImpl.getHeapImpl().getGCImpl().possibleCollectionPrologue();
             Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
-            /*
-             * If a collection happened, do follow-up tasks now that allocation, etc., is allowed.
-             */
-            HeapImpl.getHeapImpl().getGCImpl().possibleCollectionEpilogue(gcEpoch);
             runSlowPathHooks();
             return result;
         } finally {

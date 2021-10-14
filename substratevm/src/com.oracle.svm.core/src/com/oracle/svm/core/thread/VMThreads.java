@@ -430,7 +430,7 @@ public abstract class VMThreads {
     }
 
     public void tearDown() {
-        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited while/after shutting down the VM operation thread.");
+        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
         if (UseDedicatedVMOperationThread.getValue()) {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
