@@ -645,7 +645,7 @@ public abstract class Node implements Cloneable, Formattable {
         if (oldInput != newInput) {
             if (oldInput != null) {
                 boolean result = removeThisFromUsages(oldInput);
-                assert assertTrue(result, "not found in usages, old input: %s", oldInput);
+                assertTrue(result, "not found in usages, old input: %s", oldInput);
             }
             maybeNotifyInputChanged(this);
             if (newInput != null) {
@@ -663,15 +663,15 @@ public abstract class Node implements Cloneable, Formattable {
      * {@code this} to newSuccessor's predecessors.
      */
     protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
-        assert assertTrue(isAlive() && (newSuccessor == null || newSuccessor.isAlive()) || newSuccessor == null && !isAlive(), "adding %s to %s instead of %s", newSuccessor, this, oldSuccessor);
+        assertTrue(isAlive() && (newSuccessor == null || newSuccessor.isAlive()) || newSuccessor == null && !isAlive(), "adding %s to %s instead of %s", newSuccessor, this, oldSuccessor);
         assert graph == null || !graph.isFrozen();
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
-                assert assertTrue(newSuccessor == null || oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s, should be %s", oldSuccessor, oldSuccessor.predecessor, this);
+                assertTrue(newSuccessor == null || oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s, should be %s", oldSuccessor, oldSuccessor.predecessor, this);
                 oldSuccessor.predecessor = null;
             }
             if (newSuccessor != null) {
-                assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
+                assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
                 maybeNotifyInputChanged(newSuccessor);
             }
@@ -680,7 +680,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     void initialize(Graph newGraph) {
-        assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
+        assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
         NodeClass<? extends Node> nc = nodeClass;
@@ -951,7 +951,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     private void replaceAtUsage(Node replacement, boolean forDeletion, Node usage) {
         boolean result = usage.getNodeClass().replaceFirstInput(usage, this, replacement);
-        assert assertTrue(result, "not found in inputs, usage: %s", usage);
+        assertTrue(result, "not found in inputs, usage: %s", usage);
         /*
          * Don't notify for nodes which are about to be deleted.
          */
@@ -1222,7 +1222,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public void clearInputs() {
-        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
+        assertFalse(isDeleted(), "cannot clear inputs of deleted node");
         getNodeClass().unregisterAtInputsAsUsage(this);
     }
 
@@ -1231,7 +1231,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public void clearSuccessors() {
-        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
+        assertFalse(isDeleted(), "cannot clear successors of deleted node");
         getNodeClass().unregisterAtSuccessorsAsPredecessor(this);
     }
 
