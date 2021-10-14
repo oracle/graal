@@ -448,11 +448,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         universe.hostVM.checkForbidden(this, usageKind);
 
-        AnalysisType current = this;
-        while (current != null) {
-            current.instantiatedSubtypes.add(this);
-            current = current.getSuperclass();
-        }
+        forAllSuperTypes(t -> t.instantiatedSubtypes.add(this));
     }
 
     /**

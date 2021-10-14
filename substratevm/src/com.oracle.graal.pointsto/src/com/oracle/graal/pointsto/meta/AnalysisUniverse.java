@@ -184,10 +184,7 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public AnalysisType lookup(JavaType type) {
-        if (type instanceof AnalysisType) {
-            System.err.println("Querying already made analysis type: " + type);
-            return ((AnalysisType) type);
-        }
+        assert !(type instanceof AnalysisType) : "Must not a lookup a type that already is an AnalysisType: " + type;
         JavaType result = lookupAllowUnresolved(type);
         if (result == null) {
             return null;
@@ -347,10 +344,7 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public AnalysisField lookup(JavaField field) {
-        if (field instanceof AnalysisField) {
-            System.err.println("Querying already made analysis field: " + field);
-            return ((AnalysisField) field);
-        }
+        assert !(field instanceof AnalysisField) : "Must not a lookup a field that already is an AnalysisField: " + field;
         JavaField result = lookupAllowUnresolved(field);
         if (result == null) {
             return null;
@@ -408,10 +402,7 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public AnalysisMethod lookup(JavaMethod method) {
-        if (method instanceof AnalysisMethod) {
-            System.err.println("Querying already made analysis method: " + method);
-            return ((AnalysisMethod) method);
-        }
+        assert !(method instanceof AnalysisMethod) : "Must not a lookup a method that already is an AnalysisMethod: " + method;
         JavaMethod result = lookupAllowUnresolved(method);
         if (result == null) {
             return null;

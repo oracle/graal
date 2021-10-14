@@ -63,6 +63,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.graal.reachability.MethodSummary;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysis;
@@ -732,6 +733,56 @@ public class NativeImageGenerator {
                 e.printStackTrace();
             }
         }
+
+        try (FileWriter writer = new FileWriter(DUMP_FOLDER + fileName + "invokeStats")) {
+            List<AnalysisMethod> implInvoked = universe.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).collect(Collectors.toList());
+            for (AnalysisMethod method : implInvoked) {
+                writer.write(method.format("%H.%n(%P)"));
+                writer.write(',');
+                List<AnalysisMethod> callees = getCallees(method);
+                writer.write(Integer.toString(callees.size()));
+                writer.write('\n');
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<AnalysisMethod> getCallees(AnalysisMethod method) {
+        if (bb instanceof NativeImageReachabilityAnalysis) {
+            return getCalleesR(((NativeImageReachabilityAnalysis) bb), method);
+        } else if (bb instanceof NativeImagePointsToAnalysis) {
+            return getCalleesP((NativeImagePointsToAnalysis) bb, method);
+        }
+        throw VMError.shouldNotReachHere();
+    }
+
+    private List<AnalysisMethod> getCalleesP(NativeImagePointsToAnalysis bb, AnalysisMethod method) {
+        return method.getTypeFlow().getInvokes().stream().flatMap(it -> it.getCallees().stream()).collect(Collectors.toList());
+    }
+
+    private List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
+        MethodSummary summary = bb.summaries.get(method);
+        if (summary == null) {
+            System.err.println("Don't have a summary for " + method);
+            return Collections.emptyList();
+        }
+        List<AnalysisMethod> callees = new ArrayList<>();
+        Collections.addAll(callees, summary.implementationInvokedMethods);
+        for (AnalysisMethod invokedMethod : summary.invokedMethods) {
+            AnalysisType clazz = invokedMethod.getDeclaringClass();
+            // todo solve instantiated subtypes with interfaces!
+            // java.util.Collections$UnmodifiableList.equals(java.lang.Object)
+            // java.util.List.equals
+            // declaring type is List - interface - has no instantiated subtypes atm
+            for (AnalysisType subtype : clazz.getInstantiatedSubtypes()) {
+                AnalysisMethod resolved = subtype.resolveConcreteMethod(invokedMethod, clazz);
+                if (resolved != null) {
+                    callees.add(resolved);
+                }
+            }
+        }
+        return callees;
     }
 
     private String dumpChain(AnalysisMethod method) {
@@ -749,8 +800,9 @@ public class NativeImageGenerator {
     private String serializePath(ArrayList<String> methods, StringBuilder builder) {
         for (int i = methods.size() - 1; i >= 0; i--) {
             builder.append(methods.get(i));
-            if (i != 0)
+            if (i != 0) {
                 builder.append("->");
+            }
         }
         return builder.toString();
     }

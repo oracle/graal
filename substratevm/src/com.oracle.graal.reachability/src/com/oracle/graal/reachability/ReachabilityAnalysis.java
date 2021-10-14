@@ -49,6 +49,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -133,6 +134,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     private static final Set<AnalysisMethod> processed = ConcurrentHashMap.newKeySet();
     private static final Set<String> processed2 = ConcurrentHashMap.newKeySet();
 
+    public final Map<AnalysisMethod, MethodSummary> summaries = new ConcurrentHashMap<>();
+
     private void onMethodImplementationInvoked(AnalysisMethod method) {
         if (!processed.add(method)) {
             System.err.println("Method " + method + " has already been processed");
@@ -149,6 +152,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         try {
             MethodSummary summary = methodSummaryProvider.getSummary(this, method);
             processSummary(method, summary);
+            summaries.put(method, summary);
         } catch (Throwable ex) {
             System.err.println("Failed to provide a summary for " + method.format("%H.%n(%p)"));
             System.err.println(ex + " " + ex.getMessage());
@@ -224,8 +228,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!type.registerAsAllocated(null)) {
             return;
         }
-        AnalysisType current = type;
-        while (current != null) {
+        type.forAllSuperTypes(current -> {
             Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
                 AnalysisMethod implementationInvokedMethod = type.resolveConcreteMethod(method, current);
@@ -234,10 +237,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                     continue;
                 }
                 markMethodImplementationInvoked(implementationInvokedMethod, type); // todo better
-                                                                                    // reason
+                // reason
             }
-            current = current.getSuperclass();
-        }
+        });
     }
 
     private void markMethodInvoked(AnalysisMethod method) {
