@@ -32,8 +32,8 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
@@ -42,10 +42,9 @@ public final class ReferenceHandler {
         return SubstrateOptions.UseReferenceHandlerThread.getValue() && SubstrateOptions.MultiThreaded.getValue();
     }
 
-    public static void maybeProcessCurrentlyPending() {
-        if (useDedicatedThread()) {
-            return;
-        }
+    public static void processPendingReferences() {
+        assert !useDedicatedThread() && isReferenceHandlingAllowed();
+
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the
          * yellow zone of the stack to ensure that we have sufficient stack space for enqueueing
@@ -82,30 +81,15 @@ public final class ReferenceHandler {
         }
     }
 
-    private ReferenceHandler() {
-    }
-}
-
-final class ReferenceHandlerRunnable implements Runnable {
-    @Override
-    public void run() {
+    public static boolean isReferenceHandlingAllowed() {
         /*
-         * Precaution: this thread does not register a callback itself, but a subclass of Reference,
-         * ReferenceQueue, or a Cleaner or Cleanable might do strange things.
+         * Inside a VMOperation, we are not allowed to do certain things, e.g., perform
+         * synchronization (because it can deadlock when a lock is held outside the VMOperation).
+         * Similar restrictions apply if we are too early in the attach sequence of a thread.
          */
-        ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
-        try {
-            while (true) {
-                ReferenceInternals.waitForPendingReferences();
-                ReferenceInternals.processPendingReferences();
-                ReferenceHandler.processCleaners();
-            }
-        } catch (InterruptedException e) {
-            VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
-        } catch (Throwable t) {
-            VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
-        } finally {
-            ThreadingSupportImpl.resumeRecurringCallback();
-        }
+        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
+    }
+
+    private ReferenceHandler() {
     }
 }
