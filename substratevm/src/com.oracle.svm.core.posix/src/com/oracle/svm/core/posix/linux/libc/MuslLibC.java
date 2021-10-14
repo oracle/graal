@@ -67,8 +67,8 @@ public class MuslLibC implements LibCBase {
         if (!SubstrateOptions.StaticExecutable.getValue()) {
             throw UserError.abort("Musl can only be used for statically linked executables.");
         }
-        if (JavaVersionUtil.JAVA_SPEC != 11) {
-            throw UserError.abort("Musl can only be used with labsjdk 11.");
+        if (JavaVersionUtil.JAVA_SPEC < 11) {
+            throw UserError.abort("Musl can only be used with labsjdk 11+.");
         }
     }
 }
