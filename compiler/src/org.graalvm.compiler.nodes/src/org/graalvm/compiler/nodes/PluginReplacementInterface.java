@@ -27,6 +27,14 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
+/**
+ * Interface for nodes responsible for {@linkplain GraphBuilderContext#shouldDeferPlugin deferring}
+ * {@linkplain org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin invocation plugin}
+ * application.
+ */
 public interface PluginReplacementInterface extends FixedNodeInterface {
+    /**
+     * Replaces this node by applying the stored plugin.
+     */
     boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection);
 }
