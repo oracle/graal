@@ -32,12 +32,12 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp.Shr;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -163,7 +163,14 @@ public final class RightShiftNode extends ShiftNode<Shr> {
 
     @Override
     public boolean isNarrowable(int resultBits) {
-        if (super.isNarrowable(resultBits)) {
+        /*
+         * Note that inserting a narrow before this node can change the input's stamp, as it can
+         * cause a preceding (Zero|Sign)ExtendNode to be canonicalized away.
+         *
+         * Therefore, since the scalar shift on the underlying hardware will be on either a 32 or 64
+         * bit operation, if resultBits < Integer.SIZE, the input to the shift cannot be narrowed.
+         */
+        if (resultBits >= Integer.SIZE && super.isNarrowable(resultBits)) {
             /*
              * For signed right shifts, the narrow can be done before the shift if the cut off bits
              * are all equal to the sign bit of the input. That's equivalent to the condition that

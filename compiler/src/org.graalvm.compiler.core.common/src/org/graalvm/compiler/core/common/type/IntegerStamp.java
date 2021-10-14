@@ -1313,8 +1313,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() << amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() << amount));
                                 case Short:
-                                    return JavaConstant.forShort((short) (c.asLong() << amount));
+                                    return JavaConstant.forShort((short) (c.asInt() << amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() << amount);
                                 case Long:
@@ -1381,9 +1385,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
@@ -1393,8 +1395,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() >> amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() >> amount));
                                 case Short:
-                                    return JavaConstant.forShort((short) (c.asLong() >> amount));
+                                    return JavaConstant.forShort((short) (c.asInt() >> amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() >> amount);
                                 case Long:
@@ -1431,9 +1437,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
@@ -1443,6 +1447,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() >>> amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() >>> amount));
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asInt() >>> amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() >>> amount);
                                 case Long:
@@ -1482,9 +1492,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
