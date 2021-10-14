@@ -270,27 +270,24 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static final Map<AnalysisMethod, Set<AnalysisType>> seenHiddenMethods = new HashMap<>();
+    private final Map<AnalysisMethod, Set<AnalysisType>> seenHiddenMethods = new HashMap<>();
 
     private void registerHiddenSubTypeMethods(AnalysisMethod method, AnalysisType type) {
-        if (seenHiddenMethods.containsKey(method) && seenHiddenMethods.get(method).contains(type)) {
-            return;
-        }
-        seenHiddenMethods.computeIfAbsent(method, m -> new HashSet<>()).add(type);
 
         if (!type.equals(method.getDeclaringClass()) && type.isReachable()) {
-            try {
-                AnalysisMethod subClassMethod = type.findMethod(method.getName(), method.getSignature());
-                if (subClassMethod != null) {
-                    hiddenMethods.add(subClassMethod);
-                    /* This method shadows all of its subclasses */
-                    return;
+            if (!seenHiddenMethods.containsKey(method) || !seenHiddenMethods.get(method).contains(type)) {
+                seenHiddenMethods.computeIfAbsent(method, m -> new HashSet<>()).add(type);
+                try {
+                    AnalysisMethod subClassMethod = type.findMethod(method.getName(), method.getSignature());
+                    if (subClassMethod != null) {
+                        hiddenMethods.add(subClassMethod);
+                    }
+                } catch (UnsupportedFeatureException | LinkageError e) {
+                    /*
+                     * A method that is not supposed to end up in the image is considered as being
+                     * absent for reflection purposes.
+                     */
                 }
-            } catch (UnsupportedFeatureException | LinkageError e) {
-                /*
-                 * A method that is not supposed to end up in the image is considered as being
-                 * absent for reflection purposes.
-                 */
             }
         }
         for (AnalysisType subType : type.getSubTypes()) {
