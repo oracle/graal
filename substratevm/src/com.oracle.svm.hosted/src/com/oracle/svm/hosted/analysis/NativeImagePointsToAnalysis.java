@@ -210,7 +210,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                             " | annotation type: " + annotationType;
             assert declaredType.isAssignableFrom(aAnnotationType) : "Annotation type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
                             " | annotation type: " + annotationType;
-            assert aAnnotationType.isArray() || (aAnnotationType.isInstanceClass() && !Modifier.isAbstract(aAnnotationType.getModifiers())) : "Annotation type failure: field: " + field +
+            assert aAnnotationType.isArray() || (aAnnotationType.isInstanceClass() && !Modifier.isAbstract(aAnnotationType.getModifiers())) : "Annotation type cannot be abstract: field: " + field +
                             " | annotation type " + aAnnotationType;
 
             aAnnotationTypes.add(aAnnotationType);

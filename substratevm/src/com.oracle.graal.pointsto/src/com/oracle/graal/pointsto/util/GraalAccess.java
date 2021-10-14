@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.c;
+package com.oracle.graal.pointsto.util;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
@@ -32,7 +32,10 @@ import org.graalvm.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.runtime.JVMCI;
 
-public class GraalAccess {
+public final class GraalAccess {
+
+    private GraalAccess() {
+    }
 
     public static TargetDescription getOriginalTarget() {
         return getGraalCapability(RuntimeProvider.class).getHostBackend().getTarget();
@@ -46,7 +49,7 @@ public class GraalAccess {
         return getGraalCapability(SnippetReflectionProvider.class);
     }
 
-    private static <T> T getGraalCapability(Class<T> clazz) {
+    public static <T> T getGraalCapability(Class<T> clazz) {
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         return compiler.getGraalRuntime().getCapability(clazz);
     }

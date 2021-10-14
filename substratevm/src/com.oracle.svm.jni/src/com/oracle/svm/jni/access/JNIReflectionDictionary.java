@@ -27,13 +27,11 @@ package com.oracle.svm.jni.access;
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -47,6 +45,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
@@ -68,9 +67,9 @@ public final class JNIReflectionDictionary {
         return ImageSingletons.lookup(JNIReflectionDictionary.class);
     }
 
-    private final Map<String, JNIAccessibleClass> classesByName = new HashMap<>();
-    private final Map<Class<?>, JNIAccessibleClass> classesByClassObject = new HashMap<>();
-    private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new HashMap<>();
+    private final EconomicMap<String, JNIAccessibleClass> classesByName = ImageHeapMap.create();
+    private final EconomicMap<Class<?>, JNIAccessibleClass> classesByClassObject = ImageHeapMap.create();
+    private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.create();
 
     private JNIReflectionDictionary() {
     }
@@ -80,26 +79,30 @@ public final class JNIReflectionDictionary {
             PrintStream ps = Log.logStream();
             ps.println(label);
             ps.println(" classesByName:");
-            for (Map.Entry<String, JNIAccessibleClass> e : classesByName.entrySet()) {
+            MapCursor<String, JNIAccessibleClass> nameCursor = classesByName.getEntries();
+            while (nameCursor.advance()) {
                 ps.print("  ");
-                ps.println(e.getKey());
-                JNIAccessibleClass clazz = e.getValue();
+                ps.println(nameCursor.getKey());
+                JNIAccessibleClass clazz = nameCursor.getValue();
                 ps.println("   methods:");
-                for (Map.Entry<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> m : clazz.getMethodsByDescriptor().entrySet()) {
+                MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methodsCursor = clazz.getMethodsByDescriptor();
+                while (methodsCursor.advance()) {
                     ps.print("      ");
-                    ps.println(m.getKey().getNameAndSignature());
+                    ps.println(methodsCursor.getKey().getNameAndSignature());
                 }
                 ps.println("   fields:");
-                for (Map.Entry<String, JNIAccessibleField> f : clazz.getFieldsByName().entrySet()) {
+                MapCursor<String, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
+                while (fieldsCursor.advance()) {
                     ps.print("      ");
-                    ps.println(f.getKey());
+                    ps.println(fieldsCursor.getKey());
                 }
             }
 
             ps.println(" classesByClassObject:");
-            for (Map.Entry<Class<?>, JNIAccessibleClass> e : classesByClassObject.entrySet()) {
+            MapCursor<Class<?>, JNIAccessibleClass> cursor = classesByClassObject.getEntries();
+            while (cursor.advance()) {
                 ps.print("  ");
-                ps.println(e.getKey());
+                ps.println(cursor.getKey());
             }
         }
     }
@@ -116,11 +119,11 @@ public final class JNIReflectionDictionary {
 
     @Platforms(HOSTED_ONLY.class)
     void addLinkages(Map<JNINativeLinkage, JNINativeLinkage> linkages) {
-        nativeLinkages.putAll(linkages);
+        nativeLinkages.putAll(EconomicMap.wrapMap(linkages));
     }
 
-    public Collection<JNIAccessibleClass> getClasses() {
-        return Collections.unmodifiableCollection(classesByClassObject.values());
+    public Iterable<JNIAccessibleClass> getClasses() {
+        return classesByClassObject.getValues();
     }
 
     public Class<?> getClassObjectByName(String name) {
@@ -145,7 +148,7 @@ public final class JNIReflectionDictionary {
     }
 
     public void unsetEntryPoints(String declaringClass) {
-        for (JNINativeLinkage linkage : nativeLinkages.keySet()) {
+        for (JNINativeLinkage linkage : nativeLinkages.getKeys()) {
             if (declaringClass.equals(linkage.getDeclaringClassName())) {
                 linkage.unsetEntryPoint();
             }
@@ -276,10 +279,11 @@ public final class JNIReflectionDictionary {
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
         if (clazz != null) {
-            for (Entry<String, JNIAccessibleField> entry : clazz.getFieldsByName().entrySet()) {
-                JNIAccessibleField field = entry.getValue();
+            MapCursor<String, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
+            while (fieldsCursor.advance()) {
+                JNIAccessibleField field = fieldsCursor.getValue();
                 if (id.equal(field.getId())) {
-                    return entry.getKey();
+                    return fieldsCursor.getKey();
                 }
             }
         }
@@ -289,9 +293,10 @@ public final class JNIReflectionDictionary {
     public static JNIAccessibleMethodDescriptor getMethodDescriptor(JNIAccessibleMethod method) {
         if (method != null) {
             JNIAccessibleClass clazz = method.getDeclaringClass();
-            for (Entry<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> entry : clazz.getMethodsByDescriptor().entrySet()) {
-                if (entry.getValue() == method) {
-                    return entry.getKey();
+            MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methodsCursor = clazz.getMethodsByDescriptor();
+            while (methodsCursor.advance()) {
+                if (methodsCursor.getValue() == method) {
+                    return methodsCursor.getKey();
                 }
             }
         }
