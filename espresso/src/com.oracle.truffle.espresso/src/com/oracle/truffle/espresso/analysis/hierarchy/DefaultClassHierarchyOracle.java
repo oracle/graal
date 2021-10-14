@@ -50,8 +50,8 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
      * parent interfaces.
      */
-    private static void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
-        if (superInterface.getImplementor(classHierarchyInfoAccessor).hasValue().isValid()) {
+    private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+        if (readSingleImplementor(superInterface).hasImplementor().isValid()) {
             superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
             for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
                 addImplementor(ancestorInterface, implementor);
@@ -59,13 +59,13 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
         }
     }
 
-    private static void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
+    private void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
         for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
             addImplementor(superInterface, newKlass);
         }
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
-        while (currentKlass != null && currentKlass.getImplementor(classHierarchyInfoAccessor).hasValue().isValid()) {
+        while (currentKlass != null && readSingleImplementor(currentKlass).hasImplementor().isValid()) {
             currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
@@ -85,5 +85,10 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     @Override
     public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         return SingleImplementor.createImplementor(klass);
+    }
+
+    @Override
+    public SingleImplementorSnapshot readSingleImplementor(ObjectKlass klass) {
+        return klass.getImplementor(classHierarchyInfoAccessor).read();
     }
 }

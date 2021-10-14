@@ -80,7 +80,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor getSingleImplementor(ObjectKlass klass) {
-        return klass.getImplementor(classHierarchyInfoAccessor);
+    public SingleImplementorSnapshot readSingleImplementor(ObjectKlass klass) {
+        return SingleImplementorSnapshot.Invalid;
     }
 }

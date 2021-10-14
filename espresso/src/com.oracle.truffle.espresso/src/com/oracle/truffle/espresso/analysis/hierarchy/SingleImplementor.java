@@ -23,8 +23,12 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -43,20 +47,28 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * {@code SingleImplementor} for concrete classes starts in state (2): the implementor is the class
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
-public final class SingleImplementor extends AssumptionGuardedValue<ObjectKlass> {
+public final class SingleImplementor {
+    private final ReadWriteLock rwlock;
+    @CompilationFinal private Assumption hasValue;
+    @CompilationFinal private ObjectKlass value;
+    @CompilationFinal private SingleImplementorSnapshot currentSnapshot;
+
     static SingleImplementor Invalid = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
 
     // Used only to create an invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        super(assumption, value);
+        this.rwlock = new ReentrantReadWriteLock();
+        this.hasValue = assumption;
+        this.value = value;
+        this.currentSnapshot = new SingleImplementorSnapshot(this.hasValue, this.value);
     }
 
     private SingleImplementor() {
-        super(Truffle.getRuntime().createAssumption("no implementors"), null);
+        this(Truffle.getRuntime().createAssumption("no implementors"), null);
     }
 
     private SingleImplementor(ObjectKlass implementor) {
-        super(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+        this(Truffle.getRuntime().createAssumption("single implementor"), implementor);
     }
 
     static SingleImplementor createImplementor(ObjectKlass klass) {
@@ -70,38 +82,27 @@ public final class SingleImplementor extends AssumptionGuardedValue<ObjectKlass>
         // Implementors are only added when the implementing class is loaded, which happens in the
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
-        if (value.get() == implementor) {
+
+        rwlock.writeLock();
+        // adding the same implementor
+        if (value == implementor) {
             return;
         }
-
-        Assumption oldAssumption = hasValue();
-
-        if (value.compareAndSet(null, implementor)) {
-            // Only a single thread can enter this branch. However, it can still be concurrent with
-            // a thread in the else branch. It is crucial to avoid the following:
-            // - a thread in the else branch recognizes that there are multiple implementors and
-            // sets an invalid hasValue
-            // - this thread overwrites hasValue with a newly created valid assumption
-            // hence the CAS. Failing CAS means the assumption was invalidated in the else branch,
-            // so the CAS must not be re-attempted.
-            if (hasValue.compareAndSet(oldAssumption, Truffle.getRuntime().createAssumption("single implementor"))) {
-                // Single implementor was set successfully, invalidate the "no implementors"
-                // assumption
-                oldAssumption.invalidate();
-            }
+        // adding first implementor
+        if (value == null) {
+            value = implementor;
+            // invalidate "no implementors" assumption
+            hasValue.invalidate();
+            hasValue = Truffle.getRuntime().createAssumption("single implementor");
+            currentSnapshot = new SingleImplementorSnapshot(hasValue, value);
         } else {
-            // Two threads concurrently setting the same implementor
-            if (value.get() == implementor) {
-                return;
-            }
-            // If a thread enters this branch, multiple implementors exist and hasValue must be set
-            // to invalid, hence re-attempting the CAS.
-            // The CAS always succeeds once the object is in "multiple implementors" state,
-            // because hasValue is always set to NeverValidAssumption.
-            while (!hasValue.compareAndSet(oldAssumption, NeverValidAssumption.INSTANCE)) {
-                oldAssumption = hasValue();
-            }
-            oldAssumption.invalidate();
+            // adding second or more implementor
+            hasValue.invalidate();
         }
+    }
+
+    public SingleImplementorSnapshot read() {
+        rwlock.readLock();
+        return currentSnapshot;
     }
 }
