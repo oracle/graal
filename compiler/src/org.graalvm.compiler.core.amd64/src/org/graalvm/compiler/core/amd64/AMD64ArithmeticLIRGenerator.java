@@ -1472,8 +1472,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     /**
      * Emits code for a branchless floating-point Math.min/Math.max operation. Requires AVX.
      *
-     * Supports (scalarReg,scalarReg), (scalarReg,scalarConst), and (vectorReg,vectorReg) operands.
-     * Vector registers can be XMM and YMM (128 and 256 bit), but not ZMM (512 bit) registers.
+     * Supports (scalarReg, scalarReg) and (scalarReg, scalarConst) operands.
      *
      * @see Math#max(double, double)
      * @see Math#max(float, float)
@@ -1487,24 +1486,15 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRKind resultKind = LIRKind.combine(a, b);
         VexRVMOp minmaxop;
         VexFloatCompareOp vcmpp;
+        assert kind.getVectorLength() == 1;
         switch (kind.getScalar()) {
             case SINGLE:
-                if (kind.getVectorLength() > 1) {
-                    minmaxop = min ? VexRVMOp.VMINPS : VexRVMOp.VMAXPS;
-                    vcmpp = VexFloatCompareOp.VCMPPS;
-                } else {
-                    minmaxop = min ? VexRVMOp.VMINSS : VexRVMOp.VMAXSS;
-                    vcmpp = VexFloatCompareOp.VCMPSS;
-                }
+                minmaxop = min ? VexRVMOp.VMINSS : VexRVMOp.VMAXSS;
+                vcmpp = VexFloatCompareOp.VCMPSS;
                 break;
             case DOUBLE:
-                if (kind.getVectorLength() > 1) {
-                    minmaxop = min ? VexRVMOp.VMINPD : VexRVMOp.VMAXPD;
-                    vcmpp = VexFloatCompareOp.VCMPPD;
-                } else {
-                    minmaxop = min ? VexRVMOp.VMINSD : VexRVMOp.VMAXSD;
-                    vcmpp = VexFloatCompareOp.VCMPSD;
-                }
+                minmaxop = min ? VexRVMOp.VMINSD : VexRVMOp.VMAXSD;
+                vcmpp = VexFloatCompareOp.VCMPSD;
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
