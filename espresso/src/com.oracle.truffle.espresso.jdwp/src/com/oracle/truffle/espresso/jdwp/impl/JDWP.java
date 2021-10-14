@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.VOID;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -2641,7 +2638,7 @@ public final class JDWP {
             private static void setArrayValues(JDWPContext context, PacketStream input, int index, int values, Object array, byte tag) {
                 for (int i = index; i < index + values; i++) {
                     switch (tag) {
-                        case BOOLEAN:
+                        case TagConstants.BOOLEAN:
                             boolean bool = input.readBoolean();
                             byte[] boolArray = context.getUnboxedArray(array);
                             boolArray[i] = bool ? (byte) 1 : (byte) 0;
@@ -2776,6 +2773,9 @@ public final class JDWP {
                         }
 
                         byte sigbyte = input.readByte();
+                        if (sigbyte == TagConstants.OBJECT) {
+                            sigbyte = context.getTag(value);
+                        }
 
                         writeValue(sigbyte, value, reply, true, context);
                     }
@@ -3034,9 +3034,9 @@ public final class JDWP {
     private static Object readValue(PacketStream input, JDWPContext context) {
         byte valueKind = input.readByte();
         switch (valueKind) {
-            case VOID:
+            case TagConstants.VOID:
                 return Void.TYPE;
-            case BOOLEAN:
+            case TagConstants.BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:
                 return input.readByte();
@@ -3070,7 +3070,7 @@ public final class JDWP {
             reply.writeByte(tag);
         }
         switch (tag) {
-            case BOOLEAN:
+            case TagConstants.BOOLEAN:
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeBoolean(unboxed > 0 ? true : false);
