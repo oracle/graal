@@ -23,12 +23,10 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -48,19 +46,14 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
 public final class SingleImplementor {
-    private final ReadWriteLock rwlock;
-    @CompilationFinal private Assumption hasValue;
-    @CompilationFinal private ObjectKlass value;
-    @CompilationFinal private SingleImplementorSnapshot currentSnapshot;
+    private final AtomicReference<SingleImplementorSnapshot> currentSnapshot;
 
     static SingleImplementor Invalid = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
+    static SingleImplementorSnapshot MultipleImplementorsSnapshot = Invalid.read();
 
     // Used only to create an invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        this.rwlock = new ReentrantReadWriteLock();
-        this.hasValue = assumption;
-        this.value = value;
-        this.currentSnapshot = new SingleImplementorSnapshot(this.hasValue, this.value);
+        this.currentSnapshot = new AtomicReference<>(new SingleImplementorSnapshot(assumption, value));
     }
 
     private SingleImplementor() {
@@ -78,31 +71,42 @@ public final class SingleImplementor {
         return new SingleImplementor(klass);
     }
 
+    private void addSecondImplementor(ObjectKlass implementor) {
+        SingleImplementorSnapshot snapshot = currentSnapshot.get();
+        if (snapshot.implementor == implementor) {
+            return;
+        }
+        while (!currentSnapshot.compareAndSet(snapshot, MultipleImplementorsSnapshot)) {
+            snapshot = currentSnapshot.get();
+        }
+        snapshot.hasImplementor().invalidate();
+    }
+
     void addImplementor(ObjectKlass implementor) {
         // Implementors are only added when the implementing class is loaded, which happens in the
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
 
-        rwlock.writeLock();
-        // adding the same implementor
-        if (value == implementor) {
+        SingleImplementorSnapshot snapshot = currentSnapshot.get();
+        if (snapshot == MultipleImplementorsSnapshot) {
             return;
         }
-        // adding first implementor
-        if (value == null) {
-            value = implementor;
-            // invalidate "no implementors" assumption
-            hasValue.invalidate();
-            hasValue = Truffle.getRuntime().createAssumption("single implementor");
-            currentSnapshot = new SingleImplementorSnapshot(hasValue, value);
+        if (snapshot.implementor == null) {
+            SingleImplementorSnapshot singleImplementor = new SingleImplementorSnapshot(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+            if (currentSnapshot.compareAndSet(snapshot, singleImplementor)) {
+                // successfully set the first implementor
+                snapshot.hasImplementor().invalidate();
+            } else {
+                // CAS failed, i.e. another thread successfully added an implementor and this thread
+                // is adding a second implementor
+                addSecondImplementor(implementor);
+            }
         } else {
-            // adding second or more implementor
-            hasValue.invalidate();
+            addSecondImplementor(implementor);
         }
     }
 
     public SingleImplementorSnapshot read() {
-        rwlock.readLock();
-        return currentSnapshot;
+        return currentSnapshot.get();
     }
 }

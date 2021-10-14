@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class SingleImplementorSnapshot {
     private final Assumption hasSingleImplementor;
-    private final ObjectKlass implementor;
+    final ObjectKlass implementor;
 
     static SingleImplementorSnapshot Invalid = new SingleImplementorSnapshot(NeverValidAssumption.INSTANCE, null);
 
