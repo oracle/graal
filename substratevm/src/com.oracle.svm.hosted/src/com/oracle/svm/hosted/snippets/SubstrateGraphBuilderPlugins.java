@@ -378,20 +378,21 @@ public class SubstrateGraphBuilderPlugins {
             }
             while (successor instanceof StoreIndexedNode) {
                 StoreIndexedNode store = (StoreIndexedNode) successor;
-                assert getDeoptProxyOriginalValue(store.array()).equals(newArray);
-                ValueNode valueNode = store.value();
-                if (valueNode.isConstant() && !valueNode.isNullConstant()) {
-                    Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
-                    /*
-                     * It is possible that the returned class is a substitution class, e.g.,
-                     * DynamicHub returned for a Class.class constant. Get the target class of the
-                     * substitution class.
-                     */
-                    classList.add(annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz));
-                } else {
-                    /* If not all classes are non-null constants we bail out. */
-                    classList = null;
-                    break;
+                if (getDeoptProxyOriginalValue(store.array()).equals(newArray)) {
+                    ValueNode valueNode = store.value();
+                    if (valueNode.isConstant() && !valueNode.isNullConstant()) {
+                        Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
+                        /*
+                         * It is possible that the returned class is a substitution class, e.g.,
+                         * DynamicHub returned for a Class.class constant. Get the target class of
+                         * the substitution class.
+                         */
+                        classList.add(annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz));
+                    } else {
+                        /* If not all classes are non-null constants we bail out. */
+                        classList = null;
+                        break;
+                    }
                 }
                 successor = unwrapNode(store.next());
             }
