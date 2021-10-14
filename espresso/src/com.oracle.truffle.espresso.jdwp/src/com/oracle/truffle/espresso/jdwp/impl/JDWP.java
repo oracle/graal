@@ -3067,7 +3067,12 @@ public final class JDWP {
 
     public static void writeValue(byte tag, Object value, PacketStream reply, boolean tagged, JDWPContext context) {
         if (tagged) {
-            reply.writeByte(tag);
+            if (tag == TagConstants.OBJECT) {
+                // get specific tag type for things like strings and classloaders etc.
+                reply.writeByte(context.getTag(value));
+            } else {
+                reply.writeByte(tag);
+            }
         }
         switch (tag) {
             case BOOLEAN:
