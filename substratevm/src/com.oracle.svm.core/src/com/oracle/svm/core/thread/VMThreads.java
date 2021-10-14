@@ -871,6 +871,7 @@ public abstract class VMThreads {
         public static void setPreventVMFromReachingSafepoint() {
             assert safepointChecksEnabled();
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
+            Heap.getHeap().suspendAllocation();
         }
 
         /**
@@ -888,13 +889,14 @@ public abstract class VMThreads {
         static void setIgnoreThreadInSafepointHandling() {
             assert safepointChecksEnabled();
             safepointBehaviorTL.setVolatile(IGNORE_THREAD_IN_SAFEPOINT_HANDLING);
+            Heap.getHeap().suspendAllocation();
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static String toString(int safepointBehavior) {
             switch (safepointBehavior) {
                 case ALLOW_SAFEPOINT:
-                    return "";
+                    return "ALLOW_SAFEPOINT";
                 case PREVENT_VM_FROM_REACHING_SAFEPOINT:
                     return "PREVENT_VM_FROM_REACHING_SAFEPOINT";
                 case IGNORE_THREAD_IN_SAFEPOINT_HANDLING:

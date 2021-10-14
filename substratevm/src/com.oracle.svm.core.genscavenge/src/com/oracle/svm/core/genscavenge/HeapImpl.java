@@ -172,6 +172,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void suspendAllocation() {
         ThreadLocalAllocation.suspendInCurrentThread();
     }
@@ -237,7 +238,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAllocationDisallowed() {
-        return NoAllocationVerifier.isActive() || gcImpl.isCollectionInProgress();
+        return NoAllocationVerifier.isActive() || !VMThreads.SafepointBehavior.safepointChecksEnabled() || gcImpl.isCollectionInProgress();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
