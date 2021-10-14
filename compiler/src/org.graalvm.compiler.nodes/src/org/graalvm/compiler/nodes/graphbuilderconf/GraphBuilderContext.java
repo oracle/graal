@@ -467,22 +467,31 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
+     * Replaces an invocation of a given method by inserting a {@link PluginReplacementNode} that
+     * {@linkplain GraphBuilderContext#shouldDeferPlugin defers} the application of an
+     * {@link InvocationPlugin}.
      *
-     * @param plugin
-     * @param targetMethod
-     * @param args
-     * @param replacementFunction
+     * @param plugin the {@link InvocationPlugin} that is deferred
+     * @param targetMethod the target of the replacement invocation
+     * @param args the arguments to the replacement invocation
+     * @param replacementFunction the replacement function for deferred application of the
+     *            {@code plugin}
      */
     default void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
         throw GraalError.unimplemented();
     }
 
     /**
+     * Replaces an invocation of a given method by inserting a
+     * {@link PluginReplacementWithExceptionNode} that
+     * {@linkplain GraphBuilderContext#shouldDeferPlugin defers} the application of an
+     * {@link InvocationPlugin}.
      *
-     * @param plugin
-     * @param targetMethod
-     * @param args
-     * @param replacementFunction
+     * @param plugin the {@link InvocationPlugin} that is deferred
+     * @param targetMethod the target of the replacement invocation
+     * @param args the arguments to the replacement invocation
+     * @param replacementFunction the replacement function for deferred application of the
+     *            {@code plugin}
      */
     default void replacePluginWithException(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args,
                     PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction replacementFunction) {
