@@ -157,7 +157,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * Different stages of the compilation regarding the status of various graph properties.
      */
     public enum StageFlag {
-        DEOPT_TO_GUARD,
         PARTIAL_ESCAPE,
         HIGH_TIER,
         FLOATING_READS,
