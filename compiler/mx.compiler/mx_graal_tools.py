@@ -70,12 +70,6 @@ def run_netbeans_app(app_name, env=None, args=None):
         launch.append('-J-Dnetbeans.logger.console=false')
     mx.run(launch+args, env=env)
 
-def netbeans_jdk(appName):
-    v8u40 = mx.VersionSpec("1.8.0_40")
-    def _c1vJdkVersionCheck(version):
-        return version >= v8u40 and str(version).startswith('1.8.0')
-    return mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(1.8 JDK that is >= 1.8.0u40 )', purpose="running " + appName).home
-
 def igv(args):
     """(obsolete) informs about IGV"""
     mx.warn(
@@ -88,8 +82,11 @@ from the GraalVM EE installation.
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
+    v8u40 = mx.VersionSpec("1.8.0_40")
+    def _c1vJdkVersionCheck(version):
+        return version >= v8u40 and str(version).startswith('1.8.0')
     env = dict(os.environ)
-    env['jdkhome'] = netbeans_jdk("C1 Visualizer")
+    env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(1.8 JDK that is >= 1.8.0u40 )', purpose="running C1 Visualizer").home
     run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
