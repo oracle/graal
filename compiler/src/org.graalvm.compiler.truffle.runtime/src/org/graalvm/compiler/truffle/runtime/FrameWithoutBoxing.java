@@ -350,7 +350,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     private static IllegalArgumentException outOfBoundsException(int slotIndex) {
         CompilerAsserts.neverPartOfCompilation();
-        throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slotIndex));
+        throw new IllegalArgumentException("The frame slot '" + slotIndex + "' is not known by the frame descriptor.");
     }
 
     private static long getPrimitiveOffset(int slotIndex) {
