@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import jdk.vm.ci.runtime.JVMCI;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -44,12 +43,16 @@ import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.runtime.JVMCI;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static final String verboseOption = "--verbose";
     private static final String requireValidJarFileMessage = "-jar requires a valid jarfile";
     private static final String newStyleClasspathOptionName = "--class-path";
+
+    private static final String addModulesOption = "--add-modules";
+    private static final String addModulesErrorMessage = " requires modules to be specified";
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
@@ -144,6 +147,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0]);
                 nativeImage.setModuleOptionMode(true);
+                return true;
+            case addModulesOption:
+                args.poll();
+                String addModulesArgs = args.poll();
+                if (addModulesArgs == null) {
+                    NativeImage.showError(headArg + addModulesErrorMessage);
+                }
+                nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -312,6 +323,15 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                  */
                 System.exit(0);
             }
+            return true;
+        }
+        if (headArg.startsWith(addModulesOption + "=")) {
+            args.poll();
+            String addModulesArgs = headArg.substring(addModulesOption.length() + 1);
+            if (addModulesArgs.isEmpty()) {
+                NativeImage.showError(headArg + addModulesErrorMessage);
+            }
+            nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
             return true;
         }
         if (headArg.startsWith("@") && !disableAtFiles) {
