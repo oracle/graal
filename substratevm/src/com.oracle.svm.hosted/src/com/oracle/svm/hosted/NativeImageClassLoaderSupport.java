@@ -59,6 +59,11 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
+    public void propagateQualifiedExports(String fromTargetModule, String toTargetModule) {
+        /* Nothing to do for Java 8 */
+    }
+
+    @Override
     protected Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
         throw new UnsupportedOperationException("NativeImageClassLoader for Java 8 does not support modules");
     }

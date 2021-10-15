@@ -25,10 +25,8 @@
 
 package com.oracle.svm.hosted.jdk11;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,37 +106,13 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
     }
 
     private void buildPackageToModulesMap(NativeImageClassLoaderSupportJDK11OrLater cls) {
-        for (ModuleLayer layer : allLayers(cls.moduleLayerForImageBuild)) {
+        for (ModuleLayer layer : NativeImageClassLoaderSupportJDK11OrLater.allLayers(cls.moduleLayerForImageBuild)) {
             for (Module module : layer.modules()) {
                 for (String packageName : module.getDescriptor().packages()) {
                     addToPackageNameModules(module, packageName);
                 }
             }
         }
-    }
-
-    private static List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
-        /** Implementation taken from {@link ModuleLayer#layers()} */
-        List<ModuleLayer> allLayers = new ArrayList<>();
-        Set<ModuleLayer> visited = new HashSet<>();
-        Deque<ModuleLayer> stack = new ArrayDeque<>();
-        visited.add(moduleLayer);
-        stack.push(moduleLayer);
-
-        while (!stack.isEmpty()) {
-            ModuleLayer layer = stack.pop();
-            allLayers.add(layer);
-
-            // push in reverse order
-            for (int i = layer.parents().size() - 1; i >= 0; i--) {
-                ModuleLayer parent = layer.parents().get(i);
-                if (!visited.contains(parent)) {
-                    visited.add(parent);
-                    stack.push(parent);
-                }
-            }
-        }
-        return allLayers;
     }
 
     private void addToPackageNameModules(Module moduleName, String packageName) {
@@ -157,7 +131,6 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
             prevValue.add(moduleName);
         }
     }
-
 }
 
 @AutomaticFeature

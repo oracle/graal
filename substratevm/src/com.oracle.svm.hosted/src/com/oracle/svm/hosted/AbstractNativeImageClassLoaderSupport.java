@@ -135,6 +135,8 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected abstract void processClassLoaderOptions(OptionValues optionValues);
 
+    public abstract void propagateQualifiedExports(String fromTargetModule, String toTargetModule);
+
     protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
     protected static class Util {

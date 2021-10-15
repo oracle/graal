@@ -34,8 +34,12 @@ import java.lang.module.ModuleReference;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -184,6 +188,52 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                 }
             }
         });
+    }
+
+    @Override
+    public void propagateQualifiedExports(String fromTargetModule, String toTargetModule) {
+        Optional<Module> optFromTarget = moduleLayerForImageBuild.findModule(fromTargetModule);
+        Optional<Module> optToTarget = moduleLayerForImageBuild.findModule(toTargetModule);
+        VMError.guarantee(!optFromTarget.isEmpty() && !optToTarget.isEmpty());
+        Module toTarget = optToTarget.get();
+        Module fromTarget = optFromTarget.get();
+
+        allLayers(moduleLayerForImageBuild).stream().flatMap(layer -> layer.modules().stream()).forEach(m -> {
+            if (!m.equals(toTarget)) {
+                for (String p : m.getPackages()) {
+                    if (m.isExported(p, fromTarget)) {
+                        Modules.addExports(m, p, toTarget);
+                    }
+                    if (m.isOpen(p, fromTarget)) {
+                        Modules.addOpens(m, p, toTarget);
+                    }
+                }
+            }
+        });
+    }
+
+    static List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
+        /** Implementation taken from {@link ModuleLayer#layers()} */
+        List<ModuleLayer> allLayers = new ArrayList<>();
+        Set<ModuleLayer> visited = new HashSet<>();
+        Deque<ModuleLayer> stack = new ArrayDeque<>();
+        visited.add(moduleLayer);
+        stack.push(moduleLayer);
+
+        while (!stack.isEmpty()) {
+            ModuleLayer layer = stack.pop();
+            allLayers.add(layer);
+
+            // push in reverse order
+            for (int i = layer.parents().size() - 1; i >= 0; i--) {
+                ModuleLayer parent = layer.parents().get(i);
+                if (!visited.contains(parent)) {
+                    visited.add(parent);
+                    stack.push(parent);
+                }
+            }
+        }
+        return allLayers;
     }
 
     private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionValues parsedHostedOptions, OptionKey<LocatableMultiOptionValue.Strings> specificOption) {
