@@ -74,7 +74,7 @@ public abstract class InvokeSpecial extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass(), receiver).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass()).getMethodVersion();
         }
         return method.getMethodVersion();
     }
