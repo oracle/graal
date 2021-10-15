@@ -365,6 +365,63 @@ public class LoggingTest {
     }
 
     @Test
+    public void testNoParameters() {
+        String message = "Test{0}";
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+            @Override
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
+                for (TruffleLogger logger : loggers) {
+                    logger.log(Level.WARNING, message);
+                    logger.log(Level.WARNING, () -> message);
+                    logger.logp(Level.WARNING, "C", "M", message);
+                    logger.logp(Level.WARNING, "C", "M", () -> message);
+                }
+                return false;
+            }
+        };
+        final TestHandler handler = new TestHandler();
+        try (Context ctx1 = newContextBuilder().logHandler(handler).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            int loggedCount = 0;
+            for (LogRecord r : handler.getRawLog()) {
+                loggedCount++;
+                Assert.assertEquals(message, r.getMessage());
+                Assert.assertNull(r.getParameters());
+            }
+            Assert.assertEquals(4 * AbstractLoggingLanguage.LOGGER_NAMES.length, loggedCount);
+        }
+    }
+
+    @Test
+    public void testParametersOutput() {
+        String message = "Test{0} {1}";
+        assertLoggerOutput(message, logger -> logger.log(Level.WARNING, message));
+        assertLoggerOutput(message, logger -> logger.log(Level.WARNING, () -> message));
+        assertLoggerOutput(message, logger -> logger.logp(Level.WARNING, "C", "M", message));
+        assertLoggerOutput(message, logger -> logger.logp(Level.WARNING, "C", "M", () -> message));
+        assertLoggerOutput("TestA {1}", logger -> logger.log(Level.WARNING, message, "A"));
+        assertLoggerOutput("TestA {1}", logger -> logger.logp(Level.WARNING, "C", "M", message, "A"));
+        assertLoggerOutput("TestA B", logger -> logger.log(Level.WARNING, message, new String[]{"A", "B"}));
+        assertLoggerOutput("TestA B", logger -> logger.logp(Level.WARNING, "C", "M", message, new String[]{"A", "B"}));
+    }
+
+    private static void assertLoggerOutput(String expected, Consumer<TruffleLogger> log) {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+            @Override
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
+                log.accept(loggers[0]);
+                return false;
+            }
+        };
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context ctx1 = Context.newBuilder().err(err).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            final String output = new String(err.toByteArray());
+            Assert.assertTrue(output, output.indexOf(expected) > 0);
+        }
+    }
+
+    @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
         AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
