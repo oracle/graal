@@ -29,6 +29,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.MultiKillingBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -56,7 +58,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
  * throw instruction or implicit exception).
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_8, size = SIZE_8)
-public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, SingleMemoryKill {
+public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptAfter {
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
@@ -98,6 +100,8 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
 
+            GraalError.guarantee(graph().getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", this);
+            GraalError.guarantee(stateAfter() != null, "StateAfter must not be null for %s", this);
             loadException.setStateAfter(stateAfter());
             replaceAtUsages(loadException, InputType.Value);
             graph().replaceFixedWithFixed(this, entry);
@@ -114,5 +118,10 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
                         stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
                         "an exception handler's frame state must have only the exception on the stack");
         return super.verify();
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 }
