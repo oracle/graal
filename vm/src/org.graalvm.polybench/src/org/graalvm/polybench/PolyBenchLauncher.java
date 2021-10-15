@@ -209,9 +209,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             }));
             this.consumers.add(new ArgumentConsumer("-w", (value, config) -> config.warmupIterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> config.iterations = Integer.parseInt(value)));
-            this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.sharedEngine = Boolean.parseBoolean(value)));
+            this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.initMultiEngine().sharedEngine = Boolean.parseBoolean(value)));
             this.consumers.add(new ArgumentConsumer("--eval-source-only", (value, config) -> config.evalSourceOnlyDefault = Boolean.parseBoolean(value)));
-            this.consumers.add(new ArgumentConsumer("--multi-context-runs", (value, config) -> config.numberOfRuns = Integer.parseInt(value)));
+            this.consumers.add(new ArgumentConsumer("--multi-context-runs", (value, config) -> config.initMultiEngine().numberOfRuns = Integer.parseInt(value)));
         }
 
         Config parse(List<String> arguments) {
@@ -303,7 +303,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 iterator.remove();
                 if (Config.isPolybenchRunOption(runOption.name)) {
                     // a run-level PolyBench option
-                    Map<String, String> pbRunOptions = config.polybenchRunOptionsMap.computeIfAbsent(runOption.runIndex, (i) -> new HashMap<>());
+                    Map<String, String> pbRunOptions = config.initMultiEngine().polybenchRunOptionsMap.computeIfAbsent(runOption.runIndex, (i) -> new HashMap<>());
                     pbRunOptions.put(runOption.name, runOption.value);
                 } else {
                     // a run-level polyglot option
@@ -323,18 +323,23 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
 
         // Parse engine options and store them to config.engineOptions
-        parseUnrecognizedOptions(getLanguageId(config.path), config.engineOptions, engineOptions);
-
+        HashMap<String, String> polyglotOptions = new HashMap<>();
+        parseUnrecognizedOptions(getLanguageId(config.path), polyglotOptions, engineOptions);
+        if (!polyglotOptions.isEmpty()) {
+            config.initMultiEngine().engineOptions.putAll(polyglotOptions);
+        }
         // Parse run specific options and store them to config.runOptionsMap
         for (Map.Entry<Integer, List<String>> runOptionsEntry : runOptionsMap.entrySet()) {
-            Map<String, String> runOptions = config.polyglotRunOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
-            if (useExperimental) {
-                // the enabled experimental-options flag must be propagated to runOptions to enable
-                // parsing of
-                // run-level experimental options
-                runOptionsEntry.getValue().add("--experimental-options");
+            Map<String, String> runOptions = config.initMultiEngine().polyglotRunOptionsMap.computeIfAbsent(runOptionsEntry.getKey(), (i) -> new HashMap<>());
+            if (!runOptionsEntry.getValue().isEmpty()) {
+                if (useExperimental) {
+                    // the enabled experimental-options flag must be propagated to runOptions to
+                    // enable
+                    // parsing of run-level experimental options
+                    runOptionsEntry.getValue().add("--experimental-options");
+                }
+                parseUnrecognizedOptions(getLanguageId(config.path), runOptions, runOptionsEntry.getValue());
             }
-            parseUnrecognizedOptions(getLanguageId(config.path), runOptions, runOptionsEntry.getValue());
         }
     }
 
@@ -352,29 +357,26 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
-        String compilationOptionValue;
-        switch (config.mode) {
-            case interpreter:
-                compilationOptionValue = "false";
-                break;
-            case standard:
-                compilationOptionValue = "true";
-                break;
-            default:
-                throw new AssertionError("Unknown execution-mode: " + config.mode);
-        }
-        config.engineOptions.put("engine.Compilation", compilationOptionValue);
-
-        if (config.sharedEngine) {
-            // allowExperimentalOptions must be enabled as engine.Compilation is experimental
-            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(config.engineOptions).build());
+        if (config.isSingleEngine()) {
+            contextBuilder.option("engine.Compilation", config.compilation());
+            runHarness(contextBuilder, config.evalSourceOnlyDefault, 0);
         } else {
-            contextBuilder.options(config.engineOptions);
+            multiEngineLaunch(contextBuilder);
+        }
+    }
+
+    private void multiEngineLaunch(Context.Builder contextBuilder) {
+        config.multiEngine.engineOptions.put("engine.Compilation", config.compilation());
+
+        if (config.multiEngine.sharedEngine) {
+            contextBuilder.engine(Engine.newBuilder().allowExperimentalOptions(true).options(config.multiEngine.engineOptions).build());
+        } else {
+            contextBuilder.options(config.multiEngine.engineOptions);
         }
         contextBuilder.allowAllAccess(true);
 
-        for (int i = 0; i < config.numberOfRuns; i++) {
-            Map<String, String> perRunOptions = config.polyglotRunOptionsMap.get(i);
+        for (int i = 0; i < config.multiEngine.numberOfRuns; i++) {
+            Map<String, String> perRunOptions = config.multiEngine.polyglotRunOptionsMap.get(i);
             if (perRunOptions != null) {
                 contextBuilder.options(perRunOptions);
             }

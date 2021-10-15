@@ -94,12 +94,13 @@ bench-llvm-sulong-3-runs-shared-engine-ce: ${bench_vm_ce_linux_base} ${bench-llv
   timelimit: "45:00"
   environment: {
       VM_DIST: polybench-sulong-ce
+      CSUITE_BENCHMARKS: "*"
   }
   setup: ${bench_vm_ce_linux_base.setup} [
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
   ]
   run: [
-    [mx, --dynamicimport, sulong-benchmarks, --env, "${VM_DIST}", benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite-polybench:deltablue", --, --nativepolybench-vm, sulong-polybench, --nativepolybench-vm-config, 3-runs-shared-engine, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    [mx, --dynamicimport, sulong-benchmarks, --env, "${VM_DIST}", benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite-polybench:${CSUITE_BENCHMARKS}", --, --nativepolybench-vm, sulong-polybench, --nativepolybench-vm-config, 3-runs-shared-engine, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
   ]
   teardown: [
     [cat, ${bench_vm_ce_linux_base.resultFile}]
