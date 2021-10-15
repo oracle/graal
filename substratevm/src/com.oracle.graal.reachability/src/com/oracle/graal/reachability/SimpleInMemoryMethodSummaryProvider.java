@@ -50,7 +50,7 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.util.GuardedAnnotationAccess;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,18 +67,10 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
     @Override
     public MethodSummary getSummary(BigBang bb, AnalysisMethod method) {
-        if (method.isIntrinsicMethod()) {
-            System.err.println("this is intrinsic: " + method);
-// return MethodSummary.EMPTY;
-        }
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.getEncodedGraph() == null) {
             System.err.println("Encoded empty for " + method);
             return MethodSummary.EMPTY;
-        }
-        if (GuardedAnnotationAccess.isAnnotationPresent(method, Node.NodeIntrinsic.class)) {
-            System.err.println("parsing an intrinsic: " + method);
-// return MethodSummary.EMPTY;
         }
 
         StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
@@ -181,6 +173,14 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     if (method != null) {
                         AnalysisMethod analysisMethod = analysisMethod(method);
                         accessedTypes.add(analysisMethod.getDeclaringClass());
+                    }
+                } else if (n instanceof MacroInvokable) {
+                    MacroInvokable node = (MacroInvokable) n;
+                    AnalysisMethod targetMethod = analysisMethod(node.getTargetMethod());
+                    if (node.getInvokeKind().isDirect()) {
+                        implementationInvokedMethods.add(targetMethod);
+                    } else {
+                        invokedMethods.add(targetMethod);
                     }
                 }
                 delegateNodeProcessing(this, n);

@@ -763,7 +763,7 @@ public class NativeImageGenerator {
     private List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
         MethodSummary summary = bb.summaries.get(method);
         if (summary == null) {
-            System.err.println("Don't have a summary for " + method);
+// System.err.println("Don't have a summary for " + method);
             return Collections.emptyList();
         }
         List<AnalysisMethod> callees = new ArrayList<>();

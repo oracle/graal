@@ -80,7 +80,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.hostVM = hostVM;
         this.executorService = executorService;
         this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
-        this.timing = new AnalysisTiming();
+        // todo specify timing via option
+        this.timing = null;
         this.executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;

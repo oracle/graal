@@ -131,24 +131,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         schedule(() -> onMethodImplementationInvoked(method));
     }
 
-    private static final Set<AnalysisMethod> processed = ConcurrentHashMap.newKeySet();
-    private static final Set<String> processed2 = ConcurrentHashMap.newKeySet();
-
     public final Map<AnalysisMethod, MethodSummary> summaries = new ConcurrentHashMap<>();
 
     private void onMethodImplementationInvoked(AnalysisMethod method) {
-        if (!processed.add(method)) {
-            System.err.println("Method " + method + " has already been processed");
-// return;
-        }
-        if (!processed2.add(method.getQualifiedName())) {
-            System.err.println("Method " + method + " has already been processed");
-// return;
-        }
-        if (method.isNative()) {
-            System.err.println("native method " + method);
-// return;
-        }
         try {
             MethodSummary summary = methodSummaryProvider.getSummary(this, method);
             processSummary(method, summary);
@@ -231,6 +216,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         type.forAllSuperTypes(current -> {
             Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
+                if (method.isStatic()) {
+                    continue;
+                }
                 AnalysisMethod implementationInvokedMethod = type.resolveConcreteMethod(method, current);
                 if (implementationInvokedMethod == null) {
                     System.out.println("onMethodInvoked: method " + method + " on type " + current + " is null");
@@ -252,6 +240,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     private void onMethodInvoked(AnalysisMethod method) {
         AnalysisType clazz = method.getDeclaringClass();
         Set<AnalysisType> instantiatedSubtypes = clazz.getInstantiatedSubtypes();
+        if (method.isStatic()) {
+            // todo better reason
+            markMethodImplementationInvoked(method, null);
+            return;
+        }
         for (AnalysisType subtype : instantiatedSubtypes) {
             AnalysisMethod resolvedMethod = subtype.resolveConcreteMethod(method, clazz);
             if (resolvedMethod == null) {
@@ -335,6 +328,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void registerForeignCalls(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
+            // todo handle foreign calls even in the summary provider?
             if (n instanceof ForeignCall) {
                 ForeignCall node = (ForeignCall) n;
                 registerForeignCall(node.getDescriptor());
