@@ -337,7 +337,10 @@ public abstract class VMThreads {
 
         cleanupBeforeDetach(thread);
 
-        setIgnoreThreadInSafepointHandlingAndLock();
+        // From this point on, all code must be fully uninterruptible because this thread either
+        // holds the THREAD_MUTEX (see the JavaDoc on THREAD_MUTEX) or because the IsolateThread was
+        // already freed.
+        THREAD_MUTEX.lockNoTransition();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -363,25 +366,7 @@ public abstract class VMThreads {
         cleanupExitedOsThread(threadToCleanup);
     }
 
-    /*
-     * Make me immune to safepoints and make the safepoint mechanism ignore me. We are calling
-     * functions that are not marked as @Uninterruptible during the detach process. We hold the
-     * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
-     * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
-     * possible that we enter the safepoint slow path.
-     *
-     * Between setting the status and acquiring the TREAD_MUTEX, we must not access the heap.
-     * Otherwise, we risk a race with the GC as this thread will continue executing even though the
-     * VM is at a safepoint.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    @NeverInline("Prevent that anything floats between setting the status and acquiring the mutex.")
-    private static void setIgnoreThreadInSafepointHandlingAndLock() {
-        SafepointBehavior.setIgnoreThreadInSafepointHandling();
-        THREAD_MUTEX.lockNoTransition();
-    }
-
-    @Uninterruptible(reason = "Isolate thread will be freed.", calleeMustBe = false)
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void releaseThread(IsolateThread thread) {
         THREAD_MUTEX.guaranteeIsOwner("This mutex must be locked to prevent that a GC is triggered while detaching a thread from the heap");
         Heap.getHeap().detachThread(thread);
@@ -407,15 +392,15 @@ public abstract class VMThreads {
         }
     }
 
-    @Uninterruptible(reason = "Manipulates the threads list; broadcasts on changes.")
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void detachThreadInSafeContext(IsolateThread thread) {
-        detachJavaThread(thread);
+        JavaThreads.detachThread(thread);
         removeFromThreadList(thread);
         // Signal that the VMThreads list has changed.
         THREAD_LIST_CONDITION.broadcast();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void removeFromThreadList(IsolateThread thread) {
         IsolateThread previous = WordFactory.nullPointer();
         IsolateThread current = head;
@@ -457,13 +442,7 @@ public abstract class VMThreads {
         cleanupExitedOsThreads();
     }
 
-    @Uninterruptible(reason = "For calling interruptible code from uninterruptible code.", calleeMustBe = false)
-    private static void detachJavaThread(IsolateThread thread) {
-        JavaThreads.detachThread(thread);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Still safe at this point.")
     private static void cleanupBeforeDetach(IsolateThread thread) {
         JavaThreads.cleanupBeforeDetach(thread);
     }
@@ -801,7 +780,7 @@ public abstract class VMThreads {
         // This method will be removed in GR-34435.
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusIgnoreSafepoints() {
-            SafepointBehavior.setPreventVMFromReachingSafepoint();
+            SafepointBehavior.setIgnoreThreadInSafepointHandling();
         }
 
         public static boolean isValidStatus(int status) {
@@ -867,11 +846,14 @@ public abstract class VMThreads {
             return safepointBehaviorTL.getVolatile(vmThread);
         }
 
+        /**
+         * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
+         * thread will also actively prevent the VM from reaching a safepoint (regardless of its
+         * thread status).
+         */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setPreventVMFromReachingSafepoint() {
-            assert safepointChecksEnabled();
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
-            Heap.getHeap().suspendAllocation();
         }
 
         /**
@@ -887,9 +869,7 @@ public abstract class VMThreads {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         static void setIgnoreThreadInSafepointHandling() {
-            assert safepointChecksEnabled();
             safepointBehaviorTL.setVolatile(IGNORE_THREAD_IN_SAFEPOINT_HANDLING);
-            Heap.getHeap().suspendAllocation();
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

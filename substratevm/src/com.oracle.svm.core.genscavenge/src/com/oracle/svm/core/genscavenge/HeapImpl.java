@@ -385,6 +385,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public void detachThread(IsolateThread isolateThread) {
         ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
     }

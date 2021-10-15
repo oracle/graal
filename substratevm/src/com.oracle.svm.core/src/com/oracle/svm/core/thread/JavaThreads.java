@@ -184,10 +184,12 @@ public abstract class JavaThreads {
         return toTarget(thread).interrupted;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
         return toTarget(thread).unsafeParkEvent;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static AtomicReference<ParkEvent> getSleepParkEvent(Thread thread) {
         return toTarget(thread).sleepParkEvent;
     }
@@ -416,18 +418,9 @@ public abstract class JavaThreads {
         return tearDownJavaThreads();
     }
 
-    /**
-     * Detach the provided Java thread.
-     *
-     * When this method is being executed, we expect that the current thread owns
-     * {@linkplain VMThreads#THREAD_MUTEX}. This is fine even though this method is not
-     * {@linkplain Uninterruptible} because this method is either executed as part of a VM operation
-     * or {@linkplain SafepointBehavior#setIgnoreThreadInSafepointHandling()} was called.
-     */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while detaching a thread.")
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public static void detachThread(IsolateThread vmThread) {
-        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
-        assert SafepointBehavior.isIgnoredBySafepointHandling(vmThread) || VMOperation.isInProgress();
+        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
         ParkEvent.detach(getUnsafeParkEvent(thread));
