@@ -52,6 +52,22 @@ import java.util.zip.ZipOutputStream;
  * A {@link PathUtilitiesProvider} implemented in terms of {@link File} and {@link Path} APIs.
  */
 public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
+
+    /**
+     * The format of the message printed on the console by {@link #archiveAndDelete} showing the
+     * absolute path of the zip file created. The {@code %s} placeholder is replaced with the
+     * absolute path of the zip file.
+     */
+    public static final String DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT = "Graal diagnostic output saved in '%s'";
+
+    /**
+     * The regular expression for matching the message derived from
+     * {@link #DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT}.
+     *
+     * Keep in sync with the {@code catch_files} array in {@code common.json}.
+     */
+    public static final String DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP = "Graal diagnostic output saved in '(?<filename>[^']+)'";
+
     @Override
     public String createDirectories(String path) throws IOException {
         Files.createDirectories(Paths.get(path));
@@ -175,7 +191,7 @@ public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
                     }
                 });
                 // Keep this in sync with the catch_files in common.hocon
-                TTY.println("Graal diagnostic output saved in %s", zipFile);
+                TTY.println(DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT, zipFile);
                 return zipFile.getAbsolutePath();
             } catch (IOException e) {
                 toDelete.clear();

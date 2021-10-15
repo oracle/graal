@@ -18,13 +18,19 @@
     "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03-debug", "platformspecific": true }
   },
 
-  "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
+  "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
       "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
       "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
   },
+
+  "catch_files" : [
+    "Graal diagnostic output saved in '(?P<filename>[^']+)'",
+    "Dumping debug output to '(?P<filename>[^']+)'"
+  ],
+
   "deps": {
     "COMMENT.common": [
       "pip:isort is a dependency of pip:pylint. The explicit dependency on the pip package works around",
