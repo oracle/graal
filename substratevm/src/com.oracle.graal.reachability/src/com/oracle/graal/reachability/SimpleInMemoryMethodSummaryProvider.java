@@ -40,6 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
@@ -173,6 +174,13 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                         implementationInvokedMethods.add(targetMethod);
                     } else {
                         invokedMethods.add(targetMethod);
+                    }
+                } else if (n instanceof FrameState) {
+                    FrameState node = (FrameState) n;
+                    ResolvedJavaMethod method = node.getMethod();
+                    if (method != null) {
+                        AnalysisMethod analysisMethod = analysisMethod(method);
+                        accessedTypes.add(analysisMethod.getDeclaringClass());
                     }
                 }
                 delegateNodeProcessing(this, n);
