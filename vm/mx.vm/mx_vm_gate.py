@@ -143,7 +143,7 @@ def gate_body(args, tasks):
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
-                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM',
+                            '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
                             '-esa',
                             '-XX:+EnableJVMCI',
                             '-DCompileTheWorld.MultiThreaded=true',

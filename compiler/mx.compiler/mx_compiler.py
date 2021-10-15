@@ -158,6 +158,23 @@ mx_gate.add_jacoco_includes(['org.graalvm.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
 
+def _get_graal_option(vmargs, name, default=None, prefix='-Dgraal.'):
+    """
+    Gets the value of the `name` Graal option in `vmargs`.
+
+    :param list vmargs: VM arguments to inspect
+    :param str name: the name of the option
+    :param default: the default value of the option if it's not present in `vmargs`
+    :param str prefix: the prefix used for Graal options in `vmargs`
+    :return: the value of the option as specified in `vmargs` or `default`
+    """
+    if vmargs:
+        for arg in reversed(vmargs):
+            selector = prefix + name + '='
+            if arg.startswith(selector):
+                return arg[len(selector):]
+    return default
+
 def _get_XX_option_value(vmargs, name, default):
     """
     Gets the value of an ``-XX:`` style HotSpot VM option.
@@ -371,13 +388,44 @@ def _is_batik_supported(jdk):
         mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
         return False
 
+def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Dgraal.'):
+    """
+    Gets options to be prefixed to the VM command line related to Graal compilation errors to improve
+    the chance of graph dumps being emitted and preserved in CI build logs.
+
+    :param str default_compilation_failure_action: value for CompilationFailureAction if it is added
+    :param list vmargs: arguments to search for existing instances of the options added by this method
+    :param str prefix: the prefix used for Graal options in `vmargs` and to use when adding options
+    """
+    action = _get_graal_option(vmargs, 'CompilationFailureAction')
+    res = []
+
+    # Add CompilationFailureAction if absent from vmargs
+    if action is None:
+        action = default_compilation_failure_action
+        res.append(prefix + 'CompilationFailureAction=' + action)
+
+    # Add DumpOnError=true if absent from vmargs and CompilationFailureAction is Diagnose or ExitVM.
+    dump_on_error = _get_graal_option(vmargs, 'DumpOnError', prefix=prefix)
+    if action in ('Diagnose', 'ExitVM'):
+        if dump_on_error is None:
+            res.append(prefix + 'DumpOnError=true')
+            dump_on_error = 'true'
+
+    # Add ShowDumpFiles=true if absent from vmargs and DumpOnError=true.
+    if dump_on_error == 'true':
+        show_dump_files = _get_graal_option(vmargs, 'ShowDumpFiles', prefix=prefix)
+        if show_dump_files is None:
+            res.append(prefix + 'ShowDumpFiles=true')
+    return res
+
 def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
     if iterations == -1:
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     if set_start_heap_size:
         vmargs += ['-Xms2g']
-    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
+    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
@@ -390,7 +438,7 @@ def jdk_includes_corba(jdk):
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
 
     args = ['-n', str(iterations), '--preserve']
     return mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
@@ -473,7 +521,8 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
             ctw([
-                    '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+                    '-DCompileTheWorld.Config=Inline=false CompilationBailoutAsFailure=false ' + ' '.join(_compiler_error_options(prefix='')),
+                    '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
                     '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
@@ -587,7 +636,7 @@ if mx.get_arch() not in _registers:
 
 _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
-_graalErrorFlags = ['-Dgraal.CompilationFailureAction=ExitVM']
+_graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']
 _verificationFlags = ['-Dgraal.VerifyGraalGraphs=true', '-Dgraal.VerifyGraalGraphEdges=true', '-Dgraal.VerifyGraalPhasesSize=true', '-Dgraal.VerifyPhases=true']
 _coopFlags = ['-XX:-UseCompressedOops']
@@ -763,8 +812,7 @@ def _parseVmArgs(args, addDefaultArgs=True):
     # The default for CompilationFailureAction in the code is Silent as this is
     # what we want for GraalVM. When using Graal via mx (e.g. in the CI gates)
     # Diagnose is a more useful "default" value.
-    if not any(a.startswith('-Dgraal.CompilationFailureAction=') for a in args):
-        argsPrefix.append('-Dgraal.CompilationFailureAction=Diagnose')
+    argsPrefix.extend(_compiler_error_options('Diagnose', args))
 
     # It is safe to assume that Network dumping is the desired default when using mx.
     # Mx is never used in production environments.
