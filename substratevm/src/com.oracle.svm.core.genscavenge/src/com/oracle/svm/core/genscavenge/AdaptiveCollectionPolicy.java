@@ -188,16 +188,14 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return promotionEstimate.aboveThan(oldFree);
     }
 
-    private void updateAverages(UnsignedWord survivedChunkBytes, UnsignedWord survivorOverflowObjectBytes, UnsignedWord promotedObjectBytes) {
-        /*
-         * Adding the object bytes of overflowed survivor objects does not consider the overhead of
-         * partially filled chunks in the many survivor spaces, so it underestimates the necessary
-         * survivors capacity. However, this should self-correct as we expand the survivor space and
-         * reduce the tenuring age to avoid overflowing survivor objects in the first place.
-         */
-        avgSurvived.sample(survivedChunkBytes.add(survivorOverflowObjectBytes));
+    private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survivedChunkBytes, UnsignedWord promotedChunkBytes) {
+        UnsignedWord survived = survivedChunkBytes;
+        if (isSurvivorOverflow) {
+            survived = survived.add(promotedChunkBytes); // guess
+        }
+        avgSurvived.sample(survived);
 
-        avgPromoted.sample(promotedObjectBytes);
+        avgPromoted.sample(promotedChunkBytes);
     }
 
     private void computeSurvivorSpaceSizeAndThreshold(boolean isSurvivorOverflow, UnsignedWord survivorLimit) {
@@ -424,24 +422,29 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 
-        /*
-         * Update the averages that survivor space and tenured space sizes are derived from. Note
-         * that we use chunk bytes (not object bytes) for the survivors. This is because they are
-         * kept in many spaces (one for each age), which potentially results in significant overhead
-         * from chunks that may only be partially filled, especially when the heap is small. Using
-         * chunk bytes here ensures that the needed survivor capacity is not underestimated.
-         */
-        UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
-        UnsignedWord survivorOverflowObjectBytes = accounting.getSurvivorOverflowObjectBytes();
-        UnsignedWord tenuredObjBytes = accounting.getTenuredObjectBytes(); // includes overflowed
-        updateAverages(survivedChunkBytes, survivorOverflowObjectBytes, tenuredObjBytes);
+        if (!completeCollection) {
+            /*
+             * Update the averages that survivor space and tenured space sizes are derived from.
+             * Note that we use chunk bytes (not object bytes) for the survivors. This is because
+             * they are kept in many spaces (one for each age), which potentially results in
+             * significant overhead from chunks that may only be partially filled, especially when
+             * the heap is small. Using chunk bytes here ensures that the needed survivor capacity
+             * is not underestimated.
+             */
+            boolean survivorOverflow = accounting.hasLastIncrementalCollectionOverflowedSurvivors();
+            UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
+            UnsignedWord tenuredChunkBytes = accounting.getLastIncrementalCollectionPromotedChunkBytes();
+            updateAverages(survivorOverflow, survivedChunkBytes, tenuredChunkBytes);
 
-        computeSurvivorSpaceSizeAndThreshold(survivorOverflowObjectBytes.aboveThan(0), sizes.maxSurvivorSize());
-        computeEdenSpaceSize();
-        if (completeCollection) {
-            computeOldGenSpaceSize(oldLive);
+            computeSurvivorSpaceSizeAndThreshold(survivorOverflow, sizes.maxSurvivorSize());
         }
-        decaySupplementalGrowth(completeCollection);
+        if (shouldUpdateStats(cause)) {
+            computeEdenSpaceSize();
+            if (completeCollection) {
+                computeOldGenSpaceSize(oldLive);
+            }
+            decaySupplementalGrowth(completeCollection);
+        }
     }
 
     private void computeOldGenSpaceSize(UnsignedWord oldLive) { // compute_old_gen_free_space
@@ -531,9 +534,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
     }
 
+    private static boolean shouldUpdateStats(GCCause cause) { // should_update_{eden,promo}_stats
+        return cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC;
+    }
+
     private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
                     AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos, UnsignedWord sizeBytes) {
-        if (cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC) {
+        if (shouldUpdateStats(cause)) {
             double cost = 0;
             double mutatorInSeconds = TimeUtils.nanosToSecondsDouble(mutatorNanos);
             double pauseInSeconds = TimeUtils.nanosToSecondsDouble(pauseNanos);

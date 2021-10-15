@@ -252,7 +252,7 @@ public final class GCImpl implements GC {
         assert !followsIncremental || complete : "An incremental collection cannot be followed by another incremental collection";
         completeCollection = complete;
 
-        accounting.beforeCollection();
+        accounting.beforeCollection(completeCollection);
         policy.onCollectionBegin(completeCollection, requestingNanoTime);
 
         Timer collectionTimer = timers.collection.open();
@@ -985,14 +985,15 @@ public final class GCImpl implements GC {
         }
 
         Object result = null;
-        boolean survivorOverflow = false;
         if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
                 result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
                 result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
-            survivorOverflow = (result == null);
+            if (result == null) {
+                accounting.onSurvivorOverflowed();
+            }
         }
         if (result == null) { // complete collection, tenuring age reached, or survivor space full
             if (isAligned) {
@@ -1001,9 +1002,6 @@ public final class GCImpl implements GC {
                 result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
             assert result != null : "promotion failure in old generation must have been handled";
-            if (result != original) {
-                accounting.onObjectTenured(result, survivorOverflow);
-            }
         }
 
         return result;
