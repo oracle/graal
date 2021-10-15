@@ -86,42 +86,21 @@ algorithm.
       Total Time: Time spent somewhere on the stack.
     ----------------------------------------------------------------------------------------------
     Thread[main,5,main]
-<<<<<<< HEAD
      Name       ||             Total Time    ||              Self Time    || Location
     ----------------------------------------------------------------------------------------------
      accept     ||             2150ms  86.0% ||             2150ms  86.0% || primes.js~13-22:191-419
      next       ||             2470ms  98.8% ||              320ms  12.8% || primes.js~31-37:537-737
      :program   ||             2500ms 100.0% ||               30ms   1.2% || primes.js~1-46:0-982
     ----------------------------------------------------------------------------------------------
-=======
-     Name              |             Total Time    ||              Self Time    || Location
-    ----------------------------------------------------------------------------------------------------
-     accept            |             7330ms  88.8% ||             7330ms  88.8% || primes.js~13-22:191-419
-     :program          |             8250ms 100.0% ||              420ms   5.1% || primes.js~1-46:0-982
-     next              |             7820ms  94.8% ||              250ms   3.0% || primes.js~31-37:537-737
-     DivisibleByFilter |              440ms   5.3% ||              240ms   2.9% || primes.js~7-23:66-421
-     AcceptFilter      |               20ms   0.2% ||               10ms   0.1% || primes.js~1-5:0-63
-     Primes            |               20ms   0.2% ||                0ms   0.0% || primes.js~25-38:424-739
-    ----------------------------------------------------------------------------------------------------
->>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
     ```
 
     By default the sampler prints an execution time histogram for each JavaScript function.
-<<<<<<< HEAD
-    You can produce a flame graph in SVG format by specifying that with the `--cpusampler.Output=flamegraph` option:
 
+    You can produce a flame graph in SVG format by requesting that with the `--cpusampler.Output=flamegraph` option:
     ```shell
     js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
     ```
-
     It should produce something like this:
-=======
-    You can produce a flame graph in SVG format by doing
-    ```shell
-    js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
-    ```
-    which should produce something like this
->>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
 
     ![](img/profiler_flamegraph.png)
 
@@ -144,12 +123,7 @@ algorithm.
     ```
     Now use the CPU Tracer to collect execution counts of each statement:
 
-<<<<<<< HEAD
-4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=accept`
-to collect execution counts for all statements in methods ending with `accept`:
-=======
 4. Run `js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=*accept` to collect execution counts for all statements in methods ending with `accept`:
->>>>>>> 7bc06f81a03378c93f5528526281564089dc89d8
     ```shell
     js primes.js --cputracer --cputracer.TraceStatements --cputracer.FilterRootName=accept
     Computed 5000 prime numbers. The last 5 are 48563,48571,48589,48593,48611.
