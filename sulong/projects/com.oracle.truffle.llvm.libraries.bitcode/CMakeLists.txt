@@ -101,7 +101,9 @@ else()
 endif()
 
 target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
-target_link_options(sulong PRIVATE -nostdlib)
+if(NOT MX_OS STREQUAL "darwin")
+    target_link_options(sulong PRIVATE -nostdlib)
+endif()
 install(TARGETS sulong DESTINATION bin)
 
 if(NOT WIN32)
