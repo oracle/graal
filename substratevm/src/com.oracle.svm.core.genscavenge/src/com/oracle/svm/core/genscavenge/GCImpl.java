@@ -260,7 +260,7 @@ public final class GCImpl implements GC {
             if (!followsIncremental) { // we would have verified the heap after the incremental GC
                 verifyBeforeGC();
             }
-            scavenge(!complete, followsIncremental);
+            scavenge(!complete);
             verifyAfterGC();
         } finally {
             collectionTimer.close();
@@ -495,7 +495,7 @@ public final class GCImpl implements GC {
     }
 
     /** Scavenge, either from dirty roots or from all roots, and process discovered references. */
-    private void scavenge(boolean incremental, boolean followingIncremental) {
+    private void scavenge(boolean incremental) {
         GreyToBlackObjRefVisitor.Counters counters = greyToBlackObjRefVisitor.openCounters();
         try {
             Timer rootScanTimer = timers.rootScan.open();
@@ -503,7 +503,7 @@ public final class GCImpl implements GC {
                 if (incremental) {
                     cheneyScanFromDirtyRoots();
                 } else {
-                    cheneyScanFromRoots(followingIncremental);
+                    cheneyScanFromRoots();
                 }
             } finally {
                 rootScanTimer.close();
@@ -576,7 +576,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    private void cheneyScanFromRoots(boolean followingIncremental) {
+    private void cheneyScanFromRoots() {
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
             /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
@@ -585,22 +585,7 @@ public final class GCImpl implements GC {
              * Objects into each of the blackening methods, or even put them around individual
              * Object reference visits.
              */
-            prepareForPromotion();
-
-            if (followingIncremental) {
-                /*
-                 * We just finished an incremental collection, so we could get away with not
-                 * scavenging the young generation again.
-                 *
-                 * However, we don't do this because if objects in the young generation are
-                 * reachable only from garbage objects in the old generation, the young objects
-                 * cannot be reclaimed during this collection. Even worse, if there is a cycle in
-                 * which the young objects in turn keep the old objects alive, none of the objects
-                 * can be reclaimed until these young objects are eventually tenured, or until a
-                 * single complete collection is done before we would run out of memory.
-                 */
-                // HeapImpl.getHeapImpl().getYoungGeneration().emptyFromSpacesIntoToSpaces();
-            }
+            prepareForPromotion(false);
 
             /*
              * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
@@ -624,14 +609,14 @@ public final class GCImpl implements GC {
             blackenImageHeapRoots();
 
             /* Visit all the Objects promoted since the snapshot. */
-            scanGreyObjects();
+            scanGreyObjects(false);
 
             if (DeoptimizationSupport.enabled()) {
                 /* Visit the runtime compiled code, now that we know all the reachable objects. */
                 walkRuntimeCodeCache();
 
                 /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects();
+                scanGreyObjects(false);
             }
 
             greyToBlackObjectVisitor.reset();
@@ -657,7 +642,7 @@ public final class GCImpl implements GC {
              * Objects into each of the blackening methods, or even put them around individual
              * Object reference visits.
              */
-            prepareForPromotion();
+            prepareForPromotion(true);
 
             /*
              * Make sure any released objects are in toSpace (because this is an incremental
@@ -690,14 +675,14 @@ public final class GCImpl implements GC {
             blackenDirtyImageHeapRoots();
 
             /* Visit all the Objects promoted since the snapshot, transitively. */
-            scanGreyObjects();
+            scanGreyObjects(true);
 
             if (DeoptimizationSupport.enabled()) {
                 /* Visit the runtime compiled code, now that we know all the reachable objects. */
                 walkRuntimeCodeCache();
 
                 /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects();
+                scanGreyObjects(true);
             }
 
             greyToBlackObjectVisitor.reset();
@@ -956,26 +941,36 @@ public final class GCImpl implements GC {
         }
     }
 
-    private static void prepareForPromotion() {
+    private static void prepareForPromotion(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getOldGeneration().prepareForPromotion();
-        heap.getYoungGeneration().prepareForPromotion();
+        if (isIncremental) {
+            heap.getYoungGeneration().prepareForPromotion();
+        }
     }
 
-    private void scanGreyObjects() {
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        YoungGeneration youngGen = heap.getYoungGeneration();
-        OldGeneration oldGen = heap.getOldGeneration();
+    private void scanGreyObjects(boolean isIncremental) {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
         try {
-            boolean hasGrey;
-            do {
-                hasGrey = youngGen.scanGreyObjects();
-                hasGrey |= oldGen.scanGreyObjects();
-            } while (hasGrey);
+            if (isIncremental) {
+                scanGreyObjectsLoop();
+            } else {
+                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
+            }
         } finally {
             scanGreyObjectsTimer.close();
         }
+    }
+
+    private static void scanGreyObjectsLoop() {
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        YoungGeneration youngGen = heap.getYoungGeneration();
+        OldGeneration oldGen = heap.getOldGeneration();
+        boolean hasGrey;
+        do {
+            hasGrey = youngGen.scanGreyObjects();
+            hasGrey |= oldGen.scanGreyObjects();
+        } while (hasGrey);
     }
 
     @AlwaysInline("GC performance")
@@ -991,7 +986,7 @@ public final class GCImpl implements GC {
 
         Object result = null;
         boolean survivorOverflow = false;
-        if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
+        if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
                 result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
@@ -999,7 +994,7 @@ public final class GCImpl implements GC {
             }
             survivorOverflow = (result == null);
         }
-        if (result == null) { // tenuring age reached or survivor space full
+        if (result == null) { // complete collection, tenuring age reached, or survivor space full
             if (isAligned) {
                 result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
@@ -1031,7 +1026,7 @@ public final class GCImpl implements GC {
             Space originalSpace = HeapChunk.getSpace(originalChunk);
             if (originalSpace.isFromSpace()) {
                 boolean promoted = false;
-                if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
+                if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
                     promoted = heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
                 }
                 if (!promoted) {
