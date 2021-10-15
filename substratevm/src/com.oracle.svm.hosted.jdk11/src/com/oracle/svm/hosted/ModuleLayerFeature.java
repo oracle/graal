@@ -29,6 +29,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -48,10 +49,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -227,14 +230,33 @@ public final class ModuleLayerFeature implements Feature {
         private final Method moduleFindModuleMethod;
 
         NameToModuleSynthesizer() {
-            everyoneModule = ReflectionUtil.readField(Module.class, "EVERYONE_MODULE", null);
+            Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
+            try {
+                ModuleSupport.openModuleByClass(Module.class, ModuleLayerFeature.class);
+                Field[] moduleClassFields = (Field[]) classGetDeclaredMethods0Method.invoke(Module.class, false);
+
+                Field everyoneModuleField = findFieldByName(moduleClassFields, "EVERYONE_MODULE");
+                everyoneModuleField.setAccessible(true);
+                everyoneModule = (Module) everyoneModuleField.get(null);
+
+                moduleLayerField = findFieldByName(moduleClassFields, "layer");
+                moduleReadsField = findFieldByName(moduleClassFields, "reads");
+                moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
+                moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
+                moduleLayerField.setAccessible(true);
+                moduleReadsField.setAccessible(true);
+                moduleOpenPackagesField.setAccessible(true);
+                moduleExportedPackagesField.setAccessible(true);
+            } catch (ReflectiveOperationException | NoSuchElementException ex) {
+                throw VMError.shouldNotReachHere("Failed to find the value of EVERYONE_MODULE field of Module class.", ex);
+            }
             everyoneSet = Set.of(everyoneModule);
             moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
-            moduleLayerField = ReflectionUtil.lookupField(Module.class, "layer");
-            moduleReadsField = ReflectionUtil.lookupField(Module.class, "reads");
-            moduleOpenPackagesField = ReflectionUtil.lookupField(Module.class, "openPackages");
-            moduleExportedPackagesField = ReflectionUtil.lookupField(Module.class, "exportedPackages");
             moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
+        }
+
+        private Field findFieldByName(Field[] fields, String name) {
+            return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().get();
         }
 
         /**

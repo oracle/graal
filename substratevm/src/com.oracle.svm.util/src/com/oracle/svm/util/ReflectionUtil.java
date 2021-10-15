@@ -31,7 +31,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
- * This class contains utility methods for commonly used reflection functionality.
+ * This class contains utility methods for commonly used reflection functionality. Note that lookups
+ * will not work on JDK 17 in cases when the field/method is filtered. See
+ * jdk.internal.reflect.Reflection#fieldFilterMap for more information or
+ * com.oracle.svm.hosted.ModuleLayerFeature for an example of a workaround in such cases.
  */
 public final class ReflectionUtil {
 
