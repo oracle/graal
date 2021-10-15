@@ -73,7 +73,7 @@ public final class ExtensionFieldsMetadata {
         for (ParserField newField : instanceFields) {
             int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
             LinkedField linkedField = new LinkedField(newField, nextFieldSlot, LinkedField.IdMode.REDEFINE_ADDED);
-            Field field = new Field(holder, linkedField, pool);
+            Field field = new RedefineAddedField(holder, linkedField, pool, false);
             toAdd.add(field);
 
             // mark a compatible field where

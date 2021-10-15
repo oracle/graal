@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
+import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
