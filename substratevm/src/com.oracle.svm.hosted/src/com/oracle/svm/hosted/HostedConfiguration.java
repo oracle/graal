@@ -32,7 +32,11 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.DummyResultsBuilder;
+import com.oracle.graal.reachability.MethodSummaryProvider;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -152,6 +156,10 @@ public class HostedConfiguration {
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         return new SVMMethodTypeFlowBuilder(bb, graph);
+    }
+
+    public MethodSummaryProvider createMethodSummaryProvider(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess) {
+        return new SimpleInMemoryMethodSummaryProvider(universe, aMetaAccess);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,

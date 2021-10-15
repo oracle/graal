@@ -27,6 +27,7 @@ package com.oracle.graal.reachability;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -55,10 +56,12 @@ import java.util.List;
 
 public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvider {
 
-    private final AnalysisUniverse universe;
+    protected final AnalysisUniverse universe;
+    protected final AnalysisMetaAccess metaAccess;
 
-    public SimpleInMemoryMethodSummaryProvider(AnalysisUniverse universe) {
+    public SimpleInMemoryMethodSummaryProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess) {
         this.universe = universe;
+        this.metaAccess = metaAccess;
     }
 
     @Override
@@ -86,79 +89,15 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         // to preserve the graphs for compilation
         method.setAnalyzedGraph(decoded);
 
-        return createSummaryFromGraph(decoded);
+        return new Instance().createSummaryFromGraph(decoded);
     }
 
     @Override
     public MethodSummary getSummary(BigBang bigBang, StructuredGraph graph) {
-        return createSummaryFromGraph(graph);
+        return new Instance().createSummaryFromGraph(graph);
     }
 
-    private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
-        List<AnalysisType> accessedTypes = new ArrayList<>();
-        List<AnalysisType> instantiatedTypes = new ArrayList<>();
-        List<AnalysisField> readFields = new ArrayList<>();
-        List<AnalysisField> writtenFields = new ArrayList<>();
-        List<AnalysisMethod> invokedMethods = new ArrayList<>();
-        List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
-        List<JavaConstant> embeddedConstants = new ArrayList<>();
-        for (Node n : graph.getNodes()) {
-            if (n instanceof NewInstanceNode) {
-                NewInstanceNode node = (NewInstanceNode) n;
-                instantiatedTypes.add(analysisType(node.instanceClass()));
-            } else if (n instanceof NewArrayNode) {
-                NewArrayNode node = (NewArrayNode) n;
-                instantiatedTypes.add(analysisType(node.elementType()).getArrayClass());
-            } else if (n instanceof NewMultiArrayNode) {
-                NewMultiArrayNode node = (NewMultiArrayNode) n;
-                ResolvedJavaType type = node.type();
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    instantiatedTypes.add(analysisType(type));
-                    type = type.getComponentType();
-                }
-            } else if (n instanceof ConstantNode) {
-                ConstantNode node = (ConstantNode) n;
-                if (!(node.getValue() instanceof JavaConstant)) {
-                    /*
-                     * The bytecode parser sometimes embeds low-level VM constants for types into
-                     * the high-level graph. Since these constants are the result of type lookups,
-                     * these types are already marked as reachable. Eventually, the bytecode parser
-                     * should be changed to only use JavaConstant.
-                     */
-                    continue;
-                }
-                embeddedConstants.add(((JavaConstant) node.getValue()));
-            } else if (n instanceof InstanceOfNode) {
-                InstanceOfNode node = (InstanceOfNode) n;
-                accessedTypes.add(analysisType(node.type().getType()));
-            } else if (n instanceof AccessFieldNode) {
-                if (n instanceof LoadFieldNode) {
-                    LoadFieldNode node = (LoadFieldNode) n;
-                    readFields.add(analysisField(node.field()));
-                } else if (n instanceof StoreFieldNode) {
-                    StoreFieldNode node = (StoreFieldNode) n;
-                    writtenFields.add(analysisField(node.field()));
-                } else {
-                    throw AnalysisError.shouldNotReachHere("Unhalded AccessFieldNode Type");
-                }
-            } else if (n instanceof Invoke) {
-                Invoke node = (Invoke) n;
-                CallTargetNode.InvokeKind kind = node.getInvokeKind();
-                AnalysisMethod targetMethod = analysisMethod(node.getTargetMethod());
-                if (targetMethod == null) {
-                    continue;
-                }
-                if (kind.isDirect()) {
-                    implementationInvokedMethods.add(targetMethod);
-                } else {
-                    invokedMethods.add(targetMethod);
-                }
-            }
-        }
-        return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
-                        accessedTypes.toArray(new AnalysisType[0]),
-                        instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
-                        embeddedConstants.toArray(new JavaConstant[0]));
+    protected void delegateNodeProcessing(Instance instance, Node node) {
     }
 
     private AnalysisType analysisType(ResolvedJavaType type) {
@@ -171,5 +110,77 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
 
     private AnalysisField analysisField(ResolvedJavaField field) {
         return field instanceof AnalysisField ? ((AnalysisField) field) : universe.lookup(field);
+    }
+
+    protected class Instance {
+        public final List<AnalysisType> accessedTypes = new ArrayList<>();
+        public final List<AnalysisType> instantiatedTypes = new ArrayList<>();
+        public final List<AnalysisField> readFields = new ArrayList<>();
+        public final List<AnalysisField> writtenFields = new ArrayList<>();
+        public final List<AnalysisMethod> invokedMethods = new ArrayList<>();
+        public final List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
+        public final List<JavaConstant> embeddedConstants = new ArrayList<>();
+
+        private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
+
+            for (Node n : graph.getNodes()) {
+                if (n instanceof NewInstanceNode) {
+                    NewInstanceNode node = (NewInstanceNode) n;
+                    instantiatedTypes.add(analysisType(node.instanceClass()));
+                } else if (n instanceof NewArrayNode) {
+                    NewArrayNode node = (NewArrayNode) n;
+                    instantiatedTypes.add(analysisType(node.elementType()).getArrayClass());
+                } else if (n instanceof NewMultiArrayNode) {
+                    NewMultiArrayNode node = (NewMultiArrayNode) n;
+                    ResolvedJavaType type = node.type();
+                    for (int i = 0; i < node.dimensionCount(); i++) {
+                        instantiatedTypes.add(analysisType(type));
+                        type = type.getComponentType();
+                    }
+                } else if (n instanceof ConstantNode) {
+                    ConstantNode node = (ConstantNode) n;
+                    if (!(node.getValue() instanceof JavaConstant)) {
+                        /*
+                         * The bytecode parser sometimes embeds low-level VM constants for types
+                         * into the high-level graph. Since these constants are the result of type
+                         * lookups, these types are already marked as reachable. Eventually, the
+                         * bytecode parser should be changed to only use JavaConstant.
+                         */
+                        continue;
+                    }
+                    embeddedConstants.add(((JavaConstant) node.getValue()));
+                } else if (n instanceof InstanceOfNode) {
+                    InstanceOfNode node = (InstanceOfNode) n;
+                    accessedTypes.add(analysisType(node.type().getType()));
+                } else if (n instanceof AccessFieldNode) {
+                    if (n instanceof LoadFieldNode) {
+                        LoadFieldNode node = (LoadFieldNode) n;
+                        readFields.add(analysisField(node.field()));
+                    } else if (n instanceof StoreFieldNode) {
+                        StoreFieldNode node = (StoreFieldNode) n;
+                        writtenFields.add(analysisField(node.field()));
+                    } else {
+                        throw AnalysisError.shouldNotReachHere("Unhalded AccessFieldNode Type");
+                    }
+                } else if (n instanceof Invoke) {
+                    Invoke node = (Invoke) n;
+                    CallTargetNode.InvokeKind kind = node.getInvokeKind();
+                    AnalysisMethod targetMethod = analysisMethod(node.getTargetMethod());
+                    if (targetMethod == null) {
+                        continue;
+                    }
+                    if (kind.isDirect()) {
+                        implementationInvokedMethods.add(targetMethod);
+                    } else {
+                        invokedMethods.add(targetMethod);
+                    }
+                }
+                delegateNodeProcessing(this, n);
+            }
+            return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
+                            accessedTypes.toArray(new AnalysisType[0]),
+                            instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
+                            embeddedConstants.toArray(new JavaConstant[0]));
+        }
     }
 }
