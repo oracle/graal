@@ -214,8 +214,8 @@ public class AArch64Call {
             masm.movNativeAddress(scratch, 0L, true);
             masm.blr(scratch);
         } else {
-            // Address is fixed up by HotSpot.
-            masm.bl(0);
+            // Address is fixed up by the runtime.
+            masm.bl();
         }
         if (label != null) {
             // We need this label to be the return address.
