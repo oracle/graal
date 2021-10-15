@@ -10,7 +10,6 @@ permalink: /docs/getting-started/linux-aarch64/
 As of version 21.0, we provide GraalVM Community Edition for Linux on ARM 64-bit system, based on OpenJDK 11 and OpenJDK 17 for AArch64 architecture.
 This distribution can be installed on Linux systems for AArch64 CPU architecture.
 
-<!-- Note: The base GraalVM Community distribution including all components is **experimental** on Linux ARM 64-bit systems. -->
 You can install the GraalVM distribution for Linux ARM64 systems from an archive file (_.tar.gz_).
 This allows you to install GraalVM for the current user into any location, without affecting other JDK installations.
 

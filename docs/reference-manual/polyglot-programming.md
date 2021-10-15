@@ -233,7 +233,7 @@ You can configure a language engine for better throughput or startup.
 ## Passing Options for Language Launchers
 
 Every language launcher has been extended with a set of so called _polyglot options_.
-Polyglot options allow users of any language launcher to access theoptions of other languages supported by GraalVM (implemented with the Truffle language implementation framework).
+Polyglot options allow users of any language launcher to access the options of other languages supported by GraalVM (implemented with the Truffle language implementation framework).
 The format is: `--<languageID>.<property>=<value>`.
 For example, the `R` launcher also supports the `--js.atomics=true` JavaScript option.
 
