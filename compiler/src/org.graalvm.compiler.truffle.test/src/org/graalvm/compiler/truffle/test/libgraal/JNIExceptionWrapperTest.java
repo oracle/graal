@@ -139,10 +139,6 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         @Override
         public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
         }
-
-        @Override
-        public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
-        }
     }
 
     private static class TestTruffleCompilationTask implements TruffleCompilationTask {

@@ -38,8 +38,8 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.nodes.NodeVisitor;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 
 public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 
@@ -167,7 +168,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationStarted(OptimizedCallTarget target, int tier) {
+    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
@@ -620,10 +621,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
+        public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationStarted(target, tier);
+                listener.onCompilationStarted(target, task);
             }
         }
 

@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 
@@ -112,20 +113,25 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
+     * @param target the call target about to be compiled
+     * @param tier Which compilation tier is in question.
+     *
      * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
      */
     @Deprecated
-    default void onCompilationStarted(OptimizedCallTarget target) {
-        onCompilationStarted(target, 0);
+    @SuppressWarnings("unused")
+    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
 
     /**
      * Notifies this object when compilation of {@code target} is about to start.
      *
      * @param target the call target about to be compiled
-     * @param tier Which compilation tier is in question.
+     * @param task which compilation task is in question.
      */
-    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
+    @SuppressWarnings({"unused", "deprecated"})
+    default void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        onCompilationStarted(target, task.tier());
     }
 
     /**

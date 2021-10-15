@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 No active inner context is allowed after `TruffleLanguage.finalizeContext(Object)` returns. Not complying with this requirement will result in an internal error. Please note that inactive inner contexts are still closed implicitly by the parent context.
 * Added `TruffleContext.closeExited(Node, int)` to hard exit an entered truffle context. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md).
 * Added `TruffleLanguage.exitContext(Object, ExitMode, int)` to allow languages perform actions before natural/hard context exit. Languages are encouraged to run all their shutdown hooks in exitContext instead of finalizeContext.
+* Improved the output format for `engine.TraceCompilation` and `engine.TraceCompilationDetails`. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
 
 ## Version 21.3.0
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
