@@ -60,8 +60,12 @@ vm_gate_polybench_linux_interpreter: ${vm_polybench_linux_interpreter_common} ${
   notify_emails: []
 }
 
-vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_11} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "-w", "0", "-i", "10", "--polybench-vm=graalvm-${VM_ENV}-java11"]
+vm_polybench_linux_compiler_common: ${vm_bench_polybench_linux_common} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_polybench_linux_compiler_common.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java11"]
+}
+
+vm_bench_polybench_linux_compiler: ${vm_polybench_linux_compiler_common} ${vm_java_11} {
+  bench_cmd: ${vm_polybench_linux_compiler_common.bench_cmd} ["-w", "0", "-i", "10"]
   run: [
     ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
     ${vm_bench_common.upload}
@@ -74,6 +78,19 @@ vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_
   ]
 }
 
+vm_gate_polybench_linux_compiler: ${vm_polybench_linux_compiler_common} ${vm_java_11} ${gate_vm_linux} {
+  bench_cmd: ${vm_polybench_linux_compiler_common.bench_cmd} ["-w", "0", "-i", "1"]
+  run: [
+    ${vm_gate_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=compilation-time"]
+    ${vm_gate_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=compilation-time"]
+    ${vm_gate_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=partial-evaluation-time"]
+    ${vm_gate_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=partial-evaluation-time"]
+  ]
+  targets: ${gate_vm_linux.targets}
+  capabilities: ${gate_vm_linux.capabilities}
+  notify_emails: []
+}
+
 vm_bench_polybench_linux_context_init: ${vm_bench_polybench_linux_common} ${vm_java_8} {
   bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json", "polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]", --results-file, ${vm_bench_polybench_linux_context_init.result_file}, --, "-w", "0", "-i", "0", "--polybench-vm=graalvm-${VM_ENV}-java8"]
   run: [
@@ -84,12 +101,25 @@ vm_bench_polybench_linux_context_init: ${vm_bench_polybench_linux_common} ${vm_j
   ]
 }
 
-vm_bench_polybench_linux_warmup: ${vm_bench_polybench_linux_common} ${vm_java_8} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+vm_polybench_linux_warmup_common: ${vm_bench_polybench_linux_common} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_polybench_linux_warmup_common.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+}
+
+vm_bench_polybench_linux_warmup: ${vm_polybench_linux_warmup_common} ${vm_java_8} {
   run: [
-    ${vm_bench_polybench_linux_warmup.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
+    ${vm_polybench_linux_warmup_common.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
     ${vm_bench_common.upload}
   ]
+}
+
+vm_gate_polybench_linux_warmup: ${vm_polybench_linux_warmup_common} ${vm_java_8} ${gate_vm_linux} {
+  bench_cmd: ${vm_polybench_linux_warmup_common.bench_cmd} ["-w", "1", "-i", "1"]
+  run: [
+    ${vm_gate_polybench_linux_warmup.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
+  ]
+  targets: ${gate_vm_linux.targets}
+  capabilities: ${gate_vm_linux.capabilities}
+  notify_emails: []
 }
 
 vm_bench_polybench_nfi: ${sulong-weekly-notifications} {
@@ -143,4 +173,6 @@ builds += [
   }
 
   ${common_vm_linux} ${vm_gate_polybench_linux_interpreter} {name: gate-vm-${vm_setup.short_name}-polybench-linux}
+  ${common_vm_linux} ${vm_gate_polybench_linux_compiler} {name: gate-vm-${vm_setup.short_name}-polybench-compiler-linux}
+  ${common_vm_linux} ${vm_gate_polybench_linux_warmup} {name: gate-vm-${vm_setup.short_name}-polybench-warmup-linux}
 ]
