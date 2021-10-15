@@ -34,8 +34,10 @@ import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 public interface UContextRegisterDumper extends RegisterDumper {
     void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     PointerBase getHeapBase(ucontext_t uContext);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     PointerBase getThreadPointer(ucontext_t uContext);
 
     PointerBase getSP(ucontext_t uContext);

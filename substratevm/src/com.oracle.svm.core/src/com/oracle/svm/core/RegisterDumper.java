@@ -55,8 +55,10 @@ public interface RegisterDumper {
 
     void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     PointerBase getHeapBase(Context context);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     PointerBase getThreadPointer(Context context);
 
     PointerBase getSP(Context context);
