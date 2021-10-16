@@ -10,14 +10,13 @@ permalink: /docs/getting-started/macos/
 GraalVM Community Edition can be installed for a single user and administrator privileges are not required.
 However, if GraalVM is meant to become a default JDK, administrator privileges are required.
 
-GraalVM Community Edition does not provide the installation wizard, unlike OpenJDK
-distributions for macOS that come with the _.dmg_ download.
+GraalVM Community Edition does not provide the installation wizard, unlike OpenJDK distributions for macOS that come with the _.dmg_ download.
 It can be installed from an archive file (_.tar.gz_).
 Note that in macOS, the JDK installation path is: `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
 
 Follow these steps to install GraalVM Community on the macOS operating system:
 
-1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Depending on the workload, select Java 11 based or Java 8 based distribution for macOS, and download.
+1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for macOS, and download.
 2. Unzip the archive.
   ```shell
    tar -xzf graalvm-ce-java<version>-darvin-amd64-<version>.tar.gz
@@ -56,7 +55,7 @@ sudo xattr -r -d com.apple.quarantine /path/to/GRAALVM_HOME
 
 #### On JAVA_HOME Command
 The information property file, _Info.plist_, is in the top level _Contents_ folder.
-This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
 You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8 JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
 Within a specific version, the sort order appears to be stable but is unspecified.
 

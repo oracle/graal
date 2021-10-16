@@ -5,14 +5,10 @@ permalink: /getting-started/installation-macos/
 
 # Installation on macOS Platforms
 
-GraalVM Enterprise can be installed for a single user and administrator
-privileges are not required. However, if GraalVM Enterprise is meant to become a
-default JDK, administrator privileges are required.
+GraalVM Enterprise can be installed for a single user and administrator privileges are not required. However, if GraalVM Enterprise is meant to become a default JDK, administrator privileges are required.
 
-GraalVM Enterprise does not provide the installation wizard, unlike Oracle JDK
-distributions for macOS that come with the _.dmg_ download. Note that in macOS,
-the JDK installation path is:
-`/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+GraalVM Enterprise does not provide the installation wizard, unlike Oracle JDK distributions for macOS that come with the _.dmg_ download.
+Note that in macOS, the JDK installation path is: `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
 
 Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS operating system:
 

@@ -44,8 +44,7 @@ puts js_obj[:msg]
 puts js_obj[:payload].join(' ')
 ```
 
-4. From another console window, make sure the `ruby` runtime is available in GraalVM Enterprise,
-and connect the `Test.rb` script to the running IGV:
+4. From another console window, make sure the `ruby` runtime is available in GraalVM Enterprise, and connect the `Test.rb` script to the running IGV:
 ```shell
 gu list
 ruby --jvm --polyglot --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb

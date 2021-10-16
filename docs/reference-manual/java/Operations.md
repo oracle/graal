@@ -32,11 +32,11 @@ It will produce a line of output similar to the one below when the compiler is i
 Using Graal compiler configuration 'community' provided by org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory loaded from jar:file:/Users/dsimon/graal/graal/compiler/mxbuild/dists/graal.jar!/org/graalvm/compiler/hotspot/CommunityCompilerConfigurationFactory.class
 ```
 
-Note: The GraalVM compiler is only initialized on the first top-tier JIT compilation request so if your application is short-lived, you may not see this output.
+> Note: The GraalVM compiler is only initialized on the first top-tier JIT compilation request so if your application is short-lived, you may not see this output.
 
-Optimizing JVM-based applications is a science in itself. The compilation may not even be a factor in the case of poor performance as the problem may
-lie in any other part of the VM (I/O, garbage collection, threading, etc), or in a poorly written application or 3rd party library code.
-For this reason, it's worth utilizing the [JDK Mission Control](https://www.oracle.com/java/technologies/jdk-mission-control.html) tool chain to diagnose the application behavior.
+Optimizing JVM-based applications is a science in itself.
+The compilation may not even be a factor in the case of poor performance as the problem may lie in any other part of the VM (I/O, garbage collection, threading, etc), or in
+a poorly written application or 3rd party library code. For this reason, it is  worth utilizing the [JDK Mission Control](https://www.oracle.com/java/technologies/jdk-mission-control.html) tool chain to diagnose the application behavior.
 
 You can also compare performance against the native top-tier compiler in the JVM by adding `-XX:-UseJVMCICompiler` to the command line.
 
@@ -89,7 +89,7 @@ The crash occurred at offset 0x141 in the machine code produced for:
 org.graalvm.compiler.core.gen.NodeLIRBuilder.matchComplexExpressions(Ljava/util/List;)V
 ```
 
-The next two frames in the stack were executed in the interpreter (j).
+The next two frames in the stack were executed in the interpreter (`j`).
 The location of the crash is also often indicated near the top of the file with something like this:
 ```shell
 # Problematic frame:
@@ -98,8 +98,7 @@ The location of the crash is also often indicated near the top of the file with 
 
 In this example, there is likely an error in the code produced by the GraalVM compiler for `NodeLIRBuilder.matchComplexExpressions`.
 
-When filing an issue on [GitHub](https://github.com/oracle/graal/issues) for such a crash, you should first attempt to reproduce the crash with extra
-diagnostics enabled for the compilation of the problematic method.
+When filing an issue on [GitHub](https://github.com/oracle/graal/issues) for such a crash, you should first attempt to reproduce the crash with extra diagnostics enabled for the compilation of the problematic method.
 In this example, you would add the following to your command line:
 ```shell
 -Dgraal.MethodFilter=NodeLIRBuilder.matchComplexExpressions, -Dgraal.Dump=:2

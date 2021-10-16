@@ -105,8 +105,7 @@ Then attach a Java remote debugger (like Eclipse) on port 8000.
 
 Languages implemented with the [Truffle framework](https://github.com/oracle/graal/tree/master/truffle) can be packaged as _components_ which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
 Running `mvn package` in the SimpleLanguage folder also builds a `sl-component.jar`.
-This file is the SimpleLanguage component for GraalVM and can be installed by
-running:
+This file is the SimpleLanguage component for GraalVM and can be installed by running:
 ```shell
 gu -L install /path/to/sl-component.jar
 ```
@@ -165,11 +164,11 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 ...
 ```
 
-## Run SimpleLanguage with the Newest Compiler 21.2.0
+## Run SimpleLanguage with the Newest Compiler 21.3.0
 
 In the outstanding case that you need to execute SimpleLanguage with the newest version of the GraalVM compiler, please follow these instructions:
 
-1. Download the latest [JVMCI JDK 8](https://github.com/graalvm/graal-jvmci-8/releases/) and point JAVA_HOME at it:
+1. Download the latest [JVMCI JDK 8](https://github.com/graalvm/graal-jvmci-8/releases/) and point `JAVA_HOME` at it:
 ```shell
 export JAVA_HOME=/path/to/openjdk-8u292-jvmci-21.1-b04
 ```
@@ -196,7 +195,7 @@ mx build
 ```
 7. Run SimpleLanguage using the mx command:
 ```shell
-mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.2.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
+mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.3.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
 ```
 
 ## Run SimpleLanguage Using Command Line
@@ -210,7 +209,7 @@ Assuming `JAVA_HOME` points to the GraalVM installation and that the current wor
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar \
+    -cp launcher/target/launcher-21.3.0-SNAPSHOT.jar \
     -Dtruffle.class.path.append=language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
@@ -226,17 +225,19 @@ For development purposes it is useful to disable the class path separation and e
 the internals of the language).
 
 For the GraalVM distribution based on JDK 8, you can add the `-XX:-UseJVMCIClassLoader` option.
-This disables the class path isolation, enabling the language implementation to be placed on the application class path. The command line can be as follows:
+This disables the class path isolation, enabling the language implementation to be placed on the application class path.
+The command line can be as follows:
 
 ```shell
 $JAVA_HOME/bin/java \
     -XX:-UseJVMCIClassLoader -Dgraalvm.locatorDisabled=true \
-    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp launcher/target/launcher-21.3.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
 
 For the JDK 11-based distribution of GraalVM, the `-XX:-UseJVMCIClassLoader` option is not valid.
-The Java Module System isolation is used. You can achieve the same behavior using `--add-exports` or `--upgrade-module-path`. The latter is preferable.
+The Java Module System isolation is used. You can achieve the same behavior using `--add-exports` or `--upgrade-module-path`.
+The latter is preferable.
 
 The Language API JAR on Maven Central exports all API packages in its module-info.
 Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
@@ -255,6 +256,6 @@ Assuming `JAVA_HOME` points to a stock JDK installation, and that the current wo
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp graal-sdk-21.2.0.jar:truffle-api-21.2.0.jar:launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp graal-sdk-21.3.0.jar:truffle-api-21.3.0.jar:launcher/target/launcher-21.3.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```

@@ -40,7 +40,7 @@ For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md#ma
 
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell
-export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
+export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
 ```
 
 See the content of the toolchain path for a list of available tools:
@@ -65,7 +65,7 @@ $LLVM_TOOLCHAIN/clang hello.c -o hello
 
 The resulting executable, `hello`, can be executed on GraalVM using `lli`:
 ```shell
-$GRAALVM_HOME/bin/lli hello
+$JAVA_HOME/bin/lli hello
 ```
 
 ## External Library Dependencies

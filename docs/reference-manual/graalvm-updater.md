@@ -7,15 +7,6 @@ permalink: /reference-manual/graalvm-updater/
 
 # GraalVM Updater
 
-GraalVM Updater, `gu`, is a command-line utility to install and manage optional GraalVM language runtimes and utilities.
-Each of these language runtimes and utilities must be downloaded and installed separately.
-To assist you with the installation, these are pre-packaged as JAR files and referenced in the documentation as "components".
-As of version 21.0.0, GraalVM Updater has become more efficient, and can be used to update your local GraalVM installation to a newer version or upgrade from a Community to Enterprise Edition.
-Read more in [Upgrade GraalVM](#upgrade-graalvm).
-
-GraalVM Updater is included in the base GraalVM distribution and can be used with the `<graalvm>/bin/gu` launcher.
-The source code of GraalVM Updater is located in the `<graalvm>/lib/installer` folder.
-
 * [Component Installation](#component-installation)
 * [Component Uninstallation](#component-uninstallation)
 * [Upgrade GraalVM](#upgrade-graalvm)
@@ -24,6 +15,15 @@ The source code of GraalVM Updater is located in the `<graalvm>/lib/installer` f
 * [GraalVM Updater Commands Overview](#graalvm-updater-commands-overview)
 * [Configure Proxies](#configure-proxies)
 * [Replace Components and Files](#replace-components-and-files)
+
+GraalVM Updater, `gu`, is a command-line utility to install and manage optional GraalVM language runtimes and utilities.
+Each of these language runtimes and utilities must be downloaded and installed separately.
+To assist you with the installation, they are pre-packaged as JAR files and referenced in the documentation as "components".
+GraalVM Updater can be also used to update your local GraalVM installation to a newer version or upgrade from a Community to Enterprise Edition.
+Read more in [Upgrade GraalVM](#upgrade-graalvm).
+
+GraalVM Updater is included in the base GraalVM distribution and can be used with the `<graalvm>/bin/gu` launcher.
+The source code of GraalVM Updater is located in the `<graalvm>/lib/installer` folder.
 
 ## Component Installation
 
@@ -63,7 +63,6 @@ gu available
 ```shell
 gu install ruby
 ```
-
 GraalVM Updater first downloads the list of components, then uses the information in the list to download the actual component package, then installs it.
 To see more verbose output during the installation, like the download progress bar, print versions, and dependency information, use the `-v` (`--verbose`) switch.
 
@@ -87,7 +86,7 @@ gu -L install component.jar
 ```
 For example, to install Native Image for Java 11 GraalVM Enterprise distribution on macOS, run:
 ```shell
-gu -L install native-image-installable-svm-java11-darwin-amd64-<version>.jar
+gu -L install native-image-installable-svm-svmee-java11-darwin-amd64-<version>.jar
 ```
 
 The `-L` option, equivalent to `--local-file` or `--file`, installs a component from a downloaded JAR.
@@ -107,12 +106,11 @@ GraalVM Updater can then use that folder instead of the catalog:
 gu install -C /path/to/downloads/directory ComponentId
 ```
 
-Specify the directory to use for the components collection. It is possible to type
-a component's name (like `ruby`) instead of a filename. GraalVM Updater will also
-attempt to find required dependencies in the local component collection.
+Specify the directory to use for the components collection.
+It is possible to type a component's name (like `ruby`) instead of a filename.
+GraalVM Updater will also attempt to find required dependencies in the local component collection.
 
-When installing components from a given directory, you can allow installing all
-components which have the correct version number for GraalVM using wildcards:
+When installing components from a given directory, you can allow installing all components which have the correct version number for GraalVM using wildcards:
 ```shell
 ./gu install -C ~/Download/Components/ native*
 ```
@@ -265,8 +263,7 @@ A user can also download a component manually to a folder, and then use `gu -L i
 
 ### Working without Internet Access
 
-If your machine cannot access and download the catalog and components from the Internet, either because it is behind a proxy, or for security reasons,
-GraalVM Updater can install components from a local directory, or a directory on a network share accessible on the target machine.
+If your machine cannot access and download the catalog and components from the Internet, either because it is behind a proxy, or for security reasons, GraalVM Updater can install components from a local directory, or a directory on a network share accessible on the target machine.
 
 You need to prepare a directory, download all components that you want to install and their dependencies (in case they require other GraalVM components to work) into that directory.
 

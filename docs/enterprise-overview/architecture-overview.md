@@ -60,7 +60,6 @@ GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 17.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
 GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The GraalVM Enterprise distribution based on Oracle JDK 17 is experimental with [several known limitations](https://docs.oracle.com/en/graalvm/enterprise/21/docs/overview/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 
 ## Certified Platforms

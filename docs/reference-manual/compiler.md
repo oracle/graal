@@ -41,9 +41,7 @@ GraalVM also includes the [Truffle language implementation framework](../../truf
 These languages can consequently benefit from the optimization possibilities of the GraalVM compiler.
 The pipeline for such compilation is:
 
-* The Truffle framework code and data (Abstract Syntax Trees) is partially evaluated to
-produce a compilation graph. When such an Abstract Syntax Tree (AST) is
-hot (i.e., called many times), it is scheduled for compilation by the compiler.
+* The Truffle framework code and data (Abstract Syntax Trees) is partially evaluated to produce a compilation graph. When such an Abstract Syntax Tree (AST) is hot (i.e., called many times), it is scheduled for compilation by the compiler.
 * The compilation graph is optimized by the GraalVM compiler to produce machine code.
 * JVMCI installs this machine code in the VM's code cache.
 * The AST will automatically redirect execution to the installed machine code once it is available.

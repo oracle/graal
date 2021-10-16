@@ -45,15 +45,15 @@ GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but 
 
 Check the versions of the runtimes provided by default:
 ```shell
-java version "11.0.12" 2021-07-20 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06)
-Java HotSpot(TM) 64-Bit Server VM GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06, mixed mode, sharing)
+java version "11.0.13" 2021-10-19 LTS
+Java(TM) SE Runtime Environment GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03)
+Java HotSpot(TM) 64-Bit Server VM GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03, mixed mode, sharing)
 
 js -version
-GraalVM JavaScript (GraalVM EE Native 21.2.0)
+GraalVM JavaScript (GraalVM EE Native 21.3.0)
 
 lli --version
-LLVM 10.0.0 (GraalVM EE Native 21.2.0)
+LLVM 12.0.1 (GraalVM EE Native 21.3.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM Enterprise runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -94,7 +94,9 @@ GraalVM Enterprise also supports running Node.js applications.
 Node.js support is not installed by default, but can be easily added with GraalVM Updater:
 ```shell
 gu install nodejs
-node -v
+```
+```shell
+$JAVA_HOME/bin/node -v
 v14.17.6
 ```
 
@@ -102,10 +104,10 @@ More than 100,000 npm packages are regularly tested and are compatible with Graa
 To install a Node.js module, use the `npm` executable from the `<graalvm>/bin` folder, which is installed together with `node`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
-Install the `colors` and `ansispan` modules using `npm install`.
+Install the modules `colors`, `ansispan`, and `express` using `npm install`.
 After the modules are installed, you can use them from your application.
 ```shell
-npm install colors ansispan
+$JAVA_HOME/bin/npm install colors ansispan express
 ```
 
 Use the following code snippet and save it as the `app.js` file in the same directory where you installed the Node.js modules:
@@ -124,7 +126,7 @@ setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
 
 Run _app.js_ on GraalVM Enterprise using the `node` command:
 ```shell
-node app.js
+$JAVA_HOME/bin/node app.js
 ```
 
 For more detailed documentation and information on compatibility with Node.js, proceed to [JavaScript and Node.js](../../reference-manual/js/README.md).
@@ -254,7 +256,8 @@ int main() {
 }
 ```
 
-Compile it using the most recent [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html) version. It should produce a standalone _floyd.wasm_ file in the current working directory:
+Compile it using the most recent [Emscripten compiler frontend](https://emscripten.org/docs/tools_reference/emcc.html) version.
+It should produce a standalone _floyd.wasm_ file in the current working directory:
 ```shell
 emcc -o floyd.wasm floyd.c
 ```

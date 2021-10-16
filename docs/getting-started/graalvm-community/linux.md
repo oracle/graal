@@ -9,7 +9,7 @@ permalink: /docs/getting-started/linux/
 
 Follow these steps to install GraalVM Community Edition on the Linux operating system.
 
-1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Depending on the workload, select Java 11 based or Java 8 based distribution for the Linux AMD64 architecture, and download.
+1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for the Linux AMD64 architecture, and download.
 2. Change the directory to the location where you want to install GraalVM, then move the _.tar.gz_ archive to it.
 3. Unzip the archive:
 ```shell

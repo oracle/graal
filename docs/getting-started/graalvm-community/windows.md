@@ -10,7 +10,7 @@ permalink: /docs/getting-started/windows/
 You can install GraalVM Community Edition on the Windows operating system from an archive file (_zip_).
 Follow these steps:
 
-1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Depending on the workload, select Java 11 based or Java 8 based distribution for Windows, and download.
+1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for Windows, and download.
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 3. Unzip the archive to your file system.
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8 and 10.

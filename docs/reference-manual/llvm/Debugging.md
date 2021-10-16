@@ -12,13 +12,9 @@ This includes support for single-stepping, breakpoints, and inspection of local 
 To use this feature, make sure to compile your program with debug information enabled by specifying the `-g` argument when compiling with `clang` (the LLVM toolchain shipped with GraalVM will automatically enable debug information).
 This gives you the ability to step through the program's source code and set breakpoints in it.
 
-<!-- With GraalVM 20.0 and older, the option `--llvm.enableLVI=true` is needed for being able to inspect variables during debugging.
-This option is not enabled by default as it decreases the program's run-time performance.
-Starting with GraalVM 20.1, this option is not needed anymore and thus deprecated. -->
-
 To start debugging, run `lli` with the `--inspect` option:
 ```shell
-$GRAALVM_HOME/bin/lli --inspect <bitcode file>
+$JAVA_HOME/bin/lli --inspect <bitcode file>
 ```
 
 When launched, the inspector will suspend execution at the first instruction of the program and print a link to the console.

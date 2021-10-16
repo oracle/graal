@@ -219,14 +219,18 @@ The following examples are intended to show common use-cases that can be solved 
 
 ### Instrumentation Event Listeners
 
-The Instrument API is defined in the `com.oracle.truffle.api.instrumentation` package. Instrumentation agents can be developed by extending the `TruffleInstrument` class, and can be attached to a running GraalVM instance using the `Instrumenter` class. Once attached to a running language runtime, instrumentation agents remain usable as long as the language runtime is not disposed. Instrumentation agents on GraalVM can monitor a variety of VM-level runtime events, including any of the following:
+The Instrument API is defined in the `com.oracle.truffle.api.instrumentation` package.
+Instrumentation agents can be developed by extending the `TruffleInstrument` class, and can be attached to a running GraalVM instance using the `Instrumenter` class.
+Once attached to a running language runtime, instrumentation agents remain usable as long as the language runtime is not disposed.
+Instrumentation agents on GraalVM can monitor a variety of VM-level runtime events, including any of the following:
 
 1. _Source code-related events_: The agent can be notified every time a new [Source](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html) or [SourceSection](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html) element is loaded by the monitored language runtime.
 2. _Allocation events_: The agent can be notified every time a new object is allocated in the memory space of the monitored language runtime.
 3. _Language runtime and thread creation events_: The agent can be notified as soon as a new [execution context](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) or a new thread for a monitored language runtime is created.
 4. _Application execution events_: The agent gets notified every time a monitored application executes a specific set of language operations. Examples of such operations include language statements and expressions, thus allowing an instrumentation agent to inspect running applications with very high precision.
 
-For each execution event, instrumentation agents can define _filtering_ criteria that will be used by the GraalVM instrumentation runtime to monitor only the relevant execution events. Currently, GraalVM instruments accept one of the following two filter types:
+For each execution event, instrumentation agents can define _filtering_ criteria that will be used by the GraalVM instrumentation runtime to monitor only the relevant execution events.
+Currently, GraalVM instruments accept one of the following two filter types:
 
 1. `AllocationEventFilter` to filter allocation events by allocation type.
 2. `SourceSectionFilter` to filter source code locations in an application.
@@ -240,9 +244,12 @@ SourceSectionFilter.newBuilder()
                    .build()
 ```
 
-The filter in the example can be used to monitor the execution of all JavaScript statements in a given application. Other filtering options such as line numbers or file extensions can also be provided.
+The filter in the example can be used to monitor the execution of all JavaScript statements in a given application.
+Other filtering options such as line numbers or file extensions can also be provided.
 
-Source section filters like the one in the example can use _Tags_ to specify a set of execution events to be monitored. Language-agnostic tags such as statements and expressions are defined in the [`com.oracle.truffle.api.instrumentation.Tag`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html) class, and are supported by all GraalVM languages. In addition to standard tags, GraalVM languages may provide other, language-specific, tags to enable fine-grained profiling of language-specific events. (As an example, the GraalVM JavaScript engine provides JavaScript-specific tags to track the usages of ECMA builtin objects such as `Array`, `Map`, or `Math`.)
+Source section filters like the one in the example can use _Tags_ to specify a set of execution events to be monitored. Language-agnostic tags such as statements and expressions are defined in the [`com.oracle.truffle.api.instrumentation.Tag`](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Tag.html) class, and are supported by all GraalVM languages.
+In addition to standard tags, GraalVM languages may provide other, language-specific, tags to enable fine-grained profiling of language-specific events.
+(As an example, the GraalVM JavaScript engine provides JavaScript-specific tags to track the usages of ECMA builtin objects such as `Array`, `Map`, or `Math`.)
 
 ### Monitoring Execution Events
 
@@ -253,7 +260,8 @@ Application execution events enable very precise and detailed monitoring. GraalV
 
 ### Simple Instrumentation Agent
 
-A simple example of a custom instrumentation agent used to perform runtime code coverage can be found in the `CoverageExample` class. What follows is an overview of the agent, its design, and its capabilities.
+A simple example of a custom instrumentation agent used to perform runtime code coverage can be found in the `CoverageExample` class.
+What follows is an overview of the agent, its design, and its capabilities.
 
 All instruments extend the `TruffleInstrument` abstract class and are registered in the GraalVM runtime through the `@Registration` annotation:
 
@@ -269,7 +277,9 @@ public final class CoverageExample extends TruffleInstrument {
 }
 ```
 
-Instruments override the `onCreate(Env env)` method to perform custom operations at instrument loading time. Typically, an instrument would use this method to register itself in the existing GraalVM execution environment. As an example, an instrument using AST nodes can be registered in the following way:
+Instruments override the `onCreate(Env env)` method to perform custom operations at instrument loading time.
+Typically, an instrument would use this method to register itself in the existing GraalVM execution environment.
+As an example, an instrument using AST nodes can be registered in the following way:
 
 ```java
 @Override

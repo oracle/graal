@@ -18,7 +18,7 @@ The Java on Truffle execution mode runs Java via a Java bytecode interpreter, im
 Now Java can be executed by the same principle as other languages in the GraalVM ecosystem (JavaScript, Ruby, Python, R), directly interoperate with those languages, and pass data back and forth in the same memory space.
 Besides complete language interoperability, with Java on Truffle you can:
 
-- run Java bytecodes in a separate context from the host Java VM. It can run either a Java 8 or Java 11 guest or host JVM. In other words, you can embed a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
+- run Java bytecodes in a separate context from the host Java VM. It can run either a Java 8, Java 11, Java 17 guest or host JVM. In other words, you can embed a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native image while still allowing dynamically-loaded bytecodes.
@@ -90,13 +90,13 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 #### From Command Line
 
-For the purpose of this guide, GraalVM Enterprise 21.2.0 distribution, based on Java 11 for macOS, is used.
+For the purpose of this guide, GraalVM Enterprise 21.3.0 distribution, based on Java 11 for macOS, is used.
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
 java -truffle -version
-java version "11.0.12" 2021-07-20 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06)
-Espresso 64-Bit VM GraalVM EE 21.2.0 (build 11-espresso-21.2.0, mixed mode)
+java version "11.0.13" 2021-10-19 LTS
+Java(TM) SE Runtime Environment GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03)
+Espresso 64-Bit VM GraalVM EE 21.3.0 (build 11-espresso-21.3.0, mixed mode)
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:
@@ -109,8 +109,8 @@ public class HelloWorld {
 ```
 
 ```shell
-<graalvm>/bin/javac HelloWorld.java
-<graalvm>/bin/java -truffle HelloWorld
+$JAVA_HOME/bin/javac HelloWorld.java
+$JAVA_HOME/bin/java -truffle HelloWorld
 HelloWorld.java!
 ```
 
@@ -129,7 +129,7 @@ cd spring-petclinic
 
 3. Then run it from the command line by selecting the `-truffle` runtime:
 ```java
-java -truffle -jar target/spring-petclinic-2.4.2.jar
+java -truffle -jar target/spring-petclinic-<version>-SNAPSHOT.jar
 ```
 
 4. When the application starts, access it on [localhost:8000](http://localhost:8080/).
