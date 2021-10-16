@@ -70,15 +70,15 @@ Typically, a young collection is much faster than a full collection, however doi
 By default, the Serial GC tries to find a size for the generations that provides good throughput, but to not increase sizes further when doing so gives diminishing returns.
 It also tries to maintain a ratio between the time spent in young collections and in full collections to keep the footprint small.
 
-If no maximum Java heap size is specified, a native image that uses the Serial GC will set its maximum Java heap size to 25% of the physical memory size (or 50% for physical memory below 384 MB), but always to at least 96MB.
-For example, on a machine with 4GB of RAM, the maximum Java heap size will be set to 1GB.
-If the same image is executed on a machine that has 32GB of RAM, the maximum Java heap size will be set to 8GB.
+If no maximum Java heap size is specified, a native image that uses the Serial GC will set its maximum Java heap size to 80% of the physical memory size.
+For example, on a machine with 4GB of RAM, the maximum Java heap size will be set to 3.2GB.
+If the same image is executed on a machine that has 32GB of RAM, the maximum Java heap size will be set to 25.6GB.
 Note that this is just the maximum value.
 Depending on the application, the amount of actually used Java heap memory can be much lower.
 To override this default behavior, either specify a value for `-XX:MaximumHeapSizePercent` or explicitly set the maximum [Java heap size](#java-heap-size).
 
-Note that GraalVM releases up to (and including) 21.3 use a different default configuration for the Serial GC without survivor regions, a maximum Java heap size of 80% of physical memory, and a default collection policy that balances the time that is spent in young collections and old collections.
-This configuration can be enabled with `-H:InitialCollectionPolicy=BySpaceAndTime`.
+Note that GraalVM releases up to (and including) 21.3 use a different default configuration for the Serial GC with no survivor regions, a young generation that is limited to 256 MB, and a default collection policy that balances the time that is spent in young collections and old collections.
+This configuration can be enabled with: `-H:InitialCollectionPolicy=BySpaceAndTime`
 
 Be mindful that the GC needs some extra memory when performing a garbage collection (2x of the maximum heap size is the worst case, usually, it is significantly less).
 Therefore, the resident set size, RSS, can increase temporarily during a garbage collection which can be an issue in any environment with memory constraints (such as a container).
@@ -99,12 +99,12 @@ With a value of 0, objects that survive a young collection are directly promoted
 Arrays that are considered as large are more expensive to allocate but they are never copied by the GC, which can reduce the GC overhead.
 
 ```shell
-# Build and execute a native image that uses a maximum heap size of 75% of the physical memory
-native-image --gc=serial -R:MaximumHeapSizePercent=75 HelloWorld
+# Build and execute a native image that uses a maximum heap size of 25% of the physical memory
+native-image --gc=serial -R:MaximumHeapSizePercent=25 HelloWorld
 ./helloworld
 
-# Execute the native image from above but reduce the maximum heap size to 40% of the physical memory
-./helloworld -XX:MaximumHeapSizePercent=40
+# Execute the native image from above but increase the maximum heap size to 75% of the physical memory
+./helloworld -XX:MaximumHeapSizePercent=75
 ```
 
 The following options are available with `-H:InitialCollectionPolicy=BySpaceAndTime` only:
