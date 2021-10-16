@@ -55,7 +55,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     private int shrinkFactor;
 
     ProportionateSpacesPolicy() {
-        super(MAX_TENURING_THRESHOLD);
+        super(NEW_RATIO, MAX_TENURING_THRESHOLD);
     }
 
     @Override
