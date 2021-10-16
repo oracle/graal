@@ -65,12 +65,12 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int DEFAULT_TIME_WEIGHT = 25; // -XX:AdaptiveTimeWeight
 
     /* Constants to compute defaults for values which can be set through existing options. */
-    /** HotSpot: -XX:MaxHeapSize default without ergonomics. */
-    protected static final UnsignedWord SMALL_HEAP_SIZE = WordFactory.unsigned(96 * 1024 * 1024);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(128 * 1024 * 1024);
     protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
 
+    private final int initialNewRatio;
     protected UnsignedWord survivorSize;
     protected UnsignedWord edenSize;
     protected UnsignedWord promoSize;
@@ -80,8 +80,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected volatile SizeParameters sizes;
     private final ReentrantLock sizesUpdateLock = new ReentrantLock();
 
-    protected AbstractCollectionPolicy(int initialTenuringThreshold) {
-        tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
+    protected AbstractCollectionPolicy(int initialNewRatio, int initialTenuringThreshold) {
+        this.initialNewRatio = initialNewRatio;
+        this.tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
     }
 
     @Override
@@ -287,14 +288,14 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
         minHeap = UnsignedUtils.clamp(alignUp(minHeap), minAllSpaces, maxHeap);
 
-        UnsignedWord initialHeap = AbstractCollectionPolicy.SMALL_HEAP_SIZE;
+        UnsignedWord initialHeap = AbstractCollectionPolicy.INITIAL_HEAP_SIZE;
         initialHeap = UnsignedUtils.clamp(alignUp(initialHeap), minHeap, maxHeap);
 
         UnsignedWord initialYoung;
         if (initialHeap.equal(maxHeap)) {
             initialYoung = maxYoung;
         } else {
-            initialYoung = initialHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
+            initialYoung = initialHeap.unsignedDivide(initialNewRatio + 1);
             initialYoung = UnsignedUtils.clamp(alignUp(initialYoung), minYoungSpaces, maxYoung);
         }
         UnsignedWord initialSurvivor = WordFactory.zero();

@@ -107,6 +107,8 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
      */
     private static final double ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT = 0.5;
 
+    private static final int INITIAL_NEW_RATIO = 1; // same size for young and old generation
+
     /* Constants derived from other constants. */
     private static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
     private static final double THRESHOLD_TOLERANCE_PERCENT = 1.0 + THRESHOLD_TOLERANCE / 100.0;
@@ -137,7 +139,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private long oldGenChangeForMajorThroughput;
 
     AdaptiveCollectionPolicy() {
-        super(INITIAL_TENURING_THRESHOLD);
+        super(INITIAL_NEW_RATIO, INITIAL_TENURING_THRESHOLD);
     }
 
     @Override
