@@ -68,8 +68,6 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     /** HotSpot: -XX:MaxHeapSize default without ergonomics. */
     protected static final UnsignedWord SMALL_HEAP_SIZE = WordFactory.unsigned(96 * 1024 * 1024);
     protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
-    protected static final int LARGE_MEMORY_MAX_HEAP_PERCENT = 25; // -XX:MaxRAMPercentage
-    protected static final int SMALL_MEMORY_MAX_HEAP_PERCENT = 50; // -XX:MinRAMPercentage
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
 
@@ -261,20 +259,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         } else if (!PhysicalMemory.isInitialized()) {
             maxHeap = addressSpaceSize;
         } else {
-            UnsignedWord physicalMemorySize = PhysicalMemory.getCachedSize();
-            if (HeapParameters.Options.MaximumHeapSizePercent.hasBeenSet(RuntimeOptionValues.singleton())) {
-                maxHeap = physicalMemorySize.unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
-            } else {
-                UnsignedWord reasonableMax = physicalMemorySize.unsignedDivide(100).multiply(AbstractCollectionPolicy.LARGE_MEMORY_MAX_HEAP_PERCENT);
-                UnsignedWord reasonableMin = physicalMemorySize.unsignedDivide(100).multiply(AbstractCollectionPolicy.SMALL_MEMORY_MAX_HEAP_PERCENT);
-                if (reasonableMin.belowThan(AbstractCollectionPolicy.SMALL_HEAP_SIZE)) {
-                    // small physical memory, use a small fraction for the heap
-                    reasonableMax = reasonableMin;
-                } else {
-                    reasonableMax = UnsignedUtils.max(reasonableMax, AbstractCollectionPolicy.SMALL_HEAP_SIZE);
-                }
-                maxHeap = reasonableMax;
-            }
+            maxHeap = PhysicalMemory.getCachedSize().unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
         }
         UnsignedWord unadjustedMaxHeap = maxHeap;
         maxHeap = UnsignedUtils.clamp(alignDown(maxHeap), minAllSpaces, alignDown(addressSpaceSize));
