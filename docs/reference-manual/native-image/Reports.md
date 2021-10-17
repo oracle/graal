@@ -15,6 +15,10 @@ The call tree is a a breadth-first tree reduction of the call graph as seen by t
 The points-to analysis eliminates calls to methods that it determines cannot be reachable at runtime, based on the analysed receiver types.
 It also completely eliminates invocations in unreachable code blocks, e.g., blocks guarded by a type check that always fails.
 The call tree report is enabled using the `-H:+PrintAnalysisCallTree` option.
+Option `-H:PrintAnalysisCallTreeFilter=<comma-separated method list>` can be used to only print out the specified methods'
+call tree, and it implicitly sets the `-H:+PrintAnalysisCallTree`.
+The method should be specified with its full qualified name, such as `java.lang.String.hashCode()` for normal method
+and `java.lang.String.<clinit>()` for class static initialization method.
 It produces a file with the structure:
 
 ```
