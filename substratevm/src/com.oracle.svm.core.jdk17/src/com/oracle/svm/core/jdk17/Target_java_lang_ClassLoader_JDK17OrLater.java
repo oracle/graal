@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk15;
+package com.oracle.svm.core.jdk17;
 
 import java.io.File;
 import java.util.Deque;
@@ -32,15 +32,15 @@ import java.util.Set;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 
 import jdk.internal.loader.NativeLibraries;
 import jdk.internal.loader.NativeLibrary;
 
-@TargetClass(value = ClassLoader.class, onlyWith = JDK15OrLater.class)
+@TargetClass(value = ClassLoader.class, onlyWith = JDK17OrLater.class)
 @SuppressWarnings({"static-method", "unused"})
-final class Target_java_lang_ClassLoader_JDK15OrLater {
+final class Target_java_lang_ClassLoader_JDK17OrLater {
 
     @Substitute
     static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
@@ -57,8 +57,8 @@ final class Target_java_lang_ClassLoader_JDK15OrLater {
     }
 }
 
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, onlyWith = JDK15OrLater.class)
-final class Target_jdk_internal_loader_NativeLibraries_JDK15OrLater {
+@TargetClass(value = jdk.internal.loader.NativeLibraries.class, onlyWith = JDK17OrLater.class)
+final class Target_jdk_internal_loader_NativeLibraries_JDK17OrLater {
 
     /**
      * The NativeLibraries is only used by the `loadLibrary` methods that are substituted, so we do
@@ -88,7 +88,7 @@ final class Target_jdk_internal_loader_NativeLibraries_JDK15OrLater {
      */
 
     @Delete
-    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK15OrLater impl, String name, boolean isBuiltin, boolean isJNI);
+    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater impl, String name, boolean isBuiltin, boolean isJNI);
 
     @Delete
     private static native void unload(String name, boolean isBuiltin, boolean isJNI, long handle);
@@ -97,9 +97,9 @@ final class Target_jdk_internal_loader_NativeLibraries_JDK15OrLater {
     private static native String findBuiltinLib(String name);
 
     @Delete
-    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK15OrLater lib, String name);
+    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater lib, String name);
 }
 
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl", onlyWith = JDK15OrLater.class)
-final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK15OrLater {
+@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl", onlyWith = JDK17OrLater.class)
+final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater {
 }

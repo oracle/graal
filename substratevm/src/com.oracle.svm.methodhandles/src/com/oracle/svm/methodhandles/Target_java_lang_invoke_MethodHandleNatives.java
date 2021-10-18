@@ -54,9 +54,9 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesNotSupported;
 import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK15OrEarlier;
-import com.oracle.svm.core.jdk.JDK16OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
 
@@ -209,7 +209,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     // JDK 11
 
     @Substitute
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
         return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
     }
@@ -230,9 +230,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @AnnotateOriginal
     static native String refKindName(byte refKind);
 
-    // JDK 16
+    // JDK 17
+
     @Substitute
-    @TargetElement(onlyWith = JDK16OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
         Class<?> declaringClass = self.getDeclaringClass();
@@ -353,7 +354,7 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     private static Method verifyAccess;
 
     static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
-        assert JavaVersionUtil.JAVA_SPEC >= 16;
+        assert JavaVersionUtil.JAVA_SPEC >= 17;
         if (verifyAccess == null) {
             try {
                 verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
@@ -458,7 +459,7 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     // JDK 11
 
     @Delete
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK15OrEarlier.class})
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 
@@ -470,10 +471,10 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
 
-    // JDK 16
+    // JDK 17
 
     @Delete
-    @TargetElement(onlyWith = JDK16OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 }

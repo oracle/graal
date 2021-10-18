@@ -308,7 +308,7 @@ final class Target_javax_crypto_JceSecurity {
      *
      * This is only used in {@link KeyAgreement}, it's safe to remove.
      */
-    @Alias @TargetElement(onlyWith = JDK15OrEarlier.class) //
+    @Alias @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @InjectAccessors(JceSecurityAccessor.class) //
     static SecureRandom RANDOM;
 
@@ -376,7 +376,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK16OrLater.class)
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK17OrLater.class)
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_IdentityWrapper {
     @Alias //
@@ -419,10 +419,10 @@ class JceSecurityAccessor {
 final class JceSecurityUtil {
 
     static Object providerKey(Provider p) {
-        if (JavaVersionUtil.JAVA_SPEC < 16) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return p;
         }
-        /* Starting with JDK 16 the verification results map key is an identity wrapper object. */
+        /* Starting with JDK 17 the verification results map key is an identity wrapper object. */
         return new Target_javax_crypto_JceSecurity_IdentityWrapper(p);
     }
 

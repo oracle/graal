@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk15;
+package com.oracle.svm.core.jdk17;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK15OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk11.ModuleUtil;
 
-@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK15OrLater.class)
-final class Target_jdk_internal_loader_BootLoader_JDK15OrLater {
+@SuppressWarnings("unused")
+@TargetClass(value = Module.class, onlyWith = JDK17OrLater.class)
+public final class Target_java_lang_Module_JDK17OrLater {
 
-    @SuppressWarnings("unused")
+    // Checkstyle: allow synchronization
     @Substitute
-    private static void loadLibrary(String name) {
-        System.loadLibrary(name);
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
+        if (Arrays.stream(pns).anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Bad package name");
+        }
+        List<String> packages = Arrays.stream(pns).map(Object::toString).collect(Collectors.toUnmodifiableList());
+        ModuleUtil.defineModule(module, isOpen, packages);
     }
 }

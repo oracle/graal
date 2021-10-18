@@ -29,12 +29,13 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.HiddenClassSupport;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 
 /**
@@ -121,8 +122,8 @@ public class JfrTypeRepository implements JfrConstantPool {
         writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), true, true));
         writer.writeCompressedLong(typeInfo.getPackageId(clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
-        if (HiddenClassSupport.isAvailable()) {
-            writer.writeBoolean(HiddenClassSupport.singleton().isHidden(clazz));
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            writer.writeBoolean(SubstrateUtil.isHiddenClass(clazz));
         }
     }
 

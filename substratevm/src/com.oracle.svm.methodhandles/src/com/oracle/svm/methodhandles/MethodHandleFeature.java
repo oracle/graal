@@ -189,7 +189,7 @@ public class MethodHandleFeature implements Feature {
 
     private static void registerMHImplConstantHandlesForReflection(DuringAnalysisAccess access) {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        if (JavaVersionUtil.JAVA_SPEC <= 16) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "copyAsPrimitiveArray", access.findClassByName("sun.invoke.util.Wrapper"), Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "identity", Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "fillNewArray", Integer.class, Object[].class));

@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.NashornSupport.NashornAvailable;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "jdk.nashorn.api.scripting.NashornScriptEngineFactory", onlyWith = {JDK14OrEarlier.class, NashornAvailable.class})
+@TargetClass(className = "jdk.nashorn.api.scripting.NashornScriptEngineFactory", onlyWith = {JDK11OrEarlier.class, NashornAvailable.class})
 public final class Target_jdk_nashorn_api_scripting_NashornScriptEngineFactory {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})

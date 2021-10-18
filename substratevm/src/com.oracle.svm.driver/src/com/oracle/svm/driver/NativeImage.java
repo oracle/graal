@@ -1804,7 +1804,7 @@ public class NativeImage {
         return "1g";
     }
 
-    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize deprecated since JDK 14
+    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize is deprecated after JDK 11
     private static long getPhysicalMemorySize() {
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();

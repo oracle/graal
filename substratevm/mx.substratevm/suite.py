@@ -230,58 +230,13 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk14": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.access.foreign",
-                ],
-            },
-            "javaCompliance": "14+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk15": {
+        "com.oracle.svm.core.jdk17": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core.jdk11"],
             "requiresConcealed" : {
                 "java.base" : [
-                    "jdk.internal.loader",
-                    "jdk.internal.misc",
-                    "sun.invoke.util",
-                ],
-            },
-            "javaCompliance": "15+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk16": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.loader",
-                    "jdk.internal.misc",
-                    "sun.invoke.util",
-                ],
-            },
-            "javaCompliance": "16+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
+                    "jdk.internal.access.foreign",
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.platform",
@@ -455,7 +410,7 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-        "com.oracle.svm.hosted.jdk14": {
+        "com.oracle.svm.hosted.jdk17": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -467,7 +422,7 @@ suite = {
                 "jdk.internal.vm.ci" :
                     ["jdk.vm.ci.meta"],
             },
-            "javaCompliance": "14+",
+            "javaCompliance": "17+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -1079,13 +1034,10 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.hosted.jdk8",
                 "com.oracle.svm.hosted.jdk11",
-                "com.oracle.svm.hosted.jdk14",
+                "com.oracle.svm.hosted.jdk17",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk11",
-                "com.oracle.svm.core.jdk14",
-                "com.oracle.svm.core.jdk15",
-                "com.oracle.svm.core.jdk16",
                 "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",

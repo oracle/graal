@@ -590,12 +590,12 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.misc", false);
             }
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.org.objectweb.asm", false);
-            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
                 ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);

@@ -391,9 +391,6 @@ public class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        /* JDK 15 added support for Hidden Classes. Record if this javaClass is hidden. */
-        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
-
         Class<?> nestHost = null;
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
@@ -403,6 +400,7 @@ public class SVMHost implements HostVM {
             }
         }
 
+        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 

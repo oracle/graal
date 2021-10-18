@@ -22,15 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk17;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK17OrLater.class)
+final class Target_jdk_internal_loader_BootLoader_JDK17OrLater {
 
-public class JDK15OrEarlier implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC <= 15;
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void loadLibrary(String name) {
+        System.loadLibrary(name);
     }
 }

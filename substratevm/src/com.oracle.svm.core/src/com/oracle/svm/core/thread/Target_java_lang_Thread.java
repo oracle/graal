@@ -43,7 +43,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK14OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
@@ -64,17 +64,17 @@ public final class Target_java_lang_Thread {
      *
      * After JDK 11, a field with same name has been introduced and the logic to set / reset it has
      * moved into Java code. So this injected field and the substitutions that maintain it are no
-     * longer necessary. See {@link #interruptedJDK14OrLater}.
+     * longer necessary. See {@link #interruptedJDK17OrLater}.
      */
     @Inject //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interrupted;
+    volatile boolean interruptedJDK11OrEarlier;
 
     @Alias //
-    @TargetElement(name = "interrupted", onlyWith = JDK14OrLater.class) //
+    @TargetElement(name = "interrupted", onlyWith = JDK17OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK14OrLater;
+    volatile boolean interruptedJDK17OrLater;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
@@ -379,7 +379,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
-        final boolean result = interrupted;
+        final boolean result = interruptedJDK11OrEarlier;
         if (result && clearInterrupted) {
             /*
              * As we don't use a lock, it is possible to observe any kinds of races with other
@@ -389,7 +389,7 @@ public final class Target_java_lang_Thread {
              * isInterrupted as clearInterrupted may only be true if this method is being executed
              * by the current thread.
              */
-            interrupted = false;
+            interruptedJDK11OrEarlier = false;
         }
         return result;
     }
@@ -403,7 +403,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     void interrupt0() {
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            interrupted = true;
+            interruptedJDK11OrEarlier = true;
         } else {
             /*
              * After JDK 11, the interrupted flag is maintained by the JDK in Java code, i.e.,
@@ -537,7 +537,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
         /*
          * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
