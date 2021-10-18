@@ -59,7 +59,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -151,6 +150,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.BuildArtifacts;
@@ -696,12 +696,11 @@ public class NativeImageGenerator {
             try (StopTimer t = bb.getAnalysisTimer().start()) {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
-                    bb.runAnalysis(debug,
-                            (aUniverse) -> {
-                                bb.getHostVM().notifyClassReachabilityListener(aUniverse, config);
-                                featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
-                                return !config.getAndResetRequireAnalysisIteration();
-                            });
+                    bb.runAnalysis(debug, (universe) -> {
+                        bb.getHostVM().notifyClassReachabilityListener(universe, config);
+                        featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                        return !config.getAndResetRequireAnalysisIteration();
+                    });
                 } catch (AnalysisError e) {
                     throw UserError.abort(e, "Analysis step failed. Reason: %s.", e.getMessage());
                 }
