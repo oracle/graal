@@ -2,7 +2,7 @@
 layout: docs
 toc_group: vscode
 link_title: VisualVM and VS Code Integration
-permalink: /tools/vscode/visualvm-integration/
+permalink: /tools/vscode/graalvm/visualvm-integration/
 ---
 
 # VisualVM and VS Code Integration
