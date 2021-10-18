@@ -33,11 +33,14 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementorSnapshot;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -90,6 +93,37 @@ public abstract class InvokeInterface extends Node {
         }
 
         public abstract Object execute(Object[] args);
+
+        protected SingleImplementorSnapshot readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        @Specialization(assumptions = {"maybeImplementor.hasImplementor()", "resolvedMethod.getAssumption()"})
+        Object callSingleImplementor(Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
+                        @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
+                        @Cached("methodLookup(resolutionSeed, maybeImplementor.getImplementor())") Method.MethodVersion resolvedMethod,
+                        @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode,
+                        @Cached BranchProfile notAnImplementorProfile) {
+            assert args[0] == receiver;
+            assert !StaticObject.isNull(receiver);
+            // the receiver's klass is not the single implementor, i.e. does not implement the
+            // interface
+            if (receiver.getKlass() != maybeImplementor.getImplementor()) {
+                notAnImplementorProfile.enter();
+                ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
+                Klass receiverKlass = receiver.getKlass();
+
+                // check that receiver's klass indeed does not implement the interface
+                assert !interfaceKlass.checkInterfaceSubclassing(receiverKlass);
+
+                Meta meta = receiver.getKlass().getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", receiverKlass.getName(), interfaceKlass.getName());
+            }
+
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            return directCallNode.call(args);
+        }
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //

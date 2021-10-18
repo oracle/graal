@@ -32,10 +32,12 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementorSnapshot;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -108,6 +110,25 @@ public abstract class InvokeVirtual extends Node {
             Object doCached(Object[] args, @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
                 return directCallNode.call(args);
             }
+        }
+
+        protected SingleImplementorSnapshot readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        @Specialization(assumptions = {
+                        "maybeImplementor.hasImplementor()",
+                        "resolvedMethod.getAssumption()"
+        })
+        Object callSingleImplementor(Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
+                        @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
+                        @Cached("methodLookup(resolutionSeed, maybeImplementor.getImplementor())") Method.MethodVersion resolvedMethod,
+                        @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
+            assert args[0] == receiver;
+            assert !StaticObject.isNull(receiver);
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            return directCallNode.execute(args);
         }
 
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
