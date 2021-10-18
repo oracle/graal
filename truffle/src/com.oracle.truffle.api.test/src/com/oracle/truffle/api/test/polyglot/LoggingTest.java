@@ -413,10 +413,10 @@ public class LoggingTest {
                 return false;
             }
         };
-        final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context ctx1 = Context.newBuilder().err(err).build()) {
+        final ByteArrayOutputStream logStream = new ByteArrayOutputStream();
+        try (Context ctx1 = Context.newBuilder().logHandler(logStream).build()) {
             ctx1.eval(LoggingLanguageFirst.ID, "");
-            final String output = new String(err.toByteArray());
+            final String output = new String(logStream.toByteArray());
             Assert.assertTrue(output, output.indexOf(expected) > 0);
         }
     }
