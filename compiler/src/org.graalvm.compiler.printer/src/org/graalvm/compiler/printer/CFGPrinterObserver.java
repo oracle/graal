@@ -178,7 +178,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             CodeCacheProvider codeCache = debug.contextLookup(CodeCacheProvider.class);
             if (object instanceof LIR) {
                 // Currently no node printing for lir
-                cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
+                cfgPrinter.printCFG(message, cfgPrinter.lir.getBlocks());
                 lastLIR = (LIR) object;
                 if (delayedIntervals != null) {
                     cfgPrinter.printIntervals(message, delayedIntervals);

@@ -83,7 +83,10 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase
         }
 
         LIR ir = lirGenRes.getLIR();
-        for (AbstractBlockBase<?> block : ir.linearScanOrder()) {
+        for (AbstractBlockBase<?> block : ir.getBlocks()) {
+            if (block == null) {
+                continue;
+            }
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             for (int i = 0; i < instructions.size(); i++) {
                 LIRInstruction op = instructions.get(i);

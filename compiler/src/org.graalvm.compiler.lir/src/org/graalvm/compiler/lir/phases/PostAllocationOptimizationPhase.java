@@ -24,15 +24,18 @@
  */
 package org.graalvm.compiler.lir.phases;
 
+import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 
 public abstract class PostAllocationOptimizationPhase extends LIRPhase<PostAllocationOptimizationPhase.PostAllocationOptimizationContext> {
 
     public static final class PostAllocationOptimizationContext {
         public final DiagnosticLIRGeneratorTool diagnosticLirGenTool;
+        public final ComputeBlockOrder<?> blockOrder;
 
-        public PostAllocationOptimizationContext(DiagnosticLIRGeneratorTool diagnosticTool) {
+        public PostAllocationOptimizationContext(DiagnosticLIRGeneratorTool diagnosticTool, ComputeBlockOrder<?> blockOrder) {
             this.diagnosticLirGenTool = diagnosticTool;
+            this.blockOrder = blockOrder;
         }
     }
 }

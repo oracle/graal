@@ -26,6 +26,8 @@ package org.graalvm.compiler.lir.phases;
 
 import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.ComputeCodeEmissionOrder;
 import org.graalvm.compiler.lir.ControlFlowOptimizer;
 import org.graalvm.compiler.lir.EdgeMoveOptimizer;
 import org.graalvm.compiler.lir.NullCheckOptimizer;
@@ -63,20 +65,28 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         if (Options.LIROptEdgeMoveOptimizer.getValue(options)) {
             appendPhase(new EdgeMoveOptimizer());
         }
-        if (Options.LIROptControlFlowOptimizer.getValue(options)) {
-            appendPhase(new ControlFlowOptimizer());
-        }
         if (Options.LIROptRedundantMoveElimination.getValue(options)) {
             appendPhase(new RedundantMoveElimination());
         }
         if (Options.LIROptNullCheckOptimizer.getValue(options)) {
             appendPhase(new NullCheckOptimizer());
         }
+        // Control flow optimization looks for empty blocks, so for full effect it should run after
+        // any other optimizations that may eliminate instructions.
+        if (Options.LIROptControlFlowOptimizer.getValue(options)) {
+            appendPhase(new ControlFlowOptimizer());
+        }
         if (Options.LIRProfileMoves.getValue(options)) {
             appendPhase(new MoveProfilingPhase());
         }
         if (Options.LIRProfileMethods.getValue(options)) {
             appendPhase(new MethodProfilingPhase());
+        }
+        if (ComputeCodeEmissionOrder.Options.LateCodeEmissionOrder.getValue(options)) {
+            appendPhase(new ComputeCodeEmissionOrder());
+        } else {
+            GraalError.guarantee(ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(options),
+                            "no code emission order computation enabled, specify at least one of EarlyCodeEmissionOrder=true or LateCodeEmissionOrder=true");
         }
     }
 }

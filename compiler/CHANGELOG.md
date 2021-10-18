@@ -9,6 +9,7 @@ This changelog summarizes newly introduced optimizations that may be relevant to
 
 ## Version 22.0.0
 * (GR-22707) (GR-30838): New, inner loops first, reverse post order and loop frequency calculations for the compiler.
+* (GR-16452) Compute the code emission basic block order after backend control flow optimizations.
 
 ## Version 21.2.0
 * (GR-29770) Loop safepoint elimination: Not only consider 32bit loops for safepoint removal but also 64bit ones

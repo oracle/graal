@@ -489,5 +489,4 @@ class CFGPrinter extends CompilationPrinter {
 
         printBlockEpilog(block);
     }
-
 }

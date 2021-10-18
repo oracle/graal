@@ -195,6 +195,13 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public abstract boolean isLoopHeader();
 
+    /**
+     * If this block {@linkplain #isLoopHeader() is a loop header}, returns the number of the loop's
+     * backedges. Note that due to control flow optimizations after computing loops this value may
+     * differ from that computed via {@link #getLoop()}. Returns -1 if this is not a loop header.
+     */
+    public abstract long numBackedges();
+
     public abstract T getPostdominator();
 
     public abstract double getRelativeFrequency();

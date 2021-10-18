@@ -47,7 +47,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer(lir).deleteEmptyBlocks(lir.codeEmittingOrder());
+        new Optimizer(lir).deleteEmptyBlocks(lir.getBlocks());
     }
 
     private static final class Optimizer {
@@ -62,7 +62,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
 
         /**
          * Checks whether a block can be deleted. Only blocks with exactly one successor and an
-         * unconditional branch to this successor are eligable.
+         * unconditional branch to this successor are eligible.
          *
          * @param block the block checked for deletion
          * @return whether the block can be deleted

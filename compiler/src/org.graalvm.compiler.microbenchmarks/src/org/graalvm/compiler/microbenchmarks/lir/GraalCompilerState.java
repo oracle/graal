@@ -308,7 +308,7 @@ public abstract class GraalCompilerState {
     private NodeLIRBuilderTool nodeLirGen;
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
-    private AbstractBlockBase<?>[] codeEmittingOrder;
+    private ComputeBlockOrder<?> blockOrder;
     private AbstractBlockBase<?>[] linearScanOrder;
 
     /**
@@ -373,11 +373,10 @@ public abstract class GraalCompilerState {
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        ComputeBlockOrder blockOrder = request.backend.newBlockOrder();
-        codeEmittingOrder = blockOrder.computeCodeEmittingOrder(blocks.length, startBlock, getGraphOptions());
-        linearScanOrder = blockOrder.computeLinearScanOrder(blocks.length, startBlock);
+        blockOrder = request.backend.newBlockOrder(blocks.length, startBlock);
+        linearScanOrder = blockOrder.computeLinearScanOrder();
 
-        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
+        LIR lir = new LIR(cfg, linearScanOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
         RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
         lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
@@ -457,7 +456,7 @@ public abstract class GraalCompilerState {
     }
 
     protected PostAllocationOptimizationContext createPostAllocationOptimizationContext() {
-        return new PostAllocationOptimizationContext(lirGenTool);
+        return new PostAllocationOptimizationContext(lirGenTool, blockOrder);
     }
 
     /**

@@ -674,7 +674,7 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (AbstractBlockBase<?> block : generatedLIR.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : generatedLIR.getBlocks()) {
             if (block != null) {
                 for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
                     if (op instanceof LabelHoldingOp) {
@@ -722,7 +722,7 @@ public class CompilationResultBuilder {
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+        for (AbstractBlockBase<?> block : lir.getBlocks()) {
             if (block == null) {
                 continue;
             }

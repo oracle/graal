@@ -27,19 +27,19 @@ package org.graalvm.compiler.core.common.cfg;
 
 import org.graalvm.compiler.options.OptionValues;
 
-public interface ComputeBlockOrder {
+public interface ComputeBlockOrder<T extends AbstractBlockBase<T>> {
 
     /**
      * Computes the block order used for the linear scan register allocator.
      *
      * @return sorted list of blocks
      */
-    <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int blockCount, T startBlock);
+    AbstractBlockBase<?>[] computeLinearScanOrder();
 
     /**
      * Computes the block order used for code emission.
      *
      * @return sorted list of blocks
      */
-    <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeCodeEmittingOrder(int blockCount, T startBlock, OptionValues options);
+    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options);
 }

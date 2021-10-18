@@ -28,12 +28,12 @@ package org.graalvm.compiler.core.common.alloc;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Comparator;
-import java.util.List;
 import java.util.PriorityQueue;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.OptionValues;
 
 /**
@@ -56,7 +56,7 @@ import org.graalvm.compiler.options.OptionValues;
  * algorithm sets the linear scan order number of the block that corresponds to its index in the
  * linear scan order.
  */
-public class BasicBlockOrder implements ComputeBlockOrder {
+public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeBlockOrder<T> {
 
     /**
      * The initial capacities of the worklists used for iteratively finding the block order.
@@ -70,19 +70,28 @@ public class BasicBlockOrder implements ComputeBlockOrder {
      */
     private static final int PENALTY_VERSUS_UNSCHEDULED = 10;
 
+    protected int originalBlockCount;
+    protected T startBlock;
+
+    public BasicBlockOrder(int originalBlockCount, T startBlock) {
+        this.originalBlockCount = originalBlockCount;
+        this.startBlock = startBlock;
+    }
+
     /**
      * Computes the block order used for the linear scan register allocator.
      *
      * @return sorted list of blocks
      */
     @Override
-    public <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeLinearScanOrder(int blockCount, T startBlock) {
-        List<T> order = new ArrayList<>();
-        BitSet visitedBlocks = new BitSet(blockCount);
+    public AbstractBlockBase<?>[] computeLinearScanOrder() {
+        BlockList<T> order = new BlockList<>(originalBlockCount);
+        BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
         computeLinearScanOrder(order, worklist, visitedBlocks);
-        assert checkOrder(order, blockCount);
-        return order.toArray(new AbstractBlockBase<?>[0]);
+        checkOrder(order, originalBlockCount);
+        checkStartBlock(order, startBlock);
+        return order.toArray();
     }
 
     /**
@@ -91,19 +100,19 @@ public class BasicBlockOrder implements ComputeBlockOrder {
      * @return sorted list of blocks
      */
     @Override
-    public <T extends AbstractBlockBase<T>> AbstractBlockBase<?>[] computeCodeEmittingOrder(int blockCount, T startBlock, OptionValues options) {
-        List<T> order = new ArrayList<>();
-        BitSet visitedBlocks = new BitSet(blockCount);
+    public AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options) {
+        BlockList<T> order = new BlockList<>(originalBlockCount);
+        BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
         computeCodeEmittingOrder(order, worklist, visitedBlocks);
-        assert checkOrder(order, blockCount);
-        return order.toArray(new AbstractBlockBase<?>[0]);
+        checkStartBlock(order, startBlock);
+        return order.toArray();
     }
 
     /**
      * Iteratively adds paths to the code emission block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeCodeEmittingOrder(List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> void computeCodeEmittingOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
             addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks);
@@ -113,7 +122,7 @@ public class BasicBlockOrder implements ComputeBlockOrder {
     /**
      * Iteratively adds paths to the linear scan block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeLinearScanOrder(List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> void computeLinearScanOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
             do {
@@ -135,10 +144,10 @@ public class BasicBlockOrder implements ComputeBlockOrder {
     /**
      * Add a linear path to the linear scan order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> T addPathToLinearScanOrder(T block, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> T addPathToLinearScanOrder(T block, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         block.setLinearScanNumber(order.size());
         order.add(block);
-        T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
+        T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, order, visitedBlocks);
         enqueueSuccessors(block, worklist, visitedBlocks);
         if (mostLikelySuccessor != null) {
             if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
@@ -165,67 +174,87 @@ public class BasicBlockOrder implements ComputeBlockOrder {
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, List<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
         T block = initialBlock;
         while (block != null) {
+            if (order.isScheduled(block)) {
+                /**
+                 * We may be revisiting a block that has already been scheduled. This can happen for
+                 * triangles:
+                 *
+                 * <pre>
+                 *     A
+                 *     |\
+                 *     | B
+                 *     |/
+                 *     C
+                 * </pre>
+                 *
+                 * C will be added to the worklist twice: once when A is scheduled, and once when B
+                 * is scheduled.
+                 */
+                break;
+            }
             if (!skipLoopHeader(block)) {
-
                 // Align unskipped loop headers as they are the target of the backward jump.
                 if (block.isLoopHeader()) {
                     block.setAlign(true);
                 }
-                addBlock(block, order);
+                order.add(block);
             }
 
-            Loop<T> loop = block.getLoop();
-            if (block.isLoopEnd() && skipLoopHeader(loop.getHeader())) {
+            if (block.isLoopEnd()) {
+                Loop<T> blockLoop = block.getLoop();
 
-                // This is the only loop end of a skipped loop header.
-                // Add the header immediately afterwards.
-                addBlock(loop.getHeader(), order);
+                for (T succ : block.getSuccessors()) {
+                    if (order.isScheduled(succ)) {
+                        continue;
+                    }
+                    Loop<T> loop = succ.getLoop();
+                    if (loop == blockLoop && succ == loop.getHeader() && skipLoopHeader(succ)) {
+                        // This is the only loop end of a skipped loop header.
+                        // Add the header immediately afterwards.
+                        order.add(loop.getHeader());
 
-                // for inverted loops (they always have a single loop end) do not align the header
-                // successor block if its a trivial loop, since thats the loop end again
-                boolean alignSucc = true;
-                if (loop.isInverted() && loop.getBlocks().size() < 2) {
-                    alignSucc = false;
-                }
+                        // For inverted loops (they always have a single loop end) do not align
+                        // the header successor block if it's a trivial loop, since that's the loop
+                        // end again.
+                        boolean alignSucc = true;
+                        if (loop.isInverted() && loop.getBlocks().size() < 2) {
+                            alignSucc = false;
+                        }
 
-                if (alignSucc) {
-                    // Make sure the loop successors of the loop header are aligned
-                    // as they are the target
-                    // of the backward jump.
-                    for (T successor : loop.getHeader().getSuccessors()) {
-                        if (successor.getLoopDepth() == block.getLoopDepth()) {
-                            successor.setAlign(true);
+                        if (alignSucc) {
+                            // Make sure the loop successors of the loop header are aligned
+                            // as they are the target of the backward jump.
+                            for (T successor : loop.getHeader().getSuccessors()) {
+                                if (successor.getLoopDepth() == block.getLoopDepth()) {
+                                    successor.setAlign(true);
+                                }
+                            }
                         }
                     }
                 }
             }
-            T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
+
+            T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, order, visitedBlocks);
             enqueueSuccessors(block, worklist, visitedBlocks);
             block = mostLikelySuccessor;
         }
-
-    }
-
-    /**
-     * Adds a block to the ordering.
-     */
-    private static <T extends AbstractBlockBase<T>> void addBlock(T header, List<T> order) {
-        assert !order.contains(header) : "Cannot insert block twice";
-        order.add(header);
     }
 
     /**
      * Find the highest likely unvisited successor block of a given block.
      */
-    private static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks) {
         T result = null;
+        double maxSuccFrequency = -1.0;
         for (T successor : block.getSuccessors()) {
             assert successor.getRelativeFrequency() >= 0.0 : "Relative frequencies must be positive";
-            if (!visitedBlocks.get(successor.getId()) && successor.getLoopDepth() >= block.getLoopDepth() && (result == null || successor.getRelativeFrequency() >= result.getRelativeFrequency())) {
+            boolean scheduled = order.isScheduled(successor);
+            if (!scheduled && successor.getLoopDepth() >= block.getLoopDepth() && successor.getRelativeFrequency() >= maxSuccFrequency) {
                 result = successor;
+                maxSuccFrequency = successor.getRelativeFrequency();
             }
         }
         if (result != null) {
@@ -248,17 +277,32 @@ public class BasicBlockOrder implements ComputeBlockOrder {
 
     /**
      * Skip the loop header block if the loop consists of more than one block and it has only a
-     * single loop end block.
+     * single loop end block in the same loop (not a backedge from a nested loop).
      */
     protected static <T extends AbstractBlockBase<T>> boolean skipLoopHeader(AbstractBlockBase<T> block) {
-        return (block.isLoopHeader() && !block.isLoopEnd() && block.getLoop().numBackedges() == 1);
+        if (block.isLoopHeader() && !block.isLoopEnd() && block.numBackedges() == 1) {
+            for (T pred : block.getPredecessors()) {
+                if (pred.isLoopEnd() && pred.getLoop().getHeader() == block) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
      * Checks that the ordering contains the expected number of blocks.
      */
-    protected static boolean checkOrder(List<? extends AbstractBlockBase<?>> order, int expectedBlockCount) {
-        assert order.size() == expectedBlockCount : String.format("Number of blocks in ordering (%d) does not match expected block count (%d)", order.size(), expectedBlockCount);
+    protected static boolean checkOrder(BlockList<? extends AbstractBlockBase<?>> order, int expectedBlockCount) {
+        GraalError.guarantee(order.size() == expectedBlockCount, "Number of blocks in ordering (%d) does not match expected block count (%d)", order.size(), expectedBlockCount);
+        return true;
+    }
+
+    /**
+     * Checks that the ordering starts with the expected start block.
+     */
+    protected static <T extends AbstractBlockBase<T>> boolean checkStartBlock(BlockList<T> order, T startBlock) {
+        GraalError.guarantee(order.first() == startBlock, "First block of ordering (%s) does not match expected start block %s", order.first(), startBlock);
         return true;
     }
 
@@ -285,6 +329,42 @@ public class BasicBlockOrder implements ComputeBlockOrder {
             } else {
                 return 1;
             }
+        }
+    }
+
+    /**
+     * A data structure combining an append-only list of blocks and a bit set for efficiently
+     * checking which blocks have been added.
+     */
+    public static class BlockList<T extends AbstractBlockBase<T>> {
+        private final ArrayList<T> order;
+        private final BitSet scheduledBlocks;
+
+        public BlockList(int capacity) {
+            this.order = new ArrayList<>(capacity);
+            this.scheduledBlocks = new BitSet(capacity);
+        }
+
+        public void add(T block) {
+            GraalError.guarantee(!scheduledBlocks.get(block.getId()), "Cannot insert block twice: ", block);
+            order.add(block);
+            scheduledBlocks.set(block.getId());
+        }
+
+        public int size() {
+            return order.size();
+        }
+
+        public T first() {
+            return order.get(0);
+        }
+
+        public boolean isScheduled(T block) {
+            return scheduledBlocks.get(block.getId());
+        }
+
+        public AbstractBlockBase<?>[] toArray() {
+            return order.toArray(new AbstractBlockBase<?>[0]);
         }
     }
 }
