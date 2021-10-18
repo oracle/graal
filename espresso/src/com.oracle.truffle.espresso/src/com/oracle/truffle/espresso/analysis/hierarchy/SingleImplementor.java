@@ -110,6 +110,7 @@ public final class SingleImplementor {
     }
 
     public SingleImplementorSnapshot read() {
+        CompilerAsserts.partialEvaluationConstant(currentSnapshot);
         return SNAPSHOT_UPDATER.get(this);
     }
 }
