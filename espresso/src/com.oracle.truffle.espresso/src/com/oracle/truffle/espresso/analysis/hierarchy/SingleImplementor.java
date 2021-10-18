@@ -23,10 +23,11 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -46,14 +47,16 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
 public final class SingleImplementor {
-    private final AtomicReference<SingleImplementorSnapshot> currentSnapshot;
+    @CompilationFinal private volatile SingleImplementorSnapshot currentSnapshot;
+    private static final AtomicReferenceFieldUpdater<SingleImplementor, SingleImplementorSnapshot> SNAPSHOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SingleImplementor.class,
+                    SingleImplementorSnapshot.class, "currentSnapshot");
 
     static SingleImplementor Invalid = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
     static SingleImplementorSnapshot MultipleImplementorsSnapshot = Invalid.read();
 
     // Used only to create an invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        this.currentSnapshot = new AtomicReference<>(new SingleImplementorSnapshot(assumption, value));
+        this.currentSnapshot = new SingleImplementorSnapshot(assumption, value);
     }
 
     private SingleImplementor() {
@@ -72,12 +75,12 @@ public final class SingleImplementor {
     }
 
     private void addSecondImplementor(ObjectKlass implementor) {
-        SingleImplementorSnapshot snapshot = currentSnapshot.get();
+        SingleImplementorSnapshot snapshot = SNAPSHOT_UPDATER.get(this);
         if (snapshot.implementor == implementor) {
             return;
         }
-        while (!currentSnapshot.compareAndSet(snapshot, MultipleImplementorsSnapshot)) {
-            snapshot = currentSnapshot.get();
+        while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
+            snapshot = SNAPSHOT_UPDATER.get(this);
         }
         snapshot.hasImplementor().invalidate();
     }
@@ -87,13 +90,13 @@ public final class SingleImplementor {
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
 
-        SingleImplementorSnapshot snapshot = currentSnapshot.get();
+        SingleImplementorSnapshot snapshot = SNAPSHOT_UPDATER.get(this);
         if (snapshot == MultipleImplementorsSnapshot) {
             return;
         }
         if (snapshot.implementor == null) {
             SingleImplementorSnapshot singleImplementor = new SingleImplementorSnapshot(Truffle.getRuntime().createAssumption("single implementor"), implementor);
-            if (currentSnapshot.compareAndSet(snapshot, singleImplementor)) {
+            if (SNAPSHOT_UPDATER.compareAndSet(this, snapshot, singleImplementor)) {
                 // successfully set the first implementor
                 snapshot.hasImplementor().invalidate();
             } else {
@@ -107,6 +110,6 @@ public final class SingleImplementor {
     }
 
     public SingleImplementorSnapshot read() {
-        return currentSnapshot.get();
+        return SNAPSHOT_UPDATER.get(this);
     }
 }
