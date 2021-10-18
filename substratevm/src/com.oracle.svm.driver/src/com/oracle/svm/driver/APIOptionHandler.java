@@ -64,7 +64,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final class OptionInfo {
         final String[] variants;
-        final char valueSeparator;
+        final char[] valueSeparator;
         final String builderOption;
         final String defaultValue;
         final String helpText;
@@ -76,7 +76,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final List<Function<Object, Object>> valueTransformers;
         final APIOptionGroup group;
 
-        OptionInfo(String[] variants, char valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
+        OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
                         List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
             this.variants = variants;
             this.valueSeparator = valueSeparator;
@@ -150,6 +150,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
                     optionValueType = optionValueType.getComponentType();
                 }
+                boolean hasFixedValue = apiAnnotation.fixedValue().length > 0;
                 if (optionValueType.equals(Boolean.class)) {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
@@ -182,7 +183,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (apiAnnotation.defaultValue().length > 0) {
                         VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.defaultValue", apiOptionName, rawOptionName));
                     }
-                    if (apiAnnotation.fixedValue().length > 0) {
+                    if (hasFixedValue) {
                         VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s) cannot use APIOption.fixedValue", apiOptionName, rawOptionName));
                     }
                     builderOption += apiAnnotation.kind().equals(APIOptionKind.Negated) ? "-" : "+";
@@ -201,13 +202,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (apiAnnotation.fixedValue().length > 1) {
                         VMError.shouldNotReachHere(String.format("APIOption %s(%s) cannot have more than one APIOption.fixedValue", apiOptionName, rawOptionName));
                     }
-                    if (apiAnnotation.fixedValue().length > 0 && apiAnnotation.defaultValue().length > 0) {
+                    if (hasFixedValue && apiAnnotation.defaultValue().length > 0) {
                         VMError.shouldNotReachHere(String.format("APIOption %s(%s) APIOption.defaultValue and APIOption.fixedValue cannot be combined", apiOptionName, rawOptionName));
                     }
                     if (apiAnnotation.defaultValue().length > 0) {
                         defaultValue = apiAnnotation.defaultValue()[0];
                     }
-                    if (apiAnnotation.fixedValue().length > 0) {
+                    if (hasFixedValue) {
                         defaultValue = apiAnnotation.fixedValue()[0];
                     }
 
@@ -236,10 +237,20 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                                         "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
                     }
                 }
+                if (Arrays.asList(apiAnnotation.valueSeparator()).contains(APIOption.WHITESPACE_SEPARATOR)) {
+                    String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
+                    if (booleanOption) {
+                        throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
+                    }
+                    if (hasFixedValue) {
+                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
+                    }
+                }
+                boolean defaultFinal = booleanOption || hasFixedValue;
                 apiOptions.put(apiOptionName,
                                 new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
                                                 apiAnnotation.kind().equals(APIOptionKind.Paths),
-                                                booleanOption || apiAnnotation.fixedValue().length > 0, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
+                                                defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */
@@ -253,8 +264,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
-
-        String translatedOption = translateOption(headArg);
+        String translatedOption = translateOption(args);
         if (translatedOption != null) {
             args.poll();
             nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin));
@@ -266,16 +276,18 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     GroupInfo groupInfo = entry.getValue();
                     String groupName = APIOption.Utils.optionName(groupInfo.group.name());
                     String supportedValues = "'" + String.join("', '", groupInfo.supportedValues) + "'";
-                    NativeImage.showError("'" + headArg.substring(groupNameAndSeparator.length()) + "' is not a valid value for the option " + groupName + ". Supported values are " + supportedValues);
+                    NativeImage.showError("In " + args.argumentOrigin + " '" + headArg.substring(groupNameAndSeparator.length()) + "' is not a valid value for the option " + groupName +
+                                    ". Supported values are " + supportedValues);
                 }
             }
         }
         return false;
     }
 
-    String translateOption(String arg) {
+    String translateOption(ArgumentQueue argQueue) {
         OptionInfo option = null;
         String[] optionNameAndOptionValue = null;
+        String argumentOrigin = argQueue.argumentOrigin;
         found: for (OptionInfo optionInfo : apiOptions.values()) {
             for (String variant : optionInfo.variants) {
                 String optionName;
@@ -284,29 +296,40 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 } else {
                     optionName = APIOption.Utils.groupName(optionInfo.group) + variant;
                 }
-                if (arg.equals(optionName)) {
+                String headArg = argQueue.peek();
+                if (optionInfo.defaultFinal && headArg.equals(optionName)) {
                     option = optionInfo;
                     optionNameAndOptionValue = new String[]{optionName};
                     break found;
                 }
-                if (arg.startsWith(optionName + optionInfo.valueSeparator)) {
-                    option = optionInfo;
-                    optionNameAndOptionValue = SubstrateUtil.split(arg, Character.toString(optionInfo.valueSeparator), 2);
-                    break found;
+                for (char valueSeparator : optionInfo.valueSeparator) {
+                    if (valueSeparator == APIOption.WHITESPACE_SEPARATOR && headArg.equals(optionName)) {
+                        argQueue.poll();
+                        String optionValue = argQueue.peek();
+                        if (optionValue == null) {
+                            NativeImage.showError(headArg + " from " + argumentOrigin + " requires option argument");
+                        }
+                        option = optionInfo;
+                        optionNameAndOptionValue = new String[]{headArg, optionValue};
+                        break found;
+                    } else if (headArg.startsWith(optionName + valueSeparator)) {
+                        option = optionInfo;
+                        optionNameAndOptionValue = SubstrateUtil.split(headArg, Character.toString(valueSeparator), 2);
+                        break found;
+                    }
                 }
             }
-
         }
         if (option != null) {
             if (!option.deprecationWarning.isEmpty()) {
-                NativeImage.showWarning("Using a deprecated option " + optionNameAndOptionValue[0] + ". " + option.deprecationWarning);
+                NativeImage.showWarning("Using a deprecated option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + ". " + option.deprecationWarning);
             }
             String builderOption = option.builderOption;
             /* If option is in group, defaultValue has different use */
             String optionValue = option.group != null ? null : option.defaultValue;
             if (optionNameAndOptionValue.length == 2) {
                 if (option.defaultFinal) {
-                    NativeImage.showError("Passing values to option " + optionNameAndOptionValue[0] + " is not supported.");
+                    NativeImage.showError("Passing values to option " + optionNameAndOptionValue[0] + " from " + argumentOrigin + " is not supported.");
                 }
                 optionValue = optionNameAndOptionValue[1];
             }
