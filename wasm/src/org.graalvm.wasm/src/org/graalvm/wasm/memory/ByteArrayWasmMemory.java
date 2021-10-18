@@ -408,4 +408,9 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         System.arraycopy(buffer, 0, other.buffer, 0, buffer.length);
         return other;
     }
+
+    @Override
+    public void close() {
+        buffer = null;
+    }
 }

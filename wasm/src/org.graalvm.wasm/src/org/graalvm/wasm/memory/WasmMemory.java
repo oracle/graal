@@ -68,7 +68,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject {
+public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject, AutoCloseable {
 
     private Object growCallback = null;
 
@@ -505,4 +505,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected void invokeGrowCallback() {
         WebAssembly.invokeMemGrowCallback(this);
     }
+
+    @Override
+    public abstract void close();
 }
