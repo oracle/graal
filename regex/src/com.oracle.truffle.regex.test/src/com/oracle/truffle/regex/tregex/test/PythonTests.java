@@ -42,14 +42,24 @@ package com.oracle.truffle.regex.tregex.test;
 
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class PythonTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
         return "Flavor=PythonStr";
+    }
+
+    protected void testLastGroup(String pattern, String flags, Object input, int fromIndex, int lastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags);
+        Value result = execRegex(compiledRegex, input, fromIndex);
+        assertEquals(true, result.getMember("isMatch").asBoolean());
+        assertEquals(lastGroup, result.getMember("lastGroup").asInt());
     }
 
     @Test
@@ -161,5 +171,14 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void gr32018() {
         test("\\s*(?:#\\s*)?$", "y", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+    }
+
+    @Test
+    public void gr32537() {
+        // Tests from the original issue. These test the literal engine.
+        testLastGroup("(a)(b)", "", "ab", 0, 2);
+        testLastGroup("(a(b))", "", "ab", 0, 1);
+        testLastGroup("(a)()", "", "ab", 0, 2);
+        testLastGroup("(a())", "", "ab", 0, 1);
     }
 }

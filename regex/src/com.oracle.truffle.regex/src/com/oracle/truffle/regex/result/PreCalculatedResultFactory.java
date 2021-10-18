@@ -107,7 +107,6 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
     }
 
     public void setLastGroup(int lastGroup) {
-        // TODO: Update this when building PreCalculatedResultFactories.
         this.lastGroup = lastGroup;
     }
 
