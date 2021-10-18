@@ -236,6 +236,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
+    @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> CHA = new OptionKey<>(false);
+
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 

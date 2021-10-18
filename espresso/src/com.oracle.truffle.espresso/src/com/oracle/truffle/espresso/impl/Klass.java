@@ -743,7 +743,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
      * This method provides a semantically equivalent test that appropriate for types.
      */
-    public boolean isLeaf() {
+    public boolean hasNoSubtypes() {
         return getElementalType().isFinalFlagSet();
     }
 

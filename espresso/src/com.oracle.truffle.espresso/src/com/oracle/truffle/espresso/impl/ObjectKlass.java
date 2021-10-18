@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -46,6 +47,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.LeafTypeAssumptionAccessor;
+import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -141,6 +145,8 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
+    private final LeafTypeAssumption leafTypeAssumption;
+
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
     }
@@ -229,6 +235,7 @@ public final class ObjectKlass extends Klass {
             initSelfReferenceInPool();
         }
 
+        this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -1397,6 +1404,19 @@ public final class ObjectKlass extends Klass {
         for (Method declaredMethod : getDeclaredMethods()) {
             declaredMethod.removedByRedefinition();
         }
+    }
+
+    /**
+     * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
+     * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
+     * classes and corresponding assumptions.
+     *
+     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
+     * @return the assumption, indicating if this class is a leaf in class hierarchy.
+     */
+    public LeafTypeAssumption getLeafTypeAssumption(LeafTypeAssumptionAccessor assumptionAccessor) {
+        Objects.requireNonNull(assumptionAccessor);
+        return leafTypeAssumption;
     }
 
     public final class KlassVersion {
