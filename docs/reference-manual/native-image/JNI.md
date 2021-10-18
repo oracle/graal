@@ -53,7 +53,8 @@ class JNIRegistrationFeature implements Feature {
   }
 }
 ```
-To activate the custom feature `--features=<fully qualified name of JNIRegistrationFeature class>` needs to be passed to native-image. [Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
+To activate the custom feature `--features=<fully qualified name of JNIRegistrationFeature class>` needs to be passed to native-image.
+[Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ## Object Handles
 JNI does not permit direct access to Java objects.

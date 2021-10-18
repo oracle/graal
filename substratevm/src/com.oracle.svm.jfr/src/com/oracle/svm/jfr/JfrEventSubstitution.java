@@ -37,8 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;

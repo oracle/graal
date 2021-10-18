@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.lambda;
 import java.lang.annotation.Annotation;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;

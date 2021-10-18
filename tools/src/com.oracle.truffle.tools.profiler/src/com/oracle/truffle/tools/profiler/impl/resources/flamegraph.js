@@ -23,16 +23,17 @@
  * questions.
  */
 
-var flamegraph, flamegraph_details, search_matches, fg_xmin, fg_xmax, fg_zoomed_sample, fg_max_depth, fg_svg;
+var flamegraph, flamegraph_details, search_matches, fg_xmin, fg_xmax, fg_zoomed_sample, fg_max_depth, fg_svg, fg_collapsed;
 function fg_init(evt) {
     flamegraph_details = document.getElementById("details").firstChild;
     searchbtn = document.getElementById("search");
     matchedtxt = document.getElementById("matched");
     flamegraph = document.getElementById("flamegraph");
     search_matches = [];
+    fg_collapsed = true;
     fg_xmin = 0;
-    fg_xmax = profileData.h;
-    fg_zoomed_sample = profileData;
+    fg_xmax = profileData[0].h;
+    fg_zoomed_sample = profileData[0];
     var el = flamegraph.getElementsByTagName("g");
     for(let i=0;i<el.length;i++)
         update_text(el[i]);
@@ -49,7 +50,7 @@ function fg_element_for_sample(sample) {
 }
 
 function fg_create_element_for_sample(sample, width, x) {
-    let y = (depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    let y = fg_y_for_sample(sample);
     let e = document.createElementNS("http://www.w3.org/2000/svg", "g");
     e.className.baseVal = "func_g";
     e.onmouseover = function(e) {s(this)};
@@ -89,10 +90,72 @@ function fg_create_element_for_sample(sample, width, x) {
     return e;
 }
 
+function fg_toggle_collapse() {
+    // Hide all the existing elements
+    let iter = fg_sample_and_children_depth_first(profileData[0]);
+    let c = iter.next();
+    while (!c.done) {
+        let e = fg_element_for_sample(c.value);
+        if (e != null) {
+            e.style["display"] = "none";
+        }
+        c = iter.next();
+    }
+    // Find the correct element to zoom to
+    let sample_to_zoom_to = fg_zoomed_sample;
+    if (!fg_collapsed && fg_zoomed_sample.hasOwnProperty("ro")) {
+        sample_to_zoom_to = profileData[fg_zoomed_sample.ro];
+    }
+
+    // Toggle fg_collapsed
+    fg_collapsed = !fg_collapsed;
+
+    // Zoom to the correct element
+    if (sample_to_zoom_to == profileData[0]) {
+        unzoom();
+    } else {
+        zoom(fg_element_for_sample(sample_to_zoom_to));
+    }
+    fg_update_color(color_type)
+}
+
+function fg_x_for_sample(sample) {
+    if (fg_collapsed) {
+        return (sample.rx - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    } else {
+        return (sample.x - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    }
+}
+
+function fg_y_for_sample(sample) {
+    if (fg_collapsed) {
+        return (collapsed_depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    } else {
+        return (depth_for_sample(sample) + 1) * -fg_frameheight - fg_bottom_padding;
+    }
+}
+
+function fg_sample_and_children_depth_first(sample) {
+    if (fg_collapsed) {
+        return collapsed_sample_and_children_depth_first(sample);
+    } else {
+        return sample_and_children_depth_first(sample);
+    }
+}
+
+function fg_width_for_sample(sample) {
+    if (fg_collapsed) {
+        return sample.rh / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
+    } else {
+        return sample.h / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
+    }
+}
+
 // zoom
 function zoom_child(sample) {
-    let width =  sample.h / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad);
-    let x = (sample.x - fg_xmin) / (fg_xmax - fg_xmin) * (fg_width - 2 * xpad) + xpad;
+    let width = fg_width_for_sample(sample);
+    let x = fg_x_for_sample(sample);
+    let y = fg_y_for_sample(sample);
     let e = fg_element_for_sample(sample);
 
     if (width < fg_min_width) {
@@ -118,14 +181,30 @@ function zoom_child(sample) {
     let t = e.lastElementChild;
     let name = name_for_sample(sample);
     let source = source_for_sample(sample);
+    let sourceLine = source_line_for_sample(sample);
+
+    let compiled = 0;
+    let interpreted = 0;
+    let hits = 0;
+    if (fg_collapsed) {
+        compiled = sample.rc;
+        interpreted = sample.ri;
+        hits = sample.rh;
+    } else {
+        compiled = sample.c;
+        interpreted = sample.i;
+        hits = sample.h;
+    }
 
     title.textContent = name + " (" + languageNames[sample.l] + ")\n" +
-        "Self samples: " + (sample.i + sample.c) + " (" + (100 * (sample.c + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
-        "Total samples: " + (sample.h) + " (" + (100 * (sample.h + sample.i) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
-        "Source location: " + source + ":" + sample.fl + "\n";
+        "Self samples: " + (interpreted + compiled) + " (" + (100 * (compiled + interpreted) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Total samples: " + (hits) + " (" + (100 * (hits) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+        "Source location: " + source + ":" + sourceLine + "\n";
 
     r.x.baseVal.value = x;
+    r.y.baseVal.value = y;
     t.x.baseVal[0].value = x + 3;
+    t.y.baseVal[0].value = y - 5 + fg_frameheight;
 
     r.width.baseVal.value = width;
     update_text_parts(e, r, t, width - 3, name);
@@ -134,6 +213,7 @@ function zoom_child(sample) {
 function zoom_parent(sample) {
     let width =  fg_width - 2 * xpad;
     let x = xpad;
+    let y = fg_y_for_sample(sample);
     let e = fg_element_for_sample(sample);
     if (e != null) {
         e.style["display"] = "block";
@@ -148,7 +228,9 @@ function zoom_parent(sample) {
             " Parent of displayed sample range.\n";
 
         r.x.baseVal.value = x;
+        r.y.baseVal.value = y;
         t.x.baseVal[0].value = x + 3;
+        t.y.baseVal[0].value = y - 5 + fg_frameheight;
 
         r.width.baseVal.value = width;
 
@@ -162,8 +244,13 @@ function zoom(node) {
     let parents = data[1];
     let unrelated = data[2];
     fg_zoomed_sample = sample;
-    fg_xmin = sample.x;
-    fg_xmax = sample.x + sample.h;
+    if (fg_collapsed) {
+        fg_xmin = sample.rx;
+        fg_xmax = sample.rx + sample.rh;
+    } else {
+        fg_xmin = sample.x;
+        fg_xmax = sample.x + sample.h;
+    }
     fg_max_depth = 0;
 
     var unzoombtn = document.getElementById("unzoom");
@@ -185,13 +272,12 @@ function fg_canvas_resize() {
     let fg_canvas = document.getElementById("fg_canvas");
     fg_canvas.height.baseVal.value = height;
     fg_canvas.y.baseVal.value = -height;
-    svg.height.baseVal.value = svg.height.baseVal.value - old_height + height;
-    svg.viewBox.baseVal.height = svg.height.baseVal.value;
+    graph_ensure_space();
 }
 
 function zoom_internal(sample, parents, unrelated) {
     for (const u of unrelated) {
-        let iter = sample_and_children_depth_first(u);
+        let iter = fg_sample_and_children_depth_first(u);
         let c = iter.next();
         while (!c.done) {
             let e = fg_element_for_sample(c.value);
@@ -204,13 +290,13 @@ function zoom_internal(sample, parents, unrelated) {
     for (const p of parents) {
         zoom_parent(p);
     }
-    let iter = sample_and_children_depth_first(sample);
+    let iter = fg_sample_and_children_depth_first(sample);
     let c = iter.next();
     while (!c.done) {
         zoom_child(c.value);
         c = iter.next();
     }
-    fg_search_update();
+    fg_search_update(search_matches);
     fg_canvas_resize();
     rebuild_histogram(sample);
 }
@@ -220,46 +306,50 @@ function unzoom() {
     unzoombtn.style["opacity"] = "0.1";
 
     fg_xmin = 0;
-    fg_xmax = profileData.h
+    fg_xmax = profileData[0].h
     fg_max_depth = 0;
-    fg_zoomed_sample = profileData;
+    fg_zoomed_sample = profileData[0];
 
-    zoom_internal(profileData, [], []);
+    zoom_internal(profileData[0], [], []);
 }
 
 // search
 function fg_search(term) {
     var re = new RegExp(term);
 
-    search_matches = []
+    let search_matches = []
 
-    let iter = sample_and_children_depth_first(profileData);
+    let iter = sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
         if (name_for_sample(sample).match(re)) {
-            sample.searchMatch = true;
-            search_matches.push(sample);
-            let e = fg_element_for_sample(sample);
-            if (e != null) {
-                let r = e.children[1];
-                r.style.fill = searchColor;
-            }
+            fg_highlight_sample(search_matches, sample);
         }
         c = iter.next();
     }
+
+    fg_search_update(search_matches);
 
     if (search_matches.length == 0)
         return;
 
     searchbtn.style["opacity"] = "0.8";
     searchbtn.firstChild.nodeValue = "Reset Search"
-
-    fg_search_update();
 }
 
-function fg_search_update() {
-    let samples = search_matches.slice();
+function fg_highlight_sample(samples, sample) {
+    sample.searchMatch = true;
+    samples.push(sample);
+    let e = fg_element_for_sample(sample);
+    if (e != null) {
+        let r = e.children[1];
+        r.style.fill = searchColor;
+    }
+}
+
+function fg_search_update(samples) {
+    search_matches = samples.slice();
 
     if (samples.length == 0) {
         matchedtxt.style["opacity"] = "0.0";
@@ -332,7 +422,7 @@ function fg_reset_search() {
 }
 
 function fg_update_color(color_type) {
-    let iter = sample_and_children_depth_first(profileData);
+    let iter = fg_sample_and_children_depth_first(profileData[0]);
     let c = iter.next();
     while (!c.done) {
         let sample = c.value;
@@ -351,11 +441,15 @@ function fg_update_color(color_type) {
 
 function fg_color_for_sample(color_type, sample) {
     if (color_type == "fg") {
-        return color_for_name(0, name_for_sample(sample));
+        return color_for_key(0, key_for_sample(sample));
     } else if (color_type == "bl") {
-        return color_for_name(sample.l, name_for_sample(sample));
+        return color_for_key(sample.l, key_for_sample(sample));
     } else if (color_type = "bc") {
-        return color_for_compilation(sample.i, sample.c);
+        if (fg_collapsed) {
+            return color_for_compilation(sample.ri, sample.rc);
+        } else {
+            return color_for_compilation(sample.i, sample.c);
+        }
     }
 }
 
@@ -367,7 +461,7 @@ function fg_resize(new_width) {
     viewbox.width = new_width
     let fg_canvas = document.getElementById("fg_canvas");
     fg_canvas.width.baseVal.value = new_width;
-    if (fg_zoomed_sample == profileData) {
+    if (fg_zoomed_sample == profileData[0]) {
         unzoom();
     } else {
         zoom(fg_element_for_sample(fg_zoomed_sample));
@@ -377,3 +471,5 @@ function fg_resize(new_width) {
     document.getElementById("search").setAttribute("x", new_width - xpad);
 
 }
+
+graph_register_handler("r", "Toggle collapse of recursive calls", fg_toggle_collapse);

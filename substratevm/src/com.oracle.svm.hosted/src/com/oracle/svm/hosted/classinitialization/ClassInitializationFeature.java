@@ -44,6 +44,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -340,7 +341,7 @@ public class ClassInitializationFeature implements GraalFeature {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             access.registerAsCompiled(throwVerifyError);
-            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
@@ -354,11 +355,13 @@ public class ClassInitializationFeature implements GraalFeature {
          * information.
          */
         assert type.isLinked();
+        CFunctionPointer classInitializerFunction = null;
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
             access.registerAsCompiled(classInitializer);
+            classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+        return new ClassInitializationInfo(classInitializerFunction);
     }
 }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -210,6 +211,12 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
+        return getSizeFromObjectInline(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeFromObjectInline(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
@@ -222,11 +229,16 @@ public class LayoutEncoding {
 
     /** Returns the end of the Object when the call started, e.g., for logging. */
     public static Pointer getObjectEnd(Object obj) {
+        return getObjectEndInline(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    public static Pointer getObjectEndInline(Object obj) {
         // TODO: This assumes that the object starts at obj.
         // - In other universes obj could point to the hub in the middle of,
         // for example, a butterfly object.
         final Pointer objStart = Word.objectToUntrackedPointer(obj);
-        final UnsignedWord objSize = getSizeFromObject(obj);
+        final UnsignedWord objSize = getSizeFromObjectInline(obj);
         return objStart.add(objSize);
     }
 

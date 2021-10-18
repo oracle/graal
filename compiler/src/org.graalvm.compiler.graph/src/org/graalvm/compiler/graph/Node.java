@@ -439,7 +439,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Checks whether this node has only usages of that type.
+     * Checks whether this node has only usages of a given {@link InputType}.
      *
      * @param type the type of usages to look for
      */
@@ -454,6 +454,24 @@ public abstract class Node implements Cloneable, Formattable {
             }
         }
         return true;
+    }
+
+    /**
+     * Checks whether this node has usages of a given {@link InputType}.
+     *
+     * @param type the type of usages to look for
+     */
+    public final boolean hasUsagesOfType(InputType type) {
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == type) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -631,6 +649,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (newSuccessor != null) {
                 assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
+                maybeNotifyInputChanged(newSuccessor);
             }
             maybeNotifyInputChanged(this);
         }

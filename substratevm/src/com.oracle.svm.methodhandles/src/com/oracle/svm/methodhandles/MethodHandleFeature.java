@@ -41,6 +41,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
@@ -81,7 +82,6 @@ import sun.invoke.util.Wrapper;
 @SuppressWarnings("unused")
 public class MethodHandleFeature implements Feature {
 
-    private boolean analysisFinished = false;
     private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;
     private Class<?> boundMethodHandleClass;
@@ -174,11 +174,6 @@ public class MethodHandleFeature implements Feature {
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection,
                         access.findClassByName("java.lang.invoke.VarHandle"));
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        analysisFinished = true;
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -283,7 +278,7 @@ public class MethodHandleFeature implements Feature {
     }
 
     private Object registerMethodHandle(Object obj) {
-        if (!analysisFinished) {
+        if (!BuildPhaseProvider.isAnalysisFinished()) {
             registerMethodHandleRecurse(obj);
         }
         return obj;

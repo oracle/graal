@@ -33,11 +33,11 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-class AnalysisObjectScanningObserver implements ObjectScanningObserver {
+public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
 
     private final BigBang bb;
 
-    AnalysisObjectScanningObserver(BigBang bb) {
+    public AnalysisObjectScanningObserver(BigBang bb) {
         this.bb = bb;
     }
 

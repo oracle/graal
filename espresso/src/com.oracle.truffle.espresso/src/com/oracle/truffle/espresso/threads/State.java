@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,18 +21,19 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk8;
+package com.oracle.truffle.espresso.threads;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+public enum State {
+    NEW(0),
+    RUNNABLE(4),
+    BLOCKED(1024),
+    WAITING(16),
+    TIMED_WAITING(32),
+    TERMINATED(2);
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+    public final int value;
 
-@AutomaticFeature
-final class LocalizationFeatureJDK8 extends LocalizationFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
+    State(int value) {
+        this.value = value;
     }
 }

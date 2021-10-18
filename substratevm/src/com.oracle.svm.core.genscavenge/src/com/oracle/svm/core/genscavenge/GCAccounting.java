@@ -148,7 +148,7 @@ public final class GCAccounting {
     /** Called after an object has been promoted from the young generation to the old generation. */
     @AlwaysInline("GC performance")
     void onObjectTenured(Object result, boolean survivorOverflow) {
-        UnsignedWord size = LayoutEncoding.getSizeFromObject(result);
+        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(result);
         tenuredObjectBytes = tenuredObjectBytes.add(size);
         if (survivorOverflow) {
             survivorOverflowObjectBytes = survivorOverflowObjectBytes.add(size);

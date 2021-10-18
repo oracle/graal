@@ -38,9 +38,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;

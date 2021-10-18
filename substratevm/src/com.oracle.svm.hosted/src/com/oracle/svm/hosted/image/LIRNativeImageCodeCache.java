@@ -103,7 +103,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
-            buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
+            buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.unsigned(codeCacheSize));
         }
     }
 

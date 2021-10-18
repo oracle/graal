@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.c;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.runtime.RuntimeProvider;
+import java.util.function.BooleanSupplier;
 
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-public class GraalAccess {
+public class JDK17_0_2OrLater implements BooleanSupplier {
 
-    public static TargetDescription getOriginalTarget() {
-        return getGraalCapability(RuntimeProvider.class).getHostBackend().getTarget();
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC > 17 ||
+                        (JavaVersionUtil.JAVA_SPEC == 17 && GraalServices.getJavaUpdateVersion() > 1);
     }
 
-    public static Providers getOriginalProviders() {
-        return getGraalCapability(RuntimeProvider.class).getHostBackend().getProviders();
-    }
-
-    public static SnippetReflectionProvider getOriginalSnippetReflection() {
-        return getGraalCapability(SnippetReflectionProvider.class);
-    }
-
-    private static <T> T getGraalCapability(Class<T> clazz) {
-        GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
-        return compiler.getGraalRuntime().getCapability(clazz);
-    }
 }

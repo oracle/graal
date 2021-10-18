@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.threads;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,16 +35,16 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
-class EspressoThreadManager implements ContextAccess {
+public final class EspressoThreadRegistry implements ContextAccess {
     private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadManager.class);
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadRegistry.class);
     private final EspressoContext context;
 
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -56,7 +56,7 @@ class EspressoThreadManager implements ContextAccess {
         return context;
     }
 
-    EspressoThreadManager(EspressoContext context) {
+    public EspressoThreadRegistry(EspressoContext context) {
         this.context = context;
     }
 
@@ -109,8 +109,8 @@ class EspressoThreadManager implements ContextAccess {
         activeThreads.add(self);
     }
 
-    final AtomicLong createdThreadCount = new AtomicLong();
-    final AtomicLong peakThreadCount = new AtomicLong();
+    public final AtomicLong createdThreadCount = new AtomicLong();
+    public final AtomicLong peakThreadCount = new AtomicLong();
 
     public void registerThread(Thread host, StaticObject guest) {
         activeThreads.add(guest);
@@ -158,12 +158,12 @@ class EspressoThreadManager implements ContextAccess {
     @SuppressFBWarnings(value = "NN", justification = "Removing a thread from the active set is the state change we need.")
     public void unregisterThread(StaticObject thread) {
         logger.fine(() -> {
-            String guestName = Target_java_lang_Thread.getThreadName(getMeta(), thread);
-            long guestId = Target_java_lang_Thread.getThreadId(getMeta(), thread);
+            String guestName = getThreadAccess().getThreadName(thread);
+            long guestId = getThreadAccess().getThreadId(thread);
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
         activeThreads.remove(thread);
-        Thread hostThread = (Thread) getMeta().HIDDEN_HOST_THREAD.getHiddenObject(thread);
+        Thread hostThread = getThreadAccess().getHost(thread);
         int id = Math.toIntExact(hostThread.getId());
         synchronized (activeThreadLock) {
             if (id == mainThreadId) {
@@ -178,7 +178,7 @@ class EspressoThreadManager implements ContextAccess {
             } else {
                 Object[] threads = guestThreads;
                 int threadIndex = getThreadIndex(id, threads);
-                if (Target_java_lang_Thread.isAlive(thread)) {
+                if (getThreadAccess().isAlive(thread)) {
                     assert threads[threadIndex] == thread;
                     threads[threadIndex] = null;
                 } else {
@@ -267,7 +267,6 @@ class EspressoThreadManager implements ContextAccess {
             // Allow guest Thread.currentThread() to work.
             meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
             meta.HIDDEN_HOST_THREAD.setHiddenObject(guestThread, Thread.currentThread());
-            meta.HIDDEN_DEATH.setHiddenObject(guestThread, Target_java_lang_Thread.KillStatus.NORMAL);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
@@ -277,14 +276,14 @@ class EspressoThreadManager implements ContextAccess {
             } else {
                 meta.java_lang_Thread_init_ThreadGroup_String.invokeDirect(guestThread, threadGroup, meta.toGuestString(name));
             }
-            meta.java_lang_Thread_threadStatus.setInt(guestThread, Target_java_lang_Thread.State.RUNNABLE.value);
+            meta.java_lang_Thread_threadStatus.setInt(guestThread, State.RUNNABLE.value);
 
             // now add to the main thread group
             meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
 
             logger.fine(() -> {
-                String guestName = Target_java_lang_Thread.getThreadName(getMeta(), guestThread);
-                long guestId = Target_java_lang_Thread.getThreadId(getMeta(), guestThread);
+                String guestName = getThreadAccess().getThreadName(guestThread);
+                long guestId = getThreadAccess().getThreadId(guestThread);
                 return String.format("createGuestThreadFromHost: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
             });
 
@@ -306,7 +305,6 @@ class EspressoThreadManager implements ContextAccess {
         // Allow guest Thread.currentThread() to work.
         meta.java_lang_Thread_priority.setInt(mainThread, Thread.NORM_PRIORITY);
         meta.HIDDEN_HOST_THREAD.setHiddenObject(mainThread, hostThread);
-        meta.HIDDEN_DEATH.setHiddenObject(mainThread, Target_java_lang_Thread.KillStatus.NORMAL);
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance();
 
         registerMainThread(hostThread, mainThread);
@@ -323,15 +321,15 @@ class EspressoThreadManager implements ContextAccess {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-        meta.java_lang_Thread_threadStatus.setInt(mainThread, Target_java_lang_Thread.State.RUNNABLE.value);
+        meta.java_lang_Thread_threadStatus.setInt(mainThread, State.RUNNABLE.value);
 
         // Notify native backend about main thread.
         getNativeAccess().prepareThread();
 
         mainThreadCreated = true;
         logger.fine(() -> {
-            String guestName = Target_java_lang_Thread.getThreadName(getMeta(), mainThread);
-            long guestId = Target_java_lang_Thread.getThreadId(getMeta(), mainThread);
+            String guestName = getThreadAccess().getThreadName(mainThread);
+            long guestId = getThreadAccess().getThreadId(mainThread);
             return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
         });
     }
@@ -370,8 +368,8 @@ class EspressoThreadManager implements ContextAccess {
         for (int i = 1; i < oldThreads.length; i++) {
             if (oldThreads[i] != null) {
                 StaticObject guestThread = (StaticObject) oldThreads[i];
-                if (Target_java_lang_Thread.isAlive(guestThread)) {
-                    Thread hostThread = Target_java_lang_Thread.getHostFromGuestThread(guestThread);
+                if (getThreadAccess().isAlive(guestThread)) {
+                    Thread hostThread = getThreadAccess().getHost(guestThread);
                     int hostID = (int) hostThread.getId();
                     if (hostID < minID) {
                         minID = hostID;
@@ -398,7 +396,7 @@ class EspressoThreadManager implements ContextAccess {
         int newOffset = minID - 1;
         newThreads[0] = newOffset;
         for (StaticObject guestThread : toRelocate) {
-            int hostId = (int) Target_java_lang_Thread.getHostFromGuestThread(guestThread).getId();
+            int hostId = (int) context.getThreadAccess().getHost(guestThread).getId();
             newThreads[hostId - newOffset] = guestThread;
         }
         newThreads[id - newOffset] = self;
@@ -408,12 +406,5 @@ class EspressoThreadManager implements ContextAccess {
     // Thread management helpers
     private static int getThreadIndex(int id, Object[] threads) {
         return id - (int) threads[0];
-    }
-
-    public void interruptThread(StaticObject guestThread) {
-        assert guestThread != null && getMeta().java_lang_Thread.isAssignableFrom(guestThread.getKlass());
-        Method interruptMethod = guestThread.getKlass().vtableLookup(getMeta().java_lang_Thread_interrupt.getVTableIndex());
-        assert interruptMethod != null;
-        interruptMethod.invokeDirect(guestThread);
     }
 }

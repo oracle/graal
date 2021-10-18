@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk11.localization;
+package com.oracle.svm.hosted.jdk11.localization;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +34,7 @@ import java.util.spi.LocaleServiceProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 
 //Checkstyle: stop
 import sun.text.spi.JavaTimeDateTimePatternProvider;

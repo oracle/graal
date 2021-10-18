@@ -43,6 +43,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -54,8 +55,23 @@ import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
+
+    public static class CFGOptions {
+        //@formatter:off
+        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes."
+                        + "If the frequencies diverge a lot, this may indicate missing profiles on control flow"
+                        + "inside the loop body.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> DumpEndVersusExitLoopFrequencies = new OptionKey<>(false);
+        @Option(help = "Scaling factor of frequency difference computed based on loop ends or exits", type = OptionType.Debug)
+        public static final OptionKey<Double> LoopExitVsLoopEndFrequencyDiff = new OptionKey<>(1000D);
+        //@formatter:on
+    }
+
     /**
      * Don't allow relative frequency values to be become too small or too high as this makes
      * frequency calculations over- or underflow the range of a double. This commonly happens with
@@ -89,12 +105,20 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
         cfg.identifyBlocks();
 
+        boolean loopInfoComputed = false;
+        if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(graph.getOptions())) {
+            // additional loop info for sink frequencies inside the loop body
+            cfg.computeLoopInformation();
+            cfg.computeDominators();
+            loopInfoComputed = true;
+        }
+
         cfg.computeFrequencies();
 
-        if (computeLoops) {
+        if (computeLoops && !loopInfoComputed) {
             cfg.computeLoopInformation();
         }
-        if (computeDominators) {
+        if (computeDominators && !loopInfoComputed) {
             cfg.computeDominators();
             assert cfg.verifyRPOInnerLoopsFirst();
         }
@@ -681,20 +705,23 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     private void finishLocalLoopFrequency(LoopBeginNode lb) {
         calculateLocalLoopFrequency(lb);
+        double sumAllLexFrequency = 0;
+        /*
+         * Take the sum of all exit frequencies and scale each exit with the importance in relation
+         * to the other exits. This factor is multiplied with the real predecessor frequency.
+         */
+        for (LoopExitNode lex : lb.loopExits()) {
+            sumAllLexFrequency += blockFor(lex).relativeFrequency;
+        }
         for (LoopExitNode lex : lb.loopExits()) {
             Block lexBlock = blockFor(lex);
             assert lexBlock != null;
             final double lexFrequency = lexBlock.getRelativeFrequency();
-            final double localLoopFrequency = localLoopFrequencyData.get(lb).getLoopFrequency();
-            /*
-             * While the local loop frequency is calculated without the predecessor frequency, the
-             * exit frequency needs to be adjusted already to compute any outer loop local
-             * frequencies correctly.
-             */
+            final double scaleLexFrequency = lexFrequency / sumAllLexFrequency;
             final double loopPredFrequency = blockFor(lb.forwardEnd()).relativeFrequency;
-            final double virginExitFrequency = multiplyRelativeFrequencies(lexFrequency, localLoopFrequency, loopPredFrequency);
-            // exit path, we set the exit probability
-            lexBlock.setRelativeFrequency(virginExitFrequency);
+            final double exitFrequency = multiplyRelativeFrequencies(scaleLexFrequency, loopPredFrequency);
+            lexBlock.setRelativeFrequency(exitFrequency);
+            GraalError.guarantee(blockFor(lex).relativeFrequency <= loopPredFrequency, "Lex frequency %f must be below pred frequency %f", loopPredFrequency, exitFrequency);
         }
     }
 
@@ -709,32 +736,131 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     private double calculateLocalLoopFrequency(LoopBeginNode lb) {
         Block header = blockFor(lb);
         assert header != null;
-        double loopEndFrequency = 0D;
+        /*
+         * Ideally we would like to take the loop end frequency sum here because it respects control
+         * flow sinks (unwinds and deopts) inside the loop. However, semantically, if we ever exit a
+         * loop in compiled code it means we did not do so by an unwind or deopt but a loop exit,
+         * thus we ignore the end (and sink) frequencies and compute loop frequency purely based on
+         * the exit frequencies.
+         */
+        double loopExitFrequencySum = 0D;
         ProfileSource source = ProfileSource.UNKNOWN;
-        for (LoopEndNode len : lb.loopEnds()) {
-            Block endBlock = blockFor(len);
-            assert endBlock != null;
-            assert endBlock.relativeFrequency >= 0D;
-            loopEndFrequency += endBlock.relativeFrequency;
-            source = source.combine(endBlock.frequencySource);
+
+        for (LoopExitNode lex : lb.loopExits()) {
+            Block lexBlock = blockFor(lex);
+            assert lexBlock != null;
+            assert lexBlock.relativeFrequency >= 0D;
+            loopExitFrequencySum += lexBlock.relativeFrequency;
+            source = source.combine(lexBlock.frequencySource);
         }
 
-        loopEndFrequency = Math.min(1, loopEndFrequency);
-        loopEndFrequency = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, loopEndFrequency);
+        loopExitFrequencySum = Math.min(1, loopExitFrequencySum);
+        loopExitFrequencySum = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, loopExitFrequencySum);
 
         double loopFrequency = -1;
-        if (loopEndFrequency == 1D) {
-            // endless loop, loop with exit and deopt unconditionally after the exit
-            loopFrequency = MAX_RELATIVE_FREQUENCY;
-        } else {
-            double exitFrequency = 1D - loopEndFrequency;
-            loopFrequency = 1D / exitFrequency;
+        loopFrequency = 1D / loopExitFrequencySum;
+        assert Double.isFinite(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " lexFrequencySum=" + loopExitFrequencySum;
+        assert !Double.isNaN(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " lexFrequencySum=" + loopExitFrequencySum;
 
-            assert Double.isFinite(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " endFrequency=" + loopEndFrequency;
-            assert !Double.isNaN(loopFrequency) : "Loop=" + lb + " Loop Frequency=" + loopFrequency + " endFrequency=" + loopEndFrequency;
+        if (CFGOptions.DumpEndVersusExitLoopFrequencies.getValue(lb.getOptions())) {
+            debugLocalLoopFrequencies(lb, loopFrequency, loopExitFrequencySum);
         }
         localLoopFrequencyData.put(lb, LoopFrequencyData.create(loopFrequency, source));
         return loopFrequency;
+    }
+
+    @SuppressWarnings("try")
+    private void debugLocalLoopFrequencies(LoopBeginNode lb, final double loopFrequency, final double loopExitFrequencySum) {
+        try (DebugContext.Scope s = lb.getDebug().scope("CFGFrequencyInfo")) {
+            /*
+             * For loops without loop exit nodes we may only have deopt loop exit paths, they are
+             * however not part of the loop data structure of a Loop<HIR>, thus it might be that the
+             * reverse post order did not yet visit all sinks
+             */
+            boolean sinkingImplicitExitsFullyVisited = true;
+            double loopSinkFrequencySum = 0D;
+            for (Block loopBlock : blockFor(lb).getLoop().getBlocks()) {
+                FixedNode blockEndNode = loopBlock.getEndNode();
+                if (blockEndNode instanceof ControlSinkNode) {
+                    double sinkBlockFrequency = blockFor(blockEndNode).relativeFrequency;
+                    loopSinkFrequencySum += sinkBlockFrequency;
+                }
+                if (blockFor(blockEndNode).relativeFrequency == -1D) {
+                    sinkingImplicitExitsFullyVisited = false;
+                }
+            }
+            final double delta = 0.001D;
+            if (sinkingImplicitExitsFullyVisited) {
+                // verify integrity of the CFG so far
+                outer: for (Block loopBlock : blockFor(lb).getLoop().getBlocks()) {
+                    if (loopBlock.isLoopHeader()) {
+                        // loop exit successor frequency is weighted differently
+                        continue;
+                    }
+                    for (Block succ : loopBlock.getSuccessors()) {
+                        if (isDominatorTreeLoopExit(succ)) {
+                            // loop exit successor frequency is weighted differently
+                            continue outer;
+                        }
+                        if (succ.isLoopHeader()) {
+                            // header frequency is set to 1 artificially to compute local
+                            // frequencies
+                            continue outer;
+                        }
+                    }
+                    final double selfFrequency = loopBlock.relativeFrequency;
+                    double succFrequency = 0D;
+                    for (Block succ : loopBlock.getSuccessors()) {
+                        succFrequency += succ.relativeFrequency;
+                    }
+                    if (loopBlock.getSuccessorCount() == 0) {
+                        GraalError.guarantee(loopBlock.getEndNode() instanceof ControlSinkNode, "Must sink if there is no successor");
+                        // frequency "lost"
+                        continue;
+                    }
+                    if (succFrequency < selfFrequency - delta) {
+                        String format = "Successors must add up for block %s with begin %s, selfF=%f succF=%f";
+                        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency);
+                        throw GraalError.shouldNotReachHere(String.format(format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency));
+                    }
+                }
+            }
+            double loopEndFrequencySum = 0D;
+            for (LoopEndNode len : lb.loopEnds()) {
+                Block lenBlock = blockFor(len);
+                loopEndFrequencySum += lenBlock.relativeFrequency;
+            }
+            double endBasedFrequency = 1 / (1 - loopEndFrequencySum);
+            if (loopEndFrequencySum == 1D) {
+                // loop without any loop exits (and no sinks)
+                endBasedFrequency = MAX_RELATIVE_FREQUENCY;
+            }
+            // verify inner loop frequency calculations used sane loop exit frequencies
+            for (Block loopBlock : blockFor(lb).getLoop().getBlocks()) {
+                if (loopBlock.isLoopHeader() && loopBlock.getBeginNode() != lb) {
+                    LoopBeginNode otherLoop = (LoopBeginNode) loopBlock.getBeginNode();
+                    double otherLoopExitFrequencySum = 0D;
+                    for (LoopExitNode lex : otherLoop.loopExits()) {
+                        otherLoopExitFrequencySum += blockFor(lex).relativeFrequency;
+                    }
+                    // forward end
+                    final double predFrequency = loopBlock.getFirstPredecessor().relativeFrequency;
+                    GraalError.guarantee(Math.abs(predFrequency - otherLoopExitFrequencySum) <= delta, "Frequencies diverge too much");
+                }
+            }
+            /*
+             * "Endless" looking loops, i.e., loops without exit nodes (only deopt exits) look like
+             * inifinite loops if we take an exit frequency of "0", which results in max frequency
+             */
+            final boolean hasLoopExits = lb.loopExits().count() > 0;
+            if (Math.abs(endBasedFrequency - loopFrequency) > CFGOptions.LoopExitVsLoopEndFrequencyDiff.getValue(lb.getOptions()) && hasLoopExits) {
+                graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph,
+                                "Frequency divergence for loop %s,exitBasedFrequency=%.4f endBasedFrequency=%.4f, exitFSum=%.2f / endFSum=%.2f/ sinkSum=%.2f [allSum=%f]", lb,
+                                loopFrequency, endBasedFrequency, loopExitFrequencySum, loopEndFrequencySum,
+                                loopSinkFrequencySum,
+                                (loopExitFrequencySum + loopEndFrequencySum + loopSinkFrequencySum));
+            }
+        }
     }
 
     private void resetBlockFrequencies() {
@@ -794,6 +920,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         } else if (relativeFrequency > MAX_RELATIVE_FREQUENCY) {
             relativeFrequency = MAX_RELATIVE_FREQUENCY;
         }
+
         b.setRelativeFrequency(relativeFrequency);
         if (computingLocalLoopFrequencies) {
             b.setFrequencySource(source);

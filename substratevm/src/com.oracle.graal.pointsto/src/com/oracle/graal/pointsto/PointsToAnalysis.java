@@ -438,6 +438,7 @@ public abstract class PointsToAnalysis implements BigBang {
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
+        assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         if (aMethod.isRootMethod()) {
             return aMethod;
         }

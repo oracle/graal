@@ -184,4 +184,4 @@ public abstract class MakePairNode extends BinaryExpressionNode {
 
 A high-level description of the object model has been published in [**An Object Storage Model for the Truffle Language Implementation Framework**](http://dl.acm.org/citation.cfm?id=2647517).
 
-See [Truffle documentation](https://github.com/oracle/graal/tree/master/truffle/docs) and [publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more tutorials, presentations, and publications about Truffle and GraalVM.
+See [Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more presentations and publications about Truffle and GraalVM.

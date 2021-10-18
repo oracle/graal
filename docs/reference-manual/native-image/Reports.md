@@ -6,12 +6,9 @@ permalink: /reference-manual/native-image/Reports/
 ---
 # Points-to Analysis Reports
 
-The points-to analysis produces two kinds of reports: analysis call tree and
-image object tree. This information is produced by an intermediate step in the
-image building process and represents the static analysis view of the call graph
-and heap object graph. These graphs are further transformed in the image
-building process before they are AOT compiled into the image and written into
-the image heap, respectively.
+The points-to analysis produces two kinds of reports: analysis call tree and image object tree.
+This information is produced by an intermediate step in the image building process and represents the static analysis view of the call graph and heap object graph.
+These graphs are further transformed in the image building process before they are AOT compiled into the image and written into the image heap, respectively.
 
 #### Call tree
 The call tree is a a breadth-first tree reduction of the call graph as seen by the points-to analysis.

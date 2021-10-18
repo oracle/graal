@@ -43,16 +43,33 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
- * Provides a stub method that can be used to fill otherwise unused vtable slots. Instead of a
- * segfault, this method provides a full diagnostic output with a stack trace.
+ * Provides stub methods that can be used for uninitialized method pointers. Instead of a segfault,
+ * the stubs provide full diagnostic output with a stack trace.
  */
-public final class InvalidVTableEntryHandler {
-    public static final Method HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidVTableEntryHandler.class, "invalidVTableEntryHandler");
-    public static final String MSG = "Fatal error: Virtual method call used an illegal vtable entry that was seen as unused by the static analysis";
+public final class InvalidMethodPointerHandler {
+    public static final Method INVALID_VTABLE_ENTRY_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "invalidVTableEntryHandler");
+    public static final String INVALID_VTABLE_ENTRY_MSG = "Fatal error: Virtual method call used an illegal vtable entry that was seen as unused by the static analysis";
+
+    public static final Method METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD = ReflectionUtil.lookupMethod(InvalidMethodPointerHandler.class, "methodPointerNotCompiledHandler");
+    public static final String METHOD_POINTER_NOT_COMPILED_MSG = "Fatal error: Method pointer invoked on a method that was not compiled because it was not seen as invoked by the static analysis nor was it directly registered for compilation";
 
     @StubCallingConvention
     @NeverInline("We need a separate frame that stores all registers")
     private static void invalidVTableEntryHandler() {
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
+        failFatally(callerSP, callerIP, INVALID_VTABLE_ENTRY_MSG);
+    }
+
+    @StubCallingConvention
+    @NeverInline("We need a separate frame that stores all registers")
+    private static void methodPointerNotCompiledHandler() {
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
+        failFatally(callerSP, callerIP, METHOD_POINTER_NOT_COMPILED_MSG);
+    }
+
+    private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
@@ -63,13 +80,11 @@ public final class InvalidVTableEntryHandler {
          * from the method that has the illegal vtable call. That can be helpful when debugging the
          * cause of the fatal error.
          */
-        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
-        CodePointer callerIP = KnownIntrinsics.readReturnAddress();
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, MSG, null);
+        Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
         if (log != null) {
             SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, WordFactory.nullPointer(), true);
-            log.string(MSG).newline();
+            log.string(message).newline();
         }
         logHandler.fatalError();
     }

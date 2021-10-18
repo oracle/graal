@@ -59,6 +59,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -77,9 +78,11 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
@@ -96,6 +99,7 @@ import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -390,7 +394,7 @@ public abstract class NativeImage extends AbstractImage {
         }
         ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
         int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + position);
-        baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, false, 0L);
+        baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, 0L);
         return symbol;
     }
 
@@ -564,14 +568,19 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    private static void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+    private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
         final int functionPointerRelocationSize = 8;
         assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
         // References to functions are via relocations to the symbol for the function.
-        ResolvedJavaMethod method = ((MethodPointer) info.getTargetObject()).getMethod();
+        MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
+        ResolvedJavaMethod method = methodPointer.getMethod();
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
+        if (!target.isCompiled()) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(method), false, 0L);
+        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -604,9 +613,8 @@ public abstract class NativeImage extends AbstractImage {
         assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
         long address = targetObjectInfo.getAddress();
-        long relocationInfoAddend = info.hasExplicitAddend() ? info.getExplicitAddend() : 0L;
-        long relocationAddend = address + relocationInfoAddend;
-        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, false, relocationAddend);
+        long relocationAddend = address + info.getAddend();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, relocationAddend);
     }
 
     private void markDataRelocationSiteFromText(RelocatableBuffer buffer, final ProgbitsSectionImpl sectionImpl, final int offset, final Info info) {
@@ -615,23 +623,23 @@ public abstract class NativeImage extends AbstractImage {
                         info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
-            long addend = ((DataSectionReference) target).getOffset() - info.getExplicitAddend();
+            long addend = ((DataSectionReference) target).getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
-            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), false, addend);
+            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), addend);
         } else if (target instanceof CGlobalDataReference) {
             CGlobalDataReference ref = (CGlobalDataReference) target;
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
-            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getExplicitAddend();
+            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
-            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), false, addend);
+            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), addend);
             if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
                 if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
                     objectFile.createUndefinedSymbol(data.symbolName, 0, true);
                 }
                 ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
                 int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
-                baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, false, 0L);
+                baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
@@ -954,5 +962,14 @@ public abstract class NativeImage extends AbstractImage {
         protected final RelocatableBuffer textBuffer;
         protected final ObjectFile objectFile;
         protected final NativeImageCodeCache codeCache;
+    }
+}
+
+@AutomaticFeature
+final class MethodPointerInvalidHandlerFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
     }
 }

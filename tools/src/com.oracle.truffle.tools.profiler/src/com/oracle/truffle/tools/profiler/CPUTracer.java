@@ -158,6 +158,7 @@ public final class CPUTracer implements Closeable {
 
     private Payload getCounter(EventContext context) {
         SourceSection sourceSection = context.getInstrumentedSourceSection();
+        assert sourceSection != null : context;
         return payloadMap.computeIfAbsent(sourceSection, new Function<SourceSection, Payload>() {
             @Override
             public Payload apply(SourceSection section) {
@@ -192,7 +193,11 @@ public final class CPUTracer implements Closeable {
         this.activeBinding = env.getInstrumenter().attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new CounterNode(getCounter(context));
+                if (context.getInstrumentedSourceSection() != null) {
+                    return new CounterNode(getCounter(context));
+                } else {
+                    return null;
+                }
             }
         });
     }

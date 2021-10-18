@@ -630,7 +630,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // G1 Collector Related Values.
     public final byte dirtyCardValue;
     public final byte g1YoungCardValue;
-    public final int g1SATBQueueMarkingOffset;
+    public final int g1SATBQueueMarkingActiveOffset;
     public final int g1SATBQueueIndexOffset;
     public final int g1SATBQueueBufferOffset;
     public final int g1CardQueueIndexOffset;
@@ -649,13 +649,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
             g1YoungCardValue = getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int");
             g1CardQueueIndexOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueIndexOffset;
             g1CardQueueBufferOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueBufferOffset;
-            g1SATBQueueMarkingOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
+            g1SATBQueueMarkingActiveOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
             g1SATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
             g1SATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
         } else {
             dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
             g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
-            g1SATBQueueMarkingOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
+            g1SATBQueueMarkingActiveOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
             g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
             g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
             g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);

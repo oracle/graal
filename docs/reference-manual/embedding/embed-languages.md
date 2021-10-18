@@ -17,26 +17,22 @@ permalink: /reference-manual/embed-languages/
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
-* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
-* [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
-
+* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
+* [Enterprise Sandbox Resource Limits](#enterprise-sandbox-resource-limits)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
-Throughout this section, you will learn how to create a host application in Java that
-runs on GraalVM and directly calls a guest language. You can use the tabs
-beneath each code example to choose between JavaScript, R, Ruby, and Python.
+Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
+You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
-GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/).
+GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
 These languages are henceforth referenced as **guest languages**.
 
-Complete the steps in this section to create a sample polyglot
-application that runs on GraalVM and demonstrates programming language
-interoperability.
+Complete the steps in this section to create a sample polyglot application that runs on GraalVM and demonstrates programming language interoperability.
 
 1&#46; Create a `hello-polyglot` project directory.
 
@@ -67,10 +63,8 @@ GraalVM.
 
 4&#46; Run `java HelloPolyglot` to run the application on GraalVM.
 
-You now have a polyglot application that consists of a Java host application
-and guest language code that run on GraalVM. You can use this application with
-other code examples to demonstrate more advanced capabilities of the
-Polyglot API.
+You now have a polyglot application that consists of a Java host application and guest language code that run on GraalVM.
+You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
 
 To use other code examples in this section, you simply need to do the following:
 
@@ -80,12 +74,9 @@ To use other code examples in this section, you simply need to do the following:
 
 ## Define Guest Language Functions as Java Values
 
-Polyglot applications let you take values from one programming language and
-use them with other languages.
+Polyglot applications let you take values from one programming language and use them with other languages.
 
-Use the code example in this section with your polyglot application to show
-how the Polyglot API can return JavaScript, R, Ruby, or Python functions as
-Java values.
+Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript, R, Ruby, or Python functions as Java values.
 
 {%
 include snippet-tabs
@@ -106,12 +97,10 @@ executed.
 
 ## Access Guest Languages Directly from Java
 
-Polyglot applications can readily access most language types and are not
-limited to functions. Host languages, such as Java, can directly access guest
-language values embedded in the polyglot application.
+Polyglot applications can readily access most language types and are not limited to functions.
+Host languages, such as Java, can directly access guest language values embedded in the polyglot application.
 
-Use the code example in this section with your polyglot application to show
-how the Polyglot API can access objects, numbers, strings, and arrays.
+Use the code example in this section with your polyglot application to show how the Polyglot API can access objects, numbers, strings, and arrays.
 
 {%
 include snippet-tabs
@@ -145,17 +134,13 @@ R where indices start with one.
 
 ## Access Java from Guest Languages
 
-Polyglot applications offer bi-directional access between guest languages and
-host languages. As a result, you can pass Java objects to guest languages.
+Polyglot applications offer bi-directional access between guest languages and host languages.
+As a result, you can pass Java objects to guest languages.
 
-Use the code example in this section with your polyglot application to show how
-guest languages can access primitive Java values, objects, arrays, and
-functional interfaces.
+Use the code example in this section with your polyglot application to show how guest languages can access primitive Java values, objects, arrays, and functional interfaces.
 
-To permit guest languages to access any public method or field of a Java
-object, set `allowAllAccess(true)` when the context is built. In this mode, the guest
-language code must be fully trusted, as it can access other not explicitly exported Java methods
-using reflection.
+To permit guest languages to access any public method or field of a Java object, set `allowAllAccess(true)` when the context is built.
+In this mode, the guest language code must be fully trusted, as it can access other not explicitly exported Java methods using reflection.
 
 {%
 include snippet-tabs
@@ -193,11 +178,9 @@ that the script returns a `boolean` value of `true` as a result.
 
 ## Lookup Java Types from Guest Languages
 
-In addition to passing Java objects to the guest language, it is possible
-to allow the lookup of Java types in the guest language.
+In addition to passing Java objects to the guest language, it is possible to allow the lookup of Java types in the guest language.
 
-Use the code example in this section with your polyglot application to show how
-guest languages lookup Java types and instantiate them.
+Use the code example in this section with your polyglot application to show how guest languages lookup Java types and instantiate them.
 
 {%
 include snippet-tabs
@@ -221,14 +204,11 @@ JavaScript using the `new` keyword.
 
 ## Computed Arrays Using Polyglot Proxies
 
-The Polyglot API includes polyglot proxy interfaces that let you
-customize Java interoperability by mimicking guest language types, such as
-objects, arrays, native objects, or primitives.
+The Polyglot API includes polyglot proxy interfaces that let you customize Java interoperability by mimicking guest language types, such as objects, arrays, native objects, or primitives.
 
-Use the code example in this section with your polyglot application to see how
-you can implement arrays that compute their values lazily.
+Use the code example in this section with your polyglot application to see how you can implement arrays that compute their values lazily.
 
-Note: The Polyglot API supports polyglot proxies either on the JVM or in Native Image.
+> Note: The Polyglot API supports polyglot proxies either on the JVM or in Native Image.
 
 {%
 include snippet-tabs
@@ -255,24 +235,20 @@ then returned. Note that array indices from 1-based languages such as R are
 converted to 0-based indices for proxy arrays.
 - The result of the language script is returned as a long value and verified.
 
-For more information about the polyglot proxy interfaces, see the
-[Polyglot API JavaDoc](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/package-summary.html).
+For more information about the polyglot proxy interfaces, see the [Polyglot API JavaDoc](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/package-summary.html).
 
 ## Host Access
 
 The Polyglot API by default restricts access to certain critical functionality, such as file I/O.
 These restrictions can be lifted entirely by setting `allowAllAccess` to `true`.
 
-Note: The access restrictions are currently only supported with JavaScript.
+> Note: The access restrictions are currently only supported with JavaScript.
 
 ### Controlling Access to Host Functions
 
 It might be desireable to limit the access of guest applications to the host.
-For example, if a Java method is exposed that calls `System.exit` then the guest
-application will be able to exit the host process.
-In order to avoid accidentally exposed methods, no host access is allowed by
-default and every public method or field needs to be annotated with
-`@HostAccess.Export` explicitly.
+For example, if a Java method is exposed that calls `System.exit` then the guest application will be able to exit the host process.
+In order to avoid accidentally exposed methods, no host access is allowed by default and every public method or field needs to be annotated with `@HostAccess.Export` explicitly.
 
 {%
 include snippet-tabs
@@ -394,7 +370,7 @@ The following access parameters may be configured:
 * Allow access to native APIs using [`allowNativeAccess`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#allowNativeAccess-boolean-).
 * Allow access to IO using [`allowIO`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#allowIO-boolean-) and proxy file accesses using [`fileSystem`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#fileSystem-org.graalvm.polyglot.io.FileSystem-).
 
-Note: Granting access to class loading, native APIs, or host I/O effectively grants all access, as these privileges can be used to bypass other access restrictions.
+> Note: Granting access to class loading, native APIs, or host I/O effectively grants all access, as these privileges can be used to bypass other access restrictions.
 
 ## Build Native Images from Polyglot Applications
 
@@ -493,7 +469,7 @@ Caching may be disabled explicitly by setting [cached(boolean cached)](https://
 
 Consider the following code snippet as an example:
 
-```
+```java
 public class Main {
     public static void main(String[] args) {
         try (Engine engine = Engine.create()) {
@@ -543,12 +519,12 @@ public class Main {
     public static void main(String[] args) {
         try (Context outer = Context.newBuilder()
                                    .allowAllAccess(true)
-                               .build()) {            
+                               .build()) {
             outer.eval("js", "inner = Java.type('org.graalvm.polyglot.Context').create()");
             outer.eval("js", "value = inner.eval('js', '({data:42})')");
             int result = outer.eval("js", "value.data").asInt();
             outer.eval("js", "inner.close()");
-            
+
             System.out.println("Valid " + (result == 42));
         }
     }
@@ -566,8 +542,7 @@ In this code: 
 
 ## Build a Shell for Many Languages
 
-With just a few lines of code, the GraalVM Polyglot API lets you build
-applications that integrate with any guest language supported by GraalVM.
+With just a few lines of code, the GraalVM Polyglot API lets you build applications that integrate with any guest language supported by GraalVM.
 
 This shell implementation is agnostic to any particular guest language.
 
@@ -600,12 +575,11 @@ for (;;) {
 }
 ```
 
-
-
 ## Step Through with Execution Listeners
 
-The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html). For example, it lets you attach an execution listener that is invoked for every statement of the guest language program. Execution listeners
-are designed as simple API for polyglot embedders and may become handy in, e.g., single-stepping through the program.
+The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html).
+For example, it lets you attach an execution listener that is invoked for every statement of the guest language program.
+Execution listeners are designed as simple API for polyglot embedders and may become handy in, e.g., single-stepping through the program.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -635,5 +609,5 @@ In this code:
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
 
-<!-- Configure Sandbox Resource Limits -->
+<!-- Enterprise Sandbox Resource Limits -->
 {% include_relative sandbox-options.md %}

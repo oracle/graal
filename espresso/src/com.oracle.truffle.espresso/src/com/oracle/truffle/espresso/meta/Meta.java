@@ -359,9 +359,7 @@ public final class Meta implements ContextAccess {
                         .field(higher(14), Name.interrupted, Type._boolean) //
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
-        HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
-        HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
+        HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
 
         if (context.EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
@@ -1171,9 +1169,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_INTERRUPTED;
-    public final Field HIDDEN_DEATH;
-    public final Field HIDDEN_DEATH_THROWABLE;
-    public final Field HIDDEN_SUSPEND_LOCK;
+    public final Field HIDDEN_DEPRECATION_SUPPORT;
     public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
