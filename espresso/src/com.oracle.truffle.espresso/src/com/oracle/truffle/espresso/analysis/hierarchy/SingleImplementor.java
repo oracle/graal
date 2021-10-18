@@ -75,12 +75,12 @@ public final class SingleImplementor {
     }
 
     private void addSecondImplementor(ObjectKlass implementor) {
-        SingleImplementorSnapshot snapshot = SNAPSHOT_UPDATER.get(this);
+        SingleImplementorSnapshot snapshot = currentSnapshot;
         if (snapshot.implementor == implementor) {
             return;
         }
         while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
-            snapshot = SNAPSHOT_UPDATER.get(this);
+            snapshot = currentSnapshot;
         }
         snapshot.hasImplementor().invalidate();
     }
@@ -90,7 +90,7 @@ public final class SingleImplementor {
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
 
-        SingleImplementorSnapshot snapshot = SNAPSHOT_UPDATER.get(this);
+        SingleImplementorSnapshot snapshot = currentSnapshot;
         if (snapshot == MultipleImplementorsSnapshot) {
             return;
         }
@@ -110,7 +110,8 @@ public final class SingleImplementor {
     }
 
     public SingleImplementorSnapshot read() {
+        CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(currentSnapshot);
-        return SNAPSHOT_UPDATER.get(this);
+        return currentSnapshot;
     }
 }
