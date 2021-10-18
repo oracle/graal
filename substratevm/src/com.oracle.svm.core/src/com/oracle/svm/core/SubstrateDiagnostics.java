@@ -617,7 +617,7 @@ public class SubstrateDiagnostics {
                 log.string("Threads:").indent(true);
                 for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                     log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
-                    int safepointBehavior = SafepointBehavior.getSafepointBehavior(thread);
+                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(thread);
                     if (safepointBehavior != SafepointBehavior.ALLOW_SAFEPOINT) {
                         log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
                     }

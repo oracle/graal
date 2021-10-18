@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -166,7 +167,9 @@ public final class PthreadVMLockSupport extends VMLockSupport {
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
+            VMThreads.SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             Log.log().string(functionName).string(" returned ").signed(result).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }

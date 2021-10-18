@@ -713,14 +713,22 @@ public final class Safepoint {
                         continue;
                     }
 
-                    int safepointBehavior = SafepointBehavior.getSafepointBehavior(vmThread);
+                    /*-
+                     * The status must be read before the safepoint behavior to prevent races
+                     * like the following:
+                     * - thread A reads the safepoint behavior of thread B.
+                     * - thread B sets the safepoint behavior to PREVENT_VM_FROM_REACHING_SAFEPOINT.
+                     * - thread B sets the status to STATUS_IN_NATIVE.
+                     * - thread A reads the status and the VM reaches a safepoint.
+                     */
+                    int status = StatusSupport.getStatusVolatile(vmThread);
+                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
                     if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
                         notAtSafepoint++;
-                    } else if (safepointBehavior == SafepointBehavior.IGNORE_THREAD_IN_SAFEPOINT_HANDLING) {
+                    } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
                         ignoreSafepoints++;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
-                        int status = StatusSupport.getStatusVolatile(vmThread);
                         switch (status) {
                             case StatusSupport.STATUS_IN_JAVA:
                             case StatusSupport.STATUS_IN_VM: {
@@ -864,15 +872,15 @@ public final class Safepoint {
                 int notAtSafepoint = 0;
 
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    int safepointBehavior = SafepointBehavior.getSafepointBehavior(vmThread);
+                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
+                    int status = StatusSupport.getStatusVolatile(vmThread);
                     if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
                         notAtSafepoint++;
-                    } else if (safepointBehavior == SafepointBehavior.IGNORE_THREAD_IN_SAFEPOINT_HANDLING) {
+                    } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
                         ignoreSafepoints += 1;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         // Check if the thread is at a safepoint or in native code.
-                        int status = StatusSupport.getStatusVolatile(vmThread);
                         switch (status) {
                             case StatusSupport.STATUS_IN_SAFEPOINT:
                                 atSafepoint += 1;

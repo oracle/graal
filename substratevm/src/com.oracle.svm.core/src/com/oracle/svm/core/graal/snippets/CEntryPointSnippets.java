@@ -71,7 +71,6 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -564,10 +563,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Avoid StackOverflowError and safepoints until they are disabled permanently", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int reportException(Throwable exception) {
-        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
+        VMThreads.SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         logException(exception);
+
         ImageSingletons.lookup(LogHandler.class).fatalError();
         return CEntryPointErrors.UNSPECIFIED; // unreachable
     }

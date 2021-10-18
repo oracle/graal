@@ -28,6 +28,7 @@ package com.oracle.svm.core;
 
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -69,8 +70,9 @@ public final class InvalidMethodPointerHandler {
         failFatally(callerSP, callerIP, METHOD_POINTER_NOT_COMPILED_MSG);
     }
 
+    @Uninterruptible(reason = "Prevent safepoints until everything is set up for printing the fatal error.", calleeMustBe = false)
     private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {
-        VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
+        VMThreads.SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         /*

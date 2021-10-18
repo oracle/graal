@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -57,7 +56,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;

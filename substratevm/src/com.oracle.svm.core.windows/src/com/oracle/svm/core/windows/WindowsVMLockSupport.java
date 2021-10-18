@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -161,7 +162,9 @@ public final class WindowsVMLockSupport extends VMLockSupport {
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
+            VMThreads.SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             int lastError = WinBase.GetLastError();
             Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();

@@ -36,6 +36,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -825,14 +826,17 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
     @NeverInline("Access of caller frame.")
+    @Uninterruptible(reason = "Prevent safepoints until everything is set up for the fatal error printing.", calleeMustBe = false)
     static void FatalError(JNIEnvironment env, CCharPointer message) {
+        VMThreads.SafepointBehavior.preventSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         Log log = Log.enterFatalContext(logHandler, callerIP, CTypeConversion.toJavaString(message), null);
         if (log != null) {
             try {
                 log.string("Fatal error reported via JNI: ").string(message).newline();
-                VMThreads.SafepointBehavior.setPreventVMFromReachingSafepoint();
                 SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), callerIP);
             } catch (Throwable ignored) {
                 /*
