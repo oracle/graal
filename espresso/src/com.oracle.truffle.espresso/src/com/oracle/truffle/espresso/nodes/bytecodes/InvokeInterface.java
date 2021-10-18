@@ -98,7 +98,7 @@ public abstract class InvokeInterface extends Node {
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
             assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
@@ -112,27 +112,27 @@ public abstract class InvokeInterface extends Node {
             StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             // itable lookup.
-            Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+            Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
             assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
-    static Method.MethodVersion methodLookup(Method resolutionSeed, StaticObject receiver) {
-        assert !receiver.getKlass().isArray();
+    static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
+        assert !receiverKlass.isArray();
         if (resolutionSeed.isRemovedByRedefition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();
-        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
+        Method method = ((ObjectKlass) receiverKlass).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
         if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = receiver.getKlass().getMeta();
+            Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method.getMethodVersion();
@@ -178,7 +178,7 @@ public abstract class InvokeInterface extends Node {
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+                Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
                 assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }

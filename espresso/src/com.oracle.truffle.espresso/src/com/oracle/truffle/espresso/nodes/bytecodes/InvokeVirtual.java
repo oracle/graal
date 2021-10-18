@@ -117,7 +117,7 @@ public abstract class InvokeVirtual extends Node {
                         })
         Object callLeaf(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, receiver.getKlass())") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -134,7 +134,7 @@ public abstract class InvokeVirtual extends Node {
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -150,25 +150,24 @@ public abstract class InvokeVirtual extends Node {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
-            Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+            Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
             assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
-    static Method.MethodVersion methodLookup(Method resolutionSeed, StaticObject receiver) {
+    static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
         if (resolutionSeed.isRemovedByRedefition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
         }
         /*
          * Surprisingly, INVOKEVIRTUAL can try to invoke interface methods, even non-default ones.
          * Good thing is, miranda methods are taken care of at vtable creation !
          */
-        Klass receiverKlass = receiver.getKlass();
         int vtableIndex = resolutionSeed.getVTableIndex();
         Method.MethodVersion target = null;
         if (receiverKlass.isArray()) {
@@ -177,7 +176,7 @@ public abstract class InvokeVirtual extends Node {
             target = receiverKlass.vtableLookup(vtableIndex).getMethodVersion();
         }
         if (!target.getMethod().hasCode()) {
-            Meta meta = receiver.getKlass().getMeta();
+            Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return target;
@@ -225,7 +224,7 @@ public abstract class InvokeVirtual extends Node {
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+                Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
                 assert target.getMethod().getDeclaringKlass().isInitialized() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
