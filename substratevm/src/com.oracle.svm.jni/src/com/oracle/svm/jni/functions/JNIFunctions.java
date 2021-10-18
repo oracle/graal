@@ -36,6 +36,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -112,6 +113,8 @@ import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.vm.ci.meta.MetaUtil;
 import sun.misc.Unsafe;
+
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -826,25 +829,10 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
     @NeverInline("Access of caller frame.")
-    @Uninterruptible(reason = "Prevent safepoints until everything is set up for the fatal error printing.", calleeMustBe = false)
     static void FatalError(JNIEnvironment env, CCharPointer message) {
-        VMThreads.SafepointBehavior.preventSafepoints();
-        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
-        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        Log log = Log.enterFatalContext(logHandler, callerIP, CTypeConversion.toJavaString(message), null);
-        if (log != null) {
-            try {
-                log.string("Fatal error reported via JNI: ").string(message).newline();
-                SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), callerIP);
-            } catch (Throwable ignored) {
-                /*
-                 * Ignore exceptions reported during error reporting, we are going to exit anyway.
-                 */
-            }
-        }
-        logHandler.fatalError();
+        Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
+        Support.fatalError(callerIP, callerSP, CTypeConversion.toJavaString(message));
     }
 
     /*
@@ -1164,6 +1152,28 @@ public final class JNIFunctions {
              * exception that was already pending. So does ours.
              */
             JNIThreadLocalPendingException.set(t);
+        }
+
+        @Uninterruptible(reason = "Prevent safepoints until everything is set up for the fatal error printing.", calleeMustBe = false)
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
+        static void fatalError(CodePointer callerIP, Pointer callerSP, String message) {
+            VMThreads.SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
+            LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
+            Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
+            if (log != null) {
+                try {
+                    log.string("Fatal error reported via JNI: ").string(message).newline();
+                    SubstrateDiagnostics.printFatalError(log, callerSP, callerIP);
+                } catch (Throwable ignored) {
+                    /*
+                     * Ignore exceptions reported during error reporting, we are going to exit
+                     * anyway.
+                     */
+                }
+            }
+            logHandler.fatalError();
         }
     }
 

@@ -26,6 +26,9 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 
+import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -82,8 +85,9 @@ public abstract class VMThreads {
      * the mutexes are acquired (VMOperation queue mutex first, {@link #THREAD_MUTEX} second). If
      * the VM operation causes a safepoint, then it is possible that the {@link #THREAD_MUTEX} was
      * already acquired for safepoint reasons.</li>
-     * <li>Acquire the mutex outside of a VM operation but only execute uninterruptible code. This
-     * is safe as the uninterruptible code cannot trigger a safepoint.</li>
+     * <li>Acquire the mutex from a thread that is either not yet attached
+     * {@link StatusSupport#STATUS_CREATED} or currently in native code
+     * ({@link StatusSupport#STATUS_IN_NATIVE}).</li>
      * </ol>
      *
      * Deadlock example 1:
@@ -328,7 +332,7 @@ public abstract class VMThreads {
         // From this point on, all code must be fully uninterruptible because this thread either
         // holds the THREAD_MUTEX (see the JavaDoc on THREAD_MUTEX) or because the IsolateThread was
         // already freed.
-        THREAD_MUTEX.lockNoTransition();
+        lockVMMutexInNativeCode();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -352,6 +356,20 @@ public abstract class VMThreads {
         }
 
         cleanupExitedOsThread(threadToCleanup);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    private static void lockVMMutexInNativeCode() {
+        CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
+        lockVMMutexInNativeCode0();
+        CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
+    }
+
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void lockVMMutexInNativeCode0() {
+        VMThreads.THREAD_MUTEX.lockNoTransition();
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
@@ -812,9 +830,13 @@ public abstract class VMThreads {
          * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
          * thread will also actively prevent the VM from reaching a safepoint (regardless of its
          * thread status).
+         * 
+         * NOTE: Be careful with this and make sure that this thread does not allocate any Java
+         * objects as this could result deadlocks.
          */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
         public static void preventSafepoints() {
+            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
         }
 
@@ -826,13 +848,14 @@ public abstract class VMThreads {
          * safepoint. The safepoint handling will ignore the thread so that the VM can reach a
          * safepoint regardless of the status of this thread.
          *
-         * Be careful with this. If a thread is ignored by the safepoint handling, it means that it
-         * can continue executing while a safepoint (and therefore a GC) is in progress. So, make
-         * sure that this thread does not allocate or access any movable heap objects (even
+         * NOTE: Be careful with this. If a thread is ignored by the safepoint handling, it means
+         * that it can continue executing while a safepoint (and therefore a GC) is in progress. So,
+         * make sure that this thread does not allocate or access any movable heap objects (even
          * executing write barriers can already cause issues).
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void markThreadAsCrashed() {
+            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
         }
 

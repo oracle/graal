@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -55,6 +56,8 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.vm.ci.meta.JavaKind;
+
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
@@ -161,6 +164,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     protected static void checkResult(int result, String functionName) {
         if (result != 0) {
             /*

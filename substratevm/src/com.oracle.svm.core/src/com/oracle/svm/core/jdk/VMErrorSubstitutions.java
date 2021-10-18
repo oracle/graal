@@ -41,6 +41,8 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMThreads;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 @TargetClass(com.oracle.svm.core.util.VMError.class)
 final class Target_com_oracle_svm_core_util_VMError {
 
@@ -97,6 +99,7 @@ public class VMErrorSubstitutions {
      * uninterruptible
      */
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
 

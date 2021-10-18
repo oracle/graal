@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -54,6 +55,8 @@ import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.vm.ci.meta.JavaKind;
+
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 //Checkstyle: stop
 
@@ -156,6 +159,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     static void checkResult(int result, String functionName) {
         if (result == 0) {
             /*

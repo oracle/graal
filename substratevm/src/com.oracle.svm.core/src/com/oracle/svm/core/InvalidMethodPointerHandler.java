@@ -28,6 +28,7 @@ package com.oracle.svm.core;
 
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -42,6 +43,8 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
+
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 /**
  * Provides stub methods that can be used for uninitialized method pointers. Instead of a segfault,
@@ -71,6 +74,7 @@ public final class InvalidMethodPointerHandler {
     }
 
     @Uninterruptible(reason = "Prevent safepoints until everything is set up for printing the fatal error.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {
         VMThreads.SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
