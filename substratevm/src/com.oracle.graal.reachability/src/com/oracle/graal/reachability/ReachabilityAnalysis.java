@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.Timer;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -260,12 +261,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         universe.setAnalysisDataValid(false);
         // todo transform into a real 'run until fixpoint' loop
         for (int i = 0; i < 10; i++) {
-            if (!executor.isStarted()) {
-                executor.start();
-            }
-            executor.complete();
-            executor.shutdown();
-            executor.init(timing);
+            runReachability();
 
             checkObjectGraph();
         }
@@ -273,23 +269,36 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         return true;
     }
 
-    private ObjectScanner.ReusableSet scannedObjects = new ObjectScanner.ReusableSet();
+    private void runReachability() throws InterruptedException {
+        try (Timer.StopTimer t = reachabilityTimer.start()) {
+            if (!executor.isStarted()) {
+                executor.start();
+            }
+            executor.complete();
+            executor.shutdown();
+            executor.init(timing);
+        }
+    }
+
+    private final ObjectScanner.ReusableSet scannedObjects = new ObjectScanner.ReusableSet();
 
     @SuppressWarnings("try")
     private void checkObjectGraph() throws InterruptedException {
-        scannedObjects.reset();
-        // scan constants
-        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
-        ObjectScanner objectScanner = new ReachabilityObjectScanner(this, isParallel ? executor : null, scannedObjects, metaAccess);
-        checkObjectGraph(objectScanner);
-        if (isParallel) {
-            executor.start();
-            objectScanner.scanBootImageHeapRoots(null, null);
-            executor.complete();
-            executor.shutdown();
-            executor.init(null);
-        } else {
-            objectScanner.scanBootImageHeapRoots(null, null);
+        try (Timer.StopTimer t = checkObjectsTimer.start()) {
+            scannedObjects.reset();
+            // scan constants
+            boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
+            ObjectScanner objectScanner = new ReachabilityObjectScanner(this, isParallel ? executor : null, scannedObjects, metaAccess);
+            checkObjectGraph(objectScanner);
+            if (isParallel) {
+                executor.start();
+                objectScanner.scanBootImageHeapRoots(null, null);
+                executor.complete();
+                executor.shutdown();
+                executor.init(null);
+            } else {
+                objectScanner.scanBootImageHeapRoots(null, null);
+            }
         }
     }
 

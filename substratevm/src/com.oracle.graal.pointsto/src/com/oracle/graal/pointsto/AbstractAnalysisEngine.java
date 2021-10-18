@@ -54,6 +54,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final Boolean extendedAsserts;
     private final Timer processFeaturesTimer;
     private final Timer analysisTimer;
+    protected final Timer checkObjectsTimer;
+    protected final Timer reachabilityTimer;
     protected final AnalysisMetaAccess metaAccess;
     private final HostedProviders providers;
     protected final HostVM hostVM;
@@ -89,6 +91,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
         String imageName = hostVM.getImageName();
         this.processFeaturesTimer = new Timer(imageName, "(features)", false);
+        this.checkObjectsTimer = new Timer(imageName, "(objects)", false);
+        this.reachabilityTimer = new Timer(imageName, "(reachability)", false);
         this.analysisTimer = new Timer(imageName, "analysis", true);
 
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
@@ -117,6 +121,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @Override
     public void printTimers() {
+        reachabilityTimer.print();
+        checkObjectsTimer.print();
         processFeaturesTimer.print();
     }
 
