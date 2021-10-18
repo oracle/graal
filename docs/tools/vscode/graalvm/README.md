@@ -209,6 +209,7 @@ It can be done by providing following switches for the `native-image` builder:
 - `-g -O0` or
 - `-H:Debug=2 -H:Optimize=0`.
 
+
 The resulting images will contain debug records in a format `gdb` debugger understands.
 
 ### Debug Native Image “Real” Code
@@ -233,7 +234,7 @@ This brings the visual Java tooling to VS Code.
 ![VisualVM and VS Code Integration](images/vscode_visualvm.png)
 
 To get started, you need to get the latest stable GraalVM release using the **Download & Install GraalVM** action from the **Gr** activity view, as described in the [Installation and Setup](README.md#installation-and-setup) section.
-Make sure the GraalVM is set as the **active**.
+Make sure the GraalVM is set as the **active** installation.
 
 Once a GraalVM installation is set as active, the Command Palette contains the following commands related to VisualVM:
 
@@ -252,7 +253,7 @@ Follow these steps to start VisualVM automatically from within the VS Code:
 
 4. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the Run and Debug activity. Use the Start Debugging or Run Without Debugging action to start the current project.
 
-While the project is starting, the Process node in VisualVM pane displays project name with a "pid pending" label.
+While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label.
 Once the project process starts, the Process node is updated to show its process ID (PID) and the action defined in step 3 is performed.
 
 > Note: This feature was introduced with the GraalVM 21.2.0 release. Please make sure to get the latest GraalVM Tools for Java extension from the VS Code Marketplace, preferably by downloading the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack).

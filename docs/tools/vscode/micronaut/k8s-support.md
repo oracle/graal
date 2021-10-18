@@ -5,12 +5,13 @@ link_title: Deploy Micronaut Applications to Oracle Container Engine for Kuberne
 permalink: /tools/vscode/micronaut/kubernetes-support/
 ---
 
-# Deploy Micronaut Applications to Oracle Container Engine for Kubernetes
+## Deploy, Run and Debug Micronaut Applications in Kubernetes Cluster
 
 GraalVM Tools for Micronaut Extension added support for working with Kubernetes clusters based on Microsofts’s [Visual Studio Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools).
+It is now possible to deploy, run and debug a Micronaut application in a Kubernetes cluster from VS Code.
 
-It is now possible to deploy and debug a Micronaut project to Kubernetes on Oracle Cloud with Oracle Container Engine for Kubernetes (OKE)](https://www.oracle.com/uk/cloud-native/container-engine-kubernetes/) environment.
-OKE is a fully-managed, scalable, and highly available service that you can use to deploy your containerized applications to the cloud.
+This guide is focused on and tested with Oracle Container Engine for Kubernetes (OKE)](https://www.oracle.com/uk/cloud-native/container-engine-kubernetes/) and Oracle Container Registry, but Kubernetes features should work in other environments.
+OKE is a fully-managed, scalable, and highly available service that you can use to deploy your containerized applications to Oracle Cloud.
 
 This guide will walk you through the process of deploying a Micronaut application to OKE from VS Code and debugging it.
 
@@ -23,7 +24,9 @@ This guide will walk you through the process of deploying a Micronaut applicatio
 ## Preparation
 
 ### Visual Studio Code Kubernetes Tools
-Micronaut's extension support for Kubernetes is based on Microsofts’s [Visual Studio Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools). It has to be installed.
+
+GraalVM Tools for Micronaut Extension uses `kubectl` provided by Microsoft's [Visual Studio Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools).
+It has to be installed.
 
 Open Extensions tab, search for "Kubernetes" and install the one from Microsoft.
 Once installed, you should see the Kubernetes icon in the left sidebar:

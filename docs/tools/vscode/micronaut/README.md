@@ -11,9 +11,9 @@ permalink: /tools/vscode/micronaut-extension/
 The extension is Technology Preview.
 
 The extension also enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
-There are, of course, other ways to create a new Micronaut application. If you provide a path to the [Micronaut CLI installation](https://micronaut-projects.github.io/micronaut-starter/latest/guide#installation), you can create a project using the `mn` executable. If you prefer not to install the Micronaut CLI, and you are running on Linux or macOS, you can `curl` the project. Lastly, you can navigate to Micronaut Launch in a browser, create a new project, download it and open in VS Code.
+There are, of course, other ways to create a new Micronaut application. If you provide a path to the [Micronaut CLI installation](https://micronaut-projects.github.io/micronaut-starter/latest/guide/#installation), you can create a project using the `mn` executable. If you prefer not to install the Micronaut CLI, and you are running on Linux or macOS, you can `curl` the project. Lastly, you can navigate to Micronaut Launch in a browser, create a new project, download it and open in VS Code.
 
-In combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them directly from the VS Code development environment with different debugging protocols enabled with the extension. This extension for Micronaut was also developed to help developers build native images directly from VS Code.
+In combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them directly from the VS Code development environment with different debugging protocols enabled with the extension. This extension for Micronaut was also developed to help developers build native images right from VS Code.
 
 #### Table of contents
 - [Installation and Setup](#installation-and-setup)
@@ -51,7 +51,7 @@ The GraalVM Tools for Micronaut extension provides:
 * code completion and navigation for Micronaut configuration (YAML) files and Java (available with [Apache NetBeans Language Server extension](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java)).
 * ability to build Micronaut projects ahead-of-time into native images with GraalVM
 * __Run main with Continuous Mode__ CodeLens runs Micronaut project and reloads it automatically when source code is changed. It is not available as Debugger.
-    * __Launch Java: Continuous Mode__ is the name of the launch configuration.
+* __Launch Java: Continuous Mode__ is the name of the launch configuration.
 
 ### Micronaut VS Code Commands
 
@@ -106,14 +106,14 @@ That will run the `mvnw package -Dpackaging=native-image` job.
 
 For more details, continue reading to the [Micronaut documentation](https://guides.micronaut.io/micronaut-creating-first-graal-app/guide/index.html#creatingGraalImage).
 
-## Deploy Micronaut Projects to Docker Registry
+## Deploy Micronaut Projects to a Docker Registry
 
-The Micronaut support in VS Code allows to build and deploy Docker images to Docker registry.
+The Micronaut support in VS Code allows to build and deploy Docker images to a Docker registry.
 Use action **View** > **Command Palette** > **Micronaut: Deploy...** and select **dockerPush** to deploy a dockerized Micronaut application or **dockerPushNative** to build and push docker with a native executable of Micronaut application.
 
 ![Micronaut Deploy Commands](images/micronaut-deploy-commands.png)
 
-Besides that, you can also push a Micronaut application or a native executable to the Docker Registry from the VS Code Terminal window.
+Besides that, you can also push a Micronaut application or a native executable to a Docker Registry from the VS Code Terminal window.
 A particular Docker Registry can be configured in the build, see the [Micronaut Deploying Application](https://micronaut-projects.github.io/micronaut-maven-plugin/latest/examples/deploy.html) documentation.
 
 <!-- Deploy Micronaut Applications to Oracle Container Engine for Kubernetes -->
