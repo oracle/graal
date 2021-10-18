@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.memory;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
@@ -508,4 +509,6 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
 
     @Override
     public abstract void close();
+
+    public abstract ByteBuffer asByteBuffer();
 }

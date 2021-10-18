@@ -373,6 +373,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
         }
     }
 
+    @Override
+    public ByteBuffer asByteBuffer() {
+        return buffer.duplicate();
+    }
+
     static {
         try {
             final Field f = Unsafe.class.getDeclaredField("theUnsafe");
