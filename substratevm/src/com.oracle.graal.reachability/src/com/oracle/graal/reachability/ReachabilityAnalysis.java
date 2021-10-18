@@ -259,13 +259,20 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     @Override
     public boolean finish() throws InterruptedException {
         universe.setAnalysisDataValid(false);
-        // todo transform into a real 'run until fixpoint' loop
-        for (int i = 0; i < 10; i++) {
+
+        int numTypes;
+        do {
             runReachability();
 
+            assert executor.getPostedOperations() == 0;
+            numTypes = universe.getTypes().size();
+
             checkObjectGraph();
-        }
+
+        } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
+
         universe.setAnalysisDataValid(true);
+
         return true;
     }
 
