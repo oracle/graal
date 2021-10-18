@@ -37,4 +37,9 @@ public class Sched {
 
     @CFunction
     public static native int sched_yield();
+
+    public static class NoTransitions {
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int sched_yield();
+    }
 }
