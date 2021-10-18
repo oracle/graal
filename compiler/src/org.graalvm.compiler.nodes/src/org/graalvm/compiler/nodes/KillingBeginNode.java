@@ -29,12 +29,12 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
@@ -44,7 +44,7 @@ import org.graalvm.word.LocationIdentity;
  * @see WithExceptionNode for more details
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
-public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill, Simplifiable {
+public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill, Canonicalizable {
 
     public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
     protected LocationIdentity locationIdentity;
@@ -73,28 +73,23 @@ public final class KillingBeginNode extends AbstractBeginNode implements SingleM
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
-        if (predecessor() instanceof FixedWithNextNode && predecessor() instanceof SingleMemoryKill) {
-            SingleMemoryKill predecessor = (SingleMemoryKill) predecessor();
-            if (getKilledLocationIdentity().equals(predecessor.getKilledLocationIdentity())) {
-                // This killing begin node can be removed.
-                tool.addToWorkList(next());
-                graph().removeFixed(this);
-            }
-        }
+    public void prepareDelete() {
+        GraalError.guarantee(graph().isBeforeStage(StructuredGraph.StageFlag.FLOATING_READS) || !hasUsagesOfType(Memory), "Cannot delete %s with memory usages %s", this, usages().snapshot());
+        super.prepareDelete();
     }
 
     @Override
-    public void prepareDelete() {
-        GraalError.guarantee(predecessor() instanceof SingleMemoryKill, "Cannot delete %s as its predecessor %s is not a SingleMemoryKill", this, predecessor());
-        GraalError.guarantee(getKilledLocationIdentity().equals(((SingleMemoryKill) predecessor()).getKilledLocationIdentity()),
-                        "Cannot delete %s as its predecessor %s kills a different location (%s vs. %s)", this, predecessor(), getKilledLocationIdentity(),
-                        ((SingleMemoryKill) predecessor()).getKilledLocationIdentity());
-        if (hasUsages()) {
-            // Memory edges are moved to the predecessor.
-            replaceAtUsages(predecessor(), InputType.Memory);
+    public Node canonical(CanonicalizerTool tool) {
+        if (graph().isBeforeStage(StructuredGraph.StageFlag.FLOATING_READS)) {
+            if (!(predecessor() instanceof WithExceptionNode)) {
+                return new BeginNode();
+            }
+        } else {
+            // after floating read - we need to check the memory graph
+            if (tool.allUsagesAvailable() && !(predecessor() instanceof WithExceptionNode) && !hasUsagesOfType(Memory)) {
+                return new BeginNode();
+            }
         }
-        // The guards are moved up to the preceding begin node.
-        super.prepareDelete();
+        return this;
     }
 }

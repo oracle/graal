@@ -349,6 +349,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.PluginReplacementWithExceptionNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
@@ -2149,6 +2150,23 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             returnStamp = StampFactory.forDeclaredType(getAssumptions(), returnType, false);
         }
         ValueNode node = new PluginReplacementNode(returnStamp.getTrustedStamp(), args, replacementFunction, plugin.getClass().getSimpleName());
+        if (returnType.getJavaKind() == JavaKind.Void) {
+            add(node);
+        } else {
+            addPush(returnType.getJavaKind(), node);
+        }
+    }
+
+    @Override
+    public void replacePluginWithException(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args,
+                    PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction replacementFunction) {
+        assert replacementFunction != null;
+        JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
+        StampPair returnStamp = getReplacements().getGraphBuilderPlugins().getOverridingStamp(this, returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(getAssumptions(), returnType, false);
+        }
+        WithExceptionNode node = new PluginReplacementWithExceptionNode(returnStamp.getTrustedStamp(), args, replacementFunction, plugin.getClass().getSimpleName());
         if (returnType.getJavaKind() == JavaKind.Void) {
             add(node);
         } else {

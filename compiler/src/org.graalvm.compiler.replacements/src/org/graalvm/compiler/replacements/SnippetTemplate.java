@@ -1546,6 +1546,7 @@ public class SnippetTemplate {
     }
 
     private void rewireMemoryGraph(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        verifyWithExceptionNode(replacee);
         if (replacee.graph().isAfterStage(StageFlag.FLOATING_READS)) {
             // rewire outgoing memory edges
             replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
@@ -1575,6 +1576,25 @@ public class SnippetTemplate {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Verifies that a {@link WithExceptionNode} does not have memory usages. It shouldn't because
+     * if it is a memory kill, its {@link WithExceptionNode#next()} and
+     * {@link WithExceptionNode#exceptionEdge()} edges should start with a memory kill as well
+     * ({@link org.graalvm.compiler.nodes.KillingBeginNode}, {@link ExceptionObjectNode}) or be
+     * {@linkplain org.graalvm.compiler.nodes.UnreachableBeginNode unreachable}.
+     *
+     * Knowing that there are no memory usages simplifies the handling of {@link WithExceptionNode}
+     * after {@link FloatingReadPhase} because we can simply ignore the memory graph. If this
+     * changes in the future, we need to rewire the memory graph on the exception edge, just as we
+     * do for the return path of the snippet for replacees other than {@link WithExceptionNode}.
+     * This guarantee ensures that we do not forget that.
+     */
+    private static void verifyWithExceptionNode(ValueNode node) {
+        if (node instanceof WithExceptionNode) {
+            GraalError.guarantee(node.hasNoUsages() || !node.hasUsagesOfType(InputType.Memory), "%s should not have any memory usages", node);
         }
     }
 
@@ -1718,8 +1738,8 @@ public class SnippetTemplate {
                 }
             }
             if (unwindPath != null) {
-                GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS),
-                                "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
+                GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS) || replacee instanceof WithExceptionNode,
+                                "Using a snippet with an UnwindNode after floating reads would require support for the memory graph (unless the replacee has an exception edge)");
                 GraalError.guarantee(replacee instanceof WithExceptionNode, "Snippet has an UnwindNode, but replacee is not a node with an exception handler");
 
                 FixedWithNextNode unwindPathDuplicate = (FixedWithNextNode) duplicates.get(unwindPath);
@@ -1737,9 +1757,7 @@ public class SnippetTemplate {
                  * because lowering should not remove edges from the original CFG.
                  */
                 if (replacee instanceof WithExceptionNode) {
-                    GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS),
-                                    "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
-                    GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to.");
+                    GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
 
                     WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode());
 
@@ -2216,7 +2234,7 @@ public class SnippetTemplate {
  * CFG edges for select snippet lowerings.
  */
 @NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
-final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable {
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, SingleMemoryKill {
     static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
 
     protected PlaceholderWithExceptionNode() {
@@ -2229,6 +2247,11 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
             killExceptionEdge();
         }
         graph().removeSplit(this, next());
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }
 

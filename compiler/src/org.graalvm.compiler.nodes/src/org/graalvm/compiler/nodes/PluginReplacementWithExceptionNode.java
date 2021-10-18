@@ -36,15 +36,15 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
-@NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
-    public static final NodeClass<PluginReplacementNode> TYPE = NodeClass.create(PluginReplacementNode.class);
+@NodeInfo(nameTemplate = "PluginReplacementWithException/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
+public final class PluginReplacementWithExceptionNode extends WithExceptionNode implements PluginReplacementInterface {
+    public static final NodeClass<PluginReplacementWithExceptionNode> TYPE = NodeClass.create(PluginReplacementWithExceptionNode.class);
 
     @Input protected NodeInputList<ValueNode> args;
-    private final ReplacementFunction function;
+    private final ReplacementWithExceptionFunction function;
     private final String pluginName;
 
-    public PluginReplacementNode(Stamp stamp, ValueNode[] args, ReplacementFunction function, String pluginName) {
+    public PluginReplacementWithExceptionNode(Stamp stamp, ValueNode[] args, ReplacementWithExceptionFunction function, String pluginName) {
         super(TYPE, stamp);
         this.args = new NodeInputList<>(this, args);
         this.function = function;
@@ -56,7 +56,7 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
         return function.replace(b, injection, stamp, args);
     }
 
-    public interface ReplacementFunction {
+    public interface ReplacementWithExceptionFunction {
         boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, Stamp stamp, NodeInputList<ValueNode> args);
     }
 
