@@ -26,15 +26,7 @@
 
 package com.oracle.graal.pointsto.util;
 
-import com.oracle.svm.common.option.CommonOptionParser;
-import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
-import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
-import com.oracle.svm.common.option.UnsupportedOptionClassException;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -45,7 +37,16 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import static com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat.PLUS_MINUS;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+
+import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.common.option.UnsupportedOptionClassException;
+import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
+import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 
 public final class PointsToOptionParser {
 
@@ -59,12 +60,11 @@ public final class PointsToOptionParser {
         return instance;
     }
 
-    @SuppressWarnings("unchecked")
     private PointsToOptionParser() {
         ClassLoader appClassLoader = PointsToOptionParser.class.getClassLoader();
         CommonOptionParser.collectOptions(ServiceLoader.load(OptionDescriptors.class, appClassLoader), descriptor -> {
             String name = descriptor.getName();
-            if (descriptor.getOptionKey() instanceof OptionKey) {
+            if (descriptor.getOptionKey() != null) {
                 OptionDescriptor existing = allAnalysisOptions.put(name, descriptor);
                 if (existing != null) {
                     AnalysisError.shouldNotReachHere("Option name \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + descriptor.getLocation());
@@ -112,7 +112,8 @@ public final class PointsToOptionParser {
         try {
             Predicate<OptionKey<?>> optionKeyPredicate = optionKey -> {
                 Class<?> clazz = optionKey.getClass();
-                // All classes from com.oracle.graal.pointsto.api.PointstoOptions are taken as non-hosted options.
+                // All classes from com.oracle.graal.pointsto.api.PointstoOptions are taken as
+                // non-hosted options.
                 if (clazz.getName().startsWith("com.oracle.graal.pointsto.api.PointstoOptions")) {
                     return false;
                 }

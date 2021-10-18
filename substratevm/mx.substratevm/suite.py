@@ -1261,16 +1261,13 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.junitsupport",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.base,org.graalvm.nativeimage.pointsto"
                 ],
                 "requires" : [
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
-                ],
-                "exports" : [
-                    "* to org.graalvm.nativeimage.base,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder",
-                ],
+                ]
             },
         },
 

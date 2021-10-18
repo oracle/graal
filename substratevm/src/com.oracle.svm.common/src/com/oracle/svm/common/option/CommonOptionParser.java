@@ -28,15 +28,6 @@ package com.oracle.svm.common.option;
 
 // Checkstyle: allow reflection
 
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionsParser;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +40,16 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionsParser;
+
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.StringUtil;
 
 public class CommonOptionParser {
     public static final String HOSTED_OPTION_PREFIX = "-H:";
@@ -352,7 +353,7 @@ public class CommonOptionParser {
     }
 
     /**
-     * Parses the provide string to a double number, avoiding the JDK dependencies (which pull in a
+     * Parses the provided string to a double number, avoiding the JDK dependencies (which pull in a
      * lot of classes, including the regular expression library). Only simple numbers are supported,
      * without fancy exponent styles.
      */

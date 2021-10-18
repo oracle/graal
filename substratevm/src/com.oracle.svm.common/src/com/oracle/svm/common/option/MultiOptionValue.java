@@ -32,10 +32,7 @@ public interface MultiOptionValue<T> {
     Class<T> getValueType();
 
     /**
-     * @return a list of option values, one for each place where the option is used
-     * @implSpec Note that it DOES NOT perform any splitting of string values based on a delimiter.
-     *           If you want to perform this split, use a utility
-     *           {@link com.oracle.svm.core.option.OptionUtils#flatten(String, com.oracle.svm.core.option.LocatableMultiOptionValue.Strings)}
+     * @return a list of option values, one for each place where the option is used.
      */
     List<T> values();
 

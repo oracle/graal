@@ -26,19 +26,6 @@ package com.oracle.svm.core.option;
 
 // Checkstyle: allow reflection
 
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.common.option.CommonOptionParser;
-import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
-import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
-import com.oracle.svm.common.option.UnsupportedOptionClassException;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -47,7 +34,19 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.common.option.CommonOptionParser;
+import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
+import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.common.option.UnsupportedOptionClassException;
+import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class contains methods for parsing options and matching them against
