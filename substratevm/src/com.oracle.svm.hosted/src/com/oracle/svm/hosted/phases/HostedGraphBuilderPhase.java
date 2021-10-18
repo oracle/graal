@@ -108,7 +108,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     }
 
     @Override
-    public boolean disallowDeoptInPlugins() {
+    public boolean allowDeoptInPlugins() {
         return false;
     }
 

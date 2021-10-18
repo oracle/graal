@@ -417,11 +417,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * When this returns true, the parser will report an error if an {@link InvocationPlugin}
+     * When this returns false, the parser will report an error if an {@link InvocationPlugin}
      * inserts a {@link org.graalvm.compiler.nodes.DeoptimizeNode} or {@link FixedGuardNode}.
      */
-    default boolean disallowDeoptInPlugins() {
-        return StrictDeoptInsertionChecks.getValue(getOptions());
+    default boolean allowDeoptInPlugins() {
+        return !StrictDeoptInsertionChecks.getValue(getOptions());
     }
 
     @SuppressWarnings("all")
