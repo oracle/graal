@@ -1982,12 +1982,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
         }
         for (PolyglotContextImpl context : aliveContexts) {
-            synchronized (context) {
-                if (context.localsCleared) {
-                    continue;
-                }
-                context.resizeContextLocals(newStableLocations);
-            }
+            context.resizeLocals(newStableLocations);
         }
         return newLocations;
     }
@@ -2015,12 +2010,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
         }
         for (PolyglotContextImpl context : aliveContexts) {
-            synchronized (context) {
-                if (context.localsCleared) {
-                    continue;
-                }
-                context.resizeContextThreadLocals(newStableLocations);
-            }
+            context.resizeThreadLocals(newStableLocations);
         }
         return newLocations;
     }

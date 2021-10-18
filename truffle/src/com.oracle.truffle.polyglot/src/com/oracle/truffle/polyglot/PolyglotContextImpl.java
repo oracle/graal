@@ -2624,13 +2624,39 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    /**
-     * Updates the current thread locals from {@link PolyglotThreadInfo#contextThreadLocals}.
-     */
-    synchronized Object[] updateThreadLocals() {
-        assert Thread.holdsLock(this);
-        Object[] newThreadLocals = getThreadLocals(Thread.currentThread());
-        return newThreadLocals;
+    void invokeLocalsFactories(LocalLocation[] contextLocalLocations, LocalLocation[] contextThreadLocalLocations) {
+        PolyglotContextImpl[] localChildContexts;
+        synchronized (this) {
+            if (localsCleared) {
+                return;
+            }
+            /*
+             * contextLocals might not be initialized yet, in which case the context local factory
+             * for this instrument will be invoked during contextLocals initialization.
+             */
+            if (contextLocals != null) {
+                invokeContextLocalsFactory(contextLocals, contextLocalLocations);
+                invokeContextThreadLocalFactory(contextThreadLocalLocations);
+            }
+            localChildContexts = PolyglotContextImpl.this.childContexts.toArray(new PolyglotContextImpl[0]);
+        }
+        for (PolyglotContextImpl childCtx : localChildContexts) {
+            childCtx.invokeLocalsFactories(contextLocalLocations, contextThreadLocalLocations);
+        }
+    }
+
+    void resizeThreadLocals(StableLocalLocations locations) {
+        PolyglotContextImpl[] localChildContexts;
+        synchronized (this) {
+            if (localsCleared) {
+                return;
+            }
+            resizeContextThreadLocals(locations);
+            localChildContexts = PolyglotContextImpl.this.childContexts.toArray(new PolyglotContextImpl[0]);
+        }
+        for (PolyglotContextImpl childCtx : localChildContexts) {
+            childCtx.resizeThreadLocals(locations);
+        }
     }
 
     void resizeContextThreadLocals(StableLocalLocations locations) {
@@ -2640,6 +2666,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             if (threadLocals.length < locations.locations.length) {
                 threadInfo.setContextThreadLocals(Arrays.copyOf(threadLocals, locations.locations.length));
             }
+        }
+    }
+
+    void resizeLocals(StableLocalLocations locations) {
+        PolyglotContextImpl[] localChildContexts;
+        synchronized (this) {
+            if (localsCleared) {
+                return;
+            }
+            resizeContextLocals(locations);
+            localChildContexts = PolyglotContextImpl.this.childContexts.toArray(new PolyglotContextImpl[0]);
+        }
+        for (PolyglotContextImpl childCtx : localChildContexts) {
+            childCtx.resizeLocals(locations);
         }
     }
 
