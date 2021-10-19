@@ -1008,7 +1008,7 @@ public class StandardGraphBuilderPlugins {
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getMetaAccess(), b.getAssumptions())) {
                         RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
                         b.add(regFin);
-                        b.setStateAfter(regFin);
+                        assert regFin.stateAfter() != null;
                     }
                     return true;
                 }

@@ -1025,7 +1025,6 @@ public class HotSpotGraphBuilderPlugins {
                         ValueNode newOffset = new SubNode(outNonNullLength, offset);
                         ForeignCallNode call = new ForeignCallNode(HotSpotBackend.MUL_ADD, helper.arrayStart(outNonNull, JavaKind.Int), helper.arrayStart(in, JavaKind.Int), newOffset, len, k);
                         b.addPush(JavaKind.Int, call);
-                        b.setStateAfter(call);
                     }
                     return true;
                 }
@@ -1042,12 +1041,11 @@ public class HotSpotGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode bObject, ValueNode n, ValueNode len, ValueNode inv,
                                 ValueNode product) {
                     try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        ForeignCallNode call = new ForeignCallNode(HotSpotBackend.MONTGOMERY_MULTIPLY, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(bObject, JavaKind.Int),
-                                        helper.arrayStart(n, JavaKind.Int), len, inv,
-                                        helper.arrayStart(product, JavaKind.Int));
-                        b.add(call);
+                        // The stub doesn't return the right value for the intrinsic so push it here
+                        // and the proper after FrameState will be put on ForeignCallNode by add.
                         b.addPush(JavaKind.Object, product);
-                        b.setStateAfter(call);
+                        b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_MULTIPLY, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(bObject, JavaKind.Int),
+                                        helper.arrayStart(n, JavaKind.Int), len, inv, helper.arrayStart(product, JavaKind.Int)));
                     }
                     return true;
                 }
@@ -1061,11 +1059,11 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
                     try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        ForeignCallNode call = new ForeignCallNode(HotSpotBackend.MONTGOMERY_SQUARE, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(n, JavaKind.Int), len, inv,
-                                        helper.arrayStart(product, JavaKind.Int));
-                        b.add(call);
+                        // The stub doesn't return the right value for the intrinsic so push it here
+                        // and the proper after FrameState will be put on ForeignCallNode by add.
                         b.addPush(JavaKind.Object, product);
-                        b.setStateAfter(call);
+                        b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_SQUARE, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(n, JavaKind.Int), len, inv,
+                                        helper.arrayStart(product, JavaKind.Int)));
                     }
                     return true;
                 }
@@ -1079,10 +1077,10 @@ public class HotSpotGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
                     try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        ForeignCallNode call = new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen);
-                        b.add(call);
+                        // The stub doesn't return the right value for the intrinsic so push it here
+                        // and the proper after FrameState will be put on ForeignCallNode by add.
                         b.addPush(JavaKind.Object, z);
-                        b.setStateAfter(call);
+                        b.add(new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
                     }
                     return true;
                 }
