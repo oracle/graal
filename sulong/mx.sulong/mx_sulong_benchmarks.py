@@ -597,6 +597,117 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
     def hosting_registry(self):
         return java_vm_registry
 
+class LLVMUnitTestsSuite(VmBenchmarkSuite):
+    def __init__(self, *args, **kwargs):
+        super(LLVMUnitTestsSuite, self).__init__(*args, **kwargs)
+        self.bench_to_exec = {}
+
+    def group(self):
+        return 'Graal'
+
+    def subgroup(self):
+        return 'sulong'
+
+    def name(self):
+        return 'llvm-unit-tests'
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ['llvm-test-suite']
+
+    def failurePatterns(self):
+        return []
+
+    def successPatterns(self):
+        return [re.compile(r'Testing Time')]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+		r'Passed:(\s+)(?P<count>[\d]+)',
+		{
+                "benchmark": ("llvm-unit-tests", str),
+                # TODO: it's a borrowed metric name, a new one should be registered
+                "metric.name": "jck-passed",
+                "metric.type": "numeric",
+                "metric.value": ("<count>", int),
+                "metric.score-function": "id",
+                "metric.better": "higher",
+                "metric.unit": "#"
+            }),
+            mx_benchmark.StdOutRule(
+		r'Failed:(\s+)(?P<count>[\d]+)',
+		{
+                "benchmark": ("llvm-unit-tests", str),
+                # TODO: it's a borrowed metric name, a new one should be registered
+                "metric.name": "jck-failed",
+                "metric.type": "numeric",
+                "metric.value": ("<count>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "#"
+            }),
+            mx_benchmark.StdOutRule(
+		r'Testing Time:(\s+)(?P<time>\d+(?:\.\d+)?)+s',
+		{
+                "benchmark": ("llvm-unit-tests", str),
+                "metric.name": "time",
+                "metric.type": "numeric",
+                "metric.value": ("<time>", float),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.unit": "s"
+            })
+        ]
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        # TODO
+        return None
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        # TODO
+        return []
+
+    def get_vm_registry(self):
+        return lit_vm_registry
+
+class LitVm(mx_benchmark.OutputCapturingVm):
+
+    def __init__(self, config_name, options):
+        super(LitVm, self).__init__()
+        self._config_name = config_name
+        self._options = options
+
+    def config_name(self):
+        return self._config_name
+
+    def name(self):
+        # TODO: register "lit" as a new VM and return it here
+        return "sulong"
+
+    def post_process_command_line_args(self, suiteArgs):
+        """Adapts command-line arguments to run the specific VM configuration."""
+        return suiteArgs
+
+    def dimensions(self, cwd, args, code, out):
+        """Returns a dict of additional dimensions to put into every datapoint.
+        :rtype: dict
+        """
+        return {}
+
+    def run_vm(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
+        env = os.environ.copy()
+        mx.run(["lit", "-v", "-j", "4", "-o", "results.json", "."], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, env=env)
+        return 0
+
+    def prepare_env(self, env):
+        return env
+
+    def opt_phases(self):
+        return []
+
+    def hosting_registry(self):
+        return java_vm_registry
+
 _suite = mx.suite("sulong")
 
 native_vm_registry = VmRegistry("Native", known_host_registries=[java_vm_registry])
@@ -629,3 +740,6 @@ native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-exclusive-engine',
     ['--multi-context-runs=3', '--shared-engine=false', '-w', '10', '-i', '10']), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-shared-engine',
     ['--multi-context-runs=3', '--shared-engine=true', '-w', '10', '-i', '10']), _suite, 10)
+
+lit_vm_registry = VmRegistry("Lit", known_host_registries=[java_vm_registry])
+lit_vm_registry.add_vm(LitVm('sulong-native', []), _suite, 10)
