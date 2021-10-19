@@ -37,7 +37,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -123,10 +122,10 @@ public class CommonOptionParser {
             return optionKey;
         }
 
-        public boolean matchesFlags(OptionDescriptor d, BooleanSupplier svmOption) {
+        public boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
             if (!printFlags.isEmpty()) {
                 boolean showAll = printFlags.equals(EnumSet.allOf(OptionType.class));
-                return showAll || svmOption.getAsBoolean() && printFlags.contains(d.getOptionType());
+                return showAll || svmOption && printFlags.contains(d.getOptionType());
             }
             if (!optionNameFilter.isEmpty()) {
                 if (optionNameFilter.contains(EXTRA_HELP_OPTIONS_WILDCARD) && !d.getExtraHelp().isEmpty()) {

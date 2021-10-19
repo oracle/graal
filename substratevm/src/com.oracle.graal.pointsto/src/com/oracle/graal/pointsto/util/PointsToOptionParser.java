@@ -44,9 +44,9 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.common.option.CommonOptionParser;
-import com.oracle.svm.common.option.UnsupportedOptionClassException;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.common.option.UnsupportedOptionClassException;
 
 public final class PointsToOptionParser {
 
@@ -126,7 +126,7 @@ public final class PointsToOptionParser {
             OptionParseResult optionParseResult = CommonOptionParser.parseOption(options, optionKeyPredicate, arg.substring(optionPrefix.length()), valuesMap,
                             optionPrefix, booleanOptionFormat);
             if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
-                CommonOptionParser.printFlags(d -> optionParseResult.matchesFlags(d, () -> true), options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
+                CommonOptionParser.printFlags(d -> optionParseResult.matchesFlags(d, true), options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
                 System.out.println("Abort analysis due to print flags are requested");
                 System.exit(1);
             }

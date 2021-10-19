@@ -89,10 +89,10 @@ public class SubstrateOptionsParser {
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), valuesMap,
                         optionPrefix, booleanOptionFormat);
         if (optionParseResult.printFlags() || optionParseResult.printFlagsWithExtraHelp()) {
-            SubstrateOptionsParser.printFlags(d -> optionParseResult.matchesFlags(d, () -> {
+            SubstrateOptionsParser.printFlags(d -> {
                 OptionKey<?> key = d.getOptionKey();
-                return key instanceof RuntimeOptionKey || key instanceof HostedOptionKey;
-            }), options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
+                return optionParseResult.matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
+            }, options, optionPrefix, out, optionParseResult.printFlagsWithExtraHelp());
             throw new InterruptImageBuilding("");
         }
         if (!optionParseResult.isValid()) {
