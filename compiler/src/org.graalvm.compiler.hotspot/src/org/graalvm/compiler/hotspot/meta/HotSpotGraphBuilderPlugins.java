@@ -29,13 +29,13 @@ import static org.graalvm.compiler.core.common.calc.Condition.EQ;
 import static org.graalvm.compiler.core.common.calc.Condition.LT;
 import static org.graalvm.compiler.core.common.calc.Condition.NE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_DECRYPTBLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_ENCRYPTBLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
@@ -952,13 +952,9 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode rAddr = helper.arrayElementPointer(r, JavaKind.Byte, null);
                 ValueNode inAddr = helper.arrayElementPointer(nonNullIn, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(nonNullOut, JavaKind.Byte, outOffset);
-                HotSpotForeignCallDescriptor descriptor = doEncrypt ? ENCRYPT : DECRYPT;
-                ForeignCallNode call = new ForeignCallNode(descriptor, inAddr, outAddr, kAddr, rAddr, inLength);
-                b.append(call);
-                b.addPush(JavaKind.Int, inLength);
-                b.setStateAfter(call);
-                b.pop(JavaKind.Int);
-                helper.emitFinalReturn(JavaKind.Int, inLength);
+                HotSpotForeignCallDescriptor descriptor = doEncrypt ? CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT : CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
+                ForeignCallNode call = b.add(new ForeignCallNode(descriptor, inAddr, outAddr, kAddr, rAddr, inLength));
+                helper.emitFinalReturn(JavaKind.Int, call);
             }
             return true;
         }
@@ -1266,9 +1262,7 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode kAddr = helper.arrayElementPointer(k, JavaKind.Int, null);
 
                 ValueNode usedPtr = b.add(new ComputeObjectAddressNode(nonNullReceiver, helper.asWord(helper.getFieldOffset(targetMethod.getDeclaringClass(), "used"))));
-                ForeignCallNode call = b.append(new ForeignCallNode(COUNTERMODE_IMPL_CRYPT, inAddr, outAddr, kAddr, counterAddr, len, encryptedCounterAddr, usedPtr));
-                b.addPush(JavaKind.Int, call);
-                b.pop(JavaKind.Int);
+                ForeignCallNode call = b.add(new ForeignCallNode(COUNTERMODE_IMPL_CRYPT, inAddr, outAddr, kAddr, counterAddr, len, encryptedCounterAddr, usedPtr));
                 helper.emitFinalReturn(JavaKind.Int, call);
             }
             return true;

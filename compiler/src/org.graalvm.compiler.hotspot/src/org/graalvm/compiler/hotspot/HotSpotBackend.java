@@ -149,26 +149,26 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor ENCRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
+    public static final HotSpotForeignCallDescriptor AESCRYPT_ENCRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
+                    "aescrypt_encryptBlock", void.class, Word.class, Word.class, Pointer.class);
 
     /**
      * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor DECRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
+    public static final HotSpotForeignCallDescriptor AESCRYPT_DECRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
+                    "aescrypt_decryptBlock", void.class, Word.class, Word.class, Pointer.class);
 
     /**
      * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor ENCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
+    public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,
+                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_encrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
 
     /**
      * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor DECRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
+    public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,
+                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_decrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
 
     /**
      * @see BigIntegerSubstitutions#multiplyToLen
@@ -264,8 +264,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.
      */
     public static final HotSpotForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "counterModeAESCrypt", int.class,
-                    Word.class, Word.class, Word.class, Word.class, int.class,
-                    Word.class, Word.class);
+                    Word.class, Word.class, Word.class, Word.class, int.class, Word.class, Word.class);
 
     /**
      * Descriptor for {@code StubRoutines::_vectorizedMismatch}.
