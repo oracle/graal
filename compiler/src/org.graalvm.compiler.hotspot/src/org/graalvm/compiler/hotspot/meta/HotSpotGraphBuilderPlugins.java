@@ -857,10 +857,10 @@ public class HotSpotGraphBuilderPlugins {
 
                 ResolvedJavaField kField = helper.getField(aesCryptType(targetMethod.getDeclaringClass()), "K");
                 ValueNode k = b.nullCheckedValue(helper.loadField(nonNullReceiver, kField));
-                ValueNode kAddr = helper.arrayElementPointer(k, JavaKind.Int, null);
+                ValueNode kAddr = helper.arrayStart(k, JavaKind.Int);
                 ValueNode inAddr = helper.arrayElementPointer(nonNullIn, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(nonNullOut, JavaKind.Byte, outOffset);
-                HotSpotForeignCallDescriptor descriptor = doEncrypt ? ENCRYPT_BLOCK : DECRYPT_BLOCK;
+                HotSpotForeignCallDescriptor descriptor = doEncrypt ? AESCRYPT_ENCRYPTBLOCK : AESCRYPT_DECRYPTBLOCK;
                 b.add(new ForeignCallNode(descriptor, inAddr, outAddr, kAddr));
             }
             return true;
@@ -948,8 +948,8 @@ public class HotSpotGraphBuilderPlugins {
 
                 ValueNode k = b.nullCheckedValue(helper.loadField(embeddedCipher, kField));
                 ValueNode r = b.nullCheckedValue(helper.loadField(nonNullReceiver, rField));
-                ValueNode kAddr = helper.arrayElementPointer(k, JavaKind.Int, null);
-                ValueNode rAddr = helper.arrayElementPointer(r, JavaKind.Byte, null);
+                ValueNode kAddr = helper.arrayStart(k, JavaKind.Int);
+                ValueNode rAddr = helper.arrayStart(r, JavaKind.Byte);
                 ValueNode inAddr = helper.arrayElementPointer(nonNullIn, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(nonNullOut, JavaKind.Byte, outOffset);
                 HotSpotForeignCallDescriptor descriptor = doEncrypt ? CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT : CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
@@ -1255,11 +1255,11 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode k = b.nullCheckedValue(helper.loadField(embeddedCipher, kField));
                 ResolvedJavaField counterField = helper.getField(targetMethod.getDeclaringClass(), "counter");
                 ValueNode counter = helper.loadField(nonNullReceiver, counterField);
-                ValueNode counterAddr = helper.arrayElementPointer(counter, JavaKind.Byte, null);
+                ValueNode counterAddr = helper.arrayStart(counter, JavaKind.Byte);
                 ResolvedJavaField encryptedCounterField = helper.getField(targetMethod.getDeclaringClass(), "encryptedCounter");
                 ValueNode encryptedCounter = helper.loadField(nonNullReceiver, encryptedCounterField);
-                ValueNode encryptedCounterAddr = helper.arrayElementPointer(encryptedCounter, JavaKind.Byte, null);
-                ValueNode kAddr = helper.arrayElementPointer(k, JavaKind.Int, null);
+                ValueNode encryptedCounterAddr = helper.arrayStart(encryptedCounter, JavaKind.Byte);
+                ValueNode kAddr = helper.arrayStart(k, JavaKind.Int);
 
                 ValueNode usedPtr = b.add(new ComputeObjectAddressNode(nonNullReceiver, helper.asWord(helper.getFieldOffset(targetMethod.getDeclaringClass(), "used"))));
                 ForeignCallNode call = b.add(new ForeignCallNode(COUNTERMODE_IMPL_CRYPT, inAddr, outAddr, kAddr, counterAddr, len, encryptedCounterAddr, usedPtr));
