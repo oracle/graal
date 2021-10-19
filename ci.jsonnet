@@ -14,10 +14,10 @@ local sulong = import 'sulong/ci.jsonnet';
 local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 
 # Add a guard to `build` that prevents it from running in the gate
-# for a PR that only touches *.md flles.
-local add_markdown_guard(build) = build + {
+# for a PR that only touches *.md files, the docs, are config files for GitHub.
+local add_excludes_guard(build) = build + {
   guard+: {
-    excludes+: ["**.md", "docs/**"]
+    excludes+: ["**.md", "docs/**", ".github/**"]
   }
 };
 
@@ -26,7 +26,7 @@ local add_markdown_guard(build) = build + {
   _checkCommon: (import 'common.jsonnet'),
   ci_resources:: (import 'ci-resources.libsonnet'),
   specVersion: "2",
-  builds: [add_markdown_guard(b) for b in (
+  builds: [add_excludes_guard(b) for b in (
     compiler.builds +
     wasm.builds +
     espresso.builds +
