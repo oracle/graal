@@ -77,7 +77,7 @@ public @interface APIOption {
 
     /**
      * Provide a custom separator that should be used to separate the option name from its option
-     * values. The default separator is {@code '='}. If {@value WHITESPACE_SEPARATOR} is used the
+     * values. The default separator is {@code '='}. If {@code WHITESPACE_SEPARATOR} is used the
      * option value has to be passed as the next argument (i.e., separated by whitespace on the
      * command line).
      */

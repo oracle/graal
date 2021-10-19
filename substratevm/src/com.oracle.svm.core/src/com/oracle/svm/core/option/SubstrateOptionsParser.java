@@ -212,7 +212,7 @@ public class SubstrateOptionsParser {
                     if (apiOption.fixedValue().length == 0) {
                         if (apiOptionWithValue == null) {
                             /* First APIOption that accepts value is selected as fallback */
-                            apiOptionWithValue = optionName + apiOption.valueSeparator() + value;
+                            apiOptionWithValue = optionName + apiOption.valueSeparator()[0] + value;
                         }
                     } else if (apiOption.fixedValue()[0].equals(value)) {
                         /* Return requested option expressed as fixed-value APIOption */

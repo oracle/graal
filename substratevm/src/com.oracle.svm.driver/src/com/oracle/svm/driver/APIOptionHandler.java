@@ -237,6 +237,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                                         "Class specified as valueTransformer for @APIOption " + apiOptionName + " cannot be loaded or instantiated: " + transformerClass.getTypeName(), ex.getCause());
                     }
                 }
+                if (apiAnnotation.valueSeparator().length == 0) {
+                    throw VMError.shouldNotReachHere(String.format("APIOption %s(%s) does not specify any valueSeparator", apiOptionName, rawOptionName));
+                }
                 if (Arrays.asList(apiAnnotation.valueSeparator()).contains(APIOption.WHITESPACE_SEPARATOR)) {
                     String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
                     if (booleanOption) {
