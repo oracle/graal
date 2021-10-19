@@ -408,6 +408,21 @@ suite = {
             "workingSets": "SVM",
         },
 
+
+        "com.oracle.graal.reachability": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "checkstyle": "com.oracle.graal.pointsto",
+            "javaCompliance": "11+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],

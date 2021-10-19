@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.Timer;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -42,6 +43,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
@@ -56,6 +58,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
@@ -288,6 +291,48 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         return true;
     }
 
+    @Override
+    public void runAnalysis(DebugContext debugContext, Function<AnalysisUniverse, Boolean> analysisEndCondition) throws InterruptedException {
+        // todo this is ugly copy paste from points-to
+        int numIterations = 0;
+        while (true) {
+            try (Indent indent2 = debugContext.logAndIndent("new analysis iteration")) {
+                /*
+                 * Do the analysis (which itself is done in a similar iterative process)
+                 */
+                boolean analysisChanged = finish();
+
+                numIterations++;
+                if (numIterations > 1000) {
+                    /*
+                     * Usually there are < 10 iterations. If we have so many iterations, we probably
+                     * have an endless loop (but at least we have a performance problem because we
+                     * re-start the analysis so often).
+                     */
+                    throw AnalysisError.shouldNotReachHere(String.format("Static analysis did not reach a fix point after %d iterations because a Feature keeps requesting new analysis iterations. " +
+                                    "The analysis itself %s find a change in type states in the last iteration.",
+                                    numIterations, analysisChanged ? "DID" : "DID NOT"));
+                }
+
+                /*
+                 * Allow features to change the universe.
+                 */
+                try (Timer.StopTimer t2 = getProcessFeaturesTimer().start()) {
+                    int numTypes = universe.getTypes().size();
+                    int numMethods = universe.getMethods().size();
+                    int numFields = universe.getFields().size();
+                    if (analysisEndCondition.apply(universe)) {
+                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                            throw AnalysisError.shouldNotReachHere(
+                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     private void runReachability() throws InterruptedException {
         try (Timer.StopTimer t = reachabilityTimer.start()) {
             if (!executor.isStarted()) {
@@ -307,7 +352,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             scannedObjects.reset();
             // scan constants
             boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
-            ObjectScanner objectScanner = new ReachabilityObjectScanner(this, isParallel ? executor : null, scannedObjects, metaAccess);
+            ObjectScanner objectScanner = new ObjectScanner(this, isParallel ? executor : null, scannedObjects, new ReachabilityObjectScanner(this, metaAccess)) {
+            };
             checkObjectGraph(objectScanner);
             if (isParallel) {
                 executor.start();

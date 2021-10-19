@@ -134,6 +134,8 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
         // todo
     }
 
+    // todo remove ugly copy paste from this class
+
     public void checkType(AnalysisType type) {
         assert type.isReachable();
         DynamicHub hub = getHostVM().dynamicHub(type);
@@ -237,7 +239,7 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof NativeImagePointsToAnalysis.GenericInterfacesEncodingKey && Arrays.equals(interfaces, ((NativeImagePointsToAnalysis.GenericInterfacesEncodingKey) obj).interfaces);
+            return obj instanceof GenericInterfacesEncodingKey && Arrays.equals(interfaces, ((GenericInterfacesEncodingKey) obj).interfaces);
         }
 
         @Override
@@ -297,8 +299,8 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof NativeImagePointsToAnalysis.AnnotatedInterfacesEncodingKey &&
-                            shallowEquals(interfaces, ((NativeImagePointsToAnalysis.AnnotatedInterfacesEncodingKey) obj).interfaces);
+            return obj instanceof AnnotatedInterfacesEncodingKey &&
+                            shallowEquals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
         }
 
         @Override

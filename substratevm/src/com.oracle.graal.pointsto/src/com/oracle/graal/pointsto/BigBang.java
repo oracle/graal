@@ -45,6 +45,16 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.Timer;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.options.OptionValues;
+
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.function.Function;
+
 
 /**
  * Central static analysis interface that groups together the functionality of reachability analysis
