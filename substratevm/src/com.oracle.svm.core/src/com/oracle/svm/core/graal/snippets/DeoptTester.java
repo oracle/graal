@@ -51,7 +51,7 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -111,7 +111,7 @@ public class DeoptTester {
                             !CEntryPointSnippets.isIsolateInitialized() ||
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
-                            !VMThreads.SafepointBehavior.safepointChecksEnabled() ||
+                            !SafepointBehavior.safepointChecksEnabled() ||
                             !JavaThreads.currentJavaThreadInitialized()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }

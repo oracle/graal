@@ -35,6 +35,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -566,7 +567,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     private static int reportException(Throwable exception) {
-        VMThreads.SafepointBehavior.preventSafepoints();
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         logException(exception);

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -40,6 +40,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -49,14 +50,13 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.vm.ci.meta.JavaKind;
-
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 //Checkstyle: stop
 
@@ -166,7 +166,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.SafepointBehavior.preventSafepoints();
+            SafepointBehavior.preventSafepoints();
             StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
             int lastError = WinBase.GetLastError();

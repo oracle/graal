@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -39,9 +41,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
-import com.oracle.svm.core.thread.VMThreads;
-
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
 @TargetClass(com.oracle.svm.core.util.VMError.class)
 final class Target_com_oracle_svm_core_util_VMError {
@@ -103,7 +103,7 @@ public class VMErrorSubstitutions {
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
 
-        VMThreads.SafepointBehavior.preventSafepoints();
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         VMErrorSubstitutions.shutdown(callerIP, msg, ex);

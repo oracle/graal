@@ -831,8 +831,10 @@ public abstract class VMThreads {
          * thread will also actively prevent the VM from reaching a safepoint (regardless of its
          * thread status).
          * 
-         * NOTE: Be careful with this and make sure that this thread does not allocate any Java
-         * objects as this could result deadlocks.
+         * NOTE: Be careful with this method and make sure that this thread does not allocate any
+         * Java objects as this could result deadlocks. This method will only work prevent
+         * safepoints reliably if it is called from a thread with
+         * {@link StatusSupport#STATUS_IN_JAVA}.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
         public static void preventSafepoints() {
@@ -841,12 +843,12 @@ public abstract class VMThreads {
         }
 
         /**
-         * Marks the thread as crashed. This method may only be used in places where it is no longer
+         * Marks the thread as crashed. This method may only be used in places where it is not
          * possible to safely detach a thread.
          * 
-         * Calling this method changes the safepoint behavior so that this thread won't freeze at a
-         * safepoint. The safepoint handling will ignore the thread so that the VM can reach a
-         * safepoint regardless of the status of this thread.
+         * Changes the safepoint behavior so that this thread won't freeze at a safepoint. The
+         * safepoint handling will ignore the thread so that the VM can reach a safepoint regardless
+         * of the status of this thread.
          *
          * NOTE: Be careful with this. If a thread is ignored by the safepoint handling, it means
          * that it can continue executing while a safepoint (and therefore a GC) is in progress. So,

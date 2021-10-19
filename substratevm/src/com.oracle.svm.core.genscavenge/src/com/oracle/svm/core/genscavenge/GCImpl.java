@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -783,7 +784,7 @@ public final class GCImpl implements GC {
                          */
                         continue;
                     }
-                    if (!VMThreads.SafepointBehavior.safepointChecksEnabled(vmThread)) {
+                    if (!SafepointBehavior.safepointChecksEnabled(vmThread)) {
                         /*
                          * When a thread is ignoring safepoints, then the thread is not paused and
                          * we cannot safely walk its stack (we don't even know where it starts).

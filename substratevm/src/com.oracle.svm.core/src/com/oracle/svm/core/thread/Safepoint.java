@@ -520,7 +520,7 @@ public final class Safepoint {
     private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus) {
         VMError.guarantee(StatusSupport.isStatusNativeOrSafepoint(), "Must either be at a safepoint or in native mode");
         VMError.guarantee(SafepointBehavior.safepointChecksEnabled(),
-                        "When safepoint checks are disabled, the thread can only be in Native mode, so the fast path transition must succeed and this slow path must not be called");
+                        "The safepoint handling doesn't change the status of threads where the safepoint checks are disabled. So, the fast path transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
         try {
@@ -719,7 +719,7 @@ public final class Safepoint {
                      * - thread A reads the safepoint behavior of thread B.
                      * - thread B sets the safepoint behavior to PREVENT_VM_FROM_REACHING_SAFEPOINT.
                      * - thread B sets the status to STATUS_IN_NATIVE.
-                     * - thread A reads the status and the VM reaches a safepoint.
+                     * - thread A reads the status of thread B and the VM reaches a safepoint.
                      */
                     int status = StatusSupport.getStatusVolatile(vmThread);
                     int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
