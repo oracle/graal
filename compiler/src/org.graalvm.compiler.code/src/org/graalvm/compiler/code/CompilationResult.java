@@ -135,7 +135,7 @@ public class CompilationResult {
 
     /**
      * Describes a table of signed offsets embedded in the code. The offsets are relative to the
-     * starting address of the table. This type of table maybe generated when translating a
+     * starting address of the table. This type of table can be generated when translating a
      * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
      * JVM instruction).
      *
@@ -143,6 +143,31 @@ public class CompilationResult {
      * inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
+
+        /**
+         * Constants denoting the format and size of each entry in a jump table.
+         */
+        public enum EntryFormat {
+            /**
+             * Each entry is a 4 byte offset. The base of the offset is platform dependent.
+             */
+            OFFSET(4),
+
+            /**
+             * Each entry is a secondary key value followed by a 4 byte offset. The base of the
+             * offset is platform dependent.
+             */
+            KEY2_OFFSET(8);
+
+            EntryFormat(int size) {
+                this.size = size;
+            }
+
+            /**
+             * Gets the size of an entry in bytes.
+             */
+            public final int size;
+        }
 
         /**
          * The low value in the key range (inclusive).
@@ -157,13 +182,16 @@ public class CompilationResult {
         /**
          * The size (in bytes) of each table entry.
          */
-        public final int entrySize;
+        public final EntryFormat entryFormat;
 
-        public JumpTable(int position, int low, int high, int entrySize) {
+        public JumpTable(int position, int low, int high, EntryFormat entryFormat) {
             super(position);
+            if (high <= low) {
+                throw new IllegalArgumentException(String.format("low (%d) is not less than high(%d)", low, high));
+            }
             this.low = low;
             this.high = high;
-            this.entrySize = entrySize;
+            this.entryFormat = entryFormat;
         }
 
         @Override
@@ -173,7 +201,7 @@ public class CompilationResult {
             }
             if (obj instanceof JumpTable) {
                 JumpTable that = (JumpTable) obj;
-                if (this.getPosition() == that.getPosition() && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
+                if (this.getPosition() == that.getPosition() && this.entryFormat == that.entryFormat && this.low == that.low && this.high == that.high) {
                     return true;
                 }
             }
