@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -47,8 +46,8 @@ public final class GCAccounting {
     private long completeCollectionTotalNanos = 0;
     private UnsignedWord collectedTotalChunkBytes = WordFactory.zero();
     private UnsignedWord allocatedChunkBytes = WordFactory.zero();
-    private UnsignedWord tenuredObjectBytes = WordFactory.zero();
-    private UnsignedWord survivorOverflowObjectBytes = WordFactory.zero();
+    private UnsignedWord lastIncrementalCollectionPromotedChunkBytes = WordFactory.zero();
+    private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
@@ -113,15 +112,15 @@ public final class GCAccounting {
         return youngChunkBytesAfter;
     }
 
-    UnsignedWord getTenuredObjectBytes() {
-        return tenuredObjectBytes;
+    UnsignedWord getLastIncrementalCollectionPromotedChunkBytes() {
+        return lastIncrementalCollectionPromotedChunkBytes;
     }
 
-    UnsignedWord getSurvivorOverflowObjectBytes() {
-        return survivorOverflowObjectBytes;
+    public boolean hasLastIncrementalCollectionOverflowedSurvivors() {
+        return lastIncrementalCollectionOverflowedSurvivors;
     }
 
-    void beforeCollection() {
+    void beforeCollection(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -138,8 +137,9 @@ public final class GCAccounting {
             oldObjectBytesBefore = oldSpace.computeObjectBytes();
             allocatedObjectBytes = allocatedObjectBytes.add(edenObjectBytesBefore);
         }
-        tenuredObjectBytes = WordFactory.zero();
-        survivorOverflowObjectBytes = WordFactory.zero();
+        if (!completeCollection) {
+            lastIncrementalCollectionOverflowedSurvivors = false;
+        }
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
@@ -147,12 +147,8 @@ public final class GCAccounting {
 
     /** Called after an object has been promoted from the young generation to the old generation. */
     @AlwaysInline("GC performance")
-    void onObjectTenured(Object result, boolean survivorOverflow) {
-        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(result);
-        tenuredObjectBytes = tenuredObjectBytes.add(size);
-        if (survivorOverflow) {
-            survivorOverflowObjectBytes = survivorOverflowObjectBytes.add(size);
-        }
+    void onSurvivorOverflowed() {
+        lastIncrementalCollectionOverflowedSurvivors = true;
     }
 
     void afterCollection(boolean completeCollection, Timer collectionTimer) {
@@ -172,6 +168,7 @@ public final class GCAccounting {
          */
         incrementalCollectionCount += 1;
         afterCollectionCommon();
+        lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
         incrementalCollectionTotalNanos += collectionTimer.getMeasuredNanos();
         trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
                         .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
