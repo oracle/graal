@@ -407,21 +407,22 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         for (int i = sp; i >= 0; i -= stackFrameSize) {
             System.out.print(String.format("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
             for (int j = offsetCaptureGroups(); j < offsetQuantifierCounts(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
-            System.out.print(String.format("],\n  quant: ["));
+            System.out.print(String.format("],\n  last-group: %d", stack()[offsetLastGroup()]));
+            System.out.print(String.format(",\n  quant: ["));
             for (int j = offsetQuantifierCounts(); j < offsetZeroWidthQuantifierIndices(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
             System.out.print(String.format("],\n  zwq-indices: ["));
             for (int j = offsetZeroWidthQuantifierIndices(); j < offsetZeroWidthQuantifierCG(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
             System.out.print(String.format("],\n  zwq-cg: {\n"));
             for (int zwq = 0; zwq < nZeroWidthQuantifiers; zwq++) {
                 System.out.print(String.format("    %d: [", zwq));
                 for (int j = offsetZeroWidthQuantifierCG(zwq); j < offsetZeroWidthQuantifierCG(zwq + 1); j++) {
-                    System.out.print(String.format("%d, ", stack()[j]));
+                    System.out.print(String.format("%d, ", stack()[i + j - sp]));
                 }
                 System.out.print("],\n");
             }
