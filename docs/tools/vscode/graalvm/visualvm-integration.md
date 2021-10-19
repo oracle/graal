@@ -2,10 +2,10 @@
 layout: docs
 toc_group: vscode
 link_title: VisualVM and VS Code Integration
-permalink: /tools/vscode/visualvm-integration/
+permalink: /tools/vscode/graalvm/visualvm-integration/
 ---
 
-# VisualVM and VS Code Integration
+## VisualVM and VS Code Integration
 
 As of GraalVM 21.2.0, the GraalVM Tools for Java extension introduced a new feature in this version - the integration with VisualVM (https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
 This brings the visual Java tooling to VS Code.
