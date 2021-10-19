@@ -43,6 +43,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.api.HostVM;
@@ -78,6 +80,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
@@ -702,6 +705,64 @@ public abstract class PointsToAnalysis implements BigBang {
     @Override
     public HostVM getHostVM() {
         return hostVM;
+    }
+
+    /**
+     * Iterate until analysis reaches a fixpoint.
+     *
+     * @param debugContext debug context
+     * @param analysisEndCondition hook for actions to be taken during analysis. It also dictates
+     *            when the analysis should end, i.e., it returns true if no more iterations are
+     *            required.
+     * 
+     *            When the analysis is used for Native Image generation the actions could for
+     *            example be specified via
+     *            {@link org.graalvm.nativeimage.hosted.Feature#duringAnalysis(Feature.DuringAnalysisAccess)}.
+     *            The ending condition could be provided by
+     *            {@link org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess#requireAnalysisIteration()}.
+     * 
+     * @throws AnalysisError if the analysis fails
+     */
+    @SuppressWarnings("try")
+    @Override
+    public void runAnalysis(DebugContext debugContext, Function<AnalysisUniverse, Boolean> analysisEndCondition) throws InterruptedException {
+        int numIterations = 0;
+        while (true) {
+            try (Indent indent2 = debugContext.logAndIndent("new analysis iteration")) {
+                /*
+                 * Do the analysis (which itself is done in a similar iterative process)
+                 */
+                boolean analysisChanged = finish();
+
+                numIterations++;
+                if (numIterations > 1000) {
+                    /*
+                     * Usually there are < 10 iterations. If we have so many iterations, we probably
+                     * have an endless loop (but at least we have a performance problem because we
+                     * re-start the analysis so often).
+                     */
+                    throw AnalysisError.shouldNotReachHere(String.format("Static analysis did not reach a fix point after %d iterations because a Feature keeps requesting new analysis iterations. " +
+                                    "The analysis itself %s find a change in type states in the last iteration.",
+                                    numIterations, analysisChanged ? "DID" : "DID NOT"));
+                }
+
+                /*
+                 * Allow features to change the universe.
+                 */
+                try (StopTimer t2 = getProcessFeaturesTimer().start()) {
+                    int numTypes = universe.getTypes().size();
+                    int numMethods = universe.getMethods().size();
+                    int numFields = universe.getFields().size();
+                    if (analysisEndCondition.apply(universe)) {
+                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                            throw AnalysisError.shouldNotReachHere(
+                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                        }
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")
