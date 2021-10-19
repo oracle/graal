@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -36,10 +37,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -456,7 +459,7 @@ public class CompileQueue {
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
-        phaseSuite.appendPhase(new StrengthenStampsPhase());
+// phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {
@@ -553,14 +556,19 @@ public class CompileQueue {
      * parsed methods.
      */
     private void parseAheadOfTimeCompiledMethods() {
-        universe.getMethods().stream()
+        List<HostedMethod> entryPoints = universe.getMethods().stream()
                         .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
+                        .collect(Collectors.toList());
+        System.out.println("Entry points: " + entryPoints.size());
+        entryPoints.forEach(method -> ensureParsed(method, null, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().values().stream()
+        List<HostedMethod> foreignCallEntryPoints = foreignCallsProvider.getForeignCalls().values().stream()
                         .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
+                        .collect(Collectors.toList());
+        System.out.println("Foreign call entry points: " + foreignCallEntryPoints.size());
+        foreignCallEntryPoints
                         .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
     }
 
@@ -1018,6 +1026,8 @@ public class CompileQueue {
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
+    public static final Set<HostedMethod> parsedMethods = ConcurrentHashMap.newKeySet();
+
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
@@ -1092,6 +1102,8 @@ public class CompileQueue {
                     }
                 }
 
+                parsedMethods.add(method);
+
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
                 error.addContext("method: " + method.format("%r %H.%n(%p)"));
@@ -1103,9 +1115,18 @@ public class CompileQueue {
         }
     }
 
+    public static final Map<HostedMethod, List<HostedMethod>> parseTree = new ConcurrentHashMap<>();
+
+    private static List<HostedMethod> getEntry(HostedMethod method) {
+        return parseTree.computeIfAbsent(method, key -> Collections.synchronizedList(new ArrayList<>()));
+    }
+
     private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
         if (isIndirect) {
-            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+            HostedMethod[] implementations = invokeTarget.getImplementations();
+            List<HostedMethod> targets = getEntry(method);
+            Collections.addAll(targets, implementations);
+            for (HostedMethod invokeImplementation : implementations) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
                 ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
             }
@@ -1121,6 +1142,7 @@ public class CompileQueue {
              * implementation invoked status.
              */
             if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
+                getEntry(method).add(invokeTarget);
                 handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
                 ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
             }
@@ -1299,6 +1321,8 @@ public class CompileQueue {
         return fun.compile(debug, method, compilationIdentifier, reason, runtimeConfig);
     }
 
+    public static final Set<HostedMethod> compiledMethods = ConcurrentHashMap.newKeySet();
+
     @SuppressWarnings("try")
     private CompilationResult defaultCompileFunction(DebugContext debug, HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason, RuntimeConfiguration config) {
         if (NativeImageOptions.PrintAOTCompilation.getValue()) {
@@ -1351,6 +1375,8 @@ public class CompileQueue {
                 if (result.getTargetCode().length > result.getTargetCodeSize()) {
                     result.setTargetCode(Arrays.copyOf(result.getTargetCode(), result.getTargetCodeSize()), result.getTargetCodeSize());
                 }
+
+                compiledMethods.add(method);
 
                 return result;
             }

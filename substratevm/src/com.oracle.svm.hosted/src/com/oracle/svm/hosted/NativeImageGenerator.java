@@ -627,6 +627,9 @@ public class NativeImageGenerator {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
                 compileQueue.finish(debug);
+                System.out.println("Number of parsed methods: " + CompileQueue.parsedMethods.size());
+                System.out.println("Number of compiled methods: " + CompileQueue.compiledMethods.size());
+                dumpParseTree(compileQueue);
 
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);
@@ -706,6 +709,7 @@ public class NativeImageGenerator {
     }
 
     private static final String DUMP_FOLDER = "/Users/dkozak/tmp/hello-dir/stats/";
+    private static final String METHOD_FORMAT = "%H.%n(%P)";
 
     private void dumpAnalysisStats() {
         AnalysisUniverse universe = getBigbang().getUniverse();
@@ -716,14 +720,13 @@ public class NativeImageGenerator {
         System.out.println("Invoked methods " + invokedMethods.size());
         System.out.println("Implementation invoked methods " + implInvokedMethods.size());
 
-        boolean useReachability = NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue();
-        String fileName = useReachability ? "reachability_" : "points-to_";
+        String prefix = analysisPrefix();
 
         List<Pair<List<String>, String>> pairs = Arrays.asList(Pair.create(reachableTypes, "types"), Pair.create(invokedMethods, "invokedMethods"),
                 Pair.create(implInvokedMethods, "implInvokedMethods"));
 
         for (Pair<List<String>, String> pair : pairs) {
-            try (FileWriter writer = new FileWriter(DUMP_FOLDER + fileName + pair.getRight())) {
+            try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + pair.getRight())) {
                 for (String line : pair.getLeft()) {
                     writer.write(line);
                     writer.write('\n');
@@ -733,13 +736,33 @@ public class NativeImageGenerator {
             }
         }
 
-        try (FileWriter writer = new FileWriter(DUMP_FOLDER + fileName + "invokeStats")) {
+        try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + "invokeStats")) {
             List<AnalysisMethod> implInvoked = universe.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).collect(Collectors.toList());
             for (AnalysisMethod method : implInvoked) {
-                writer.write(method.format("%H.%n(%P)"));
+                writer.write(method.format(METHOD_FORMAT));
                 writer.write(',');
                 List<AnalysisMethod> callees = getCallees(method);
                 writer.write(Integer.toString(callees.size()));
+                writer.write('\n');
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String analysisPrefix() {
+        return NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue() ? "reachability_" : "points-to_";
+    }
+
+    private void dumpParseTree(CompileQueue compileQueue) {
+        String prefix = analysisPrefix();
+        List<Map.Entry<HostedMethod, List<HostedMethod>>> entries = CompileQueue.parseTree.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().format(METHOD_FORMAT)))
+                        .collect(Collectors.toList());
+        try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + "parse_tree")) {
+            for (Map.Entry<HostedMethod, List<HostedMethod>> entry : entries) {
+                writer.write(entry.getKey().format(METHOD_FORMAT));
+                writer.write(',');
+                writer.write(Integer.toString(entry.getValue().size()));
                 writer.write('\n');
             }
         } catch (IOException e) {
