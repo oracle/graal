@@ -63,12 +63,14 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private final MethodSummaryProvider methodSummaryProvider;
     private final AnalysisType objectType;
+    private final Timer summaryTimer;
 
     public ReachabilityAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, MethodSummaryProvider methodSummaryProvider) {
         super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures);
         this.methodSummaryProvider = methodSummaryProvider;
         this.objectType = metaAccess.lookupJavaType(Object.class);
+        this.summaryTimer = new Timer(hostVM.getImageName(), "((summaries))", false);
     }
 
     @Override
@@ -137,7 +139,10 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void onMethodImplementationInvoked(AnalysisMethod method) {
         try {
-            MethodSummary summary = methodSummaryProvider.getSummary(this, method);
+            MethodSummary summary;
+            try (Timer.StopTimer t = summaryTimer.start()) {
+                summary = methodSummaryProvider.getSummary(this, method);
+            }
             processSummary(method, summary);
             summaries.put(method, summary);
         } catch (Throwable ex) {
@@ -229,7 +234,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 }
                 AnalysisMethod implementationInvokedMethod = type.resolveConcreteMethod(method, current);
                 if (implementationInvokedMethod == null) {
-                    System.out.println("onMethodInvoked: method " + method + " on type " + current + " is null");
+// System.out.println("onMethodInvoked: method " + method + " on type " + current + " is null");
                     continue;
                 }
                 markMethodImplementationInvoked(implementationInvokedMethod, type); // todo better
@@ -256,7 +261,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         for (AnalysisType subtype : instantiatedSubtypes) {
             AnalysisMethod resolvedMethod = subtype.resolveConcreteMethod(method, clazz);
             if (resolvedMethod == null) {
-                System.out.println("onMethodInvoked: method " + method + " on type " + subtype + " is null");
+// System.out.println("onMethodInvoked: method " + method + " on type " + subtype + " is null");
                 continue;
             }
             markMethodImplementationInvoked(resolvedMethod, method); // todo better reason
@@ -340,7 +345,10 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     public void processGraph(StructuredGraph graph) {
-        MethodSummary summary = methodSummaryProvider.getSummary(this, graph);
+        MethodSummary summary;
+        try (Timer.StopTimer t = summaryTimer.start()) {
+            summary = methodSummaryProvider.getSummary(this, graph);
+        }
         AnalysisMethod method = analysisMethod(graph.method());
         method.registerAsInvoked(null);
         method.registerAsImplementationInvoked(null);
@@ -351,7 +359,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private void registerForeignCalls(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            // todo handle foreign calls even in the summary provider?
             if (n instanceof ForeignCall) {
                 ForeignCall node = (ForeignCall) n;
                 registerForeignCall(node.getDescriptor());
@@ -378,5 +385,11 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     private AnalysisMethod analysisMethod(ResolvedJavaMethod method) {
         return method instanceof AnalysisMethod ? ((AnalysisMethod) method) : universe.lookup(method);
+    }
+
+    @Override
+    public void printTimers() {
+        summaryTimer.print();
+        super.printTimers();
     }
 }
