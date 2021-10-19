@@ -106,6 +106,7 @@ bench-llvm-sulong-3-runs-shared-engine-ce: ${bench_vm_ce_linux_base} ${bench-llv
     [cat, ${bench_vm_ce_linux_base.resultFile}]
     [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
   ]
+  timelimit: "10:00:01"
 }
 
 bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-notifications} {
