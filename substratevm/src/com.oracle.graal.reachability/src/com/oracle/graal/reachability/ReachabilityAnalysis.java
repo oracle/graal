@@ -41,6 +41,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
@@ -180,6 +181,12 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                     markTypeInHeap(type);
                 }
             }
+        }
+        for (ForeignCallDescriptor descriptor : summary.foreignCallDescriptors) {
+            registerForeignCall(descriptor);
+        }
+        for (ForeignCallSignature signature : summary.foreignCallSignatures) {
+            registerForeignCall(getProviders().getForeignCalls().getDescriptor(signature));
         }
     }
 

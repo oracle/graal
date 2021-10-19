@@ -37,12 +37,15 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -50,7 +53,9 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
+import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -113,6 +118,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         public final List<AnalysisMethod> invokedMethods = new ArrayList<>();
         public final List<AnalysisMethod> implementationInvokedMethods = new ArrayList<>();
         public final List<JavaConstant> embeddedConstants = new ArrayList<>();
+        public final List<ForeignCallDescriptor> foreignCallDescriptors = new ArrayList<>();
+        public final List<ForeignCallSignature> foreignCallSignatures = new ArrayList<>();
 
         private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
 
@@ -182,13 +189,19 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     } else {
                         invokedMethods.add(targetMethod);
                     }
+                } else if (n instanceof ForeignCall) {
+                    foreignCallDescriptors.add(((ForeignCall) n).getDescriptor());
+                } else if (n instanceof UnaryMathIntrinsicNode) {
+                    foreignCallSignatures.add(((UnaryMathIntrinsicNode) n).getOperation().foreignCallSignature);
+                } else if (n instanceof BinaryMathIntrinsicNode) {
+                    foreignCallSignatures.add(((BinaryMathIntrinsicNode) n).getOperation().foreignCallSignature);
                 }
                 delegateNodeProcessing(this, n);
             }
             return new MethodSummary(invokedMethods.toArray(new AnalysisMethod[0]), implementationInvokedMethods.toArray(new AnalysisMethod[0]),
                             accessedTypes.toArray(new AnalysisType[0]),
                             instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
-                            embeddedConstants.toArray(new JavaConstant[0]));
+                            embeddedConstants.toArray(new JavaConstant[0]), foreignCallDescriptors.toArray(new ForeignCallDescriptor[0]), foreignCallSignatures.toArray(new ForeignCallSignature[0]));
         }
     }
 }

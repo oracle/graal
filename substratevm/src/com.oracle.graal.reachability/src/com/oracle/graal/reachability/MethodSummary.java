@@ -28,12 +28,14 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 
 import java.util.Arrays;
 
 public class MethodSummary {
     public static final MethodSummary EMPTY = new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], new AnalysisType[0], new AnalysisType[0], new AnalysisField[0], new AnalysisField[0],
-                    new JavaConstant[0]);
+                    new JavaConstant[0], new ForeignCallDescriptor[0], new ForeignCallSignature[0]);
 
     public final AnalysisMethod[] invokedMethods;
     public final AnalysisMethod[] implementationInvokedMethods;
@@ -42,10 +44,14 @@ public class MethodSummary {
     public final AnalysisField[] readFields;
     public final AnalysisField[] writtenFields;
     public final JavaConstant[] embeddedConstants;
+    public final ForeignCallDescriptor[] foreignCallDescriptors;
+    public final ForeignCallSignature[] foreignCallSignatures;
 
     public MethodSummary(AnalysisMethod[] invokedMethods, AnalysisMethod[] implementationInvokedMethods, AnalysisType[] accessedTypes, AnalysisType[] instantiatedTypes, AnalysisField[] readFields,
                     AnalysisField[] writtenFields,
-                    JavaConstant[] embeddedConstants) {
+                    JavaConstant[] embeddedConstants,
+                    ForeignCallDescriptor[] foreignCallDescriptors,
+                    ForeignCallSignature[] foreignCallSignatures) {
         this.invokedMethods = invokedMethods;
         this.implementationInvokedMethods = implementationInvokedMethods;
         this.accessedTypes = accessedTypes;
@@ -53,6 +59,8 @@ public class MethodSummary {
         this.readFields = readFields;
         this.writtenFields = writtenFields;
         this.embeddedConstants = embeddedConstants;
+        this.foreignCallDescriptors = foreignCallDescriptors;
+        this.foreignCallSignatures = foreignCallSignatures;
     }
 
     @Override
@@ -69,6 +77,7 @@ public class MethodSummary {
     }
 
     public MethodSummary withoutMethods() {
-        return new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants);
+        return new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], accessedTypes, instantiatedTypes, readFields, writtenFields, embeddedConstants, foreignCallDescriptors,
+                        foreignCallSignatures);
     }
 }
