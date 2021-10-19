@@ -60,7 +60,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
-    public static final HostedOptionKey<Boolean> UseExperimentalReachabilityAnalysis = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> UseExperimentalReachabilityAnalysis = new HostedOptionKey<>(true);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);
