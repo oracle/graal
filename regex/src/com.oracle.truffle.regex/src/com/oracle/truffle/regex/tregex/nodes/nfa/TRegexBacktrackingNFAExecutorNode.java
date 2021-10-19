@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.result.WithLastGroup;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
@@ -356,11 +357,18 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
          * will always be pushed to the stack.
          */
         if (curState.isLookAround() && !canInlineLookAroundIntoTransition(curState)) {
-            int[] subMatchResult = runSubMatcher(locals, locals.createSubNFALocals(), compactString, curState);
+            Object subMatchResult = runSubMatcher(locals.createSubNFALocals(), compactString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
             } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
-                locals.overwriteCaptureGroups(subMatchResult);
+                if (getLookAroundExecutor(curState).returnsLastGroup()) {
+                    WithLastGroup lastGroupWrapper = (WithLastGroup) subMatchResult;
+                    if (lastGroupWrapper.getLastGroup() != -1) {
+                        locals.saveLastGroup(lastGroupWrapper.getLastGroup());
+                    }
+                    subMatchResult = lastGroupWrapper.getResult();
+                }
+                locals.overwriteCaptureGroups((int[]) subMatchResult);
             }
         }
         if (curState.isBackReference() && !canInlineBackReferenceIntoTransition()) {
@@ -452,7 +460,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 // We erase the leftover frame from the stack and set the index and stateId to the
                 // values stored in the top frame (index is set to locals, the stateId is returned).
                 locals.pop();
-                locals.restoreIndex();
                 return locals.getPc();
             } else {
                 // We will backtrack, which will remove the leftover frame from the stack.
@@ -579,23 +586,15 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             locals.setNextIndex(saveNextIndex);
             return result;
         } else {
-            return !subMatchFailed(target, runSubMatcher(locals, locals.createSubNFALocals(transition), compactString, target));
+            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition), compactString, target));
         }
     }
 
-    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals locals, TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
-        int[] result = (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
-        if (subLocals.getLastGroup() != -1) {
-            // Python regexes can update the state of capture groups from inside negative
-            // lookarounds. We therefore have to update lastGroup regardless of the success of the
-            // sub-matcher.
-            // TODO: We also have to update the capture group data when in Python.
-            locals.setLastGroup(subLocals.getLastGroup());
-        }
-        return result;
+    protected Object runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
+        return getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
     }
 
-    protected static boolean subMatchFailed(PureNFAState curState, int[] subMatchResult) {
+    protected static boolean subMatchFailed(PureNFAState curState, Object subMatchResult) {
         return (subMatchResult == null) != curState.isLookAroundNegated();
     }
 

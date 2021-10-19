@@ -117,7 +117,7 @@ public abstract class TRegexExecutorLocals {
     }
 
     public void setLastGroup(int lastGroup) {
-        // TODO: Update this in the DFA, NFA and backtracking NFA executors.
+        // TODO: Update this in the DFA and NFA executors.
         this.lastGroup = lastGroup;
     }
 }

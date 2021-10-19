@@ -180,15 +180,16 @@ public final class TRegexCompilationRequest {
         debugPureNFA();
         TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
                         : new TRegexExecutorNode[pureNFA.getLookArounds().size()];
+        boolean returnsLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
             PureNFA lookAround = pureNFA.getLookArounds().get(i);
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
                 lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
             } else {
-                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer, false);
+                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer, returnsLastGroup);
             }
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer, ast.getOptions().getFlavor().usesLastGroupResultField());
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer, returnsLastGroup);
     }
 
     @TruffleBoundary

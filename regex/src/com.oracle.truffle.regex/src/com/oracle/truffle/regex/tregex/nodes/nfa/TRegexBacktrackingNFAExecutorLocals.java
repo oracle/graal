@@ -122,7 +122,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets) {
-        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
+        return 2 + nCaptureGroups * 2 + 1 + nQuantifiers + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
     }
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
@@ -132,7 +132,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t) {
         dupFrame();
-        t.getGroupBoundaries().applyExploded(stack(), sp + stackFrameSize + 2, getIndex());
+        t.getGroupBoundaries().applyToStackFrameExploded(stack(), offsetCaptureGroups() + stackFrameSize, getIndex(), offsetLastGroup() + stackFrameSize);
         return newSubLocals();
     }
 
@@ -150,16 +150,20 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         return sp + 2;
     }
 
-    private int offsetQuantifierCounts() {
+    private int offsetLastGroup() {
         return sp + 2 + result.length;
     }
 
+    private int offsetQuantifierCounts() {
+        return sp + 2 + result.length + 1;
+    }
+
     private int offsetZeroWidthQuantifierIndices() {
-        return sp + 2 + result.length + nQuantifierCounts;
+        return sp + 2 + result.length + 1 + nQuantifierCounts;
     }
 
     private int offsetZeroWidthQuantifierCG() {
-        return sp + 2 + result.length + nQuantifierCounts + nZeroWidthQuantifiers;
+        return sp + 2 + result.length + 1 + nQuantifierCounts + nZeroWidthQuantifiers;
     }
 
     private int offsetQuantifierCount(Quantifier q) {
@@ -182,11 +186,12 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void apply(PureNFATransition t, int index) {
-        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), index);
+        t.getGroupBoundaries().applyToStackFrameExploded(stack(), offsetCaptureGroups(), index, offsetLastGroup());
     }
 
     public void resetToInitialState() {
         clearCaptureGroups();
+        clearLastGroup();
         clearQuantifierCounts();
         // no need to reset zero-width quantifier indices, they will always be overwritten before
         // being checked
@@ -194,6 +199,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     protected void clearCaptureGroups() {
         Arrays.fill(stack(), offsetCaptureGroups(), offsetCaptureGroups() + result.length, -1);
+    }
+
+    protected void clearLastGroup() {
+        stack()[offsetLastGroup()] = -1;
     }
 
     protected void clearQuantifierCounts() {
@@ -245,6 +254,9 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public void pushResult(PureNFATransition t, int index) {
         t.getGroupBoundaries().applyExploded(result, 0, index);
+        if (t.getGroupBoundaries().getLastGroup() != -1) {
+            setLastGroup(t.getGroupBoundaries().getLastGroup());
+        }
         pushResult();
     }
 
@@ -260,6 +272,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
      */
     public void setResult() {
         System.arraycopy(stack(), offsetCaptureGroups(), result, 0, result.length);
+        setLastGroup(stack()[offsetLastGroup()]);
     }
 
     public boolean canPopResult() {
@@ -316,6 +329,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public void overwriteCaptureGroups(int[] captureGroups) {
         assert captureGroups.length == result.length;
         System.arraycopy(captureGroups, 0, stack(), offsetCaptureGroups(), captureGroups.length);
+    }
+
+    public void saveLastGroup(int lastGroup) {
+        stack()[offsetLastGroup()] = lastGroup;
     }
 
     public int getQuantifierCount(Quantifier q) {

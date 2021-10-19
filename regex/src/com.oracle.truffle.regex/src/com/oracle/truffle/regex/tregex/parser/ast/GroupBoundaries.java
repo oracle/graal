@@ -78,24 +78,26 @@ public class GroupBoundaries implements JsonConvertible {
 
     private final TBitSet updateIndices;
     private final TBitSet clearIndices;
+    private final int lastGroup;
     private final int cachedHash;
     @CompilationFinal(dimensions = 1) private byte[] updateArrayByte;
     @CompilationFinal(dimensions = 1) private byte[] clearArrayByte;
     @CompilationFinal(dimensions = 1) private short[] updateArray;
     @CompilationFinal(dimensions = 1) private short[] clearArray;
 
-    GroupBoundaries(TBitSet updateIndices, TBitSet clearIndices) {
+    GroupBoundaries(TBitSet updateIndices, TBitSet clearIndices, int lastGroup) {
         this.updateIndices = updateIndices;
         this.clearIndices = clearIndices;
+        this.lastGroup = lastGroup;
         // both bit sets are immutable, and the hash is always needed immediately in
         // RegexAST#createGroupBoundaries()
-        this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
+        this.cachedHash = (Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices)) * 31 + lastGroup;
     }
 
     public static GroupBoundaries[] createCachedGroupBoundaries() {
         GroupBoundaries[] instances = new GroupBoundaries[TBitSet.getNumberOfStaticInstances()];
         for (int i = 0; i < instances.length; i++) {
-            instances[i] = new GroupBoundaries(TBitSet.getStaticInstance(i), TBitSet.getEmptyInstance());
+            instances[i] = new GroupBoundaries(TBitSet.getStaticInstance(i), TBitSet.getEmptyInstance(), -1);
         }
         return instances;
     }
@@ -208,6 +210,10 @@ public class GroupBoundaries implements JsonConvertible {
         foreignClearIndices.union(clearIndices);
     }
 
+    public int getLastGroup() {
+        return lastGroup;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {
@@ -235,6 +241,14 @@ public class GroupBoundaries implements JsonConvertible {
     public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+        resultFactory.setLastGroup(lastGroup);
+    }
+
+    public void applyToStackFrameExploded(int[] stack, int cgOffset, int index, int lgOffset) {
+        applyExploded(stack, cgOffset, index);
+        if (lastGroup != -1) {
+            stack[lgOffset] = lastGroup;
         }
     }
 

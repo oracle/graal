@@ -253,7 +253,8 @@ public final class NFAGenerator {
     }
 
     private NFAStateTransition createTransition(NFAState source, NFAState target, CodePointSet codePointSet) {
-        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices));
+        // TODO: Calculate the lastGroup field when combining NFA transitions.
+        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices, -1));
     }
 
     private NFAState registerMatcherState(StateSet<RegexAST, CharacterClass> stateSetCC,

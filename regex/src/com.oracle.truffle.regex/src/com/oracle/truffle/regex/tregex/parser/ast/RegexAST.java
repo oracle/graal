@@ -487,16 +487,18 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
     }
 
-    public GroupBoundaries createGroupBoundaries(TBitSet updateIndices, TBitSet clearIndices) {
-        GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(language, updateIndices, clearIndices);
-        if (staticInstance != null) {
-            return staticInstance;
+    public GroupBoundaries createGroupBoundaries(TBitSet updateIndices, TBitSet clearIndices, int lastGroup) {
+        if (!getOptions().getFlavor().usesLastGroupResultField()) {
+            GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(language, updateIndices, clearIndices);
+            if (staticInstance != null) {
+                return staticInstance;
+            }
         }
-        GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices);
+        GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices, lastGroup);
         if (groupBoundariesDeduplicationMap.containsKey(lookup)) {
             return groupBoundariesDeduplicationMap.get(lookup);
         } else {
-            GroupBoundaries gb = new GroupBoundaries(updateIndices.copy(), clearIndices.copy());
+            GroupBoundaries gb = new GroupBoundaries(updateIndices.copy(), clearIndices.copy(), lastGroup);
             groupBoundariesDeduplicationMap.put(gb, gb);
             return gb;
         }

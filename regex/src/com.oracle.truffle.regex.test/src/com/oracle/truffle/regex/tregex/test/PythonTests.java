@@ -180,5 +180,11 @@ public class PythonTests extends RegexTestBase {
         testLastGroup("(a(b))", "", "ab", 0, 1);
         testLastGroup("(a)()", "", "ab", 0, 2);
         testLastGroup("(a())", "", "ab", 0, 1);
+
+        // Tests for the backtracking executor.
+        testLastGroup("(a)(b)\\1", "", "aba", 0, 2);
+        testLastGroup("(a(b))\\1", "", "abab", 0, 1);
+        testLastGroup("(a)()\\1", "", "aa", 0, 2);
+        testLastGroup("(a())\\1", "", "aa", 0, 1);
     }
 }
