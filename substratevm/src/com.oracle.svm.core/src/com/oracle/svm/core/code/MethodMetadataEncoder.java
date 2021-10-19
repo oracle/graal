@@ -119,7 +119,7 @@ public class MethodMetadataEncoder {
         if (reflectMethod instanceof Constructor<?>) {
             encoders.sourceMethodNames.addObject("<init>");
         } else {
-            encoders.sourceMethodNames.addObject(reflectMethod.getName());
+            encoders.sourceMethodNames.addObject(method.getName());
         }
 
         if (complete) {

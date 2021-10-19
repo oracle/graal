@@ -172,10 +172,11 @@ public final class Target_java_lang_reflect_Executable {
         Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReceiverType != null) {
             return (AnnotatedType) AnnotatedTypeEncoder.decodeAnnotationTypes(holder.annotatedReceiverType);
-        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
-            if (Modifier.isStatic(this.getModifiers())) {
-                return null;
-            }
+        }
+        if (Modifier.isStatic(this.getModifiers())) {
+            return null;
+        }
+        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             AnnotatedType annotatedRecvType = Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(typeAnnotations,
                             CodeInfoDecoder.getMetadataPseudoConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),

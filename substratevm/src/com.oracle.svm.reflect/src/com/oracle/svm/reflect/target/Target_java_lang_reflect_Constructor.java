@@ -114,27 +114,28 @@ public final class Target_java_lang_reflect_Constructor {
         Target_java_lang_reflect_Constructor holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReceiverType != null) {
             return holder.annotatedReceiverType;
-        } else if (RuntimeReflectionConstructors.hasQueriedMethods()) {
-            Class<?> thisDeclClass = getDeclaringClass();
-            Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
+        }
+        Class<?> thisDeclClass = getDeclaringClass();
+        Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
 
-            if (enclosingClass == null) {
-                // A Constructor for a top-level class
-                return null;
-            }
+        if (enclosingClass == null) {
+            // A Constructor for a top-level class
+            return null;
+        }
 
-            Class<?> outerDeclaringClass = thisDeclClass.getDeclaringClass();
-            if (outerDeclaringClass == null) {
-                // A constructor for a local or anonymous class
-                return null;
-            }
+        Class<?> outerDeclaringClass = thisDeclClass.getDeclaringClass();
+        if (outerDeclaringClass == null) {
+            // A constructor for a local or anonymous class
+            return null;
+        }
 
-            // Either static nested or inner class
-            if (Modifier.isStatic(thisDeclClass.getModifiers())) {
-                // static nested
-                return null;
-            }
+        // Either static nested or inner class
+        if (Modifier.isStatic(thisDeclClass.getModifiers())) {
+            // static nested
+            return null;
+        }
 
+        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
             // A Constructor for an inner class
             return Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(SubstrateUtil.cast(holder, Target_java_lang_reflect_Executable.class).typeAnnotations,
                             CodeInfoDecoder.getMetadataPseudoConstantPool(),
