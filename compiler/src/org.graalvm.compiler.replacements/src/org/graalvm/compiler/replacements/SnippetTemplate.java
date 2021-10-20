@@ -2025,6 +2025,18 @@ public class SnippetTemplate {
              */
             stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
         }
+        final ExceptionObjectNode exceptionObject;
+        if (replacee instanceof WithExceptionNode) {
+            WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
+            if (withExceptionNode.exceptionEdge() instanceof ExceptionObjectNode) {
+                exceptionObject = (ExceptionObjectNode) withExceptionNode.exceptionEdge();
+            } else {
+                GraalError.guarantee(withExceptionNode.exceptionEdge() instanceof UnreachableBeginNode, "Unexpected exception edge %s", withExceptionNode.exceptionEdge());
+                exceptionObject = null;
+            }
+        } else {
+            exceptionObject = null;
+        }
         NodeMap<NodeStateAssignment> assignedStateMappings = frameStateAssignment.getStateMapping();
         MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
         while (stateAssignments.advance()) {
@@ -2040,6 +2052,11 @@ public class SnippetTemplate {
             switch (assignment) {
                 case AFTER_BCI:
                     setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfter);
+                    break;
+                case AFTER_EXCEPTION_BCI:
+                    GraalError.guarantee(nodeRequiringState instanceof ExceptionObjectNode, "Not an exception object node: %s", nodeRequiringState);
+                    ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) duplicates.get(nodeRequiringState);
+                    rewireExceptionObjectFrameState(exceptionObject, newExceptionObject);
                     break;
                 case BEFORE_BCI:
                     FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
@@ -2085,6 +2102,30 @@ public class SnippetTemplate {
         });
     }
 
+    private static void rewireExceptionObjectFrameState(ExceptionObjectNode exceptionObject, ExceptionObjectNode newExceptionObject) {
+        if (exceptionObject == null) {
+            /*
+             * The exception edge is dead in the replacee graph. Thus, we will not use the exception
+             * path from the snippet graph and therefore no need for a frame state.
+             */
+            return;
+        }
+        FrameState exceptionState = exceptionObject.stateAfter();
+        assert exceptionState.values().contains(exceptionObject);
+        assert exceptionState.rethrowException();
+        assert exceptionState.stackSize() == 1;
+        FrameState newExceptionState = exceptionState.duplicate();
+        newExceptionState.applyToNonVirtual(new NodePositionClosure<Node>() {
+            @Override
+            public void apply(Node from, Position p) {
+                if (p.get(from) == exceptionObject) {
+                    p.set(from, newExceptionObject);
+                }
+            }
+        });
+        newExceptionObject.setStateAfter(newExceptionState);
+    }
+
     private void rewireFrameStatesAfterFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
         FrameState stateBefore = null;
@@ -2101,10 +2142,26 @@ public class SnippetTemplate {
                 stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
             }
         }
+        final ExceptionObjectNode exceptionObject;
+        if (replacee instanceof WithExceptionNode) {
+            WithExceptionNode withExceptionNode = (WithExceptionNode) replacee;
+            if (withExceptionNode.exceptionEdge() instanceof ExceptionObjectNode) {
+                exceptionObject = (ExceptionObjectNode) withExceptionNode.exceptionEdge();
+            } else {
+                GraalError.guarantee(withExceptionNode.exceptionEdge() instanceof UnreachableBeginNode, "Unexpected exception edge %s", withExceptionNode.exceptionEdge());
+                exceptionObject = null;
+            }
+        } else {
+            exceptionObject = null;
+        }
 
         for (DeoptimizingNode deoptNode : deoptNodes) {
             DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
             if (deoptDup.canDeoptimize()) {
+                if (deoptDup instanceof ExceptionObjectNode) {
+                    rewireExceptionObjectFrameState(exceptionObject, (ExceptionObjectNode) deoptDup);
+                    continue;
+                }
                 if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
                     ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
                 }
