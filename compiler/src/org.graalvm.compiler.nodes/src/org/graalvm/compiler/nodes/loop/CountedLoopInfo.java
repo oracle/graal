@@ -29,11 +29,14 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GuardNode;
@@ -41,11 +44,14 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
+import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
@@ -252,8 +258,42 @@ public class CountedLoopInfo {
         // This check is "wide": it looks like min <= max
         // That's OK even if the loop is strict (`!isLimitIncluded()`)
         // because in this case, `div` will be zero when min == max
-        LogicNode noEntryCheck = integerHelper.createCompareNode(max, min, NodeView.DEFAULT);
+        LogicNode noEntryCheck = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(max, min, NodeView.DEFAULT));
+        ValueNode pi = findOrCreatePositivePi(noEntryCheck, div, graph, loop.loopsData().getCFG());
+        if (pi != null) {
+            return pi;
+        }
         return graph.addOrUniqueWithInputs(ConditionalNode.create(noEntryCheck, zero, div, NodeView.DEFAULT));
+    }
+
+    /**
+     * Before creating a {@code ConditionalNode(noEntryCheck, zero, div)} node, check if the graph
+     * already contains a {@code !noEntryCheck} path dominating this loop, and build or reuse a
+     * {@link PiNode} there.
+     *
+     * @return a new or existing {@link PiNode} already added to the graph or {@code null}
+     */
+    private ValueNode findOrCreatePositivePi(LogicNode noEntryCheck, ValueNode div, StructuredGraph graph, ControlFlowGraph cfg) {
+        Stamp positiveIntStamp = StampFactory.positiveInt();
+        if (!positiveIntStamp.isCompatible(div.stamp(NodeView.DEFAULT))) {
+            return null;
+        }
+        if (cfg.getNodeToBlock().isNew(loop.loopBegin())) {
+            return null;
+        }
+        Block loopBlock = cfg.blockFor(loop.loopBegin());
+        for (Node checkUsage : noEntryCheck.usages()) {
+            if (checkUsage instanceof IfNode) {
+                IfNode ifCheck = (IfNode) checkUsage;
+                if (cfg.getNodeToBlock().isNew(ifCheck.falseSuccessor())) {
+                    continue;
+                }
+                if (AbstractControlFlowGraph.dominates(cfg.blockFor(ifCheck.falseSuccessor()), loopBlock)) {
+                    return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), ifCheck.falseSuccessor()));
+                }
+            }
+        }
+        return null;
     }
 
     /**
