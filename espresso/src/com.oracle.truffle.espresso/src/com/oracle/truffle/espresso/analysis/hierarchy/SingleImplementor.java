@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * Represents a single implementor of a class or an interface. Throughout its lifetime, an instance
  * of {@code SingleImplementor} undergoes up to 3 states in the following order:
  * <p>
- * 1) no implementor: {@code value == null}, {@code hasValue} is valid
+ * 1) no implementor: {@code value == null}, {@code hasValue} is invalid
  * <p>
  * 2) exactly one implementor: {@code value == implementor}, {@code hasValue} is valid (reset to a
  * different assumption object than in state (1))
@@ -51,16 +51,17 @@ public final class SingleImplementor {
     private static final AtomicReferenceFieldUpdater<SingleImplementor, SingleImplementorSnapshot> SNAPSHOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SingleImplementor.class,
                     SingleImplementorSnapshot.class, "currentSnapshot");
 
+    static SingleImplementorSnapshot NoImplementorsSnapshot = new SingleImplementorSnapshot(NeverValidAssumption.INSTANCE, null);
     static SingleImplementor Invalid = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
     static SingleImplementorSnapshot MultipleImplementorsSnapshot = Invalid.read();
 
-    // Used only to create an invalid instance
+    // Used only to create the Invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
         this.currentSnapshot = new SingleImplementorSnapshot(assumption, value);
     }
 
     private SingleImplementor() {
-        this(Truffle.getRuntime().createAssumption("no implementors"), null);
+        this.currentSnapshot = NoImplementorsSnapshot;
     }
 
     private SingleImplementor(ObjectKlass implementor) {
@@ -74,38 +75,28 @@ public final class SingleImplementor {
         return new SingleImplementor(klass);
     }
 
-    private void addSecondImplementor(ObjectKlass implementor) {
-        SingleImplementorSnapshot snapshot = currentSnapshot;
-        if (snapshot.implementor == implementor) {
-            return;
-        }
-        while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
-            snapshot = currentSnapshot;
-        }
-        snapshot.hasImplementor().invalidate();
-    }
-
     void addImplementor(ObjectKlass implementor) {
         // Implementors are only added when the implementing class is loaded, which happens in the
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
 
-        SingleImplementorSnapshot snapshot = currentSnapshot;
-        if (snapshot == MultipleImplementorsSnapshot) {
+        if (currentSnapshot == MultipleImplementorsSnapshot) {
             return;
         }
-        if (snapshot.implementor == null) {
-            SingleImplementorSnapshot singleImplementor = new SingleImplementorSnapshot(Truffle.getRuntime().createAssumption("single implementor"), implementor);
-            if (SNAPSHOT_UPDATER.compareAndSet(this, snapshot, singleImplementor)) {
-                // successfully set the first implementor
-                snapshot.hasImplementor().invalidate();
-            } else {
-                // CAS failed, i.e. another thread successfully added an implementor and this thread
-                // is adding a second implementor
-                addSecondImplementor(implementor);
+        SingleImplementorSnapshot singleImplementor = new SingleImplementorSnapshot(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+        if (!SNAPSHOT_UPDATER.compareAndSet(this, NoImplementorsSnapshot, singleImplementor)) {
+            // CAS failed, i.e. there already exists an implementor
+            SingleImplementorSnapshot snapshot = currentSnapshot;
+            // adding the same implementor repeatedly, so the class / interface still has a single
+            // implementor
+            if (snapshot.implementor == implementor) {
+                return;
             }
-        } else {
-            addSecondImplementor(implementor);
+            while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
+                snapshot = currentSnapshot;
+            }
+            // whoever executed the CAS successfully is responsible for invalidating the assumption
+            snapshot.hasImplementor().invalidate();
         }
     }
 
