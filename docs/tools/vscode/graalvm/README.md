@@ -228,7 +228,7 @@ The shaded code is not a part of the Native Image.
 
 ## Integration with VisualVM
 
-As of GraalVM 21.2.0, the GraalVM Tools for Java extension introduced a new feature in this version - the integration with VisualVM (https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
+As of GraalVM 21.2.0, the GraalVM Tools for Java extension introduced a new feature in this version - the integration with [VisualVM](https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
 This brings the visual Java tooling to VS Code.
 
 ![VisualVM and VS Code Integration](images/vscode_visualvm.png)
