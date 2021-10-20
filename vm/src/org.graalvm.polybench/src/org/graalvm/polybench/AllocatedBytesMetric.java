@@ -24,9 +24,9 @@
  */
 package org.graalvm.polybench;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.net.Socket;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -35,13 +35,9 @@ public final class AllocatedBytesMetric implements Metric {
 
     private double allocatedBefore;
 
-    private static double readFromSocket() {
-        try (Socket s = new Socket("localhost", 8877)) {
-            DataInputStream in = new DataInputStream(s.getInputStream());
-            return in.readDouble();
-        } catch (IOException e) {
-            throw new IllegalStateException("IO exception during reading from socket.");
-        }
+    private static double readFromPolyglotBindings() {
+        Value value = Context.getCurrent().getPolyglotBindings().getMember("getAllocatedBytes");
+        return value.execute().asLong();
     }
 
     @Override
@@ -63,11 +59,11 @@ public final class AllocatedBytesMetric implements Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        allocatedBefore = readFromSocket();
+        allocatedBefore = readFromPolyglotBindings();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return Optional.of(readFromSocket() - allocatedBefore);
+        return Optional.of(readFromPolyglotBindings() - allocatedBefore);
     }
 }

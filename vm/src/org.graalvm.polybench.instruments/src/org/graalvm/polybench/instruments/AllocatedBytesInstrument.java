@@ -24,12 +24,7 @@
  */
 package org.graalvm.polybench.instruments;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -37,11 +32,21 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.sun.management.ThreadMXBean;
 
 @TruffleInstrument.Registration(id = AllocatedBytesInstrument.ID, name = "Polybench Allocated Bytes Instrument")
@@ -51,18 +56,17 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
     @Option(name = "", help = "Enable the Allocated Bytes Instrument (default: false).", category = OptionCategory.EXPERT) static final OptionKey<Boolean> enabled = new OptionKey<>(false);
     private static final ThreadMXBean threadBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
     public final Set<Thread> threads = new HashSet<>();
-    private ServerSocket serverSocket;
-    private Thread socketThread;
+    public static final String GET_ALLOCATED_BYTES = "getAllocatedBytes";
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new AllocatedBytesInstrumentOptionDescriptors();
     }
 
+    @CompilerDirectives.TruffleBoundary
     public synchronized double getAllocated() {
-        CompilerAsserts.neverPartOfCompilation();
         double report = 0;
-        for (Thread thread : this.threads) {
+        for (Thread thread : threads) {
             report = report + threadBean.getThreadAllocatedBytes(thread.getId());
         }
         return report;
@@ -70,6 +74,44 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
 
     @Override
     protected synchronized void onCreate(Env env) {
+        env.getInstrumenter().attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext c) {
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+                try {
+                    InteropLibrary interopLibrary = InteropLibrary.getUncached();
+                    Object polyglotBindings = env.getPolyglotBindings();
+                    if (!interopLibrary.isMemberExisting(polyglotBindings, GET_ALLOCATED_BYTES)) {
+                        interopLibrary.writeMember(polyglotBindings, GET_ALLOCATED_BYTES, new GetAllocatedBytesFunction());
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw new IllegalStateException("Exception during interop.", e);
+                }
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+
+            }
+        }, true);
         env.getInstrumenter().attachThreadsListener(new ThreadsListener() {
             @Override
             public void onThreadInitialized(TruffleContext context, Thread thread) {
@@ -85,36 +127,22 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
                 }
             }
         }, true);
-        try {
-            serverSocket = new ServerSocket(8877);
-        } catch (IOException e) {
-            throw new IllegalStateException("IO exception in socket use.", e);
-        }
-
-        socketThread = new Thread(() -> {
-            try {
-                while (true) {
-                    Socket socket = serverSocket.accept();
-                    try (DataOutputStream stream = new DataOutputStream(socket.getOutputStream())) {
-                        stream.writeDouble(getAllocated());
-                    }
-                }
-            } catch (SocketException ignored) {
-                // Thrown when socket is closed
-            } catch (IOException e) {
-                throw new IllegalStateException("IO exception in socket use.", e);
-            }
-        });
-        socketThread.start();
     }
 
-    @Override
-    protected synchronized void onDispose(Env env) {
-        try {
-            serverSocket.close();
-            socketThread.join(1000);
-        } catch (IOException | InterruptedException e) {
-            throw new IllegalStateException("Exception when closing socket.", e);
+    @ExportLibrary(InteropLibrary.class)
+    public class GetAllocatedBytesFunction implements TruffleObject {
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object... args) throws ArityException {
+            if (args.length != 0) {
+                throw ArityException.create(0, 0, args.length);
+            }
+            return getAllocated();
         }
     }
 }
