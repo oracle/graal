@@ -176,8 +176,7 @@ public class ImageBuildStatistics {
             json.append("{").append(System.lineSeparator());
             for (Map.Entry<String, CounterValue> entry : sortedCounters.entrySet()) {
                 /*
-                 * Finally, we are interested in the original node source positions that left at
-                 * different locations.
+                 * Finally, we are interested in the original node source positions.
                  */
                 json.append(INDENT + "\"").append(entry.getKey()).append("\":").append(entry.getValue().getOriginalCounter()).append(",").append(System.lineSeparator());
             }
