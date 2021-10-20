@@ -472,7 +472,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, null, null, (Object) null);
+        doLog(level, message, null, null, (Object[]) null);
     }
 
     /**
@@ -490,7 +490,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, null, null, (Object) null);
+        doLog(level, messageSupplier, null, null, null);
     }
 
     /**
@@ -582,7 +582,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, sourceClass, sourceMethod, (Object) null);
+        doLog(level, message, sourceClass, sourceMethod, (Object[]) null);
     }
 
     /**
@@ -602,7 +602,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, sourceClass, sourceMethod, (Object) null);
+        doLog(level, messageSupplier, sourceClass, sourceMethod, null);
     }
 
     /**
@@ -773,16 +773,6 @@ public final class TruffleLogger {
                         null,
                         thrown);
         callHandlers(logRecord);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private void doLog(
-                    final Level level,
-                    final Supplier<String> messageSupplier,
-                    final String className,
-                    final String methodName,
-                    final Object param) {
-        doLog(level, messageSupplier.get(), className, methodName, new Object[]{param});
     }
 
     @CompilerDirectives.TruffleBoundary
