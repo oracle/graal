@@ -122,7 +122,7 @@ public abstract class InvokeVirtual extends Node {
         })
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
                         @Cached("methodLookup(resolutionSeed, maybeImplementor.getImplementor())") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
