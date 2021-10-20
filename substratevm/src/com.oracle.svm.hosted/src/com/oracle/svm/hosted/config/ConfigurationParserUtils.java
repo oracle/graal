@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
+import static com.oracle.svm.common.option.CommonOptions.PrintFlags;
 
 import java.io.IOException;
 import java.io.InputStreamReader;

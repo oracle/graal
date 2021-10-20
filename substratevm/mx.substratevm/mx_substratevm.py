@@ -769,6 +769,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
+        'substratevm:NATIVE_IMAGE_BASE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",

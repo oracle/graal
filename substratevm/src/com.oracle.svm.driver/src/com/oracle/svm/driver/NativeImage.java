@@ -64,6 +64,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.common.option.CommonOptions;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -188,8 +189,8 @@ public class NativeImage {
     public static final String oH = "-H:";
     static final String oR = "-R:";
 
-    final String enablePrintFlags = SubstrateOptions.PrintFlags.getName();
-    final String enablePrintFlagsWithExtraHelp = SubstrateOptions.PrintFlagsWithExtraHelp.getName();
+    final String enablePrintFlags = CommonOptions.PrintFlags.getName();
+    final String enablePrintFlagsWithExtraHelp = CommonOptions.PrintFlagsWithExtraHelp.getName();
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";

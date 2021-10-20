@@ -147,6 +147,19 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
+        "com.oracle.svm.common": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.util"
+            ],
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.util.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -174,7 +187,7 @@ suite = {
                 "headers",
             ],
             "dependencies": [
-                "com.oracle.svm.util",
+                "com.oracle.svm.common",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.36.1",
@@ -387,7 +400,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.util",
+                "com.oracle.svm.common",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",
@@ -1106,6 +1119,7 @@ suite = {
                 "OBJECTFILE",
                 "POINTSTO",
                 "compiler:GRAAL",
+                "NATIVE_IMAGE_BASE",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1119,7 +1133,7 @@ suite = {
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
+                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1247,13 +1261,13 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.junitsupport",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.base,org.graalvm.nativeimage.pointsto"
                 ],
                 "requires" : [
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
-                ],
+                ]
             },
         },
 
@@ -1421,6 +1435,26 @@ suite = {
             },
         },
 
+        "NATIVE_IMAGE_BASE": {
+            "subDir": "src",
+            "description" : "Native Image base that can be shared by native image building and pointsto.",
+            "dependencies": [
+                "com.oracle.svm.common",
+                "com.oracle.svm.util",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+            ],
+            "exclude": [
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.base",
+                "exports" : [
+                    "com.oracle.svm.util",
+                    "com.oracle.svm.common.option",
+                ],
+            }
+        },
 
         "POINTSTO": {
             "subDir": "src",
@@ -1431,13 +1465,13 @@ suite = {
             ],
             "distDependencies": [
                 "compiler:GRAAL",
+                "NATIVE_IMAGE_BASE",
             ],
             "exclude": [
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.pointsto",
               "exports" : [
-                "com.oracle.svm.util",
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
                 "com.oracle.graal.pointsto.reports",
@@ -1614,7 +1648,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.llvm",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.base",
                 ],
             },
             "maven" : False,
