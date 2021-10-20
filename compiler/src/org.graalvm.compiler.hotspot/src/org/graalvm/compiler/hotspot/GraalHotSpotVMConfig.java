@@ -128,6 +128,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
+    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class, false, JDK >= 9);
     public final boolean useAESIntrinsics = getFlag("UseAESIntrinsics", Boolean.class);
     public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class, false, (JDK == 8 && !IS_OPENJDK) || JDK >= 9);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
