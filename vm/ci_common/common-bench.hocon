@@ -75,10 +75,6 @@ vm_bench_polybench_linux_context_init: ${vm_bench_polybench_linux_common} ${vm_j
   ]
 }
 
-vm_polybench_linux_warmup_common: ${vm_bench_polybench_linux_common} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_polybench_linux_warmup_common.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
-}
-
 vm_bench_polybench_linux_warmup: ${vm_bench_polybench_linux_common} ${vm_java_8} {
   run: [
     ${vm_polybench_linux_commands.warmup_bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
