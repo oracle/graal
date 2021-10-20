@@ -29,6 +29,6 @@ import com.oracle.truffle.api.Assumption;
  * A wrapper around {@link Assumption}. Ensures that class hierarchy assumptions are managed
  * exclusively by {@link ClassHierarchyOracle}.
  */
-public interface LeafTypeAssumption {
+public interface ClassHierarchyAssumption {
     Assumption getAssumption();
 }

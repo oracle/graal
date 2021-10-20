@@ -28,21 +28,20 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
- * compute currently leaf classes, it creates {@code leafTypeAssumption} in the {@link ObjectKlass}
- * constructor and invalidates it when a descendant of this class is initialized.
+ * compute currently leaf classes, it creates {@code noConcreteSubclassesAssumption} in the
+ * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
+ * initialized.
  */
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
-        if (newKlass.isAbstract() || newKlass.isInterface()) {
-            return NotLeaf;
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+        if (newKlass.isConcrete()) {
+            addImplementorToAncestors(newKlass);
         }
-        // this is a concrete klass, add it to implementors of super classes and interfaces
-        addImplementorToSuperInterfaces(newKlass);
         if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
+            return AlwaysValid;
         }
-        return new LeafTypeAssumptionImpl(newKlass);
+        return new ClassHierarchyAssumptionImpl(newKlass);
     }
 
     /**
@@ -50,20 +49,21 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * parent interfaces.
      */
     private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+        superInterface.getNoConcreteSubclassesAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
         superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
         for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
             addImplementor(ancestorInterface, implementor);
         }
     }
 
-    private void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
+    private void addImplementorToAncestors(ObjectKlass newKlass) {
         for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
             addImplementor(superInterface, newKlass);
         }
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
         while (currentKlass != null) {
-            currentKlass.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
+            currentKlass.getNoConcreteSubclassesAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
             currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);

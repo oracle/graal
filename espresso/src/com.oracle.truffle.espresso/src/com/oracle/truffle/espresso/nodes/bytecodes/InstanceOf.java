@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
-import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -229,8 +229,8 @@ public abstract class InstanceOf extends Node {
             this.superType = superType;
         }
 
-        protected LeafTypeAssumption getLeafAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType);
+        protected ClassHierarchyAssumption getLeafAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeaf(superType);
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
@@ -238,7 +238,7 @@ public abstract class InstanceOf extends Node {
         }
 
         /**
-         * If {@code superType} is a leaf type, {@code maybeSubtype} is a subtype of
+         * If {@code superType} has no concrete subclasses, {@code maybeSubtype} is a subtype of
          * {@code superType} iff it is equal to {@code superType}.
          */
         @Specialization(assumptions = "superTypeIsLeaf")
