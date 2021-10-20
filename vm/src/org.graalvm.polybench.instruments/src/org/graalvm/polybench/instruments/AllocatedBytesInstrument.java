@@ -73,12 +73,16 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
         env.getInstrumenter().attachThreadsListener(new ThreadsListener() {
             @Override
             public void onThreadInitialized(TruffleContext context, Thread thread) {
-                threads.put(thread, new ThreadContext(thread));
+                synchronized (AllocatedBytesInstrument.this) {
+                    threads.put(thread, new ThreadContext(thread));
+                }
             }
 
             @Override
             public void onThreadDisposed(TruffleContext context, Thread thread) {
-                threads.remove(thread);
+                synchronized (AllocatedBytesInstrument.this) {
+                    threads.remove(thread);
+                }
             }
         }, true);
         socketThread = new Thread(() -> {
