@@ -297,6 +297,9 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
+        vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
+        assert isinstance(vm, CExecutionEnvironmentMixin)
+        bmSuiteArgs = [a.replace("${benchmark}", benchmarks[0]) for a in vm.templateOptions() + bmSuiteArgs]
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         try:
@@ -322,6 +325,8 @@ class CExecutionEnvironmentMixin(object):
     def prepare_env(self, env):
         return env
 
+    def templateOptions(self):
+        return []
 
 def add_run_numbers(out):
     # Prepending the summary lines by the run number
@@ -516,13 +521,14 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
 class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
 
-    def __init__(self, config_name, options, host_vm=None):
+    def __init__(self, config_name, options, templateOptions, host_vm=None):
         super(PolybenchVm, self).__init__(host_vm)
         self._config_name = config_name
         self._options = options
+        self._templateOptions = templateOptions
 
     def with_host_vm(self, host_vm):
-        return PolybenchVm(self._config_name, self._options, host_vm)
+        return PolybenchVm(self._config_name, self._options, self._templateOptions, host_vm)
 
     def config_name(self):
         return self._config_name
@@ -582,6 +588,9 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
 
     def opt_phases(self):
         return []
+
+    def templateOptions(self):
+        return self._templateOptions
 
     def launcher_vm_args(self):
         return mx_sulong.getClasspathOptions(['POLYBENCH'])
@@ -727,19 +736,19 @@ native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',
      '--llvm.AOTCacheStore.0=true', '--llvm.AOTCacheLoad.0=false', '--engine.DebugCacheCompile.0=aot', '--engine.DebugCacheStore.0=true',
      '--llvm.AOTCacheStore.1=false', '--llvm.AOTCacheLoad.1=true', '--engine.DebugCacheStore.1=false', '--engine.DebugCacheLoad.1=true',
      '--engine.MultiTier=false', '--engine.CompileAOTOnCreate=false', '--engine.DebugCachePreinitializeContext=false',
-     '--engine.DebugTraceCache=true', '--multi-context-runs=2', '-w', '0', '-i', '10']), _suite, 10)
+     '--engine.DebugTraceCache=true', '--multi-context-runs=2', '-w', '0', '-i', '10'], []), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('store-aux-engine-cache',
-    ['--experimental-options', '--multi-context-runs=1', '--eval-source-only=true', '--engine.CacheStore=' + os.path.join(os.getcwd(), 'test.image'),
+    ['--experimental-options', '--multi-context-runs=1', '--eval-source-only=true',
      '--llvm.AOTCacheStore=true', '--engine.CacheCompile=aot', '--engine.CachePreinitializeContext=false',
-     '--engine.TraceCache=true']), _suite, 10)
+     '--engine.TraceCache=true'], ['--engine.CacheStore=' + os.path.join(os.getcwd(), 'test-${benchmark}.image')]), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('load-aux-engine-cache',
-    ['--experimental-options', '--multi-context-runs=1', '--engine.CacheLoad=' + os.path.join(os.getcwd(), 'test.image'),
+    ['--experimental-options', '--multi-context-runs=1',
      '--llvm.AOTCacheLoad=true', '--engine.CachePreinitializeContext=false', '--engine.TraceCache=true',
-     '-w', '0', '-i', '10']), _suite, 10)
+     '-w', '0', '-i', '10'], ['--engine.CacheLoad=' + os.path.join(os.getcwd(), 'test-${benchmark}.image')]), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-exclusive-engine',
-    ['--multi-context-runs=3', '--shared-engine=false', '-w', '10', '-i', '10']), _suite, 10)
+    ['--multi-context-runs=3', '--shared-engine=false', '-w', '10', '-i', '10'], []), _suite, 10)
 native_polybench_vm_registry.add_vm(PolybenchVm('3-runs-shared-engine',
-    ['--multi-context-runs=3', '--shared-engine=true', '-w', '10', '-i', '10']), _suite, 10)
+    ['--multi-context-runs=3', '--shared-engine=true', '-w', '10', '-i', '10'], []), _suite, 10)
 
 lit_vm_registry = VmRegistry("Lit", known_host_registries=[java_vm_registry])
 lit_vm_registry.add_vm(LitVm('sulong-native', []), _suite, 10)
