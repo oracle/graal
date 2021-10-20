@@ -121,10 +121,7 @@
       "SPARK_LOCAL_IP": "127.0.0.1"
     },
     run+: [
-      if self.arch == "aarch64" then
-        self.benchmark_cmd + ["renaissance:~db-shootout", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
-      else
-        self.benchmark_cmd + ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
+      self.benchmark_cmd + ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
     ],
     timelimit: "3:00:00",
     forks_batches:: 4,
