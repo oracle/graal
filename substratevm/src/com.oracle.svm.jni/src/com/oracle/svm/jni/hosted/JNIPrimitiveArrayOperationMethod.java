@@ -262,7 +262,9 @@ public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMet
         ConstantNode zero = kit.createInt(0);
         kit.startIf(new IntegerLessThanNode(length, zero), BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
         kit.thenPart();
-        ValueNode nullHandle = kit.createConstant(JavaConstant.INT_0, providers.getWordTypes().getWordKind());
+        JavaKind wordKind = providers.getWordTypes().getWordKind();
+        assert wordKind == JavaKind.Long || wordKind == JavaKind.Int;
+        ValueNode nullHandle = kit.createConstant(wordKind == JavaKind.Long ? JavaConstant.LONG_0 : JavaConstant.INT_0, wordKind);
         kit.elsePart();
         ValueNode array = kit.append(new NewArrayNode(elementType, length, true));
         ValueNode arrayHandle = kit.boxObjectInLocalHandle(array);
