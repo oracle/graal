@@ -1430,8 +1430,8 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    protected VerificationError fail(String message, Object... args) throws GraalGraphError {
-        throw new VerificationError(message, args).addContext(this);
+    protected GraalGraphError fail(String message, Object... args) throws GraalGraphError {
+        throw new GraalGraphError(message, args).addContext(this);
     }
 
     public Iterable<? extends Node> cfgPredecessors() {
