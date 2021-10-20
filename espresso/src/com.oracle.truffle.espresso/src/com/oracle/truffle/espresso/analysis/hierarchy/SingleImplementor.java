@@ -35,14 +35,14 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 /**
  * Represents a single implementor of a class or an interface. Throughout its lifetime, an instance
  * of {@code SingleImplementor} undergoes up to 3 states in the following order:
- *
+ * <p>
  * 1) no implementor: {@code value == null}, {@code hasValue} is valid
- *
+ * <p>
  * 2) exactly one implementor: {@code value == implementor}, {@code hasValue} is valid (reset to a
  * different assumption object than in state (1))
- *
- * 3) multiple implementors: {@code hasValue} is invalid, {@code value} might store anything
- *
+ * <p>
+ * 3) multiple implementors: {@code value == null}, {@code hasValue} is invalid
+ * <p>
  * {@code SingleImplementor} for concrete classes starts in state (2): the implementor is the class
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */

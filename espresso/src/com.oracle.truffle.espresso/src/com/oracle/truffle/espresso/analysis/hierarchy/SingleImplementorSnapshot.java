@@ -29,7 +29,15 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-public class SingleImplementorSnapshot {
+/**
+ * {@code SingleImplementorSnapshot} represents a single state of {@link SingleImplementor}. The
+ * state is up-to-date as long as the {@link SingleImplementorSnapshot#hasSingleImplementor
+ * hasSingleImplementor} assumption is valid (except for the final state, where a class has multiple
+ * implementors and the assumption is forever invalid). The
+ * {@link SingleImplementorSnapshot#implementor implementor} value is only safe to use as long as
+ * {@code hasSingleImplementor} is valid.
+ */
+public final class SingleImplementorSnapshot {
     private final Assumption hasSingleImplementor;
     final ObjectKlass implementor;
 
