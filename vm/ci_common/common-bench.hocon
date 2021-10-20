@@ -22,23 +22,23 @@ vm_bench_js_linux: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${cust
   ]
 }
 
-vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} ${vm_bench_common} {
+vm_polybench_linux_commands: {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
+  interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js,warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+}
+
+vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} ${vm_bench_common} {
   downloads: {
     WABT_DIR: {name: wabt, version: "1.0.12", platformspecific: true},
   }
   setup: ${common_vm.setup} [
-    ${vm_bench_polybench_linux_common.base_cmd} [build]
-    ${vm_bench_polybench_linux_common.base_cmd} [build, "--dependencies=POLYBENCH_BENCHMARKS"]
+    ${vm_polybench_linux_commands.base_cmd} [build]
+    ${vm_polybench_linux_commands.base_cmd} [build, "--dependencies=POLYBENCH_BENCHMARKS"]
   ]
   notify_emails: [ "aleksandar.prokopec@oracle.com" ]
   targets: [bench, daily]
-}
-
-vm_polybench_linux_commands: {
-  interpreter_bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js,warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
-  compiler_bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
-  warmup_bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
 }
 
 vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_java_8} {
@@ -66,7 +66,7 @@ vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_
 }
 
 vm_bench_polybench_linux_context_init: ${vm_bench_polybench_linux_common} ${vm_java_8} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json", "polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]", --results-file, ${vm_bench_polybench_linux_context_init.result_file}, --, "-w", "0", "-i", "0", "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json", "polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]", --results-file, ${vm_bench_polybench_linux_context_init.result_file}, --, "-w", "0", "-i", "0", "--polybench-vm=graalvm-${VM_ENV}-java8"]
   run: [
     ${vm_bench_polybench_linux_context_init.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=none"]
     ${vm_bench_common.upload}
