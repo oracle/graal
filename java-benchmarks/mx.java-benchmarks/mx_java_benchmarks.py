@@ -571,6 +571,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def daCapoSizes(self):
         raise NotImplementedError()
 
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in _daCapoIterations.keys() if self.workloadSize() in self.daCapoSizes().get(bench, [])])
+
     def existingSizes(self):
         return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
 
@@ -1862,6 +1865,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance > '15':
                 del benchmarks["neo4j-analytics"]
         return benchmarks
+
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in _renaissanceConfig.keys()])
 
     def defaultSuiteVersion(self):
         #  return self.availableSuiteVersions()[-1]
