@@ -76,6 +76,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         this.summaryTimer = new Timer(hostVM.getImageName(), "((summaries))", false);
     }
 
+    @SuppressWarnings("try")
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
@@ -97,6 +98,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         return type;
     }
 
+    @SuppressWarnings("try")
     @Override
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
@@ -140,6 +142,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
 
     public final Map<AnalysisMethod, MethodSummary> summaries = new ConcurrentHashMap<>();
 
+    @SuppressWarnings("try")
     private void onMethodImplementationInvoked(AnalysisMethod method) {
         try {
             MethodSummary summary;
@@ -291,6 +294,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         return true;
     }
 
+    @SuppressWarnings("try")
     @Override
     public void runAnalysis(DebugContext debugContext, Function<AnalysisUniverse, Boolean> analysisEndCondition) throws InterruptedException {
         // todo this is ugly copy paste from points-to
@@ -390,6 +394,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         return objectType.getTypeFlow(this, true).getState();
     }
 
+    @SuppressWarnings("try")
     public void processGraph(StructuredGraph graph) {
         MethodSummary summary;
         try (Timer.StopTimer t = summaryTimer.start()) {
