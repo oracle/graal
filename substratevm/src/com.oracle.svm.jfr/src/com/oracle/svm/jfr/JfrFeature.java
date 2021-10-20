@@ -67,9 +67,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events where there is a Java class such as {@link com.oracle.svm.jfr.events.JVMInformation} that
- * defines the event. Those events are typically triggered by the Java application and a Java
- * {@link EventWriter} object is used when writing the event to a buffer.</li>
+ * <li>Java-level events are defined by a Java class that extends {@link jdk.jfr.Event} and that is
+ * annotated with JFR-specific annotations. Those events are typically triggered by the Java
+ * application and a Java {@link EventWriter} object is used when writing the event to a
+ * buffer.</li>
  * <li>Native events are triggered by the JVM itself and are defined in the JFR metadata.xml file.
  * For writing such an event to a buffer, we call into {@link JfrNativeEventWriter} and pass a
  * {@link JfrNativeEventWriterData} struct that is typically allocated on the stack.</li>

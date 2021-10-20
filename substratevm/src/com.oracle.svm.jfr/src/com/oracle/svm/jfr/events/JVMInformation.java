@@ -34,17 +34,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 public class JVMInformation {
 
     private String jvmName;
-
     private String jvmVersion;
-
     private String jvmArguments;
-
     private String jvmFlags;
-
     private String javaArguments;
-
     private long jvmStartTime;
-
     private long jvmPid;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

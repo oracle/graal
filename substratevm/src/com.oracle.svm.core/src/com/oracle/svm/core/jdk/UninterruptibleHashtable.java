@@ -24,156 +24,63 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.
+ * Common interface for all uninterruptible hashtable implementations.
  */
-public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>> implements UninterruptibleAbstractHashtable<T> {
-
-    protected static final int DEFAULT_TABLE_LENGTH = 2053;
-
-    protected final T[] table;
-
-    protected long nextId;
-    protected int size;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable() {
-        this(DEFAULT_TABLE_LENGTH);
+public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
+    static <T extends UninterruptibleEntry<T>> SynchronizedUninterruptibleHashtable<T> synchronizedHashtable(String name, UninterruptibleHashtable<T> table) {
+        return new SynchronizedUninterruptibleHashtable<>(name, table);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(int primeLength) {
-        this.table = createTable(primeLength);
-        this.size = 0;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected abstract T[] createTable(int length);
-
+    /**
+     * Gets the number of entries that are in the hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract boolean isEqual(T a, T b);
+    int getSize();
 
+    /**
+     * Returns the internal array of the hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected T allocateOnHeap(Pointer pointerOnStack, UnsignedWord sizeToAlloc) {
-        T pointerOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeToAlloc);
-        if (pointerOnHeap.isNonNull()) {
-            UnmanagedMemoryUtil.copy(pointerOnStack, (Pointer) pointerOnHeap, sizeToAlloc);
-            return pointerOnHeap;
-        }
-        return WordFactory.nullPointer();
-    }
+    T[] getTable();
 
+    /**
+     * Returns the matching value for {@code valueOnStack} from the hashtable. If there is no
+     * matching value in the hashtable, a null pointer is returned.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract T copyToHeap(T valueOnStack);
+    T get(T valueOnStack);
 
+    /**
+     * Tries to insert {@code valueOnStack} into the hashtable. Returns false if there was already a
+     * matching entry in the hashtable or if an error occurred while insert the entry. Returns true
+     * if the entry was inserted successfully.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected long insertEntry(T valueOnStack) {
-        int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-        T newEntry = copyToHeap(valueOnStack);
-        if (newEntry.isNonNull()) {
-            long id = ++nextId;
-            T existingEntry = table[index];
-            newEntry.setNext(existingEntry);
-            newEntry.setId(id);
-            table[index] = newEntry;
-            size++;
-            return id;
-        }
-        return 0L;
-    }
+    boolean putIfAbsent(T valueOnStack);
 
-    @Override
+    /**
+     * If the hashtable contains an existing entry that matches {@code valueOnStack}, then this
+     * existing entry will be returned and no value will be inserted.
+     * 
+     * If there wasn't already a matching entry, this method tries to create and insert a new entry
+     * hashtable. If an error occurred while inserting the entry, a null pointer is returned
+     * instead.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setSize(int size) {
-        this.size = size;
-    }
+    T getOrPut(T valueOnStack);
 
-    @Override
+    /**
+     * Clear all entries from map.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getSize() {
-        return size;
-    }
+    void clear();
 
-    @Override
+    /**
+     * Teardown hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T[] getTable() {
-        return table;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T contains(T valueOnStack) {
-        int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-        T entry = table[index];
-        while (entry.isNonNull()) {
-            if (isEqual(valueOnStack, entry)) {
-                return entry;
-            }
-            entry = entry.getNext();
-        }
-        return WordFactory.nullPointer();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long put(T valueOnStack) {
-        assert valueOnStack.isNonNull();
-
-        T entry = contains(valueOnStack);
-        if (entry.isNonNull()) {
-            return entry.getId();
-        } else {
-            return insertEntry(valueOnStack);
-        }
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean putIfAbsent(T valueOnStack) {
-        assert valueOnStack.isNonNull();
-
-        T entry = contains(valueOnStack);
-        if (entry.isNonNull()) {
-            return false;
-        } else {
-            insertEntry(valueOnStack);
-            return true;
-        }
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void free(T t);
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void clear() {
-        for (int i = 0; i < table.length; i++) {
-            T entry = table[i];
-            while (entry.isNonNull()) {
-                T tmp = entry;
-                entry = entry.getNext();
-                free(tmp);
-            }
-            table[i] = WordFactory.nullPointer();
-        }
-        size = 0;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void teardown() {
-        clear();
-    }
+    void teardown();
 }

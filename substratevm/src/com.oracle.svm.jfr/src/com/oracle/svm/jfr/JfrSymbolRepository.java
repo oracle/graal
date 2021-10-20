@@ -26,6 +26,7 @@ package com.oracle.svm.jfr;
 
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.svm.core.locks.VMMutex;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -35,28 +36,28 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.UninterruptibleAbstractHashtable;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jdk.UninterruptibleHashtable;
+import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 
 /**
  * In Native Image, we use {@link java.lang.String} objects that live in the image heap as symbols.
  */
 public class JfrSymbolRepository implements JfrConstantPool {
-    private final UninterruptibleAbstractHashtable<JfrSymbol> table0;
-    private final UninterruptibleAbstractHashtable<JfrSymbol> table1;
+    private final VMMutex mutex;
+    private final UninterruptibleHashtable<JfrSymbol> table0;
+    private final UninterruptibleHashtable<JfrSymbol> table1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrSymbolRepository() {
-        table0 = UninterruptibleAbstractHashtable.makeHashtableThreadSafe("jfrSymbolHashtable", new JfrSymbolHashtable());
-        table1 = UninterruptibleAbstractHashtable.makeHashtableThreadSafe("jfrSymbolHashtable", new JfrSymbolHashtable());
+        mutex = new VMMutex("jfrSymbolRepository");
+        table0 = new JfrSymbolHashtable();
+        table1 = new JfrSymbolHashtable();
     }
 
     public void teardown() {
@@ -65,7 +66,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Called by uninterruptible code.")
-    private UninterruptibleAbstractHashtable<JfrSymbol> getTable(boolean previousEpoch) {
+    private UninterruptibleHashtable<JfrSymbol> getTable(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         if (epoch) {
             return table0;
@@ -95,12 +96,27 @@ public class JfrSymbolRepository implements JfrConstantPool {
         int hashcode = (int) (rawPointerValue ^ (rawPointerValue >>> 32));
         symbol.setHash(hashcode);
 
-        return getTable(previousEpoch).put(symbol);
+        mutex.lockNoTransition();
+        try {
+            /*
+             * Get an existing entry from the hashtable or insert a new entry. This needs to be
+             * atomic to avoid races as this method can be executed by multiple threads
+             * concurrently. For every inserted entry, a unique id is generated that is then used as
+             * the JFR trace id.
+             */
+            JfrSymbol entry = getTable(previousEpoch).getOrPut(symbol);
+            if (entry.isNonNull()) {
+                return entry.getId();
+            }
+        } finally {
+            mutex.unlock();
+        }
+        return 0;
     }
 
     @Override
     public int write(JfrChunkWriter writer) {
-        UninterruptibleAbstractHashtable<JfrSymbol> table = getTable(true);
+        UninterruptibleHashtable<JfrSymbol> table = getTable(true);
         if (table.getSize() == 0) {
             return EMPTY;
         }
@@ -112,15 +128,12 @@ public class JfrSymbolRepository implements JfrConstantPool {
             JfrSymbol entry = entries[i];
             if (entry.isNonNull()) {
                 while (entry.isNonNull()) {
-                    JfrSymbol tmp = entry;
                     writeSymbol(writer, entry);
                     entry = entry.getNext();
-                    table.free(tmp);
                 }
-                entries[i] = WordFactory.nullPointer();
             }
         }
-        table.setSize(0);
+        table.clear();
         return NON_EMPTY;
     }
 
@@ -145,6 +158,12 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     @RawStructure
     private interface JfrSymbol extends UninterruptibleEntry<JfrSymbol> {
+        @RawField
+        long getId();
+
+        @RawField
+        void setId(long value);
+
         @PinnedObjectField
         @RawField
         String getValue();
@@ -160,7 +179,8 @@ public class JfrSymbolRepository implements JfrConstantPool {
         void setReplaceDotWithSlash(boolean value);
     }
 
-    private static class JfrSymbolHashtable extends UninterruptibleHashtable<JfrSymbol> {
+    private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable<JfrSymbol> {
+        private long nextId;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
@@ -170,7 +190,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
-        public void free(JfrSymbol t) {
+        protected void free(JfrSymbol t) {
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(t);
         }
 
@@ -183,7 +203,9 @@ public class JfrSymbolRepository implements JfrConstantPool {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
         protected JfrSymbol copyToHeap(JfrSymbol symbolOnStack) {
-            return allocateOnHeap((Pointer) symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
+            JfrSymbol result = copyToHeap(symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
+            result.setId(++nextId);
+            return result;
         }
     }
 }

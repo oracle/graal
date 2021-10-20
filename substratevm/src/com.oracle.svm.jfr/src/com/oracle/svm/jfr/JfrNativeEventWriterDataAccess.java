@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 public final class JfrNativeEventWriterDataAccess {
 
     /**
-     * Initialize the {@code data} buffer. Overflow policy (default one): flush into global memory.
+     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the given buffer.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
     public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
@@ -45,22 +45,13 @@ public final class JfrNativeEventWriterDataAccess {
     }
 
     /**
-     * Initialize the current thread's native local buffer.
+     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the current thread's
+     * native buffer.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
-    public static void initializeNativeBuffer(JfrNativeEventWriterData data) {
+    public static void initializeThreadLocalNativeBuffer(JfrNativeEventWriterData data) {
         JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
         JfrBuffer nativeBuffer = jfrThreadLocal.getNativeBuffer();
-        initialize(data, nativeBuffer);
-    }
-
-    /**
-     * Initialize the current thread's java local buffer.
-     */
-    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
-    public static void initializeJavaBuffer(JfrNativeEventWriterData data) {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        JfrBuffer nativeBuffer = jfrThreadLocal.getJavaBuffer();
         initialize(data, nativeBuffer);
     }
 }

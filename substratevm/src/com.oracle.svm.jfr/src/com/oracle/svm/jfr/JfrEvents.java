@@ -85,7 +85,7 @@ public enum JfrEvents {
                 }
             }
 
-            String exceptionMessage = "Event " + name + " is not found!";
+            String exceptionMessage = "Event " + name + " was not found!";
             String mostSimilarEvent = getMostSimilarEvent(name);
             if (mostSimilarEvent != null) {
                 exceptionMessage += " The most similar event is " + mostSimilarEvent + ".";

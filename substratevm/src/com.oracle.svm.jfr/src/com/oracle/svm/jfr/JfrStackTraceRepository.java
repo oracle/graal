@@ -46,6 +46,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public long getStackTraceId(@SuppressWarnings("unused") int skipCount, @SuppressWarnings("unused") boolean previousEpoch) {
+        assert depth >= 0;
         return 0;
     }
 

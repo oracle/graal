@@ -25,23 +25,25 @@
 package com.oracle.svm.jfr;
 
 /**
- * List of all possible buffer types, see {@link com.oracle.svm.jfr.JfrBuffer}.
+ * List of all possible {@link com.oracle.svm.jfr.JfrBuffer} types.
  */
 public enum JfrBufferType {
     /**
-     * The thread-local native buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
+     * A thread-local native buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
      */
     THREAD_LOCAL_NATIVE,
     /**
-     * The thread-local java buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
+     * A thread-local java buffer, see {@link com.oracle.svm.jfr.JfrThreadLocal}.
      */
     THREAD_LOCAL_JAVA,
     /**
-     * The global JFR buffers, see {@link com.oracle.svm.jfr.JfrGlobalMemory}.
+     * A global JFR buffer, see {@link com.oracle.svm.jfr.JfrGlobalMemory}.
      */
     GLOBAL_MEMORY,
     /**
-     * All other buffers, like the one in {@link com.oracle.svm.jfr.JfrThreadRepository}.
+     * Other buffers that live in the C heap and that can be resized (i.e., reallocated) if
+     * necessary. This type is for example used for the epoch-based global buffers in
+     * {@link com.oracle.svm.jfr.JfrThreadRepository}.
      */
     C_HEAP
 }

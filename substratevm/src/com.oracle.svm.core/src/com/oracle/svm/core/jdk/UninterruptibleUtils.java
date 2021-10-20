@@ -470,7 +470,7 @@ public class UninterruptibleUtils {
          * Gets the number of bytes for a char in modified UTF8 format.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int sizeInModifiedUTF8(char c) {
+        private static int modifiedUTF8Length(char c) {
             if (c >= 0x0001 && c <= 0x007F) {
                 // ASCII character.
                 return 1;
@@ -484,7 +484,7 @@ public class UninterruptibleUtils {
         }
 
         /**
-         * Write a char in modified UTF8 format into the buffer at position {@code buffer}.
+         * Write a char in modified UTF8 format into the buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static Pointer writeModifiedUTF8(Pointer buffer, char c) {
@@ -516,7 +516,8 @@ public class UninterruptibleUtils {
             boolean isLatin1 = JavaLangSubstitutions.isLatin1(string);
             byte[] value = JavaLangSubstitutions.getBytes(string);
             for (int index = 0; index < string.length(); index++) {
-                result += sizeInModifiedUTF8(charAt(isLatin1, value, index));
+                char ch = charAt(isLatin1, value, index);
+                result += modifiedUTF8Length(ch);
             }
 
             return result + (addNullTerminator ? 1 : 0);
@@ -556,27 +557,6 @@ public class UninterruptibleUtils {
             }
             VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
             return pos;
-        }
-    }
-
-    public static class ImmutablePair<K, V> {
-
-        private final K key;
-        private final V value;
-
-        public ImmutablePair(K key, V value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public K getKey() {
-            return key;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public V getValue() {
-            return value;
         }
     }
 }

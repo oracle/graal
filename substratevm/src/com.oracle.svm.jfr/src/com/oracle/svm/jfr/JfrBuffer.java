@@ -42,7 +42,7 @@ import com.oracle.svm.core.util.VMError;
 public interface JfrBuffer extends PointerBase {
 
     /**
-     * Returns the size of the buffer.
+     * Returns the size of the buffer. This excludes the header of the buffer.
      */
     @RawField
     UnsignedWord getSize();
@@ -103,12 +103,12 @@ public interface JfrBuffer extends PointerBase {
      */
     @RawField
     @PinnedObjectField
-    void setBufferType(JfrBufferType bufferType);
+    JfrBufferType getBufferType();
 
     /**
-     * Sets the size of the buffer.
+     * Sets the type of the buffer.
      */
     @RawField
     @PinnedObjectField
-    JfrBufferType getBufferType();
+    void setBufferType(JfrBufferType bufferType);
 }

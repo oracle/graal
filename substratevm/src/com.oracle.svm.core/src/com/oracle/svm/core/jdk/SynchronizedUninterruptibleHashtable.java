@@ -31,32 +31,34 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 
 /**
- * An uninterruptible thread-safe hashtable with a fixed size that uses chaining in case of a
- * collision.
+ * A thread-safe wrapper for an {@link UninterruptibleHashtable}.
  */
-final class UninterruptibleThreadSafeHashtable<T extends UninterruptibleEntry<T>> implements UninterruptibleAbstractHashtable<T> {
+public final class SynchronizedUninterruptibleHashtable<T extends UninterruptibleEntry<T>> implements UninterruptibleHashtable<T> {
 
     private final VMMutex mutex;
-    private final UninterruptibleAbstractHashtable<T> hashtable;
+    private final UninterruptibleHashtable<T> hashtable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    UninterruptibleThreadSafeHashtable(String name, UninterruptibleAbstractHashtable<T> hashtable) {
+    public SynchronizedUninterruptibleHashtable(String name, UninterruptibleHashtable<T> hashtable) {
         this.hashtable = hashtable;
         this.mutex = new VMMutex(name);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setSize(int size) {
-        hashtable.setSize(size);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getSize() {
-        return hashtable.getSize();
+        mutex.lockNoTransition();
+        try {
+            return hashtable.getSize();
+        } finally {
+            mutex.unlock();
+        }
     }
 
+    /**
+     * Returns the internal array of the hashtable. There are no guarantees regarding
+     * synchronization when iterating the table.
+     */
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public T[] getTable() {
@@ -65,16 +67,21 @@ final class UninterruptibleThreadSafeHashtable<T extends UninterruptibleEntry<T>
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T contains(T valueOnStack) {
-        return hashtable.contains(valueOnStack);
+    public T get(T valueOnStack) {
+        mutex.lockNoTransition();
+        try {
+            return hashtable.get(valueOnStack);
+        } finally {
+            mutex.unlock();
+        }
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long put(T valueOnStack) {
+    public T getOrPut(T valueOnStack) {
         mutex.lockNoTransition();
         try {
-            return hashtable.put(valueOnStack);
+            return hashtable.getOrPut(valueOnStack);
         } finally {
             mutex.unlock();
         }
@@ -93,19 +100,23 @@ final class UninterruptibleThreadSafeHashtable<T extends UninterruptibleEntry<T>
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void free(T t) {
-        hashtable.free(t);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clear() {
-        hashtable.clear();
+        mutex.lockNoTransition();
+        try {
+            hashtable.clear();
+        } finally {
+            mutex.unlock();
+        }
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void teardown() {
-        hashtable.teardown();
+        mutex.lockNoTransition();
+        try {
+            hashtable.teardown();
+        } finally {
+            mutex.unlock();
+        }
     }
 }

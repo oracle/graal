@@ -41,7 +41,7 @@ public class ThreadEndEvent {
     public static void emit(IsolateThread isolateThread) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.ThreadEnd)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.ThreadEnd.getId());

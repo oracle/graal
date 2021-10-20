@@ -42,7 +42,7 @@ public class ThreadStartEvent {
         SubstrateJVM svm = SubstrateJVM.get();
         if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvents.ThreadStart)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStart.getId());

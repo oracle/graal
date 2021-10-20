@@ -273,8 +273,12 @@ public class SubstrateJVM {
             chunkWriter.unlock();
         }
 
-        recording = true;
-        // After changing the value of recording to true, JFR events can be triggered at any time.
+        JavaVMOperation.enqueueBlockingSafepoint("Jfr begin recording", () -> {
+            recording = true;
+            JfrThreadRepository.registerRunningThreads();
+            // After changing the value of recording to true, JFR events can be triggered at any
+            // time.
+        });
     }
 
     /** See {@link JVM#endRecording}. */

@@ -64,7 +64,7 @@ public enum JfrThreadState {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static JfrThreadState threadStateToJfrThreadState(Thread.State threadState) {
+    private static JfrThreadState threadStateToJfrThreadState(Thread.State threadState) {
         switch (threadState) {
             case NEW:
                 return NEW;

@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.jfr.events;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import java.util.Map;
+import java.util.Properties;
+
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -42,7 +44,7 @@ import jdk.jfr.Period;
 
 @Name("EndChunkPeriodEvents")
 @Period(value = "endChunk")
-public class EndChunkPeriodEvents extends Event {
+public class EndChunkPeriodicEvents extends Event {
 
     private static String formatOSInformation() {
         String name = System.getProperty("os.name");
@@ -51,47 +53,45 @@ public class EndChunkPeriodEvents extends Event {
         return (name + " (" + ver + ") arch:" + arch);
     }
 
-    public static void emitEndChunkPeriodEvents() {
+    public static void emit() {
         emitClassLoadingStatistics(Heap.getHeap().getClassCount(), 0);
         emitJVMInformation(JVMInformation.getJVMInfo());
         emitOSInformation(formatOSInformation());
-
-        for (UninterruptibleUtils.ImmutablePair<String, String> environmentVariable : InitialEnvironmentVariable.getEnvironmentVariables()) {
-            emitInitialEnvironmentVariables(environmentVariable);
-        }
-
-        for (UninterruptibleUtils.ImmutablePair<String, String> systemProperty : InitialSystemProperty.getSystemProperties()) {
-            emitInitialSystemProperty(systemProperty);
-        }
+        emitInitialEnvironmentVariables(getEnvironmentVariables());
+        emitInitialSystemProperties(getSystemProperties());
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitInitialEnvironmentVariables(UninterruptibleUtils.ImmutablePair<String, String> initialEnvironmentVariable) {
+    private static void emitInitialEnvironmentVariables(StringEntry[] envs) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.InitialEnvironmentVariable)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.InitialEnvironmentVariable.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putString(data, initialEnvironmentVariable.getKey());
-            JfrNativeEventWriter.putString(data, initialEnvironmentVariable.getValue());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            for (StringEntry env : envs) {
+                JfrNativeEventWriter.beginEventWrite(data, false);
+                JfrNativeEventWriter.putLong(data, JfrEvents.InitialEnvironmentVariable.getId());
+                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+                JfrNativeEventWriter.putString(data, env.key);
+                JfrNativeEventWriter.putString(data, env.value);
+                JfrNativeEventWriter.endEventWrite(data, false);
+            }
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitInitialSystemProperty(UninterruptibleUtils.ImmutablePair<String, String> initialSystemProperty) {
+    private static void emitInitialSystemProperties(StringEntry[] systemProperties) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.InitialSystemProperty)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.InitialSystemProperty.getId());
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putString(data, initialSystemProperty.getKey());
-            JfrNativeEventWriter.putString(data, initialSystemProperty.getValue());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            for (StringEntry systemProperty : systemProperties) {
+                JfrNativeEventWriter.beginEventWrite(data, false);
+                JfrNativeEventWriter.putLong(data, JfrEvents.InitialSystemProperty.getId());
+                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+                JfrNativeEventWriter.putString(data, systemProperty.key);
+                JfrNativeEventWriter.putString(data, systemProperty.value);
+                JfrNativeEventWriter.endEventWrite(data, false);
+            }
         }
     }
 
@@ -99,7 +99,7 @@ public class EndChunkPeriodEvents extends Event {
     private static void emitClassLoadingStatistics(long loadedClassCount, long unloadedClassCount) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.ClassLoadingStatistics)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.ClassLoadingStatistics.getId());
@@ -114,7 +114,7 @@ public class EndChunkPeriodEvents extends Event {
     private static void emitJVMInformation(JVMInformation jvmInformation) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.JVMInformation)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.JVMInformation.getId());
@@ -134,13 +134,49 @@ public class EndChunkPeriodEvents extends Event {
     private static void emitOSInformation(String osVersion) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.OSInformation)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.OSInformation.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putString(data, osVersion);
             JfrNativeEventWriter.endEventWrite(data, false);
+        }
+    }
+
+    private static StringEntry[] getEnvironmentVariables() {
+        Map<String, String> env = System.getenv();
+        StringEntry[] result = new StringEntry[env.size()];
+
+        int i = 0;
+        for (Map.Entry<String, String> entry : env.entrySet()) {
+            result[i] = new StringEntry(entry.getKey(), entry.getValue());
+            i++;
+        }
+
+        return result;
+    }
+
+    public static StringEntry[] getSystemProperties() {
+        Properties properties = System.getProperties();
+        StringEntry[] result = new StringEntry[properties.size()];
+
+        int i = 0;
+        for (String key : properties.stringPropertyNames()) {
+            result[i] = new StringEntry(key, properties.getProperty(key));
+            i++;
+        }
+
+        return result;
+    }
+
+    private static class StringEntry {
+        public final String key;
+        public final String value;
+
+        StringEntry(String key, String value) {
+            this.key = key;
+            this.value = value;
         }
     }
 }

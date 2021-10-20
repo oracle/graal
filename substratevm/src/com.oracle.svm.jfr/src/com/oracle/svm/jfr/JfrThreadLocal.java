@@ -71,7 +71,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
     private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
-    private static final FastThreadLocalLong traceId = FastThreadLocalFactory.createLong("JfrThreadLocal.traceId");
+    private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
     private static final FastThreadLocalLong parentThreadId = FastThreadLocalFactory.createLong("JfrThreadLocal.parentThreadId");
 
     private long threadLocalBufferSize;
@@ -91,10 +91,10 @@ public class JfrThreadLocal implements ThreadListener {
         // we are always able to access that value without having to go through a heap-allocated
         // Java object.
         Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
-        traceId.set(isolateThread, t.getId());
+        threadId.set(isolateThread, t.getId());
         parentThreadId.set(isolateThread, JavaThreads.getParentThreadId(javaThread));
 
-        SubstrateJVM.getThreadRepo().serializeThread(javaThread);
+        SubstrateJVM.getThreadRepo().registerThread(javaThread);
 
         // Emit ThreadStart event before thread.run().
         ThreadStartEvent.emit(isolateThread);
@@ -121,7 +121,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         // Free and reset all data.
-        traceId.set(isolateThread, 0);
+        threadId.set(isolateThread, 0);
         parentThreadId.set(isolateThread, 0);
         dataLost.set(isolateThread, WordFactory.unsigned(0));
         javaEventWriter.set(isolateThread, null);
@@ -135,7 +135,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getTraceId(IsolateThread isolateThread) {
-        return traceId.get(isolateThread);
+        return threadId.get(isolateThread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -172,7 +172,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
-        VMError.guarantee(traceId.get() > 0, "Thread local JFR data must be initialized");
+        VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
         JfrBuffer result = javaBuffer.get();
         if (result.isNull()) {
             result = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
@@ -183,7 +183,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public JfrBuffer getNativeBuffer() {
-        VMError.guarantee(traceId.get() > 0, "Thread local JFR data must be initialized");
+        VMError.guarantee(threadId.get() > 0, "Thread local JFR data must be initialized");
         JfrBuffer result = nativeBuffer.get();
         if (result.isNull()) {
             result = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);

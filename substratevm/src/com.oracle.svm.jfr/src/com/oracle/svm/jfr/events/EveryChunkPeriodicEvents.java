@@ -43,9 +43,9 @@ import java.lang.management.ThreadMXBean;
 
 @Name("EveryChunkPeriodEvents")
 @Period(value = "everyChunk")
-public class EveryChunkPeriodEvents extends Event {
+public class EveryChunkPeriodicEvents extends Event {
 
-    public static void emitEveryChunkPeriodEvents() {
+    public static void emit() {
         ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
         emitJavaThreadStats(threadMXBean.getThreadCount(), threadMXBean.getDaemonThreadCount(),
                         threadMXBean.getTotalStartedThreadCount(), threadMXBean.getPeakThreadCount());
@@ -57,7 +57,7 @@ public class EveryChunkPeriodEvents extends Event {
     private static void emitJavaThreadStats(long activeCount, long daemonCount, long accumulatedCount, long peakCount) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.JavaThreadStatistics)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.JavaThreadStatistics.getId());
@@ -74,7 +74,7 @@ public class EveryChunkPeriodEvents extends Event {
     private static void emitPhysicalMemory(long totalSize, long usedSize) {
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.PhysicalMemory)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeNativeBuffer(data);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
             JfrNativeEventWriter.putLong(data, JfrEvents.PhysicalMemory.getId());

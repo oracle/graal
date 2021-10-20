@@ -44,8 +44,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jfr.events.EndChunkPeriodEvents;
-import com.oracle.svm.jfr.events.EveryChunkPeriodEvents;
+import com.oracle.svm.jfr.events.EndChunkPeriodicEvents;
+import com.oracle.svm.jfr.events.EveryChunkPeriodicEvents;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -86,10 +86,11 @@ public class JfrManager {
     Runnable shutdownHook() {
         return () -> {
             if (SubstrateOptions.FlightRecorder.getValue()) {
-                // Everything should already have been torn down by JVM.destroyJFR(), which is called in
-                // a shutdown hook. So in this method we should only unregister periodic events.
-                FlightRecorder.removePeriodicEvent(EveryChunkPeriodEvents::emitEveryChunkPeriodEvents);
-                FlightRecorder.removePeriodicEvent(EndChunkPeriodEvents::emitEndChunkPeriodEvents);
+                // Everything should already have been torn down by JVM.destroyJFR(), which is
+                // called in a shutdown hook. So in this method we should only unregister periodic
+                // events.
+                FlightRecorder.removePeriodicEvent(EveryChunkPeriodicEvents::emit);
+                FlightRecorder.removePeriodicEvent(EndChunkPeriodicEvents::emit);
             }
         };
     }
@@ -99,11 +100,10 @@ public class JfrManager {
     }
 
     private static void periodicEventSetup() throws SecurityException {
-        // Here, we are registering two "abstract" periodic events. They are "abstract" because, we
-        // are using them only to emit "real" events (like OSInformation, JVMInformation...) in
-        // callbacks (second argument) after specific period of time ("everyChunk" or "endChunk").
-        FlightRecorder.addPeriodicEvent(EveryChunkPeriodEvents.class, EveryChunkPeriodEvents::emitEveryChunkPeriodEvents);
-        FlightRecorder.addPeriodicEvent(EndChunkPeriodEvents.class, EndChunkPeriodEvents::emitEndChunkPeriodEvents);
+        // The callbacks that are registered below, are invoked regularly to emit periodic native
+        // events such as OSInformation or JVMInformation.
+        FlightRecorder.addPeriodicEvent(EveryChunkPeriodicEvents.class, EveryChunkPeriodicEvents::emit);
+        FlightRecorder.addPeriodicEvent(EndChunkPeriodicEvents.class, EndChunkPeriodicEvents::emit);
     }
 
     private static void initRecording() {
