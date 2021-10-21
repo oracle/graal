@@ -115,7 +115,7 @@ public class InvocationPluginHelper implements DebugCloseable {
 
     public ValueNode arraylength(ValueNode receiverValue) {
         assert StampTool.isPointerNonNull(receiverValue);
-        return b.add(new ArrayLengthNode(receiverValue));
+        return b.add(ArrayLengthNode.create(receiverValue, b.getConstantReflection()));
     }
 
     @Override
@@ -245,10 +245,10 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
-        return createCompare(canonicalizedCondition.getCanonicalCondition(), x, y);
+        return createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
     }
 
-    public LogicNode createCompare(CanonicalCondition cond, ValueNode x, ValueNode y) {
+    public LogicNode createCompare(ValueNode x, CanonicalCondition cond, ValueNode y) {
         assert !x.getStackKind().isNumericFloat();
         switch (cond) {
             case EQ:
@@ -271,7 +271,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Lookup a Java field by name.
+     * Finds a Java field by name.
      *
      * @throws GraalError if the field isn't found.
      */
@@ -324,7 +324,7 @@ public class InvocationPluginHelper implements DebugCloseable {
      * FixedNodes} to be part of the return path. All the return values are linked to a
      * {@link MergeNode} which terminates the graphs produced by the plugin.
      */
-    public AbstractBeginNode emitReturnIf(LogicNode condition, boolean negated, ValueNode returnValue, double returnProbability) {
+    private AbstractBeginNode emitReturnIf(LogicNode condition, boolean negated, ValueNode returnValue, double returnProbability) {
         BeginNode trueSuccessor = b.getGraph().add(new BeginNode());
         EndNode end = b.getGraph().add(new EndNode());
         trueSuccessor.setNext(end);
@@ -430,12 +430,20 @@ public class InvocationPluginHelper implements DebugCloseable {
         return doFallbackIf(compare, canonicalizedCondition.mustNegate(), returnProbability);
     }
 
+    public GuardingNode doFallbackIfNot(LogicNode condition, double probability) {
+        return doFallbackIf(condition, true, probability);
+    }
+
+    public GuardingNode doFallbackIf(LogicNode condition, double probability) {
+        return doFallbackIf(condition, false, probability);
+    }
+
     /**
      * Fallback to the original implementation based on the {@code condition}. Depending on the
      * environment the fallback may be done through a {@link DeoptimizeNode} or through a real
      * {@link Invoke}.
      */
-    public GuardingNode doFallbackIf(LogicNode condition, boolean negated, double probability) {
+    private GuardingNode doFallbackIf(LogicNode condition, boolean negated, double probability) {
         BeginNode fallbackSuccessor = branchToFallback();
         ProfileData.BranchProbabilityData probabilityData = ProfileData.BranchProbabilityData.injected(probability, negated);
         IfNode node = new IfNode(condition, negated ? null : fallbackSuccessor, negated ? fallbackSuccessor : null, probabilityData);

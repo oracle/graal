@@ -395,59 +395,45 @@ public class StandardGraphBuilderPlugins {
 
         @SuppressWarnings("try")
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg2) {
-            // @formatter:off
-            //         if (thisString == obj) {
-            //            return true;
-            //        }
-            //        if (!(obj instanceof String)) {
-            //            return false;
-            //        }
-            //        String thatString = (String) obj;
-            //        if (getCoder(thisString) != getCoder(thatString)) {
-            //            return false;
-            //        }
-            //        final byte[] array1 = getValue(thisString);
-            //        final byte[] array2 = getValue(thatString);
-            //        if (array1.length != array2.length) {
-            //            return false;
-            //        }
-            //        if (array1.length == 0) {
-            //            return true;
-            //        }
-            //
-            //        return ArrayEqualsNode.equals(array1, array2, GraalDirectives.isCompilationConstant(thatString) ? array2.length : array1.length);
-            // @formatter:on
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode other) {
             if (!b.canMergeIntrinsicReturns()) {
                 return false;
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ResolvedJavaField valueField = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                ConstantNode trueValue = ConstantNode.forBoolean(true);
+                ConstantNode falseValue = ConstantNode.forBoolean(false);
 
-                ValueNode arg1 = receiver.get();
-                helper.emitReturnIf(b.add(new ObjectEqualsNode(arg1, arg2)), b.add(ConstantNode.forBoolean(true)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                // if (this == other) return true
+                ValueNode thisString = receiver.get();
+                helper.emitReturnIf(b.add(new ObjectEqualsNode(thisString, other)), trueValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
 
+                // if (!(other instanceof String)) return false
                 TypeReference stringType = TypeReference.createTrusted(b.getAssumptions(), b.getMetaAccess().lookupJavaType(String.class));
-                GuardingNode stringArg2Guard = helper.emitReturnIfNot(InstanceOfNode.create(stringType, arg2), b.add(ConstantNode.forBoolean(false)),
+                GuardingNode stringArg2Guard = helper.emitReturnIfNot(InstanceOfNode.create(stringType, other), b.add(falseValue),
                                 BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-                Stamp stamp2 = StampFactory.objectNonNull(stringType);
-                ValueNode stringArg2 = b.add(new PiNode(arg2, stamp2, stringArg2Guard.asNode()));
+                Stamp stamp = StampFactory.objectNonNull(stringType);
+                ValueNode otherString = b.add(new PiNode(other, stamp, stringArg2Guard.asNode()));
 
                 if (JavaVersionUtil.JAVA_SPEC > 8) {
                     ResolvedJavaField coderField = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
-                    ValueNode thisCoder = helper.loadField(arg1, coderField);
-                    ValueNode thatCoder = helper.loadField(stringArg2, coderField);
-                    helper.emitReturnIfNot(b.add(new IntegerEqualsNode(thisCoder, thatCoder)), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                    ValueNode thisCoder = helper.loadField(thisString, coderField);
+                    ValueNode thatCoder = helper.loadField(otherString, coderField);
+                    // if (thisString.coder != otherString.coder) return false
+                    helper.emitReturnIfNot(b.add(new IntegerEqualsNode(thisCoder, thatCoder)), falseValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
                 }
 
-                ValueNode thisValue = b.nullCheckedValue(helper.loadField(stringArg2, valueField));
-                ValueNode thatValue = b.nullCheckedValue(helper.loadField(arg1, valueField));
+                ResolvedJavaField valueField = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                ValueNode thisValue = b.nullCheckedValue(helper.loadField(otherString, valueField));
+                ValueNode thatValue = b.nullCheckedValue(helper.loadField(thisString, valueField));
 
-                ValueNode thisLength = b.add(new ArrayLengthNode(thisValue));
-                ValueNode thatLength = b.add(new ArrayLengthNode(thatValue));
-                helper.emitReturnIfNot(IntegerEqualsNode.create(thisLength, thatLength, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-                helper.emitReturnIf(IntegerEqualsNode.create(thisLength, b.add(ConstantNode.forInt(0)), NodeView.DEFAULT), b.add(ConstantNode.forBoolean(true)),
+                ValueNode thisLength = helper.arraylength(thisValue);
+                ValueNode thatLength = helper.arraylength(thatValue);
+                // if (thisString.value.length != otherString.value.length) return false
+                helper.emitReturnIfNot(IntegerEqualsNode.create(thisLength, thatLength, NodeView.DEFAULT), falseValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                // if (length == 0) return true
+                helper.emitReturnIf(IntegerEqualsNode.create(thisLength, ConstantNode.forInt(0), NodeView.DEFAULT), trueValue,
                                 BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                // compare the array bodies
                 helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(thisValue, thatValue, thisLength.isConstant() ? thisLength : thatLength,
                                 JavaVersionUtil.JAVA_SPEC > 8 ? JavaKind.Byte : JavaKind.Char)));
             }
@@ -1913,35 +1899,23 @@ public class StandardGraphBuilderPlugins {
         @SuppressWarnings("try")
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode origFromIndex) {
-            // @formatter:off
-            //     public static int indexOf(byte[] value, int ch, int origFromIndex) {
-            //         int fromIndex = origFromIndex;
-            //        if (injectBranchProbability(UNLIKELY_PROBABILITY, ch >>> 8 != 0)) {
-            //            // search value must be a byte value
-            //            return -1;
-            //        }
-            //        int length = value.length;
-            //        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex < 0)) {
-            //            fromIndex = 0;
-            //        } else if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= length)) {
-            //            // Note: fromIndex might be near -1>>>1.
-            //            return -1;
-            //        }
-            //        return ArrayIndexOf.indexOf1Byte(value, length, fromIndex, (byte) ch);
-            //     }
-            // @formatter:on
             if (!b.canMergeIntrinsicReturns()) {
                 return false;
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ConstantNode zero = ConstantNode.forInt(0);
+                // if (ch >>> 8 != 0) return -1
                 helper.emitReturnIf(helper.ushr(ch, 8), Condition.NE, zero, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
                 ValueNode nonNullValue = b.nullCheckedValue(value);
-                ValueNode length = b.add(new ArrayLengthNode(nonNullValue));
+
+                // if (fromIndex >= value.length) return -1
+                ValueNode length = helper.arraylength(nonNullValue);
                 helper.emitReturnIf(origFromIndex, Condition.GE, length, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
-                LogicNode condition = helper.createCompare(CanonicalCondition.LT, origFromIndex, zero);
-                ValueNode fromIndex = b.add(ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT));
-                helper.emitFinalReturn(JavaKind.Int, b.append(new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_BYTE, JavaKind.Byte, JavaKind.Byte, false, nonNullValue, length, fromIndex, ch)));
+                LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
+                // fromIndex = max(fromIndex, 0)
+                ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
+                helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_BYTE, JavaKind.Byte, JavaKind.Byte,
+                                false, nonNullValue, length, fromIndex, ch));
             }
             return true;
         }

@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
@@ -387,9 +388,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Some {@link InvocationPlugin InvocationPlugins} have to build a
-     * {@link org.graalvm.compiler.nodes.MergeNode} to handle multiple return paths but not all
-     * contexts can do this.
+     * Some {@link InvocationPlugin InvocationPlugins} have to build a {@link MergeNode} to handle
+     * multiple return paths but not all contexts can do this.
      *
      * @return false if {@link #getInvocationPluginReturnState(JavaKind, ValueNode)} cannot be
      *         called (i.e. it unconditionally raises an error)

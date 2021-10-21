@@ -63,8 +63,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * A helper class for generating mildly complex HotSpot specific plugins. It primarily adds helpers
- * for correctly performing reads of HotSpot specific fields.
+ * A helper class for HotSpot specific invocation plugins. In particular it adds helpers for
+ * correctly performing reads of HotSpot specific fields.
  */
 public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
 
@@ -80,7 +80,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         return StampFactory.object(TypeReference.createExactTrusted(toType), nonNull);
     }
 
-    public ValueNode readKlass(ValueNode clazz) {
+    public ValueNode readKlassFromClass(ValueNode clazz) {
         return b.add(ClassGetHubNode.create(clazz, b.getMetaAccess(), b.getConstantReflection()));
     }
 
@@ -221,10 +221,16 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         return value;
     }
 
+    /**
+     * Reads {@code JavaThread::_osthread}.
+     */
     public ValueNode readOsThread(CurrentJavaThreadNode thread) {
         return readLocation(thread, HotSpotVMConfigField.JAVA_THREAD_OSTHREAD_OFFSET);
     }
 
+    /**
+     * Reads {@code OSThread::_interrupted}.
+     */
     public ValueNode readOsThreadInterrupted(ValueNode osThread) {
         return readLocation(osThread, HotSpotVMConfigField.OS_THREAD_INTERRUPTED_OFFSET);
     }
