@@ -290,7 +290,7 @@ public class InvocationPluginHelper implements DebugCloseable {
      * plugin that uses a field offset them some extra machinery will be needed to delay the lookup.
      */
     public ValueNode getFieldOffset(ResolvedJavaType type, String fieldName) {
-        assert !IS_BUILDING_NATIVE_IMAGE || !b.parsingIntrinsic() : "these values must be deferred in substitutions and snippets";
+        GraalError.guarantee(!IS_BUILDING_NATIVE_IMAGE || !b.parsingIntrinsic(), "these values must be deferred in substitutions and snippets");
         return ConstantNode.forInt(getField(type, fieldName).getOffset());
     }
 
