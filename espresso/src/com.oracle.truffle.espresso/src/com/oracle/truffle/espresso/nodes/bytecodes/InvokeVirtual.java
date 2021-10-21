@@ -35,6 +35,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementorSnapshot;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -116,14 +117,15 @@ public abstract class InvokeVirtual extends Node {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
-        @Specialization(assumptions = {
-                        "maybeImplementor.hasImplementor()",
-                        "resolvedMethod.getAssumption()"
-        })
+        // The implementor assumption might be invalidated right between the assumption check and
+        // the value retrieval. To ensure that the single implementor value is safe to use, check
+        // that it's not null.
+        @Specialization(assumptions = {"maybeSingleImplementor.hasImplementor()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
-                        @Cached("methodLookup(resolutionSeed, maybeImplementor.getImplementor())") Method.MethodVersion resolvedMethod,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeSingleImplementor,
+                        @SuppressWarnings("unused") @Cached("maybeSingleImplementor.getImplementor()") ObjectKlass implementor,
+                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);

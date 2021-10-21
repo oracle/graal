@@ -98,18 +98,22 @@ public abstract class InvokeInterface extends Node {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
-        @Specialization(assumptions = {"maybeImplementor.hasImplementor()", "resolvedMethod.getAssumption()"})
+        // The implementor assumption might be invalidated right between the assumption check and
+        // the value retrieval. To ensure that the single implementor value is safe to use, check
+        // that it's not null.
+        @Specialization(assumptions = {"maybeSingleImplementor.hasImplementor()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeImplementor,
-                        @Cached("methodLookup(resolutionSeed, maybeImplementor.getImplementor())") Method.MethodVersion resolvedMethod,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeSingleImplementor,
+                        @Cached("maybeSingleImplementor.getImplementor()") ObjectKlass implementor,
+                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode,
                         @Cached BranchProfile notAnImplementorProfile) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // the receiver's klass is not the single implementor, i.e. does not implement the
             // interface
-            if (receiver.getKlass() != maybeImplementor.getImplementor()) {
+            if (receiver.getKlass() != implementor) {
                 notAnImplementorProfile.enter();
                 ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
                 Klass receiverKlass = receiver.getKlass();
