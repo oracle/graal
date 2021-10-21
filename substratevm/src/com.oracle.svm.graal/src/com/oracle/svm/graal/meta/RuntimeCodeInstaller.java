@@ -26,6 +26,7 @@ package com.oracle.svm.graal.meta;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -192,10 +193,12 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
         for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
-                patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                NativeImagePatcher priorValue = patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
             }
         }
-        patchData(patches, objectConstants);
+        int numPatchesHandled = patchData(patches, objectConstants);
+        VMError.guarantee(numPatchesHandled == patches.size(), "Not all patches applied.");
 
         // Store the compiled code
         for (int index = 0; index < codeSize; index++) {
@@ -252,9 +255,14 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo, adjuster);
     }
 
-    private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {
+    private int patchData(Map<Integer, NativeImagePatcher> patcher, ObjectConstantsHolder objectConstants) {
+        int patchesHandled = 0;
+        HashSet<Integer> patchedOffsets = new HashSet<>();
         for (DataPatch dataPatch : compilation.getDataPatches()) {
             NativeImagePatcher patch = patcher.get(dataPatch.pcOffset);
+            boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
+            VMError.guarantee(noPriorMatch, "Patching same offset twice.");
+            patchesHandled++;
             if (dataPatch.reference instanceof DataSectionReference) {
                 DataSectionReference ref = (DataSectionReference) dataPatch.reference;
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
@@ -263,7 +271,10 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
+            } else {
+                throw VMError.shouldNotReachHere("Unhandled data patch.");
             }
         }
+        return patchesHandled;
     }
 }

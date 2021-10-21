@@ -1794,7 +1794,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Branches if condition is true. Address of jump is patched up by HotSpot c++ code.
+     * Branches if condition is true. Address of jump is patched up by the runtime.
      *
      * @param condition any condition value allowed. Non null.
      */
@@ -1833,11 +1833,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Immediate jump instruction fixed up by HotSpot c++ code.
+     * Immediate jump instruction fixed up by the runtime.
      */
     public void jmp() {
-        // Offset has to be fixed up by c++ code.
-        super.b(0);
+        super.b();
     }
 
     /**

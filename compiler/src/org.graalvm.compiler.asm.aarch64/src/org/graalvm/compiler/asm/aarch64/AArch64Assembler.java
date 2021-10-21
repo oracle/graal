@@ -991,48 +991,46 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     /* Unconditional Branch (immediate) (5.2.2) */
-
-    /**
-     * @param imm28 Signed 28-bit offset, has to be word aligned.
-     */
-    protected void b(int imm28) {
-        unconditionalBranchImmInstruction(imm28, Instruction.B, -1);
+    protected void b() {
+        unconditionalBranchImmInstruction(0, Instruction.B, -1, true);
     }
 
     /**
+     * Unconditional Branch (immediate) (5.2.2).
+     *
+     * @param imm28 Signed 28-bit offset, has to be word aligned.
+     */
+    protected void b(int imm28) {
+        unconditionalBranchImmInstruction(imm28, Instruction.B, -1, false);
+    }
+
+    /**
+     * Unconditional Branch (immediate) (5.2.2).
      *
      * @param imm28 Signed 28-bit offset, has to be word aligned.
      * @param pos Position where instruction is inserted into code buffer.
      */
     protected void b(int imm28, int pos) {
-        unconditionalBranchImmInstruction(imm28, Instruction.B, pos);
+        unconditionalBranchImmInstruction(imm28, Instruction.B, pos, false);
     }
 
     /**
      * Branch and link return address to register X30.
-     *
-     * @param imm28 Signed 28-bit offset, has to be word aligned.
      */
-    public void bl(int imm28) {
-        /*
-         * Currently within Graal all bl instructions will be patched later.
-         *
-         * Hence, for now imm28 should always be 0. If at a later time the imm28 can be a meaningful
-         * value, then this assert can be reevaluated.
-         */
-        assert imm28 == 0;
-        unconditionalBranchImmInstruction(imm28, Instruction.BL, -1);
+    public void bl() {
+        unconditionalBranchImmInstruction(0, Instruction.BL, -1, true);
     }
 
-    private void unconditionalBranchImmInstruction(int imm28, Instruction instr, int pos) {
+    private void unconditionalBranchImmInstruction(int imm28, Instruction instr, int pos, boolean needsImmAnnotation) {
         assert NumUtil.isSignedNbit(28, imm28) && (imm28 & 0x3) == 0 : "Immediate has to be 28bit signed number and word aligned";
         int imm = (imm28 & NumUtil.getNbitNumberInt(28)) >> 2;
         int instrEncoding = instr.encoding | UnconditionalBranchImmOp;
+        if (needsImmAnnotation) {
+            annotatePatchingImmediate(pos == -1 ? position() : pos, instr, 26, 0, 2);
+        }
         if (pos == -1) {
-            annotatePatchingImmediate(position(), instr, 26, 0, 2);
             emitInt(instrEncoding | imm);
         } else {
-            annotatePatchingImmediate(pos, instr, 26, 0, 2);
             emitInt(instrEncoding | imm, pos);
         }
     }
@@ -1267,11 +1265,9 @@ public abstract class AArch64Assembler extends Assembler {
         int memOp = extraEncoding | transferSizeEncoding | instr.encoding | floatFlag | rt(reg);
         switch (address.getAddressingMode()) {
             case IMMEDIATE_UNSIGNED_SCALED:
-                annotatePatchingImmediate(position(), instr, 12, LoadStoreScaledImmOffset, log2TransferSize);
                 emitInt(memOp | LoadStoreScaledOp | address.getImmediate() << LoadStoreScaledImmOffset | rs1(address.getBase()));
                 break;
             case IMMEDIATE_SIGNED_UNSCALED:
-                annotatePatchingImmediate(position(), instr, 9, LoadStoreUnscaledImmOffset, 0);
                 emitInt(memOp | LoadStoreUnscaledOp | address.getImmediate() << LoadStoreUnscaledImmOffset | rs1(address.getBase()));
                 break;
             case BASE_REGISTER_ONLY:
@@ -1289,11 +1285,9 @@ public abstract class AArch64Assembler extends Assembler {
                 emitInt(transferSizeEncoding | floatFlag | LoadLiteralOp | rd(reg) | address.getImmediate() << LoadLiteralImmOffset);
                 break;
             case IMMEDIATE_POST_INDEXED:
-                annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
                 emitInt(memOp | LoadStorePostIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             case IMMEDIATE_PRE_INDEXED:
-                annotatePatchingImmediate(position(), instr, 9, LoadStoreIndexedImmOffset, 0);
                 emitInt(memOp | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
