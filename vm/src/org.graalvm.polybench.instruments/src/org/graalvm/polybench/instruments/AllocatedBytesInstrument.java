@@ -30,9 +30,8 @@ import java.lang.management.ManagementFactory;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -50,7 +49,8 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
 
     public static final String ID = "allocated-bytes";
     @Option(name = "", help = "Enable the Allocated Bytes Instrument (default: false).", category = OptionCategory.EXPERT) static final OptionKey<Boolean> enabled = new OptionKey<>(false);
-    public final Map<Thread, ThreadContext> threads = new HashMap<>();
+    private static final ThreadMXBean threadBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
+    public final Set<Thread> threads = new HashSet<>();
     private ServerSocket serverSocket;
     private Thread socketThread;
 
@@ -62,8 +62,8 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
     public synchronized double getAllocated() {
         CompilerAsserts.neverPartOfCompilation();
         double report = 0;
-        for (ThreadContext thread : threads.values()) {
-            report = report + thread.getAllocatedBytes();
+        for (Thread thread : this.threads) {
+            report = report + threadBean.getThreadAllocatedBytes(thread.getId());
         }
         return report;
     }
@@ -74,7 +74,7 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
             @Override
             public void onThreadInitialized(TruffleContext context, Thread thread) {
                 synchronized (AllocatedBytesInstrument.this) {
-                    threads.put(thread, new ThreadContext(thread));
+                    threads.add(thread);
                 }
             }
 
@@ -85,9 +85,14 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
                 }
             }
         }, true);
+        try {
+            serverSocket = new ServerSocket(8877);
+        } catch (IOException e) {
+            throw new IllegalStateException("IO exception in socket use.", e);
+        }
+
         socketThread = new Thread(() -> {
             try {
-                serverSocket = new ServerSocket(8877);
                 while (true) {
                     Socket socket = serverSocket.accept();
                     try (DataOutputStream stream = new DataOutputStream(socket.getOutputStream())) {
@@ -106,30 +111,10 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
     @Override
     protected synchronized void onDispose(Env env) {
         try {
-            if (serverSocket != null) {
-                serverSocket.close();
-            }
+            serverSocket.close();
             socketThread.join(1000);
         } catch (IOException | InterruptedException e) {
             throw new IllegalStateException("Exception when closing socket.", e);
-        }
-    }
-
-    private static final class ThreadContext {
-
-        private static volatile ThreadMXBean threadBean;
-        private final Thread thread;
-
-        private ThreadContext(Thread thread) {
-            Objects.requireNonNull(thread);
-            this.thread = thread;
-        }
-
-        private synchronized long getAllocatedBytes() {
-            if (threadBean == null) {
-                threadBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
-            }
-            return threadBean.getThreadAllocatedBytes(thread.getId());
         }
     }
 }
