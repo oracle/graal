@@ -356,7 +356,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/lang/Math.abs(J)J");
 
                 if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
-                    add(toBeInvestigated,
+                    add(ignore,
                                     "java/lang/Math.max(DD)D",
                                     "java/lang/Math.max(FF)F",
                                     "java/lang/Math.min(DD)D",
@@ -387,7 +387,15 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "java/lang/Math.abs(I)I",
                                 "java/lang/Math.abs(J)J");
 
-                if (!(arch instanceof AMD64) || !((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                if (arch instanceof AMD64) {
+                    if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                        add(ignore,
+                                        "java/lang/Math.max(DD)D",
+                                        "java/lang/Math.max(FF)F",
+                                        "java/lang/Math.min(DD)D",
+                                        "java/lang/Math.min(FF)F");
+                    }
+                } else {
                     add(toBeInvestigated,
                                     "java/lang/Math.max(DD)D",
                                     "java/lang/Math.max(FF)F",
