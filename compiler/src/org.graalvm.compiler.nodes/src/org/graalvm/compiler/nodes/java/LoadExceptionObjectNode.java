@@ -31,10 +31,11 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
+public final class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable, DeoptimizingNode.DeoptAfter {
 
     public static final NodeClass<LoadExceptionObjectNode> TYPE = NodeClass.create(LoadExceptionObjectNode.class);
 
@@ -42,4 +43,8 @@ public final class LoadExceptionObjectNode extends AbstractStateSplit implements
         super(TYPE, stamp);
     }
 
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
 }

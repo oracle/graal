@@ -233,7 +233,14 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             for (Node n : guard.asNode().usages()) {
                 if (n instanceof PiNode && n != self) {
                     PiNode otherPi = (PiNode) n;
-                    assert otherPi.guard == guard;
+                    if (otherPi.guard != guard) {
+                        assert otherPi.object() == guard;
+                        /*
+                         * The otherPi is unrelated because it uses this.guard as object but not as
+                         * guard.
+                         */
+                        continue;
+                    }
                     if (otherPi.object() == self || otherPi.object() == object) {
                         // Check if other pi's stamp is more precise
                         Stamp joinedStamp = piStamp.improveWith(otherPi.piStamp());
