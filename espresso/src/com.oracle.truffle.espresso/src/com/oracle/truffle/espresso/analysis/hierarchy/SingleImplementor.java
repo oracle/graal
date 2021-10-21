@@ -52,8 +52,8 @@ public final class SingleImplementor {
                     SingleImplementorSnapshot.class, "currentSnapshot");
 
     static SingleImplementorSnapshot NoImplementorsSnapshot = new SingleImplementorSnapshot(NeverValidAssumption.INSTANCE, null);
-    static SingleImplementor Invalid = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
-    static SingleImplementorSnapshot MultipleImplementorsSnapshot = Invalid.read();
+    static SingleImplementor MultipeImplementors = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
+    static SingleImplementorSnapshot MultipleImplementorsSnapshot = MultipeImplementors.read();
 
     // Used only to create the Invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {

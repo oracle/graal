@@ -76,7 +76,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
 
     @Override
     public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
-        return SingleImplementor.Invalid;
+        return SingleImplementor.MultipeImplementors;
     }
 
     @Override
