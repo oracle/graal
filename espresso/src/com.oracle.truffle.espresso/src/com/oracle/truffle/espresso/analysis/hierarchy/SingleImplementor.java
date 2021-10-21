@@ -60,19 +60,12 @@ public final class SingleImplementor {
         this.currentSnapshot = new SingleImplementorSnapshot(assumption, value);
     }
 
-    private SingleImplementor() {
+    SingleImplementor() {
         this.currentSnapshot = NoImplementorsSnapshot;
     }
 
-    private SingleImplementor(ObjectKlass implementor) {
+    SingleImplementor(ObjectKlass implementor) {
         this(Truffle.getRuntime().createAssumption("single implementor"), implementor);
-    }
-
-    static SingleImplementor createImplementor(ObjectKlass klass) {
-        if (klass.isAbstract() || klass.isInterface()) {
-            return new SingleImplementor();
-        }
-        return new SingleImplementor(klass);
     }
 
     void addImplementor(ObjectKlass implementor) {

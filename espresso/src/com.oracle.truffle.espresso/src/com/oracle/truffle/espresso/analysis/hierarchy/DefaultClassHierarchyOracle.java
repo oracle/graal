@@ -84,7 +84,14 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
 
     @Override
     public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
-        return SingleImplementor.createImplementor(klass);
+        // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
+        if (klass == klass.getMeta().java_io_Serializable || klass == klass.getMeta().java_lang_Cloneable) {
+            return SingleImplementor.Invalid;
+        }
+        if (klass.isAbstract() || klass.isInterface()) {
+            return new SingleImplementor();
+        }
+        return new SingleImplementor(klass);
     }
 
     @Override
