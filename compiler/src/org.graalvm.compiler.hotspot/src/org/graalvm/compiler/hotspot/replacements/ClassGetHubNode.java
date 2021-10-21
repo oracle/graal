@@ -32,8 +32,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -49,6 +47,8 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
@@ -129,11 +129,11 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
     public static native KlassPointer readClass(Class<?> clazzNonNull);
 
     public static KlassPointer piCastNonNull(KlassPointer object, GuardingNode anchor) {
-        return intrinsifiedPiNode(object, anchor, PiNode.INTRINSIFY_OP_NON_NULL);
+        return intrinsifiedPiNode(object, anchor, PiNode.IntrinsifyOp.NON_NULL);
     }
 
     @NodeIntrinsic(PiNode.class)
-    private static native KlassPointer intrinsifiedPiNode(KlassPointer object, GuardingNode anchor, @ConstantNodeParameter int intrinsifyOp);
+    private static native KlassPointer intrinsifiedPiNode(KlassPointer object, GuardingNode anchor, @ConstantNodeParameter PiNode.IntrinsifyOp intrinsifyOp);
 
     @Override
     public ValueNode getValue() {

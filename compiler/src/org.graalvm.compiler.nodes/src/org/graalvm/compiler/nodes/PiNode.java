@@ -126,18 +126,20 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return new PiNode(object, stamp, guard);
     }
 
-    public static final int INTRINSIFY_OP_NON_NULL = 1;
-    public static final int INTRINSIFY_OP_POSITIVE_INT = 2;
+    public enum IntrinsifyOp {
+        NON_NULL,
+        POSITIVE_INT
+    }
 
-    public static boolean intrinsify(GraphBuilderContext b, ValueNode input, ValueNode guard, int intrinsifyOp) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode input, ValueNode guard, IntrinsifyOp intrinsifyOp) {
         Stamp piStamp;
         JavaKind pushKind;
         switch (intrinsifyOp) {
-            case INTRINSIFY_OP_NON_NULL:
+            case NON_NULL:
                 piStamp = AbstractPointerStamp.pointerNonNull(input.stamp(NodeView.DEFAULT));
                 pushKind = JavaKind.Object;
                 break;
-            case INTRINSIFY_OP_POSITIVE_INT:
+            case POSITIVE_INT:
                 piStamp = StampFactory.positiveInt();
                 pushKind = JavaKind.Int;
                 break;
@@ -324,33 +326,33 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
      *         {@code guard}
      */
     public static int piCastPositive(int value, GuardingNode guard) {
-        return intrinsified(value, guard, INTRINSIFY_OP_POSITIVE_INT);
+        return intrinsified(value, guard, IntrinsifyOp.POSITIVE_INT);
     }
 
     @NodeIntrinsic
-    private static native int intrinsified(int value, GuardingNode guard, @ConstantNodeParameter int intrinsifyOp);
+    private static native int intrinsified(int value, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
     /**
      * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
      * float above a given guard.
      */
     public static Object piCastNonNull(Object object, GuardingNode guard) {
-        return intrinsified(object, guard, INTRINSIFY_OP_NON_NULL);
+        return intrinsified(object, guard, IntrinsifyOp.NON_NULL);
     }
 
     @NodeIntrinsic
-    private static native Object intrinsified(Object object, GuardingNode guard, @ConstantNodeParameter int intrinsifyOp);
+    private static native Object intrinsified(Object object, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
     /**
      * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
      * float above a given guard.
      */
     public static Class<?> piCastNonNullClass(Class<?> type, GuardingNode guard) {
-        return intrinsified(type, guard, INTRINSIFY_OP_NON_NULL);
+        return intrinsified(type, guard, IntrinsifyOp.NON_NULL);
     }
 
     @NodeIntrinsic
-    private static native Class<?> intrinsified(Class<?> object, GuardingNode guard, @ConstantNodeParameter int intrinsifyOp);
+    private static native Class<?> intrinsified(Class<?> object, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
     /**
      * Changes the stamp of an object to represent a given type and to indicate that the object is
