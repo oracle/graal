@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -781,13 +780,6 @@ public final class GCImpl implements GC {
                          * do anything for it here. It might have a JavaFrameAnchor from earlier
                          * Java-to-C transitions, but certainly not at the top of the stack since it
                          * is running this code, so just this scan would be incomplete.
-                         */
-                        continue;
-                    }
-                    if (!SafepointBehavior.safepointChecksEnabled(vmThread)) {
-                        /*
-                         * When a thread is ignoring safepoints, then the thread is not paused and
-                         * we cannot safely walk its stack (we don't even know where it starts).
                          */
                         continue;
                     }

@@ -111,7 +111,7 @@ public class DeoptTester {
                             !CEntryPointSnippets.isIsolateInitialized() ||
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
-                            !SafepointBehavior.safepointChecksEnabled() ||
+                            SafepointBehavior.ignoresSafepoints() ||
                             !JavaThreads.currentJavaThreadInitialized()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }

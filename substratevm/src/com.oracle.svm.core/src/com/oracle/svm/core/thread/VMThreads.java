@@ -812,13 +812,13 @@ public abstract class VMThreads {
         static final int THREAD_CRASHED = 2;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean safepointChecksEnabled() {
-            return safepointBehaviorTL.getVolatile() == ALLOW_SAFEPOINT;
+        public static boolean ignoresSafepoints() {
+            return safepointBehaviorTL.getVolatile() != ALLOW_SAFEPOINT;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean safepointChecksEnabled(IsolateThread vmThread) {
-            return safepointBehaviorTL.getVolatile(vmThread) == ALLOW_SAFEPOINT;
+        public static boolean ignoresSafepoints(IsolateThread vmThread) {
+            return safepointBehaviorTL.getVolatile(vmThread) != ALLOW_SAFEPOINT;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

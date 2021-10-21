@@ -387,7 +387,7 @@ public final class Safepoint {
     @AlwaysInline("Always inline into foreign call stub")
     @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void slowPathSafepointCheck() throws Throwable {
-        if (!SafepointBehavior.safepointChecksEnabled()) {
+        if (SafepointBehavior.ignoresSafepoints()) {
             /* Safepoints are explicitly disabled for this thread. */
             Safepoint.setSafepointRequested(THREAD_REQUEST_RESET);
             return;
@@ -519,8 +519,8 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus) {
         VMError.guarantee(StatusSupport.isStatusNativeOrSafepoint(), "Must either be at a safepoint or in native mode");
-        VMError.guarantee(SafepointBehavior.safepointChecksEnabled(),
-                        "The safepoint handling doesn't change the status of threads where the safepoint checks are disabled. So, the fast path transition must succeed and this slow path must not be called");
+        VMError.guarantee(!SafepointBehavior.ignoresSafepoints(),
+                        "The safepoint handling doesn't change the status of threads that ignore safepoints. So, the fast path transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
         try {
@@ -639,7 +639,7 @@ public final class Safepoint {
                 if (isMyself(vmThread)) {
                     continue;
                 }
-                if (!SafepointBehavior.safepointChecksEnabled(vmThread)) {
+                if (SafepointBehavior.ignoresSafepoints(vmThread)) {
                     /* If safepoints are disabled, do not ask it to stop at safepoints. */
                     continue;
                 }
@@ -793,7 +793,7 @@ public final class Safepoint {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (!isMyself(vmThread) && SafepointBehavior.safepointChecksEnabled(vmThread)) {
+                if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {
                     if (trace.isEnabled()) {
                         trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
                     }

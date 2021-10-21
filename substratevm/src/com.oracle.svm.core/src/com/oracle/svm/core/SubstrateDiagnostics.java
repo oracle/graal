@@ -26,10 +26,10 @@ package com.oracle.svm.core;
 
 import java.util.Arrays;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -74,6 +74,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
@@ -617,13 +618,13 @@ public class SubstrateDiagnostics {
                 log.string("Threads:").indent(true);
                 for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                     log.zhex(thread).spaces(1).string(VMThreads.StatusSupport.getStatusString(thread));
+
                     int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(thread);
-                    if (safepointBehavior != SafepointBehavior.ALLOW_SAFEPOINT) {
-                        log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
-                    }
+                    log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
+
                     if (allowJavaHeapAccess) {
                         Thread threadObj = JavaThreads.fromVMThread(thread);
-                        log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj);
+                        log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
                         if (threadObj.isDaemon()) {
                             log.string(", daemon");
                         }
