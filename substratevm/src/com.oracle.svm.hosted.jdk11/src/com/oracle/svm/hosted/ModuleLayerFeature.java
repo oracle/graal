@@ -117,9 +117,9 @@ public final class ModuleLayerFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         Set<String> baseModules = ModuleLayer.boot().modules()
-                .stream()
-                .map(Module::getName)
-                .collect(Collectors.toSet());
+                        .stream()
+                        .map(Module::getName)
+                        .collect(Collectors.toSet());
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
@@ -130,16 +130,16 @@ public final class ModuleLayerFeature implements Feature {
         AnalysisUniverse universe = accessImpl.getUniverse();
 
         Stream<Module> analysisReachableModules = universe.getTypes()
-                .stream()
-                .filter(t -> t.isReachable() && !t.isArray())
-                .map(t -> t.getJavaClass().getModule())
-                .distinct();
+                        .stream()
+                        .filter(t -> t.isReachable() && !t.isArray())
+                        .map(t -> t.getJavaClass().getModule())
+                        .distinct();
 
         Set<String> allReachableModules = analysisReachableModules
-                .filter(Module::isNamed)
-                .filter(m -> !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
-                .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
-                .collect(Collectors.toSet());
+                        .filter(Module::isNamed)
+                        .filter(m -> !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
+                        .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
+                        .collect(Collectors.toSet());
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -203,19 +203,19 @@ public final class ModuleLayerFeature implements Feature {
         @Override
         public Optional<ModuleReference> find(String name) {
             return ModuleLayer.boot()
-                    .configuration()
-                    .findModule(name)
-                    .map(ResolvedModule::reference);
+                            .configuration()
+                            .findModule(name)
+                            .map(ResolvedModule::reference);
         }
 
         @Override
         public Set<ModuleReference> findAll() {
             return ModuleLayer.boot()
-                    .configuration()
-                    .modules()
-                    .stream()
-                    .map(ResolvedModule::reference)
-                    .collect(Collectors.toSet());
+                            .configuration()
+                            .modules()
+                            .stream()
+                            .map(ResolvedModule::reference)
+                            .collect(Collectors.toSet());
         }
     }
 
@@ -255,26 +255,27 @@ public final class ModuleLayerFeature implements Feature {
             moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
         }
 
-        private Field findFieldByName(Field[] fields, String name) {
+        private static Field findFieldByName(Field[] fields, String name) {
             return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().get();
         }
 
         /**
-         * This method creates Module instances that will populate the runtime boot module layer of the image.
-         * This implementation is copy-pasted from Module#defineModules(Configuration, Function, ModuleLayer)
-         * with few simplifications (removing multiple classloader support) and removal of VM state updates
-         * (otherwise we would be re-defining modules to the host VM).
+         * This method creates Module instances that will populate the runtime boot module layer of
+         * the image. This implementation is copy-pasted from Module#defineModules(Configuration,
+         * Function, ModuleLayer) with few simplifications (removing multiple classloader support)
+         * and removal of VM state updates (otherwise we would be re-defining modules to the host
+         * VM).
          */
         Map<String, Module> synthesizeNameToModule(ModuleLayer runtimeBootLayer, ClassLoader cl)
-                throws IllegalAccessException, InvocationTargetException, InstantiationException {
+                        throws IllegalAccessException, InvocationTargetException, InstantiationException {
             Configuration cf = runtimeBootLayer.configuration();
 
             int cap = (int) (cf.modules().size() / 0.75f + 1.0f);
             Map<String, Module> nameToModule = new HashMap<>(cap);
 
             /*
-             * Remove mapping of modules to classloaders.
-             * Create module instances without defining them to the VM
+             * Remove mapping of modules to classloaders. Create module instances without defining
+             * them to the VM
              */
             for (ResolvedModule resolvedModule : cf.modules()) {
                 ModuleReference mref = resolvedModule.reference();
@@ -286,8 +287,8 @@ public final class ModuleLayerFeature implements Feature {
             }
 
             /*
-             * Setup readability and exports/opens.
-             * This part is unchanged, save for field setters and VM update removals
+             * Setup readability and exports/opens. This part is unchanged, save for field setters
+             * and VM update removals
              */
             for (ResolvedModule resolvedModule : cf.modules()) {
                 ModuleReference mref = resolvedModule.reference();
