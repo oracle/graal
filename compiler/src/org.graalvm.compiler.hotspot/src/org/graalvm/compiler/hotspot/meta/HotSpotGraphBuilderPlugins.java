@@ -451,8 +451,8 @@ public class HotSpotGraphBuilderPlugins {
                         ValueNode klass = b.add(ClassGetHubNode.create(receiver.get(), b.getMetaAccess(), b.getConstantReflection()));
                         ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
                         ValueNode accessFlags = helper.readKlassAccessFlags(nonNullKlass);
-                        LogicNode test = b.add(IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT));
-                        helper.emitFinalReturn(JavaKind.Boolean, b.add(ConditionalNode.create(test, ConstantNode.forInt(0), ConstantNode.forInt(1), NodeView.DEFAULT)));
+                        LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
+                        helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
                     }
                     return true;
                 }
@@ -797,6 +797,7 @@ public class HotSpotGraphBuilderPlugins {
         return false;
     }
 
+    // Fully qualified name is a workaround for JDK-8056066
     public static class AESCryptPlugin implements org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin {
         private final boolean doEncrypt;
 

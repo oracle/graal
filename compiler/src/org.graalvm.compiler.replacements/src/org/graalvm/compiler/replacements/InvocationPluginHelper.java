@@ -28,6 +28,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -38,9 +39,11 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -68,6 +71,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
@@ -76,18 +80,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This is a helper class for writing moderately complex
- * {@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin InvocationPlugins}. It's
- * intentionally more limited than something like {@link GraphKit} because it's rarely useful to
- * write explicit plugins for complex pieces of logic. They are better handled by writing a snippet
- * for the complex logic and having an {@link InvocationPlugin} that performs any required null
- * checks or range checks and then adds a node which is later lowered from the snippet. A major
- * reason for this is that any complex control invariably has {@link MergeNode MergeNodes} which are
- * required to have a valid {@link org.graalvm.compiler.nodes.FrameState} when they comes out of the
- * parser. For intrinsics the only valid {@link org.graalvm.compiler.nodes.FrameState FrameStates}
- * is the entry state and the state after then return and it can be hard to correctly assign states
- * to the merges. There is also little benefit to introducing complex intrinsic graphs early because
- * their are rarely amenable to high level optimizations.
+ * This is a helper class for writing moderately complex {@link InvocationPlugin InvocationPlugins}.
+ * It's intentionally more limited than something like {@link GraphKit} because it's rarely useful
+ * to write explicit plugins for complex pieces of logic. They are better handled by writing a
+ * snippet for the complex logic and having an {@link InvocationPlugin} that performs any required
+ * null checks or range checks and then adds a node which is later lowered by the snippet. A major
+ * reason for this is that any complex control invariably has {@link MergeNode}s which are required
+ * to have a valid {@link FrameState}s when they comes out of the parser. For intrinsics the only
+ * valid {@link FrameState}s is the entry state and the state after the return and it can be hard to
+ * correctly assign states to the merges. There is also little benefit to introducing complex
+ * intrinsic graphs early because they are rarely amenable to high level optimizations.
  *
  * The recommended usage pattern is to construct the helper instance in a try/resource block, which
  * performs some sanity checking when the block is exited.
@@ -98,9 +100,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * </pre>
  *
  * The main idiom provided is {@link #emitReturnIf(LogicNode, boolean, ValueNode, double)} plus
- * variants. It models a side exit from a main sequence of logic.
- * {@link org.graalvm.compiler.nodes.FixedWithNextNode FixedWithNextNodes} are inserted in the main
- * control flow and until the final return value is emitted with
+ * variants. It models a side exit from a main sequence of logic. {@link FixedWithNextNode}s are
+ * inserted in the main control flow and until the final return value is emitted with
  * {@link #emitFinalReturn(JavaKind, ValueNode)}. If only a single value is returned the normal
  * {@link GraphBuilderContext#addPush(JavaKind, ValueNode)} can be used instead.
  */
@@ -206,7 +207,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Shift {@code index} by the proper amount based on the element kind.
+     * Shifts {@code index} by the proper amount based on the element kind.
      */
     public ValueNode scale(ValueNode index, JavaKind kind) {
         int arrayIndexShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind));
@@ -214,15 +215,15 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Build an {@link OffsetAddressNode} ensuring that the offset is also converted to a
-     * {@link org.graalvm.compiler.word.Word Word}.
+     * Builds an {@link OffsetAddressNode} ensuring that the offset is also converted to a
+     * {@link Word}.
      */
     public AddressNode makeOffsetAddress(ValueNode base, ValueNode offset) {
         return b.add(new OffsetAddressNode(base, asWord(offset)));
     }
 
     /**
-     * Ensure a primitive type is word sized.
+     * Ensures a primitive type is word sized.
      */
     public ValueNode asWord(ValueNode index) {
         assert index.getStackKind().isPrimitive();
@@ -284,10 +285,9 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Get the offset of a field. Normally InvocationPlugins are run in the target VM so nothing
-     * special needs to be done to handle these offsets but if a
-     * {@link org.graalvm.compiler.api.replacements.Snippet Snippet} even triggers a plugin that
-     * uses a field offset them some extra machinery will be needed to delay the lookup.
+     * Gets the offset of a field. Normally InvocationPlugins are run in the target VM so nothing
+     * special needs to be done to handle these offsets but if a {@link Snippet} even triggers a
+     * plugin that uses a field offset them some extra machinery will be needed to delay the lookup.
      */
     public ValueNode getFieldOffset(ResolvedJavaType type, String fieldName) {
         assert !IS_BUILDING_NATIVE_IMAGE || !b.parsingIntrinsic() : "these values must be deferred in substitutions and snippets";
@@ -295,8 +295,8 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Perform a range check for an intrinsic. This is a range check that represents a hard error in
-     * the intrinsic so it's permissible to throw an exception directly for this case.
+     * Performs a range check for an intrinsic. This is a range check that represents a hard error
+     * in the intrinsic so it's permissible to throw an exception directly for this case.
      */
     public GuardingNode intrinsicRangeCheck(ValueNode x, Condition condition, ValueNode y) {
         Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
@@ -319,7 +319,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Build an {@link IfNode} that returns a value based on the condition and the negated flag.
+     * Builds an {@link IfNode} that returns a value based on the condition and the negated flag.
      * This can currently only be used for simple return values and doesn't allow {@link FixedNode
      * FixedNodes} to be part of the return path. All the return values are linked to a
      * {@link MergeNode} which terminates the graphs produced by the plugin.
@@ -372,7 +372,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Connect an {@link EndNode} and return value into the final control flow merge.
+     * Connects an {@link EndNode} and return value into the final control flow merge.
      */
     protected void addReturnValue(EndNode end, JavaKind kind, ValueNode returnValueInput) {
         assert b.canMergeIntrinsicReturns();
@@ -387,7 +387,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Create a branch to the fallback path, building an {@link MergeNode} if necessary.
+     * Creates a branch to the fallback path, building a {@link MergeNode} if necessary.
      */
     private BeginNode branchToFallback() {
         if (fallbackEntry == null) {
@@ -432,8 +432,7 @@ public class InvocationPluginHelper implements DebugCloseable {
 
     /**
      * Fallback to the original implementation based on the {@code condition}. Depending on the
-     * environment the fallback may be done through a
-     * {@link org.graalvm.compiler.nodes.DeoptimizeNode DeoptimizeNode} or through a real
+     * environment the fallback may be done through a {@link DeoptimizeNode} or through a real
      * {@link Invoke}.
      */
     public GuardingNode doFallbackIf(LogicNode condition, boolean negated, double probability) {

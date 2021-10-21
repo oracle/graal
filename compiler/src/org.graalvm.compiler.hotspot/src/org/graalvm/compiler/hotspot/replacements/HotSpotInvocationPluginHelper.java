@@ -109,14 +109,14 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * A field abstraction for fields of {@link GraalHotSpotVMConfig}.
+     * An abstraction for fields of {@link GraalHotSpotVMConfig}.
      */
     enum HotSpotVMConfigField {
         KLASS_MODIFIER_FLAGS_OFFSET(config -> config.klassModifierFlagsOffset, KLASS_MODIFIER_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         KLASS_SUPER_KLASS_OFFSET(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         OS_THREAD_INTERRUPTED_OFFSET(config -> config.osThreadInterruptedOffset, any(), StampFactory.forKind(JavaKind.Int)),
-        JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION, true),
+        JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
         JAVA_THREAD_THREAD_OBJECT(config -> config.threadObjectOffset, JAVA_THREAD_THREAD_OBJECT_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
@@ -134,12 +134,11 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
             this.isWord = false;
         }
 
-        HotSpotVMConfigField(Function<GraalHotSpotVMConfig, Integer> getter, LocationIdentity location, boolean isWord) {
+        HotSpotVMConfigField(Function<GraalHotSpotVMConfig, Integer> getter, LocationIdentity location) {
             this.getter = getter;
             this.location = location;
             this.stamp = null;
-            this.isWord = isWord;
-            assert isWord;
+            this.isWord = true;
         }
 
         public int getOffset(GraalHotSpotVMConfig config) {
@@ -156,28 +155,28 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read Klass::_modifier_flags.
+     * Read {@code Klass::_modifier_flags}.
      */
     public ValueNode readKlassModifierFlags(ValueNode klass) {
         return readLocation(klass, HotSpotVMConfigField.KLASS_MODIFIER_FLAGS_OFFSET);
     }
 
     /**
-     * Read Klass::_access_flags.
+     * Read {@code Klass::_access_flags}.
      */
     public ValueNode readKlassAccessFlags(ValueNode klass) {
         return readLocation(klass, HotSpotVMConfigField.KLASS_ACCESS_FLAGS_OFFSET);
     }
 
     /**
-     * Read Klass:_layout_helper.
+     * Read {@code Klass:_layout_helper}.
      */
     public ValueNode klassLayoutHelper(ValueNode klass) {
         return b.add(KlassLayoutHelperNode.create(config, klass, b.getConstantReflection(), b.getMetaAccess()));
     }
 
     /**
-     * Read ArrayKlass::_component_mirror.
+     * Read {@code ArrayKlass::_component_mirror}.
      */
     public ValueNode readArrayKlassComponentMirror(ValueNode klass, GuardingNode guard) {
         int offset = config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop");
@@ -186,7 +185,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read Klass::_super.
+     * Read {@code Klass::_super}.
      */
     public ValueNode readKlassSuperKlass(PiNode klassNonNull) {
         return readLocation(klassNonNull, HotSpotVMConfigField.KLASS_SUPER_KLASS_OFFSET);
@@ -198,7 +197,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read the injected field java.lang.Class.array_klass.
+     * Read the injected field {@code java.lang.Class.array_klass}.
      */
     public ValueNode loadArrayKlass(ValueNode componentType) {
         return readLocation(componentType, HotSpotVMConfigField.CLASS_ARRAY_KLASS_OFFSET);
