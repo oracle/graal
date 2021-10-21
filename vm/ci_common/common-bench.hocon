@@ -25,8 +25,8 @@ vm_bench_js_linux: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${cust
 vm_polybench_linux_commands: {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
   interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js,warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
-  compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
-  warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
 }
 
 vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} ${vm_bench_common} {
