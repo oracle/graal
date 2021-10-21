@@ -259,7 +259,7 @@ public abstract class InstanceOf extends Node {
             return maybeSubtype == implementor;
         }
 
-        @Specialization(replaces = "doLeaf")
+        @Specialization(replaces = {"doLeaf", "doSingleImplementor"})
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             return superType == maybeSubtype || superType.checkOrdinaryClassSubclassing(maybeSubtype);
         }

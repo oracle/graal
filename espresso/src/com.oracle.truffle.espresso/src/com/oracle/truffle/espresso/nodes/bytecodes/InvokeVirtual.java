@@ -151,7 +151,7 @@ public abstract class InvokeVirtual extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
-                        replaces = "callLeaf", //
+                        replaces = {"callSingleImplementor", "callLeaf"}, //
                         guards = "receiver.getKlass() == cachedKlass", //
                         assumptions = "resolvedMethod.getAssumption()")
         Object callDirect(Object[] args,
