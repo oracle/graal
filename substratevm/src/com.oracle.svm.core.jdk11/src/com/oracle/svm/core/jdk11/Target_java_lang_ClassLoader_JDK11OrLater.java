@@ -46,7 +46,22 @@ public final class Target_java_lang_ClassLoader_JDK11OrLater {
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @TargetElement(onlyWith = JDK11OrLater.class)//
-    ConcurrentHashMap<?, ?> classLoaderValueMap;
+    volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
+
+    @Substitute
+    ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
+        ConcurrentHashMap<?, ?> result = classLoaderValueMap;
+        if (result == null) {
+            // Checkstyle: allow synchronization
+            synchronized (this) {
+                result = classLoaderValueMap;
+                if (result == null) {
+                    classLoaderValueMap = result = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        return result;
+    }
 
     @Alias
     @TargetElement(onlyWith = JDK11OrLater.class)
