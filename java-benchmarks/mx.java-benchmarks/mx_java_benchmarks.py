@@ -572,7 +572,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         raise NotImplementedError()
 
     def completeBenchmarkList(self, bmSuiteArgs):
-        return sorted([bench for bench in _daCapoIterations.keys() if self.workloadSize() in self.daCapoSizes().get(bench, [])])
+        return sorted([bench for bench in self.daCapoIterations().keys() if self.workloadSize() in self.daCapoSizes().get(bench, [])])
 
     def existingSizes(self):
         return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
