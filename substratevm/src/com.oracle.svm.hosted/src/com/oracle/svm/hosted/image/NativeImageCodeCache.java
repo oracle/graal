@@ -522,7 +522,7 @@ public abstract class NativeImageCodeCache {
             while (rootFrame.caller() != null) {
                 rootFrame = rootFrame.caller();
             }
-            assert rootFrame.getMethod().equals(method);
+            assert rootFrame.getMethod().equals(method) : rootFrame.getMethod() + " does not match " + method;
 
             boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
             if (infopoint instanceof DeoptEntryInfopoint) {
