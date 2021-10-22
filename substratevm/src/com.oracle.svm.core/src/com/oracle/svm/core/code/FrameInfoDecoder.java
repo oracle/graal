@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
+
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -40,6 +42,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -55,9 +58,18 @@ public class FrameInfoDecoder {
 
     /**
      * Differentiates between compressed and uncompressed frame slices. See
-     * {@link #isCompressedFrameSlice(int)} for more information.
+     * {@link CompressedFrameDecoderHelper#isCompressedFrameSlice(int)} for more information.
      */
     protected static final int UNCOMPRESSED_FRAME_SLICE_MARKER = -1;
+    /**
+     * Value added to source line to guarantee the value is greater than zero.
+     */
+    protected static final int COMPRESSED_FRAME_POINTER_ADDEND = 2;
+    /**
+     * Value subtracted from the negated method name index when there is a unique shared frame
+     * successor to guarantee the value is less than zero.
+     */
+    protected static final int COMPRESSED_UNIQUE_SUCCESSOR_ADDEND = 1;
     /**
      * Value added to source line to guarantee the value is greater than zero.
      */
@@ -66,7 +78,7 @@ public class FrameInfoDecoder {
     protected static boolean isFrameInfoMatch(long frameInfoIndex, NonmovableArray<Byte> frameInfoEncodings, long searchEncodedBci) {
         NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(frameInfoEncodings, frameInfoIndex);
         int firstValue = readBuffer.getSVInt();
-        if (isCompressedFrameSlice(firstValue)) {
+        if (CompressedFrameDecoderHelper.isCompressedFrameSlice(firstValue)) {
             /* Compressed frame slices have no local bci information. */
             return false;
         }
@@ -158,6 +170,69 @@ public class FrameInfoDecoder {
 
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
+    private static class CompressedFrameDecoderHelper {
+        /**
+         * Differentiates between compressed and uncompressed frame slices. Uncompressed frame
+         * slices start with {@link #UNCOMPRESSED_FRAME_SLICE_MARKER}.
+         */
+        private static boolean isCompressedFrameSlice(int firstValue) {
+            return firstValue != UNCOMPRESSED_FRAME_SLICE_MARKER;
+        }
+
+        /**
+         * Determines whether a value is a pointer to a shared frame index. See
+         * FrameInfoEncoder.encodeCompressedFirstEntry for more details.
+         */
+        private static boolean isSharedFramePointer(int value) {
+            return value < 0;
+        }
+
+        /**
+         * Complement of FrameInfoEncoder.encodeCompressedFirstEntry when a shared frame index is
+         * encoded.
+         */
+        private static int decodeSharedFrameIndex(int value) {
+            VMError.guarantee(value < UNCOMPRESSED_FRAME_SLICE_MARKER);
+
+            return -(value + COMPRESSED_FRAME_POINTER_ADDEND);
+        }
+
+        /**
+         * Determines whether the encodedSourceMethodNameIndex signals that this frame also encodes
+         * a uniqueSharedFrameSuccessor. See FrameInfoEncoder.encodeCompressedMethodIndex for more
+         * details.
+         */
+        private static boolean hasEncodedUniqueSharedFrameSuccessor(int encodedSourceMethodNameIndex) {
+            return encodedSourceMethodNameIndex < 0;
+        }
+
+        /**
+         * Complement of FrameInfoEncoder.encodeCompressedMethodIndex.
+         */
+        private static int decodeMethodIndex(int methodIndex) {
+            if (methodIndex < 0) {
+                return -(methodIndex + COMPRESSED_UNIQUE_SUCCESSOR_ADDEND);
+            } else {
+                return methodIndex;
+            }
+        }
+
+        /**
+         * See FrameInfoEncoder.encodeCompressedSourceLineNumber for details.
+         */
+        private static boolean isSliceEnd(int encodedSourceLineNumber) {
+            return encodedSourceLineNumber < 0;
+        }
+
+        /**
+         * Complement of FrameInfoEncode.encodeCompressedSourceLineNumber.
+         */
+        private static int decodeSourceLineNumber(int sourceLineNumber) {
+            return Math.abs(sourceLineNumber) - COMPRESSED_SOURCE_LINE_ADDEND;
+        }
+
+    }
+
     protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
                     FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator) {
         return decodeFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, new CodeInfoAccess.FrameInfoState());
@@ -170,7 +245,7 @@ public class FrameInfoDecoder {
         }
 
         FrameInfoQueryResult result;
-        if (isCompressedFrameSlice(state.firstValue)) {
+        if (CompressedFrameDecoderHelper.isCompressedFrameSlice(state.firstValue)) {
             result = decodeCompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, state);
         } else {
             result = decodeUncompressedFrameInfo(isDeoptEntry, readBuffer, info, resultAllocator, valueInfoAllocator, state);
@@ -199,24 +274,44 @@ public class FrameInfoDecoder {
             cur.encodedBci = NO_LOCAL_INFO_BCI;
             cur.isDeoptEntry = isDeoptEntry;
 
-            final int sourceClassIndex;
+            long bufferIndexToRestore = -1;
+            if (state.successorIndex != NO_SUCCESSOR_INDEX_MARKER) {
+                bufferIndexToRestore = readBuffer.getByteIndex();
+                readBuffer.setByteIndex(state.successorIndex);
+            }
+
+            final int firstEntry;
             if (state.isFirstFrame) {
-                sourceClassIndex = state.firstValue;
+                firstEntry = state.firstValue;
             } else {
-                sourceClassIndex = readBuffer.getSVInt();
+                firstEntry = readBuffer.getSVInt();
                 assert !isDeoptEntry : "Deoptimization entry must not have inlined frames";
             }
 
-            final int sourceMethodNameIndex = readBuffer.getSVInt();
-            final int encodedSourceLineNumber = readBuffer.getSVInt();
-            final int sourceLineNumber = decodeCompressedSourceLineNumber(encodedSourceLineNumber);
+            if (CompressedFrameDecoderHelper.isSharedFramePointer(firstEntry)) {
+                assert state.successorIndex == NO_SUCCESSOR_INDEX_MARKER && bufferIndexToRestore == -1;
+                long sharedFrameByteIndex = CompressedFrameDecoderHelper.decodeSharedFrameIndex(firstEntry);
 
-            cur.sourceClassIndex = sourceClassIndex;
-            cur.sourceMethodNameIndex = sourceMethodNameIndex;
+                // save current buffer index
+                bufferIndexToRestore = readBuffer.getByteIndex();
 
-            cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
-            cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
-            cur.sourceLineNumber = sourceLineNumber;
+                // jump to shared frame index
+                readBuffer.setByteIndex(sharedFrameByteIndex);
+
+                int sourceClassIndex = readBuffer.getSVInt();
+                VMError.guarantee(!CompressedFrameDecoderHelper.isSharedFramePointer(sourceClassIndex));
+                decodeCompressedFrameData(readBuffer, info, state, sourceClassIndex, cur);
+
+                // jump back to frame slice information
+                readBuffer.setByteIndex(bufferIndexToRestore);
+                bufferIndexToRestore = -1;
+            } else {
+                decodeCompressedFrameData(readBuffer, info, state, firstEntry, cur);
+            }
+
+            if (bufferIndexToRestore != -1) {
+                readBuffer.setByteIndex(bufferIndexToRestore);
+            }
 
             if (prev == null) {
                 // first frame read during this invocation
@@ -226,11 +321,34 @@ public class FrameInfoDecoder {
             }
             prev = cur;
 
-            state.isDone = encodedSourceLineNumber < 0;
             state.isFirstFrame = false;
         }
 
         return result;
+    }
+
+    private static void decodeCompressedFrameData(TypeReader readBuffer, CodeInfo info, CodeInfoAccess.FrameInfoState state, int sourceClassIndex, FrameInfoQueryResult queryResult) {
+        int encodedSourceMethodNameIndex = readBuffer.getSVInt();
+        int sourceMethodNameIndex = CompressedFrameDecoderHelper.decodeMethodIndex(encodedSourceMethodNameIndex);
+        int encodedSourceLineNumber = readBuffer.getSVInt();
+        int sourceLineNumber = CompressedFrameDecoderHelper.decodeSourceLineNumber(encodedSourceLineNumber);
+
+        queryResult.sourceClassIndex = sourceClassIndex;
+        queryResult.sourceMethodNameIndex = sourceMethodNameIndex;
+
+        queryResult.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
+        queryResult.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
+        queryResult.sourceLineNumber = sourceLineNumber;
+
+        if (CompressedFrameDecoderHelper.hasEncodedUniqueSharedFrameSuccessor(encodedSourceMethodNameIndex)) {
+            state.successorIndex = readBuffer.getSVInt();
+        } else {
+            state.successorIndex = NO_SUCCESSOR_INDEX_MARKER;
+        }
+
+        state.isDone = CompressedFrameDecoderHelper.isSliceEnd(encodedSourceLineNumber);
+
+        assert !state.isDone || state.successorIndex == NO_SUCCESSOR_INDEX_MARKER;
     }
 
     private static FrameInfoQueryResult decodeUncompressedFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
@@ -363,21 +481,6 @@ public class FrameInfoDecoder {
 
     protected static boolean decodeRethrowException(long encodedBci) {
         return (encodedBci & RETHROW_EXCEPTION_MASK) != 0;
-    }
-
-    /**
-     * Complement of (FrameInfoEncode.encodeCompressedSourceLineNumber).
-     */
-    private static int decodeCompressedSourceLineNumber(int sourceLineNumber) {
-        return Math.abs(sourceLineNumber) - COMPRESSED_SOURCE_LINE_ADDEND;
-    }
-
-    /**
-     * Differentiates between compressed and uncompressed frame slice. Uncompressed frame slices are
-     * start with an {@link #UNCOMPRESSED_FRAME_SLICE_MARKER}.
-     */
-    private static boolean isCompressedFrameSlice(int firstValue) {
-        return firstValue != UNCOMPRESSED_FRAME_SLICE_MARKER;
     }
 
     public static String readableBci(long encodedBci) {
