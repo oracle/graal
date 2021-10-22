@@ -53,7 +53,6 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
-import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
@@ -68,7 +67,6 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.reflect.target.RuntimeReflectionConstructorsImpl;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -174,7 +172,6 @@ public class ReflectionFeature implements GraalFeature {
 
         reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
-        ImageSingletons.add(RuntimeReflectionConstructors.class, new RuntimeReflectionConstructorsImpl());
     }
 
     @Override

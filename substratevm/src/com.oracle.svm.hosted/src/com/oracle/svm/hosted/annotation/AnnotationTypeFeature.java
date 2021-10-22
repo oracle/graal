@@ -58,7 +58,6 @@ public class AnnotationTypeFeature implements Feature {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void duringAnalysis(DuringAnalysisAccess access) {
         DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();

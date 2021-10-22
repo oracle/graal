@@ -43,8 +43,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.code.CodeInfoDecoder;
-import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
@@ -135,10 +133,10 @@ public final class Target_java_lang_reflect_Constructor {
             return null;
         }
 
-        if (RuntimeReflectionConstructors.hasQueriedMethods()) {
+        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
             // A Constructor for an inner class
             return Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(SubstrateUtil.cast(holder, Target_java_lang_reflect_Executable.class).typeAnnotations,
-                            CodeInfoDecoder.getMetadataPseudoConstantPool(),
+                            new Target_jdk_internal_reflect_ConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),
                             thisDeclClass,
                             enclosingClass,

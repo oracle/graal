@@ -22,34 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.core.reflect;
 
 // Checkstyle: allow reflection
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.lang.reflect.Executable;
 
-import com.oracle.svm.core.annotate.UnknownObjectField;
+import org.graalvm.collections.Pair;
 
-public class MethodMetadataEncoding {
-    @UnknownObjectField(types = {byte[].class}) private byte[] methodsEncoding;
-    @UnknownObjectField(types = {byte[].class}) private byte[] indexEncoding;
+import com.oracle.svm.core.hub.DynamicHub;
 
-    public byte[] getMethodsEncoding() {
-        return methodsEncoding;
+public interface MethodMetadataDecoder {
+    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
+
+    MethodDescriptor[] getAllReachableMethods();
+
+    class MethodDescriptor {
+        private final Class<?> declaringClass;
+        private final String name;
+        private final Class<?>[] parameterTypes;
+
+        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
+            this.declaringClass = declaringClass;
+            this.name = name;
+            this.parameterTypes = parameterTypes;
+        }
+
+        public Class<?> getDeclaringClass() {
+            return declaringClass;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Class<?>[] getParameterTypes() {
+            return parameterTypes;
+        }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMethodsEncoding(byte[] methodsEncoding) {
-        this.methodsEncoding = methodsEncoding;
-    }
-
-    public byte[] getIndexEncoding() {
-        return indexEncoding;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setIndexEncoding(byte[] indexEncoding) {
-        this.indexEncoding = indexEncoding;
-    }
 }

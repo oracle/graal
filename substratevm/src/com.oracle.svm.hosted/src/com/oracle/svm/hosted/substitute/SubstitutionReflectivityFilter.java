@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.api.replacements.Fold;
-
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -64,7 +62,7 @@ public class SubstitutionReflectivityFilter {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
             if (!universe.hostVM().platformSupported(universe, aMethod)) {
                 return true;
-            } else if (aMethod.isAnnotationPresent(Delete.class) || aMethod.isAnnotationPresent(Fold.class)) {
+            } else if (aMethod.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
             } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
                 /*

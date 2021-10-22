@@ -612,25 +612,20 @@ public class AnalysisUniverse implements Universe {
          * method. The method cannot be marked as invoked.
          */
         if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
+            AnalysisMethod aResolved;
             try {
-                AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
-                if (aResolved != null) {
-                    /*
-                     * aResolved == null means that the method in the base class was called, but
-                     * never with this holder.
-                     */
-                    if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
-                        implementations.add(aResolved);
-                    }
-                }
+                aResolved = holder.resolveConcreteMethod(method, null);
             } catch (UnsupportedFeatureException e) {
+                /* An unsupported overriding method is not reachable. */
+                aResolved = null;
+            }
+            if (aResolved != null) {
                 /*
-                 * Failing the lookup for subclass implementations is acceptable when the method is
-                 * never called. This happens because an AnalysisMethod object can be created during
-                 * any lookup for a method, including when it is not reachable.
+                 * aResolved == null means that the method in the base class was called, but never
+                 * with this holder.
                  */
-                if (method.isReachable()) {
-                    throw e;
+                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
+                    implementations.add(aResolved);
                 }
             }
         }

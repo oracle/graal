@@ -26,9 +26,6 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-// Checkstyle: stop
-import java.lang.reflect.Executable;
-// Checkstyle: resume
 import java.util.BitSet;
 import java.util.TreeMap;
 
@@ -39,15 +36,12 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
@@ -108,11 +102,11 @@ public class CodeInfoEncoder {
 
     public static final class Encoders {
         final FrequencyEncoder<JavaConstant> objectConstants;
-        final FrequencyEncoder<Class<?>> sourceClasses;
-        final FrequencyEncoder<String> sourceMethodNames;
+        public final FrequencyEncoder<Class<?>> sourceClasses;
+        public final FrequencyEncoder<String> sourceMethodNames;
         final FrequencyEncoder<String> names;
 
-        private Encoders() {
+        public Encoders() {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
             this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
@@ -160,20 +154,14 @@ public class CodeInfoEncoder {
     private final Encoders encoders;
     private final FrameInfoEncoder frameInfoEncoder;
 
-    @Platforms(Platform.HOSTED_ONLY.class)//
-    private MethodMetadataEncoder methodMetadataEncoder;
-
     private NonmovableArray<Byte> codeInfoIndex;
     private NonmovableArray<Byte> codeInfoEncodings;
     private NonmovableArray<Byte> referenceMapEncoding;
 
-    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization) {
+    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, Encoders encoders) {
         this.entries = new TreeMap<>();
-        this.encoders = new Encoders();
+        this.encoders = encoders;
         this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders);
-        if (SubstrateUtil.HOSTED) {
-            this.methodMetadataEncoder = new MethodMetadataEncoder(encoders);
-        }
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
@@ -230,18 +218,6 @@ public class CodeInfoEncoder {
         ImageSingletons.lookup(Counters.class).codeSize.add(compilation.getTargetCodeSize());
     }
 
-    public void prepareMetadataForClass(Class<?> clazz) {
-        methodMetadataEncoder.prepareMetadataForClass(clazz);
-    }
-
-    public void prepareMetadataForMethod(SharedMethod method, Executable reflectMethod, boolean complete) {
-        methodMetadataEncoder.prepareMetadataForMethod(method, reflectMethod, complete);
-    }
-
-    public void prepareHiddenMethodMetadata(SharedType type, String name, Class<?>[] parameterTypes) {
-        methodMetadataEncoder.prepareHiddenMethodMetadata(type, name, parameterTypes);
-    }
-
     private IPData makeEntry(long ip) {
         IPData result = entries.get(ip);
         if (result == null) {
@@ -256,9 +232,6 @@ public class CodeInfoEncoder {
         encoders.encodeAllAndInstall(target, adjuster);
         encodeReferenceMaps();
         frameInfoEncoder.encodeAllAndInstall(target);
-        if (SubstrateUtil.HOSTED) {
-            methodMetadataEncoder.encodeAllAndInstall();
-        }
         encodeIPData();
 
         install(target);
