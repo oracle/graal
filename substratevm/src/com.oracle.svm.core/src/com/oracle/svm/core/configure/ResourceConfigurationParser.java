@@ -101,7 +101,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
 
     private void parseBundle(Object bundle) {
         Map<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
-        checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames"));
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
         ConfigurationCondition condition = parseCondition(resource);
         Object locales = resource.get("locales");

@@ -193,18 +193,18 @@ public class ResourceConfiguration implements ConfigurationBase {
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
-        writer.append('{');
+        writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer);
         writer.quote("name").append(':').quote(config.baseName);
         if (!config.locales.isEmpty()) {
-            writer.append(',').quote("locales").append(":");
+            writer.append(',').newline().quote("locales").append(":");
             JsonPrinter.printCollection(writer, config.locales, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
         if (!config.classNames.isEmpty()) {
-            writer.append(',').quote("classNames").append(":");
+            writer.append(',').newline().quote("classNames").append(":");
             JsonPrinter.printCollection(writer, config.classNames, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         }
-        writer.append('}');
+        writer.unindent().newline().append('}');
     }
 
     @Override
