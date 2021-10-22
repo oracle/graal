@@ -72,9 +72,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
-    private JNIMethodId javaUtilLocaleToLanguageTag = WordFactory.nullPointer();
-    private JNIFieldId javaUtilResourceBundleParentField = WordFactory.nullPointer();
-    private JNIMethodId javaUtilResourceBundleGetLocale = WordFactory.nullPointer();
+    private JNIMethodId javaUtilLocaleToLanguageTag;
+    private JNIFieldId javaUtilResourceBundleParentField;
+    private JNIMethodId javaUtilResourceBundleGetLocale;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);

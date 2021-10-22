@@ -168,7 +168,7 @@ public final class ResourcesFeature implements Feature {
             if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
                 return;
             }
-            ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className);
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
         }
 
         @Override
@@ -176,7 +176,7 @@ public final class ResourcesFeature implements Feature {
             if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
                 return;
             }
-            ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales);
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
     }
 

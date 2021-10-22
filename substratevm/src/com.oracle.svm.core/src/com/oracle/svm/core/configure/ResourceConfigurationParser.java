@@ -102,7 +102,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
     private void parseBundle(Object bundle) {
         Map<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames"));
-        String basename = asString(resource.get("name"), "Missing attribute 'name' in bundle descriptor object");
+        String basename = asString(resource.get("name"));
         ConfigurationCondition condition = parseCondition(resource);
         Object locales = resource.get("locales");
         if (locales != null) {
@@ -110,30 +110,27 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                             .stream()
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
-            if (asList.isEmpty()) {
-                throw new JSONParserException("List of locales for " + basename + " is empty");
+            if (!asList.isEmpty()) {
+                registry.addResourceBundles(condition, basename, asList);
             }
-            registry.addResourceBundles(condition, basename, asList);
+
         }
         Object classNames = resource.get("classNames");
         if (classNames != null) {
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
-            if (asList.isEmpty()) {
-                throw new JSONParserException("List of classNames for " + basename + " is empty");
-            }
             for (Object o : asList) {
-                String className = asString(o, "Elements of 'classNames' must of strings.");
+                String className = asString(o);
                 registry.addClassBasedResourceBundle(condition, basename, className);
             }
         }
         if (locales == null && classNames == null) {
-            /*- If nothing more precise is specified, register in every included locale */
+            /* If nothing more precise is specified, register in every included locale */
             registry.addResourceBundles(condition, basename);
         }
     }
 
     private static Locale parseLocale(Object input) {
-        String localeTag = asString(input, "Elements of 'locales' must be strings.");
+        String localeTag = asString(input);
         Locale locale = LocalizationSupport.parseLocaleFromTag(localeTag);
         if (locale == null) {
             throw new JSONParserException(localeTag + " is not a valid locale tag");

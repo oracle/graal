@@ -41,7 +41,6 @@ import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import org.graalvm.collections.Pair;
 
 public class ResourceConfiguration implements ConfigurationBase {
 
@@ -81,13 +80,13 @@ public class ResourceConfiguration implements ConfigurationBase {
         }
     }
 
-    public static class BundleConfiguration {
+    private static final class BundleConfiguration {
         public final ConfigurationCondition condition;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        public BundleConfiguration(ConfigurationCondition condition, String baseName) {
+        private BundleConfiguration(ConfigurationCondition condition, String baseName) {
             this.condition = condition;
             this.baseName = baseName;
         }
@@ -95,7 +94,7 @@ public class ResourceConfiguration implements ConfigurationBase {
 
     private final ConcurrentMap<ConditionalElement<String>, Pattern> addedResources = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConditionalElement<String>, Pattern> ignoredResources = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<ConditionalElement<String>, BundleConfiguration> bundles = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConditionalElement<String>, BundleConfiguration> bundles = new ConcurrentHashMap<>();
 
     public ResourceConfiguration() {
     }
@@ -135,11 +134,12 @@ public class ResourceConfiguration implements ConfigurationBase {
         getOrCreateBundleConfig(condition, basename).classNames.add(className);
     }
 
-    public void addBundle(ConfigurationCondition condition, List<Pair<String, String>> bundleInfo, String baseName) {
+    public void addBundle(ConfigurationCondition condition, List<String> classNames, List<String> locales, String baseName) {
+        assert classNames.size() == locales.size() : "Each bundle should be represented by both classname and locale";
         BundleConfiguration config = getOrCreateBundleConfig(condition, baseName);
-        for (Pair<String, String> pair : bundleInfo) {
-            String className = pair.getLeft();
-            String localeTag = pair.getRight();
+        for (int i = 0; i < classNames.size(); i++) {
+            String className = classNames.get(i);
+            String localeTag = locales.get(i);
             if (!className.equals(PROPERTY_BUNDLE)) {
                 config.classNames.add(className);
             } else {
@@ -193,7 +193,9 @@ public class ResourceConfiguration implements ConfigurationBase {
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
-        writer.append('{').quote("name").append(':').quote(config.baseName);
+        writer.append('{');
+        ConfigurationConditionPrintable.printConditionAttribute(config.condition, writer);
+        writer.quote("name").append(':').quote(config.baseName);
         if (!config.locales.isEmpty()) {
             writer.append(',').quote("locales").append(":");
             JsonPrinter.printCollection(writer, config.locales, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));

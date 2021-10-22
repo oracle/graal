@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -247,19 +246,23 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 5);
+                expectSize(args, 6);
                 String baseName = (String) args.get(0);
                 @SuppressWarnings("unchecked")
-                List<Pair<String, String>> bundleInfo = (List<Pair<String, String>>) args.get(4);
-                resourceConfiguration.addBundle(condition, bundleInfo, baseName);
+                List<String> classNames = (List<String>) args.get(4);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(5);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             case "getBundleImplJDK11OrLater": {
-                expectSize(args, 6);
+                expectSize(args, 7);
                 String baseName = (String) args.get(2);
                 @SuppressWarnings("unchecked")
-                List<Pair<String, String>> bundleInfo = (List<Pair<String, String>>) args.get(5);
-                resourceConfiguration.addBundle(condition, bundleInfo, baseName);
+                List<String> classNames = (List<String>) args.get(5);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(6);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             default:

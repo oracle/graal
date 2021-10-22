@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.IllformedLocaleException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -237,7 +236,7 @@ public abstract class LocalizationFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         findClassByName = access::findClassByName;
         allLocales = processLocalesOption();
-        defaultLocale = parseLocaleFromTag(Options.DefaultLocale.getValue());
+        defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
         UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
         try {
             defaultCharset = Charset.forName(Options.DefaultCharset.getValue());
@@ -283,29 +282,6 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
-    /**
-     * @return locale for given tag or null for invalid ones
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static Locale parseLocaleFromTag(String tag) {
-        try {
-            return new Locale.Builder().setLanguageTag(tag).build();
-        } catch (IllformedLocaleException ex) {
-            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
-            String[] parts = tag.split("-");
-            switch (parts.length) {
-                case 1:
-                    return new Locale(parts[0]);
-                case 2:
-                    return new Locale(parts[0], parts[1]);
-                case 3:
-                    return new Locale(parts[0], parts[1], parts[2]);
-                default:
-                    return null;
-            }
-        }
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     private static Set<Locale> processLocalesOption() {
         Set<Locale> locales = new HashSet<>();
@@ -315,7 +291,7 @@ public abstract class LocalizationFeature implements Feature {
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : OptionUtils.flatten(",", Options.IncludeLocales.getValue().values())) {
-            Locale locale = parseLocaleFromTag(tag);
+            Locale locale = LocalizationSupport.parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);
             } else {
@@ -451,7 +427,7 @@ public abstract class LocalizationFeature implements Feature {
             prepareBundle(input, allLocales);
             return;
         }
-        Locale locale = splitIndex + 1 < input.length() ? parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
+        Locale locale = splitIndex + 1 < input.length() ? LocalizationSupport.parseLocaleFromTag(input.substring(splitIndex + 1)) : Locale.ROOT;
         if (locale == null) {
             trace("Cannot parse wanted locale " + input.substring(splitIndex + 1) + ", default will be used instead.");
             locale = defaultLocale;
@@ -459,6 +435,14 @@ public abstract class LocalizationFeature implements Feature {
         /*- Get rid of locale specific suffix. */
         String baseName = input.substring(0, splitIndex);
         prepareBundle(baseName, Collections.singletonList(locale));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void prepareClassResourceBundle(String basename, String className) {
+        Class<?> bundleClass = findClassByName.apply(className);
+        UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
+        trace("Adding class based resource bundle: " + className + " " + bundleClass);
+        support.prepareClassResourceBundle(basename, bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -480,7 +464,7 @@ public abstract class LocalizationFeature implements Feature {
             } catch (MissingResourceException mre) {
                 continue;
             }
-            somethingFound = !resourceBundle.isEmpty();
+            somethingFound |= !resourceBundle.isEmpty();
             for (ResourceBundle bundle : resourceBundle) {
                 prepareBundle(baseName, bundle, locale);
             }
