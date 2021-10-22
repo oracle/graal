@@ -56,7 +56,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -183,10 +182,12 @@ public abstract class JavaThreads {
         return toTarget(thread).interrupted;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
         return toTarget(thread).unsafeParkEvent;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static AtomicReference<ParkEvent> getSleepParkEvent(Thread thread) {
         return toTarget(thread).sleepParkEvent;
     }
@@ -415,18 +416,9 @@ public abstract class JavaThreads {
         return tearDownJavaThreads();
     }
 
-    /**
-     * Detach the provided Java thread.
-     *
-     * When this method is being executed, we expect that the current thread owns
-     * {@linkplain VMThreads#THREAD_MUTEX}. This is fine even though this method is not
-     * {@linkplain Uninterruptible} because this method is either executed as part of a VM operation
-     * or {@linkplain StatusSupport#setStatusIgnoreSafepoints()} was called.
-     */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while detaching a thread.")
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public static void detachThread(IsolateThread vmThread) {
-        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the VMThreads mutex");
-        assert StatusSupport.isStatusIgnoreSafepoints(vmThread) || VMOperation.isInProgress();
+        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
         ParkEvent.detach(getUnsafeParkEvent(thread));

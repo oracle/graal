@@ -30,6 +30,7 @@ import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -261,6 +262,7 @@ public final class VMOperationControl {
     private void enqueue(VMOperation operation, NativeVMOperationData data) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
+            VMError.guarantee(!SafepointBehavior.ignoresSafepoints(), "could cause deadlocks otherwise");
             log().string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation

@@ -30,6 +30,7 @@ import java.util.List;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -172,6 +173,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void suspendAllocation() {
         ThreadLocalAllocation.suspendInCurrentThread();
     }
@@ -237,7 +239,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAllocationDisallowed() {
-        return NoAllocationVerifier.isActive() || gcImpl.isCollectionInProgress();
+        return NoAllocationVerifier.isActive() || SafepointBehavior.ignoresSafepoints() || gcImpl.isCollectionInProgress();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -384,6 +386,7 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public void detachThread(IsolateThread isolateThread) {
         ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
     }

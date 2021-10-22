@@ -26,6 +26,8 @@ package com.oracle.svm.core;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import java.lang.reflect.Method;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -35,11 +37,13 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.StubCallingConvention;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -69,8 +73,10 @@ public final class InvalidMethodPointerHandler {
         failFatally(callerSP, callerIP, METHOD_POINTER_NOT_COMPILED_MSG);
     }
 
+    @Uninterruptible(reason = "Prevent safepoints until everything is set up for printing the fatal error.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     private static void failFatally(Pointer callerSP, CodePointer callerIP, String message) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         /*

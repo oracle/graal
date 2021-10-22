@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.util.VMError;
 
@@ -80,6 +82,7 @@ public abstract class ParkEvent {
     protected abstract void unpark();
 
     /** Use up the cons-cell for this ParkEvent. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ParkEventConsCell consumeConsCell() {
         assert consCell != null : "Consuming null cons cell.";
         ParkEventConsCell result = consCell;
@@ -129,6 +132,7 @@ public abstract class ParkEvent {
         return result;
     }
 
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     static void detach(AtomicReference<ParkEvent> ref) {
         /*
          * We must not reset the AtomicReference back to null, because a racing thread could
@@ -141,6 +145,7 @@ public abstract class ParkEvent {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void release(ParkEvent event) {
         ParkEventList.getSingleton().push(event);
     }
@@ -190,6 +195,7 @@ final class ParkEventList {
 
     private static final ParkEventList SINGLETON = new ParkEventList();
 
+    @Fold
     public static ParkEventList getSingleton() {
         return SINGLETON;
     }
@@ -203,6 +209,7 @@ final class ParkEventList {
     }
 
     /** Push an element on to the free-list. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void push(ParkEvent element) {
         ParkEventConsCell sampleHead;
         /* Use up the cons-cell for each attempted push to avoid the ABA problem on pops. */
@@ -250,6 +257,7 @@ final class ParkEventConsCell {
         return next;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setNext(ParkEventConsCell next) {
         this.next = next;
     }

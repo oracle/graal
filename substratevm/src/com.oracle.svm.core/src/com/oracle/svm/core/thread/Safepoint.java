@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -386,8 +387,8 @@ public final class Safepoint {
     @AlwaysInline("Always inline into foreign call stub")
     @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void slowPathSafepointCheck() throws Throwable {
-        if (StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread())) {
-            /* The thread is detaching so it won't ever need to execute a safepoint again. */
+        if (SafepointBehavior.ignoresSafepoints()) {
+            /* Safepoints are explicitly disabled for this thread. */
             Safepoint.setSafepointRequested(THREAD_REQUEST_RESET);
             return;
         }
@@ -518,8 +519,8 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathTransitionFromNativeToNewStatus(int newStatus) {
         VMError.guarantee(StatusSupport.isStatusNativeOrSafepoint(), "Must either be at a safepoint or in native mode");
-        VMError.guarantee(!StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()),
-                        "When safepoints are disabled, the thread can only be in Native mode, so the fast path transition must succeed and this slow path must not be called");
+        VMError.guarantee(!SafepointBehavior.ignoresSafepoints(),
+                        "The safepoint handling doesn't change the status of threads that ignore safepoints. So, the fast path transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
         try {
@@ -634,16 +635,12 @@ public final class Safepoint {
             final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
 
             // Walk the threads list and ask each thread (except myself) to come to a safepoint.
-            // TODO: Do I always bring *all* threads to a safepoint? Could I stop some of them?
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (isMyself(vmThread)) {
                     continue;
                 }
-                if (StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
-                    /*
-                     * If the thread is exiting/exited or safepoints are disabled for another
-                     * reason, do not ask it to stop at safepoints.
-                     */
+                if (SafepointBehavior.ignoresSafepoints(vmThread)) {
+                    /* If safepoints are disabled, do not ask it to stop at safepoints. */
                     continue;
                 }
                 requestSafepoint(vmThread);
@@ -716,19 +713,30 @@ public final class Safepoint {
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (isMyself(vmThread)) {
                         /* Don't wait for myself. */
-                    } else if (StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
-                        /*
-                         * If the thread has exited or safepoints are disabled for another reason,
-                         * then I do not need to worry about bringing it to a safepoint.
-                         */
-                        ignoreSafepoints += 1;
+                        continue;
+                    }
+
+                    /*-
+                     * The status must be read before the safepoint behavior to prevent races
+                     * like the following:
+                     * - thread A reads the safepoint behavior of thread B.
+                     * - thread B sets the safepoint behavior to PREVENT_VM_FROM_REACHING_SAFEPOINT.
+                     * - thread B sets the status to STATUS_IN_NATIVE.
+                     * - thread A reads the status of thread B and the VM reaches a safepoint.
+                     */
+                    int status = StatusSupport.getStatusVolatile(vmThread);
+                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
+                    if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
+                        notAtSafepoint++;
+                    } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
+                        ignoreSafepoints++;
                     } else {
-                        int status = StatusSupport.getStatusVolatile(vmThread);
+                        assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         switch (status) {
                             case StatusSupport.STATUS_IN_JAVA:
                             case StatusSupport.STATUS_IN_VM: {
                                 /* Re-request the safepoint in case of a lost update. */
-                                if (getSafepointRequested(vmThread) > 0 && !StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                                if (getSafepointRequested(vmThread) > 0) {
                                     requestSafepoint(vmThread);
                                     lostUpdates++;
                                 }
@@ -813,7 +821,7 @@ public final class Safepoint {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (!isMyself(vmThread) && !StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {
                     if (trace.isEnabled()) {
                         trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
                     }
@@ -861,11 +869,15 @@ public final class Safepoint {
                 int notAtSafepoint = 0;
 
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                    int safepointBehavior = SafepointBehavior.getSafepointBehaviorVolatile(vmThread);
+                    int status = StatusSupport.getStatusVolatile(vmThread);
+                    if (safepointBehavior == SafepointBehavior.PREVENT_VM_FROM_REACHING_SAFEPOINT) {
+                        notAtSafepoint++;
+                    } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
                         ignoreSafepoints += 1;
                     } else {
+                        assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         // Check if the thread is at a safepoint or in native code.
-                        int status = StatusSupport.getStatusVolatile(vmThread);
                         switch (status) {
                             case StatusSupport.STATUS_IN_SAFEPOINT:
                                 atSafepoint += 1;
