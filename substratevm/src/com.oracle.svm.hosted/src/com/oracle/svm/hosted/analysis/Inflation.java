@@ -44,6 +44,7 @@ public interface Inflation extends BigBang {
 
     AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
 
+    @Override
     SubstrateReplacements getReplacements();
 
     @Override

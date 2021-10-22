@@ -95,6 +95,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         return new Instance().createSummaryFromGraph(graph);
     }
 
+    @SuppressWarnings("unused")
     protected void delegateNodeProcessing(Instance instance, Node node) {
     }
 

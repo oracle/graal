@@ -76,8 +76,8 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
 
     private Set<AnalysisField> handledUnknownValueFields = ConcurrentHashMap.newKeySet();
     private Map<NativeImageReachabilityAnalysis.GenericInterfacesEncodingKey, Type[]> genericInterfacesMap = new ConcurrentHashMap<>();
-    private Map<NativeImageReachabilityAnalysis.AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap = new ConcurrentHashMap<>();;
-    private Map<NativeImageReachabilityAnalysis.InterfacesEncodingKey, DynamicHub[]> interfacesEncodings = new ConcurrentHashMap<>();;
+    private Map<NativeImageReachabilityAnalysis.AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap = new ConcurrentHashMap<>();
+    private Map<NativeImageReachabilityAnalysis.InterfacesEncodingKey, DynamicHub[]> interfacesEncodings = new ConcurrentHashMap<>();
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final boolean strengthenGraalGraphs;

@@ -55,7 +55,7 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     @Override
     public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
         if (receiver != null) {
-            bb.markTypeReachable(constantType(bb, receiver));
+            bb.markTypeReachable(constantType(receiver));
         }
         bb.markTypeReachable(field.getType());
 // System.out.println("Scanning field " + field);
@@ -63,8 +63,9 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
 
     @Override
     public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
-        if (receiver != null)
-            bb.markTypeReachable(constantType(bb, receiver));
+        if (receiver != null) {
+            bb.markTypeReachable(constantType(receiver));
+        }
         bb.markTypeReachable(field.getType());
 // System.out.println("Scanning field " + field);
     }
@@ -82,17 +83,17 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
 
     @Override
     public void forScannedConstant(JavaConstant scannedValue, ObjectScanner.ScanReason reason) {
-        AnalysisType type = constantType(bb, scannedValue);
+        AnalysisType type = constantType(scannedValue);
 // System.out.println("Scanning constant of type " + type);
         bb.markTypeInstantiated(type);
         type.registerAsInHeap();
     }
 
-    private AnalysisType constantType(BigBang bb, JavaConstant constant) {
-        return access.lookupJavaType(constantAsObject(bb, constant).getClass());
+    private AnalysisType constantType(JavaConstant constant) {
+        return access.lookupJavaType(constantAsObject(constant).getClass());
     }
 
-    public Object constantAsObject(BigBang bb, JavaConstant constant) {
+    private Object constantAsObject(JavaConstant constant) {
         return bb.getSnippetReflectionProvider().asObject(Object.class, constant);
     }
 

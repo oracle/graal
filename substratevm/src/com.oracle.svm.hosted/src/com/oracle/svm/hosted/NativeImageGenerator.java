@@ -554,7 +554,7 @@ public class NativeImageGenerator {
                 return;
             }
 
-            dumpAnalysisStats();
+// dumpAnalysisStats();
 
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
@@ -750,11 +750,12 @@ public class NativeImageGenerator {
         }
     }
 
-    private String analysisPrefix() {
+    private static String analysisPrefix() {
         return NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue() ? "reachability_" : "points-to_";
     }
 
-    private void dumpParseTree(CompileQueue compileQueue) {
+    @SuppressWarnings("unused")
+    private static void dumpParseTree(CompileQueue compileQueue) {
         String prefix = analysisPrefix();
         List<Map.Entry<HostedMethod, List<HostedMethod>>> entries = CompileQueue.parseTree.entrySet().stream().sorted(Comparator.comparing(entry -> entry.getKey().format(METHOD_FORMAT)))
                         .collect(Collectors.toList());
@@ -779,11 +780,12 @@ public class NativeImageGenerator {
         throw VMError.shouldNotReachHere();
     }
 
-    private List<AnalysisMethod> getCalleesP(NativeImagePointsToAnalysis bb, AnalysisMethod method) {
+    @SuppressWarnings("unused")
+    private static List<AnalysisMethod> getCalleesP(NativeImagePointsToAnalysis bb, AnalysisMethod method) {
         return method.getTypeFlow().getInvokes().stream().flatMap(it -> it.getCallees().stream()).collect(Collectors.toList());
     }
 
-    private List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
+    private static List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
         MethodSummary summary = bb.summaries.get(method);
         if (summary == null) {
 // System.err.println("Don't have a summary for " + method);
@@ -793,10 +795,6 @@ public class NativeImageGenerator {
         Collections.addAll(callees, summary.implementationInvokedMethods);
         for (AnalysisMethod invokedMethod : summary.invokedMethods) {
             AnalysisType clazz = invokedMethod.getDeclaringClass();
-            // todo solve instantiated subtypes with interfaces!
-            // java.util.Collections$UnmodifiableList.equals(java.lang.Object)
-            // java.util.List.equals
-            // declaring type is List - interface - has no instantiated subtypes atm
             for (AnalysisType subtype : clazz.getInstantiatedSubtypes()) {
                 AnalysisMethod resolved = subtype.resolveConcreteMethod(invokedMethod, clazz);
                 if (resolved != null) {
@@ -807,7 +805,8 @@ public class NativeImageGenerator {
         return callees;
     }
 
-    private String dumpChain(AnalysisMethod method) {
+    @SuppressWarnings("unused")
+    private static String dumpChain(AnalysisMethod method) {
         ArrayList<String> methods = new ArrayList<>();
         Set<String> seen = new HashSet<>();
 
@@ -819,7 +818,7 @@ public class NativeImageGenerator {
         return serializePath(methods, builder);
     }
 
-    private String serializePath(ArrayList<String> methods, StringBuilder builder) {
+    private static String serializePath(ArrayList<String> methods, StringBuilder builder) {
         for (int i = methods.size() - 1; i >= 0; i--) {
             builder.append(methods.get(i));
             if (i != 0) {
@@ -829,7 +828,7 @@ public class NativeImageGenerator {
         return builder.toString();
     }
 
-    private boolean dfs(AnalysisMethod method, ArrayList<String> methods, Set<String> seen) {
+    private static boolean dfs(AnalysisMethod method, ArrayList<String> methods, Set<String> seen) {
         String name = method.format("%H.%n(%P)");
         if (!seen.add(name)) {
             return false;

@@ -113,6 +113,10 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         super(bb, converter);
     }
 
+    private PointsToAnalysis getAnalysis() {
+        return ((PointsToAnalysis) bb);
+    }
+
     @Override
     @SuppressWarnings("try")
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
@@ -284,7 +288,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
-            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
+            PointsToAnalysis analysis = getAnalysis();
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
@@ -323,8 +327,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             } else {
                 TypeState receiverTypeState = null;
                 /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(bb, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow(bb, invokeFlow.getReceiver());
+                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(analysis, invokeFlow.getReceiver())) {
+                    receiverTypeState = methodFlow.foldTypeFlow(analysis, invokeFlow.getReceiver());
                 }
 
                 JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
@@ -417,11 +421,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private boolean isUnreachable(Node branch) {
-            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
+            PointsToAnalysis analysis = getAnalysis();
             TypeFlow<?> branchFlow = originalFlows.getNodeFlows().get(branch);
             return branchFlow != null &&
-                            !methodFlow.isSaturated(bb, branchFlow) &&
-                            methodFlow.foldTypeFlow(bb, branchFlow).isEmpty();
+                            !methodFlow.isSaturated(analysis, branchFlow) &&
+                            methodFlow.foldTypeFlow(analysis, branchFlow).isEmpty();
         }
 
         private void updateStampInPlace(ValueNode node, Stamp newStamp, SimplifierTool tool) {
@@ -470,7 +474,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private Stamp strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
-            PointsToAnalysis bb = ((PointsToAnalysis) getBigBang());
+            PointsToAnalysis analysis = getAnalysis();
             if (node.getStackKind() != JavaKind.Object) {
                 return null;
             }
@@ -481,12 +485,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                  */
                 return null;
             }
-            if (methodFlow.isSaturated(bb, nodeFlow)) {
+            if (methodFlow.isSaturated(analysis, nodeFlow)) {
                 /* The type flow is saturated, its type state does not matter. */
                 return null;
             }
 
-            TypeState nodeTypeState = methodFlow.foldTypeFlow(bb, nodeFlow);
+            TypeState nodeTypeState = methodFlow.foldTypeFlow(analysis, nodeFlow);
             node.inferStamp();
             ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
             AnalysisType oldType = (AnalysisType) oldStamp.type();
@@ -499,7 +503,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
-            for (AnalysisType typeStateType : nodeTypeState.types(bb)) {
+            for (AnalysisType typeStateType : nodeTypeState.types(analysis)) {
                 if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
