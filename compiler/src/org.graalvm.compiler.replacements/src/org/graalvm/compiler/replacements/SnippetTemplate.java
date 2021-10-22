@@ -1516,16 +1516,16 @@ public class SnippetTemplate {
     private class MemoryOutputMap extends MemoryInputMap {
 
         private final UnmodifiableEconomicMap<Node, Node> duplicates;
+        private MemoryMapNode memoryMap;
 
-        MemoryOutputMap(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        MemoryOutputMap(ValueNode replacee, MemoryMapNode memoryMap, UnmodifiableEconomicMap<Node, Node> duplicates) {
             super(replacee);
             this.duplicates = duplicates;
+            this.memoryMap = memoryMap;
         }
 
         @Override
         public MemoryKill getLastLocationAccess(LocationIdentity locationIdentity) {
-            MemoryMapNode memoryMap = returnNode.getMemoryMap();
-            assert memoryMap != null : "no memory map stored for this snippet graph (snippet doesn't have a ReturnNode?)";
             MemoryKill lastLocationAccess = memoryMap.getLastLocationAccess(locationIdentity);
             assert lastLocationAccess != null : locationIdentity;
             if (lastLocationAccess == memoryAnchor) {
@@ -1537,7 +1537,7 @@ public class SnippetTemplate {
 
         @Override
         public Collection<LocationIdentity> getLocations() {
-            return returnNode.getMemoryMap().getLocations();
+            return memoryMap.getLocations();
         }
     }
 
@@ -1545,14 +1545,27 @@ public class SnippetTemplate {
         verifyWithExceptionNode(replacee);
         if (replacee.graph().isAfterStage(StageFlag.FLOATING_READS)) {
             // rewire outgoing memory edges
-            replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, duplicates));
-
             if (returnNode != null) {
+                // outgoing memory edges are always attached to the replacee
+                replaceMemoryUsages(replacee, new MemoryOutputMap(replacee, returnNode.getMemoryMap(), duplicates));
                 ReturnNode ret = (ReturnNode) duplicates.get(returnNode);
                 if (ret != null) {
                     MemoryMapNode memoryMap = ret.getMemoryMap();
                     if (memoryMap != null) {
                         ret.setMemoryMap(null);
+                        memoryMap.safeDelete();
+                    }
+                }
+            }
+            // rewire exceptional memory edges
+            if (unwindPath != null) {
+                // exceptional memory edges are attached to the exception edge
+                replaceMemoryUsages(((WithExceptionNode) replacee).exceptionEdge(), new MemoryOutputMap(replacee, unwindPath.getMemoryMap(), duplicates));
+                UnwindNode unwind = (UnwindNode) duplicates.get(unwindPath);
+                if (unwind != null) {
+                    MemoryMapNode memoryMap = unwind.getMemoryMap();
+                    if (memoryMap != null) {
+                        unwind.setMemoryMap(null);
                         memoryMap.safeDelete();
                     }
                 }
@@ -1783,9 +1796,6 @@ public class SnippetTemplate {
                     replaceeWithExceptionNode.setExceptionEdge(null);
                     // replace the old exception object with the one
                     exceptionEdge.replaceAtUsages(snippetExceptionValue);
-                    // fixup memory graph
-                    GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS),
-                                    "Using a snippet with an UnwindNode after floating reads would require support for the memory graph");
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
                     // replace exceptionEdge with snippetUnwindPath
                     replaceExceptionObjectNode(exceptionEdge, snippetUnwindPath);
