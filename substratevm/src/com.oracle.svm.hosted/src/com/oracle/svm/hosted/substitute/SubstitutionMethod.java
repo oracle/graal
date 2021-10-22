@@ -296,9 +296,4 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
-
-    @Override
-    public boolean hasJavaMethod() {
-        return OriginalMethodProvider.hasJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
-    }
 }

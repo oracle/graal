@@ -40,44 +40,22 @@ public interface OriginalMethodProvider {
             return ((OriginalMethodProvider) method).getJavaMethod();
         }
         try {
-            return getJavaMethodInternal(reflectionProvider, method);
+            ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
+            Class<?>[] parameterTypes = new Class<?>[parameters.length];
+            ResolvedJavaType declaringClassType = method.getDeclaringClass();
+            for (int i = 0; i < parameterTypes.length; i++) {
+                parameterTypes[i] = OriginalClassProvider.getJavaClass(reflectionProvider, parameters[i].getType().resolve(declaringClassType));
+            }
+            Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, declaringClassType);
+            if (method.isConstructor()) {
+                return declaringClass.getDeclaredConstructor(parameterTypes);
+            } else {
+                return declaringClass.getDeclaredMethod(method.getName(), parameterTypes);
+            }
         } catch (NoSuchMethodException e) {
             throw AnalysisError.shouldNotReachHere();
         }
     }
 
-    static boolean hasJavaMethod(SnippetReflectionProvider reflectionProvider, ResolvedJavaMethod method) {
-        if (method instanceof OriginalMethodProvider) {
-            return ((OriginalMethodProvider) method).hasJavaMethod();
-        }
-        try {
-            getJavaMethodInternal(reflectionProvider, method);
-            return true;
-        } catch (NoSuchMethodException | LinkageError | RuntimeException e) {
-            /*
-             * These exceptions may happen anytime during the lookup, so we can't simply use the
-             * result of getJavaMethodInternal.
-             */
-            return false;
-        }
-    }
-
-    static Executable getJavaMethodInternal(SnippetReflectionProvider reflectionProvider, ResolvedJavaMethod method) throws NoSuchMethodException {
-        ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
-        Class<?>[] parameterTypes = new Class<?>[parameters.length];
-        ResolvedJavaType declaringClassType = method.getDeclaringClass();
-        for (int i = 0; i < parameterTypes.length; i++) {
-            parameterTypes[i] = OriginalClassProvider.getJavaClass(reflectionProvider, parameters[i].getType().resolve(declaringClassType));
-        }
-        Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, declaringClassType);
-        if (method.isConstructor()) {
-            return declaringClass.getDeclaredConstructor(parameterTypes);
-        } else {
-            return declaringClass.getDeclaredMethod(method.getName(), parameterTypes);
-        }
-    }
-
     Executable getJavaMethod();
-
-    boolean hasJavaMethod();
 }
