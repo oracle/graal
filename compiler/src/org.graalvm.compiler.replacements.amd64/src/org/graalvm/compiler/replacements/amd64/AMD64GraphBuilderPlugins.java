@@ -134,21 +134,12 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                // @formatter:off
-                //    public static int numberOfLeadingZeros(int i) {
-                //        if (lzcnt(INJECTED_TARGET)) {
-                //            return AMD64CountLeadingZerosNode.countLeadingZeros(i);
-                //        }
-                //        if (i == 0) {
-                //            return 32;
-                //        }
-                //        return 31 - BitScanReverseNode.unsafeScan(i);
-                //    }
-                // @formatter:on
                 if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
                     b.addPush(JavaKind.Int, new AMD64CountLeadingZerosNode(arg));
                 } else {
                     try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        // if (arg == 0) return kind.getBitCount();
+                        // return new kind.getBitCount() - 1 - BitScanReverseNode(arg);
                         helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
                         helper.emitFinalReturn(JavaKind.Int, helper.sub(ConstantNode.forInt(kind.getBitCount() - 1), new BitScanReverseNode(arg)));
                     }
@@ -159,21 +150,12 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                // @formatter:off
-                //    public static int numberOfTrailingZeros(int i) {
-                //        if (tzcnt(INJECTED_TARGET)) {
-                //            return AMD64CountTrailingZerosNode.countTrailingZeros(i);
-                //        }
-                //        if (i == 0) {
-                //            return 32;
-                //        }
-                //        return BitScanForwardNode.unsafeScan(i);
-                //    }
-                // @formatter:on
                 if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
                     b.addPush(JavaKind.Int, new AMD64CountTrailingZerosNode(arg));
                 } else {
                     try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                        // if (arg == 0) return kind.getBitCount();
+                        // return new BitScanForwardNode(arg);
                         helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
                         helper.emitFinalReturn(JavaKind.Int, b.add(new BitScanForwardNode(arg)));
                     }
