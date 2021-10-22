@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -93,22 +94,28 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     public FrameWithoutBoxing(FrameDescriptor descriptor, Object[] arguments) {
-        this.descriptor = descriptor;
-        this.arguments = arguments;
-        int size = descriptor.getSize();
+        final int size = descriptor.getSize();
+        final Object[] localsArray;
+        final long[] primitiveLocalsArray;
+        final byte[] tagsArray;
         if (size == 0) {
-            this.locals = EMPTY_OBJECT_ARRAY;
-            this.primitiveLocals = EMPTY_LONG_ARRAY;
-            this.tags = EMPTY_BYTE_ARRAY;
+            localsArray = EMPTY_OBJECT_ARRAY;
+            primitiveLocalsArray = EMPTY_LONG_ARRAY;
+            tagsArray = EMPTY_BYTE_ARRAY;
         } else {
-            this.locals = new Object[size];
+            localsArray = new Object[size];
             Object defaultValue = descriptor.getDefaultValue();
             if (defaultValue != null) {
-                Arrays.fill(locals, defaultValue);
+                Arrays.fill(localsArray, defaultValue);
             }
-            this.primitiveLocals = new long[size];
-            this.tags = new byte[size];
+            primitiveLocalsArray = new long[size];
+            tagsArray = new byte[size];
         }
+        this.descriptor = descriptor;
+        this.arguments = arguments;
+        this.locals = localsArray;
+        this.primitiveLocals = primitiveLocalsArray;
+        this.tags = tagsArray;
     }
 
     @Override
@@ -306,26 +313,50 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private void verifySet(int slotIndex, byte tag) {
-        checkSlotIndex(slotIndex);
-        getTags()[slotIndex] = tag;
+        try {
+            getTags()[slotIndex] = tag;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            resizeAndGetTagsOrThrow(slotIndex)[slotIndex] = tag;
+        }
     }
 
-    private boolean verifyGet(int slotIndex, byte tag) throws FrameSlotTypeException {
-        checkSlotIndex(slotIndex);
-        boolean condition = getTags()[slotIndex] == tag;
+    private boolean verifyGet(int slotIndex, byte expectedTag) throws FrameSlotTypeException {
+        byte actualTag = getTagChecked(slotIndex);
+        boolean condition = actualTag == expectedTag;
         if (!condition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new FrameSlotTypeException();
+            throw frameSlotTypeException();
         }
         return condition;
     }
 
-    private void checkSlotIndex(int slotIndex) {
-        if (CompilerDirectives.inInterpreter() && slotIndex >= getTags().length) {
-            if (!resize()) {
-                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slotIndex));
+    private byte getTagChecked(int slotIndex) {
+        try {
+            return getTags()[slotIndex];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return resizeAndGetTagsOrThrow(slotIndex)[slotIndex];
+        }
+    }
+
+    private static FrameSlotTypeException frameSlotTypeException() throws FrameSlotTypeException {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new FrameSlotTypeException();
+    }
+
+    private byte[] resizeAndGetTagsOrThrow(int slotIndex) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (resize()) {
+            byte[] newTags = getTags();
+            if (Integer.compareUnsigned(slotIndex, newTags.length) < 0) {
+                return newTags;
             }
         }
+        throw outOfBoundsException(slotIndex);
+    }
+
+    private static IllegalArgumentException outOfBoundsException(int slotIndex) {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new IllegalArgumentException("The frame slot '" + slotIndex + "' is not known by the frame descriptor.");
     }
 
     private static long getPrimitiveOffset(int slotIndex) {
@@ -335,11 +366,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getValue(FrameSlot slot) {
         int slotIndex = getFrameSlotIndex(slot);
-        if (CompilerDirectives.inInterpreter() && slotIndex >= getTags().length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            resize();
-        }
-        byte tag = getTags()[slotIndex];
+        byte tag = getTag(slotIndex);
         boolean condition = (tag == BOOLEAN_TAG);
         if (condition) {
             return getBooleanUnsafe(slotIndex, slot, condition);
@@ -371,6 +398,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     boolean resize() {
+        CompilerAsserts.neverPartOfCompilation();
         int oldSize = tags.length;
         int newSize = descriptor.getSize();
         if (newSize > oldSize) {
@@ -383,51 +411,53 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return false;
     }
 
-    byte getTag(FrameSlot slot) {
-        int slotIndex = getFrameSlotIndex(slot);
-        byte[] cachedTags = getTags();
-        if (slotIndex < cachedTags.length) {
-            return cachedTags[slotIndex];
+    private byte getTag(int slotIndex) {
+        try {
+            return getTags()[slotIndex];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return resizeAndGetTags()[slotIndex];
         }
+    }
 
+    private byte[] resizeAndGetTags() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         resize();
-        return getTags()[slotIndex];
+        return getTags();
     }
 
     @Override
     public boolean isObject(FrameSlot slot) {
-        return getTag(slot) == OBJECT_TAG;
+        return getTag(getFrameSlotIndex(slot)) == OBJECT_TAG;
     }
 
     @Override
     public boolean isByte(FrameSlot slot) {
-        return getTag(slot) == BYTE_TAG;
+        return getTag(getFrameSlotIndex(slot)) == BYTE_TAG;
     }
 
     @Override
     public boolean isBoolean(FrameSlot slot) {
-        return getTag(slot) == BOOLEAN_TAG;
+        return getTag(getFrameSlotIndex(slot)) == BOOLEAN_TAG;
     }
 
     @Override
     public boolean isInt(FrameSlot slot) {
-        return getTag(slot) == INT_TAG;
+        return getTag(getFrameSlotIndex(slot)) == INT_TAG;
     }
 
     @Override
     public boolean isLong(FrameSlot slot) {
-        return getTag(slot) == LONG_TAG;
+        return getTag(getFrameSlotIndex(slot)) == LONG_TAG;
     }
 
     @Override
     public boolean isFloat(FrameSlot slot) {
-        return getTag(slot) == FLOAT_TAG;
+        return getTag(getFrameSlotIndex(slot)) == FLOAT_TAG;
     }
 
     @Override
     public boolean isDouble(FrameSlot slot) {
-        return getTag(slot) == DOUBLE_TAG;
+        return getTag(getFrameSlotIndex(slot)) == DOUBLE_TAG;
     }
 
     @Override
