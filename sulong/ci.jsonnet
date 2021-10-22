@@ -97,6 +97,6 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-linux-aarch64", timelimit: "30:00" },
 
-    sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + sc.sulong_weekly_notifications + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
+    sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
   ]],
 }
