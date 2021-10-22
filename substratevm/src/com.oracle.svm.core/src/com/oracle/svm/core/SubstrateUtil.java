@@ -379,10 +379,10 @@ public class SubstrateUtil {
         return mangled;
     }
 
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
 
     public static boolean isHiddenClass(Class<?> javaClass) {
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
             try {
                 return (boolean) isHiddenMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {

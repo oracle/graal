@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk16;
+package com.oracle.svm.core.jdk17;
 
 // Checkstyle: allow reflection
 
@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.VMError;
 
-final class RecordSupportJDK16OrLater extends RecordSupport {
+final class RecordSupportJDK17OrLater extends RecordSupport {
     @Override
     public boolean isRecord(Class<?> clazz) {
         return clazz.isRecord();
@@ -73,14 +73,14 @@ final class RecordSupportJDK16OrLater extends RecordSupport {
 }
 
 @AutomaticFeature
-final class RecordFeatureJDK16OrLater implements Feature {
+final class RecordFeatureJDK17OrLater implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 16;
+        return JavaVersionUtil.JAVA_SPEC >= 17;
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RecordSupport.class, new RecordSupportJDK16OrLater());
+        ImageSingletons.add(RecordSupport.class, new RecordSupportJDK17OrLater());
     }
 }

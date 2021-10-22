@@ -353,7 +353,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 9) {
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
                     /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                     GraalOptions.EmitStringSubstitutions.update(values, false);
                 }

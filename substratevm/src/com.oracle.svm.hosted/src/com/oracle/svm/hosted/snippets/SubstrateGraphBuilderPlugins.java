@@ -667,7 +667,7 @@ public class SubstrateGraphBuilderPlugins {
             /* A NullPointerException will be thrown at run time for this call. */
             return false;
         }
-        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 16 &&
+        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17 &&
                         (RecordSupport.singleton().isRecord(targetField.getDeclaringClass()) || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
             /*
              * After JDK 11, sun.misc.Unsafe performs a few more checks than

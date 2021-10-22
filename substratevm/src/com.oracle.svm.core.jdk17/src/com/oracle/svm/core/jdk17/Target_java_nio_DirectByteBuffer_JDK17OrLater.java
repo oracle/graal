@@ -22,48 +22,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk14;
+package com.oracle.svm.core.jdk17;
 
 import java.io.FileDescriptor;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK14OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 
 import jdk.internal.access.foreign.MemorySegmentProxy;
 
-@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = JDK14OrLater.class)
+@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = JDK17OrLater.class)
 @SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBuffer_JDK14OrLater {
+final class Target_java_nio_DirectByteBuffer_JDK17OrLater {
 
     @Alias
-    protected Target_java_nio_DirectByteBuffer_JDK14OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
+    protected Target_java_nio_DirectByteBuffer_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
     }
 
 }
 
-@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = JDK14OrLater.class)
+@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = JDK17OrLater.class)
 @SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBufferR_JDK14OrLater {
+final class Target_java_nio_DirectByteBufferR_JDK17OrLater {
 
     @Alias
-    protected Target_java_nio_DirectByteBufferR_JDK14OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
+    protected Target_java_nio_DirectByteBufferR_JDK17OrLater(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync, MemorySegmentProxy segment) {
     }
 
 }
 
-@TargetClass(className = "sun.nio.ch.Util", onlyWith = JDK14OrLater.class)
+@TargetClass(className = "sun.nio.ch.Util", onlyWith = JDK17OrLater.class)
 final class Target_sun_nio_ch_Util {
 
     @Substitute
-    private static Target_java_nio_DirectByteBuffer_JDK14OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBuffer_JDK14OrLater(size, addr, fd, unmapper, isSync, null);
+    private static Target_java_nio_DirectByteBuffer_JDK17OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return new Target_java_nio_DirectByteBuffer_JDK17OrLater(size, addr, fd, unmapper, isSync, null);
     }
 
     @Substitute
-    static Target_java_nio_DirectByteBufferR_JDK14OrLater newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBufferR_JDK14OrLater(size, addr, fd, unmapper, isSync, null);
+    static Target_java_nio_DirectByteBufferR_JDK17OrLater newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return new Target_java_nio_DirectByteBufferR_JDK17OrLater(size, addr, fd, unmapper, isSync, null);
     }
 
 }

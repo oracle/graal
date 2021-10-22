@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.hosted.jdk17;
 
-import java.util.function.BooleanSupplier;
-
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-public class JDK14OrEarlier implements BooleanSupplier {
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
+
+import jdk.internal.loader.BootLoader;
+
+/**
+ * Registration of native JDK libraries for JDK 17 and later that are loaded via
+ * jdk.internal.loader.BootLoader
+ */
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
+@AutomaticFeature
+final class JNIRegistrationSupport_JDK17OrLater implements GraalFeature {
     @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC <= 14;
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 17;
+    }
+
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        JNIRegistrationSupport.singleton().registerLoadLibraryPlugin(plugins, BootLoader.class);
     }
 }

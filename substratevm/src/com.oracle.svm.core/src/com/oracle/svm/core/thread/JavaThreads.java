@@ -176,10 +176,10 @@ public abstract class JavaThreads {
      * in VM-internal contexts.
      */
     public static boolean isInterrupted(Thread thread) {
-        if (JavaVersionUtil.JAVA_SPEC >= 14) {
-            return toTarget(thread).interruptedJDK14OrLater;
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            return toTarget(thread).interruptedJDK17OrLater;
         }
-        return toTarget(thread).interrupted;
+        return toTarget(thread).interruptedJDK11OrEarlier;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

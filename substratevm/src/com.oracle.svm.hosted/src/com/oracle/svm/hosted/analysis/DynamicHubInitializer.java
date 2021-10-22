@@ -229,11 +229,11 @@ public class DynamicHubInitializer {
         }
 
         /*
-         * JDK 12 introduced a broken implementation of hashCode() and equals() for the
-         * implementation classes of annotated types, leading to an infinite recursion. Tracked as
-         * JDK-8224012. As a workaround, we use shallow implementations that only depend on the
-         * identity hash code and reference equality. This is the same behavior as on JDK 8 and JDK
-         * 11 anyway.
+         * After JDK 11, the implementation of hashCode() and equals() for the implementation
+         * classes of annotated types can lead to the reification of generic bounds, which can lead
+         * to TypeNotPresentException when the class path is incomplete. Therefore, we use shallow
+         * implementations that only depend on the identity hash code and reference equality. This
+         * is the same behavior as on JDK 8 and JDK 11 anyway.
          */
 
         @Override

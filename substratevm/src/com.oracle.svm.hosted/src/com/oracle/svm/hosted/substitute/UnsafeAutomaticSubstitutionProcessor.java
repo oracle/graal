@@ -214,9 +214,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
             }
 
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 /*
-                 * JDK 15 and later add checks for hidden classes and record classes in
+                 * JDK 17 and later add checks for hidden classes and record classes in
                  * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
                  * checks make control flow too complex to detect offset field assignments.
                  */
@@ -426,7 +426,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         boolean valid = true;
-        if (JavaVersionUtil.JAVA_SPEC >= 15 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
             if (RecordSupport.singleton().isRecord(declaringClass)) {
                 unsuccessfulReasons.add("The argument to sun.misc.Unsafe.objectFieldOffset(Field) is a field of a record.");

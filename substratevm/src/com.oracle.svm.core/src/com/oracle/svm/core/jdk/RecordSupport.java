@@ -78,10 +78,10 @@ public abstract class RecordSupport {
 }
 
 /**
- * Placeholder implementation for old JDK version that do not have Record classes. Since
+ * Placeholder implementation for JDK versions that do not have Record classes. Since
  * {@link #isRecord} always returns false, the other methods must never be invoked.
  */
-final class RecordSupportBeforeJDK16 extends RecordSupport {
+final class RecordSupportJDK11OrEarlier extends RecordSupport {
     @Override
     public boolean isRecord(Class<?> clazz) {
         return false;
@@ -104,14 +104,14 @@ final class RecordSupportBeforeJDK16 extends RecordSupport {
 }
 
 @AutomaticFeature
-final class RecordFeatureBeforeJDK16 implements Feature {
+final class RecordFeatureBeforeJDK17 implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC < 16;
+        return JavaVersionUtil.JAVA_SPEC <= 11;
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RecordSupport.class, new RecordSupportBeforeJDK16());
+        ImageSingletons.add(RecordSupport.class, new RecordSupportJDK11OrEarlier());
     }
 }
