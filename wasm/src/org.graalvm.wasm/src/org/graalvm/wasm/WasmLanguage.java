@@ -44,7 +44,6 @@ import java.io.IOException;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
@@ -105,9 +104,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         super.finalizeContext(context);
         for (int i = 0; i < context.memories().count(); ++i) {
             final WasmMemory memory = context.memories().memory(i);
-            if (memory instanceof UnsafeWasmMemory) {
-                ((UnsafeWasmMemory) memory).free();
-            }
+            memory.close();
         }
         try {
             context.fdManager().close();

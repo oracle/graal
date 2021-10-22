@@ -47,6 +47,8 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
+import java.nio.ByteBuffer;
+
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -407,5 +409,15 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize);
         System.arraycopy(buffer, 0, other.buffer, 0, buffer.length);
         return other;
+    }
+
+    @Override
+    public void close() {
+        buffer = null;
+    }
+
+    @Override
+    public ByteBuffer asByteBuffer() {
+        return null;
     }
 }
