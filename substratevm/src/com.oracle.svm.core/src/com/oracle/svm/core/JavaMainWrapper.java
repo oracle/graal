@@ -38,6 +38,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -54,6 +55,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -136,7 +138,7 @@ public class JavaMainWrapper {
                  * because they often depend on option values. The user is expected to manually run
                  * the startup hooks after setting all option values.
                  */
-                RuntimeSupport.getRuntimeSupport().executeStartupHooks();
+                VMRuntime.initialize();
             }
 
             /*
@@ -262,7 +264,7 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
-    private static class EnterCreateIsolateWithCArgumentsPrologue {
+    private static class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create the main Isolate.");
 
@@ -275,7 +277,7 @@ public class JavaMainWrapper {
             args.setArgv(paramArgv);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }

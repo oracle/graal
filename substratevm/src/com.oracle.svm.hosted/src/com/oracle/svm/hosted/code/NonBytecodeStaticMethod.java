@@ -49,6 +49,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * bytecode.
  */
 public abstract class NonBytecodeStaticMethod implements GraphProvider, ResolvedJavaMethod {
+    private static final Annotation[] NO_ANNOTATIONS = new Annotation[0];
 
     /**
      * Line numbers are bogus because this is generated code, but we need to include them in our
@@ -230,18 +231,24 @@ public abstract class NonBytecodeStaticMethod implements GraphProvider, Resolved
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        for (Annotation annotation : getAnnotations()) {
+            if (annotationClass.isInstance(annotation)) {
+                return (T) annotation;
+            }
+        }
         return null;
     }
 
     @Override
     public Annotation[] getAnnotations() {
-        return new Annotation[0];
+        return NO_ANNOTATIONS;
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return new Annotation[0];
+        return NO_ANNOTATIONS;
     }
 
     @Override

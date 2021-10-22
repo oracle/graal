@@ -43,13 +43,13 @@ public interface LibCBase {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean containsLibCAnnotation(AnnotatedElement element) {
-        return GuardedAnnotationAccess.getAnnotation(element, LibC.class) != null;
+        return GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class) != null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
         LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        LibC targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibC.class);
+        LibCSpecific targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class);
         return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
     }
 

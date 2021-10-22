@@ -189,4 +189,10 @@ public class OptionKey<T> {
      */
     protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
     }
+
+    /**
+     * Notifies this object after a value associated with this key was set or updated.
+     */
+    protected void afterValueUpdate() {
+    }
 }

@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.c.function.CEntryPointOptions.AutomaticPrologueBailout;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -230,6 +231,6 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
 
     public CEntryPointData createEntryPointData() {
         return CEntryPointData.create(this, CEntryPointData.DEFAULT_NAME, CEntryPointData.DEFAULT_NAME_TRANSFORMATION, "",
-                        NoPrologue.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
+                        NoPrologue.class, AutomaticPrologueBailout.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
     }
 }

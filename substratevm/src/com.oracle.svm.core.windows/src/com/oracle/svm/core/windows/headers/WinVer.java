@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
 
