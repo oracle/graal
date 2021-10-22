@@ -146,8 +146,12 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
+    // Class hierarchy information is managed by ClassHierarchyOracle, stored in ObjectKlass only
+    // for convenience.
+    // region class hierarchy information
     private final LeafTypeAssumption leafTypeAssumption;
     private final SingleImplementor implementor;
+    // endregion
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
