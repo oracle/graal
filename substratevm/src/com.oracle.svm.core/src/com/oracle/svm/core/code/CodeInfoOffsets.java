@@ -59,10 +59,6 @@ public final class CodeInfoOffsets {
         return OffsetOf.get(CodeInfoImpl.class, "FrameInfoSourceMethodNames");
     }
 
-    public static long frameInfoNames() {
-        return OffsetOf.get(CodeInfoImpl.class, "FrameInfoNames");
-    }
-
     public static long deoptimizationObjectConstants() {
         return OffsetOf.get(CodeInfoImpl.class, "DeoptimizationObjectConstants");
     }
