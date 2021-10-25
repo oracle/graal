@@ -2816,7 +2816,6 @@ def _infer_env(graalvm_dist):
     dynamicImports = set()
     components = []
     foundLibpoly = False
-    disableInstallables = []
     for component in registered_graalvm_components():
         if component.short_name == 'libpoly':
             foundLibpoly = True
@@ -2827,8 +2826,6 @@ def _infer_env(graalvm_dist):
             dynamicImports.add(os.path.basename(suite.dir))
         else:
             dynamicImports.add("/" + os.path.basename(suite.dir))
-        if component.installable and _disable_installable(component):
-            disableInstallables.append(component.short_name)
     excludeComponents = [] if foundLibpoly else ['libpoly']  # 'libpoly' is special, we need to exclude it instead of including
 
     nativeImages = []
@@ -2842,6 +2839,12 @@ def _infer_env(graalvm_dist):
                 nativeImages.append('lib:' + library_name)
     if not nativeImages:
         nativeImages = ['false']
+
+    disableInstallables = _disabled_installables()
+    if disableInstallables is None:
+        disableInstallables = []
+    elif isinstance(disableInstallables, bool):
+        disableInstallables = [str(disableInstallables)]
 
     return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), _no_licenses()
 
@@ -3271,9 +3274,13 @@ def _skip_libraries(library):
             return library_name in skipped
 
 
+def _disabled_installables():
+    return _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
+
+
 def _disable_installable(component):
     """ :type component: str | mx_sdk.GraalVmComponent """
-    disabled = _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
+    disabled = _disabled_installables()
     if isinstance(disabled, bool):
         return disabled
     else:
