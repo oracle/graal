@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -600,6 +600,7 @@ public abstract class AArch64ASIMDAssembler {
         ADDV(0b11011 << 12),
         UADDLV(UBit | 0b00011 << 12),
         UMAXV(UBit | 0b01010 << 12),
+        UMINV(UBit | 0b11010 << 12),
 
         /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
@@ -863,7 +864,6 @@ public abstract class AArch64ASIMDAssembler {
     private void threeSameEncoding(ASIMDInstruction instr, ASIMDSize size, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_0_01110_00_1_00000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
-
     }
 
     private void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
@@ -2916,6 +2916,25 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.362 Unsigned minimum across vector.<br>
+     *
+     * <code>dst = uint_min(src[0], ..., src[n]).</code>
+     *
+     * @param size register size.
+     * @param elementSize width of each operand.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void uminvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uminv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uminv";
+
+        acrossLanesEncoding(ASIMDInstruction.UMINV, size, elemSizeXX(elementSize), dst, src);
+    }
+
+    /**
      * C7.2.367 Unsigned Multiply-Add Long.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += uint_multiply(src1[i], src2[i])</code>
@@ -3022,6 +3041,33 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = srcESize.nbits + shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.USHLL, false, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.391 Unsigned shift left long (immediate).<br>
+     * <p>
+     * From the manual: " This instruction reads each vector element in the upper half of the source
+     * SIMD&FP register, shifts the unsigned integer value left by the specified number of bits ...
+     * The destination vector elements are twice as long as the source vector elements."
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift left amount.
+     */
+    public void ushll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        /* Accepted shift range */
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+
+        /* shift = imm7 - srcESize.nbits */
+        int imm7 = srcESize.nbits + shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.USHLL, true, imm7, dst, src);
     }
 
     /**
