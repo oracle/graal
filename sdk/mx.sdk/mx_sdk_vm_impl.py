@@ -2843,7 +2843,7 @@ def _infer_env(graalvm_dist):
     if not nativeImages:
         nativeImages = ['false']
 
-    return dynamicImports, components, excludeComponents, nativeImages, disableInstallables
+    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables)
 
 
 def graalvm_enter(args):
