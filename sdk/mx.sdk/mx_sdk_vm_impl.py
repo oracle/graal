@@ -2925,6 +2925,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     """
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
+    parser.add_argument('--print-env', action='store_true', help='print the contents of an env file that reproduces the current GraalVM config')
     args = parser.parse_args(args)
 
     graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
@@ -2979,6 +2980,18 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 print(" - {}".format(s))
         else:
             print("No standalone")
+
+        if args.print_env:
+            def _print_env(name, val):
+                if val:
+                    print(name + '=' + ','.join(val))
+            print('Inferred env file:')
+            dynamic_imports, components, exclude_components, native_images, disable_installables = _infer_env(graalvm_dist)
+            _print_env('DYNAMIC_IMPORTS', dynamic_imports)
+            _print_env('COMPONENTS', components)
+            _print_env('EXCLUDE_COMPONENTS', exclude_components)
+            _print_env('NATIVE_IMAGES', native_images)
+            _print_env('DISABLE_INSTALLABLES', disable_installables)
 
 
 def _get_dists(dist_class):
