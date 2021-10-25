@@ -2815,6 +2815,7 @@ def _infer_env(graalvm_dist):
     dynamicImports = set()
     components = []
     foundLibpoly = False
+    disableInstallables = []
     for component in registered_graalvm_components():
         if component.short_name == 'libpoly':
             foundLibpoly = True
@@ -2825,6 +2826,8 @@ def _infer_env(graalvm_dist):
             dynamicImports.add(os.path.basename(suite.dir))
         else:
             dynamicImports.add("/" + os.path.basename(suite.dir))
+        if component.installable and _disable_installable(component):
+            disableInstallables.append(component.short_name)
     excludeComponents = [] if foundLibpoly else ['libpoly']  # 'libpoly' is special, we need to exclude it instead of including
 
     nativeImages = []
@@ -2837,7 +2840,7 @@ def _infer_env(graalvm_dist):
                 library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
                 nativeImages.append('lib:' + library_name)
 
-    return dynamicImports, components, excludeComponents, nativeImages
+    return dynamicImports, components, excludeComponents, nativeImages, disableInstallables
 
 
 def graalvm_enter(args):
@@ -2895,7 +2898,7 @@ def graalvm_enter(args):
         return
 
     graalvm_dist = get_final_graalvm_distribution()
-    dynamicImports, components, exclude_components, nativeImages = _infer_env(graalvm_dist)
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
@@ -2903,6 +2906,7 @@ def graalvm_enter(args):
     env['COMPONENTS'] = ','.join(components)
     env['NATIVE_IMAGES'] = ','.join(nativeImages)
     env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
+    env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
 
     # Disable loading of the global ~/.mx/env file in the subshell. The contents of this file are already in the current
     # environment. Parsing the ~/.mx/env file again would lead to confusing results, especially if it contains settings
