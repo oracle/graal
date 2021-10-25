@@ -629,7 +629,7 @@ public class NativeImageGenerator {
                 compileQueue.finish(debug);
                 System.out.println("Number of parsed methods: " + CompileQueue.parsedMethods.size());
                 System.out.println("Number of compiled methods: " + CompileQueue.compiledMethods.size());
-                dumpParseTree(compileQueue);
+// dumpParseTree(compileQueue);
 
                 /* release memory taken by graphs for the image writing */
                 hUniverse.getMethods().forEach(HostedMethod::clear);

@@ -337,6 +337,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         }
     }
 
+    @SuppressWarnings("try")
     private void runReachability() throws InterruptedException {
         try (Timer.StopTimer t = reachabilityTimer.start()) {
             if (!executor.isStarted()) {
