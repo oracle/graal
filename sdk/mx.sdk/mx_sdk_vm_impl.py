@@ -3162,7 +3162,11 @@ def _components_include_list():
             suite_name = name[len('suite:'):]
             components.extend([c for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
         else:
-            components.append(mx_sdk.graalvm_component_by_name(name))
+            component = mx_sdk.graalvm_component_by_name(name, False)
+            if component:
+                components.append(component)
+            else:
+                mx.warn("The component inclusion list ('--components' or '$COMPONENTS') includes an unknown component: '{}'".format(name))
     return components
 
 

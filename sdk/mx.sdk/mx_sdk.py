@@ -157,8 +157,8 @@ def register_graalvm_component(component):
     return mx_sdk_vm.register_graalvm_component(component)
 
 
-def graalvm_component_by_name(name):
-    return mx_sdk_vm.graalvm_component_by_name(name)
+def graalvm_component_by_name(name, fatalIfMissing=True):
+    return mx_sdk_vm.graalvm_component_by_name(name, fatalIfMissing=fatalIfMissing)
 
 
 def graalvm_components(opt_limit_to_suite=False):
