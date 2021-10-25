@@ -33,8 +33,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
-        markAncestorsAsNonLeaf(newKlass);
-
         if (newKlass.isAbstract() || newKlass.isInterface()) {
             return NotLeaf;
         }
@@ -51,11 +49,9 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * parent interfaces.
      */
     private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
-        if (readSingleImplementor(superInterface).hasImplementor().isValid()) {
-            superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
-            for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
-                addImplementor(ancestorInterface, implementor);
-            }
+        superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
+        for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
+            addImplementor(ancestorInterface, implementor);
         }
     }
 
@@ -65,20 +61,13 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
         }
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
-        while (currentKlass != null && readSingleImplementor(currentKlass).hasImplementor().isValid()) {
+        while (currentKlass != null) {
+            currentKlass.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
             currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
             currentKlass = currentKlass.getSuperKlass();
-        }
-    }
-
-    private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
-        ObjectKlass currentParent = newClass.getSuperKlass();
-        while (currentParent != null && currentParent.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().isValid()) {
-            currentParent.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
-            currentParent = currentParent.getSuperKlass();
         }
     }
 
