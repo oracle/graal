@@ -447,6 +447,7 @@ suite = {
         "org.graalvm.nativebridge.jni",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
+        "JVMCI_HOTSPOT",
       ],
       "annotationProcessors" : [
         "GRAAL_LIBGRAAL_PROCESSOR",
