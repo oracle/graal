@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
@@ -239,13 +240,9 @@ public abstract class TypeFlow<T> {
         return this instanceof AllInstantiatedTypeFlow;
     }
 
-    public boolean isCloseToAllInstantiated(PointsToAnalysis bb) {
-        return this.getState().closeToAllInstantiated(bb);
-    }
-
     public void setState(PointsToAnalysis bb, TypeState state) {
         assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
-                        state.verifyDeclaredType(declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
+                        state.verifyDeclaredType(bb, declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
         this.state = state;
     }
 
@@ -335,13 +332,13 @@ public abstract class TypeFlow<T> {
              */
             return true;
         }
-        assert after.verifyDeclaredType(declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
+        assert after.verifyDeclaredType(bb, declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
                         "%nState before: %s. %nState after: %s", format(false, true), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
         return true;
     }
 
     private static String formatState(PointsToAnalysis bb, TypeState typeState) {
-        if (typeState.closeToAllInstantiated(bb)) {
+        if (TypeStateUtils.closeToAllInstantiated(bb, typeState)) {
             return "close to AllInstantiated";
         }
         return typeState.toString();

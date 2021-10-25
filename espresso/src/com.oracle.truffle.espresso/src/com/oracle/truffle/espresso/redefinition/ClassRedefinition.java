@@ -672,12 +672,15 @@ public final class ClassRedefinition {
         }
     }
 
+    /**
+     * @param accessingKlass the receiver's klass when the method is not static, resolutionSeed's
+     *            declaring klass otherwise
+     */
     @TruffleBoundary
-    public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass, StaticObject receiver) {
+    public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
         // wait for potential ongoing redefinition to complete
         check();
-        Klass lookupKlass = receiver != null ? receiver.getKlass() : resolutionSeed.getDeclaringKlass();
-        Method replacementMethod = lookupKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
+        Method replacementMethod = accessingKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
         Meta meta = resolutionSeed.getMeta();
         if (replacementMethod == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,

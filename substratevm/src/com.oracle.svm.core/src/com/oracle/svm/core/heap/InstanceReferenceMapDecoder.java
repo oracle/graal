@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.thread.JavaContinuations;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -42,7 +43,7 @@ public class InstanceReferenceMapDecoder {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
 
-        if (referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
+        if (JavaContinuations.useLoom() && referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
             return StoredContinuationImpl.walkStoredContinuationFromPointer(baseAddress, visitor, holderObject);
         }
 

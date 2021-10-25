@@ -54,7 +54,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -287,7 +286,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
                 synchronized (this) {
                     if (node == null) {
                         if (hasTag('F')) {
-                            RootCallTarget taget = Truffle.getRuntime().createCallTarget(new TestRootNode(lang, this));
+                            RootCallTarget taget = new TestRootNode(lang, this).getCallTarget();
                             node = new CallNode(taget);
                         } else {
                             node = new BaseNode(this);

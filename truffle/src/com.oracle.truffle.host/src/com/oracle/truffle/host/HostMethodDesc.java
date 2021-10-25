@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
@@ -110,6 +111,14 @@ abstract class HostMethodDesc {
             }
         }
 
+        private SingleMethod(boolean varArgs, Class<?>[] parameterTypes, Type[] genericParameterTypes, int[] scopedStaticParameters, int scopedStaticParameterCount) {
+            this.varArgs = varArgs;
+            this.parameterTypes = parameterTypes;
+            this.genericParameterTypes = genericParameterTypes;
+            this.scopedStaticParameters = scopedStaticParameters;
+            this.scopedStaticParameterCount = scopedStaticParameterCount;
+        }
+
         private static boolean isScoped(Class<?> c) {
             if (c.isPrimitive()) {
                 return false;
@@ -127,8 +136,6 @@ abstract class HostMethodDesc {
         public final boolean isVarArgs() {
             return varArgs;
         }
-
-        public abstract Class<?> getReturnType();
 
         public final Class<?>[] getParameterTypes() {
             return parameterTypes;
@@ -263,11 +270,6 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Class<?> getReturnType() {
-                return getReflectionMethod().getReturnType();
-            }
-
-            @Override
             public boolean isInternal() {
                 return getReflectionMethod().getDeclaringClass() == Object.class;
             }
@@ -304,10 +306,6 @@ abstract class HostMethodDesc {
                 return reflectionConstructor.newInstance(arguments);
             }
 
-            @Override
-            public Class<?> getReturnType() {
-                return getReflectionMethod().getDeclaringClass();
-            }
         }
 
         abstract static class MHBase extends SingleMethod {
@@ -381,11 +379,6 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Class<?> getReturnType() {
-                return getReflectionMethod().getReturnType();
-            }
-
-            @Override
             public boolean isInternal() {
                 return getReflectionMethod().getDeclaringClass() == Object.class;
             }
@@ -418,11 +411,6 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Class<?> getReturnType() {
-                return getReflectionMethod().getDeclaringClass();
-            }
-
-            @Override
             @TruffleBoundary
             protected MethodHandle makeMethodHandle() {
                 CompilerAsserts.neverPartOfCompilation();
@@ -432,6 +420,44 @@ abstract class HostMethodDesc {
                 } catch (IllegalAccessException e) {
                     throw new IllegalStateException(e);
                 }
+            }
+        }
+
+        static final class SyntheticArrayCloneMethod extends SingleMethod {
+            static final SyntheticArrayCloneMethod SINGLETON = new SyntheticArrayCloneMethod();
+
+            private SyntheticArrayCloneMethod() {
+                super(false, new Class<?>[0], new Type[0], EMTPY_SCOPED_PARAMETERS, 0);
+            }
+
+            @Override
+            public String getName() {
+                return "clone";
+            }
+
+            @Override
+            public String toString() {
+                return "Method[clone]";
+            }
+
+            @Override
+            public Executable getReflectionMethod() {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+
+            @Override
+            public Object invoke(Object receiver, Object[] arguments) {
+                assert receiver != null && receiver.getClass().isArray() && arguments.length == 0;
+                // Object#clone() is protected so clone the array via reflection.
+                int length = Array.getLength(receiver);
+                Object copy = Array.newInstance(receiver.getClass().getComponentType(), length);
+                System.arraycopy(receiver, 0, copy, 0, length);
+                return copy;
+            }
+
+            @Override
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext context, Node node) {
+                return HostObject.forObject(invoke(receiver, arguments), context);
             }
         }
     }

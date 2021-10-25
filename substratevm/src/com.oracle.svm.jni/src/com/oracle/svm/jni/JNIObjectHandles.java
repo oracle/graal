@@ -80,7 +80,7 @@ public final class JNIObjectHandles {
     static final int NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY = 16;
 
     @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles //
-                    = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
+                    = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "JNIObjectHandles.handles");
 
     @Fold
     static boolean useImageHeapHandles() {

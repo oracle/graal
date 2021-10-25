@@ -50,12 +50,12 @@ import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
@@ -63,8 +63,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
-
-import org.graalvm.polyglot.PolyglotException;
 
 public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
@@ -78,7 +76,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
         });
 
@@ -87,6 +85,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         c0.enter();
         TruffleContext ic0 = this.languageEnv.newContextBuilder().build();
+        TruffleContext ic0CreatorHandle = ic0;
         Object prev = ic0.enter(null);
         // look language handle on the context it is not the same as
         // the creator handle. The creator handle can be closed.
@@ -150,6 +149,8 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
 
         assertList(entered, ic0, tc0, ic0);
         assertList(left, ic0, ic0, tc0);
+
+        ic0CreatorHandle.close();
     }
 
     @Test
@@ -158,7 +159,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().engine(engine).build(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
         });
         Context c0 = this.context;
@@ -167,7 +168,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().engine(engine).build(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
         });
 
@@ -230,7 +231,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
         });
         List<TruffleContext> entered = new ArrayList<>();
@@ -289,7 +290,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
 
             @Override
@@ -387,7 +388,7 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+                return RootNode.createConstantNode(42).getCallTarget();
             }
         });
 

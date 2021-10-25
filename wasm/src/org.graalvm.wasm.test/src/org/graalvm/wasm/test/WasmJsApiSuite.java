@@ -78,7 +78,6 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -203,12 +202,12 @@ public class WasmJsApiSuite {
                             }),
             });
             WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 210;
                                 }
-                            })));
+                            }.getCallTarget()));
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
             try {
                 final Object callFirst = WebAssembly.instanceExport(instance, "callFirst");
@@ -355,12 +354,12 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object f = new WasmFunctionInstance(context, null,
-                                Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         return 42;
                                     }
-                                }));
+                                }.getCallTarget());
                 final Object writeTable = wasm.readMember("table_write");
                 final Object readTable = wasm.readMember("table_read");
                 final Object a = WebAssembly.instanceExport(instance, "a");
@@ -641,12 +640,12 @@ public class WasmJsApiSuite {
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             null,
                             null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.get(null).language()) {
+                            new RootNode(WasmContext.get(null).language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
                                 }
-                            }));
+                            }.getCallTarget());
 
             // We should be able to set element 1.
             try {
@@ -1293,6 +1292,67 @@ public class WasmJsApiSuite {
             WebAssembly wasm = new WebAssembly(context);
             Assert.assertTrue("Should have failed - valid module", wasm.moduleValidate(data));
         });
+    }
+
+    @Test
+    public void testImportManyGlobals() throws IOException, InterruptedException {
+        String importManyGlobalsWat = "(module\n" +
+                        "(global $global0 (import \"globals\" \"global0\") i32)\n" +
+                        "(global $global1 (import \"globals\" \"global1\") i32)\n" +
+                        "(global $global2 (import \"globals\" \"global2\") i32)\n" +
+                        "(global $global3 (import \"globals\" \"global3\") i32)\n" +
+                        "(global $global4 (import \"globals\" \"global4\") i32)\n" +
+                        "(global $global5 (import \"globals\" \"global5\") i32)\n" +
+                        "(global $global6 (import \"globals\" \"global6\") i32)\n" +
+                        "(global $global7 (import \"globals\" \"global7\") i32)\n" +
+                        "(global $global8 (import \"globals\" \"global8\") i32)\n" +
+                        "(func (export \"sum\") (result i32)\n" +
+                        "    get_global $global0\n" +
+                        "    get_global $global1\n" +
+                        "    i32.add\n" +
+                        "    get_global $global2\n" +
+                        "    i32.add\n" +
+                        "    get_global $global3\n" +
+                        "    i32.add\n" +
+                        "    get_global $global4\n" +
+                        "    i32.add\n" +
+                        "    get_global $global5\n" +
+                        "    i32.add\n" +
+                        "    get_global $global6\n" +
+                        "    i32.add\n" +
+                        "    get_global $global7\n" +
+                        "    i32.add\n" +
+                        "    get_global $global8\n" +
+                        "    i32.add\n" +
+                        ")\n" +
+                        ")";
+        byte[] importManyGlobalsBytes = compileWat("importManyGlobals", importManyGlobalsWat);
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "globals", Dictionary.create(new Object[]{
+                                            "global0", WebAssembly.globalAlloc(ValueType.i32, false, 1),
+                                            "global1", WebAssembly.globalAlloc(ValueType.i32, false, 2),
+                                            "global2", WebAssembly.globalAlloc(ValueType.i32, false, 3),
+                                            "global3", WebAssembly.globalAlloc(ValueType.i32, false, 4),
+                                            "global4", WebAssembly.globalAlloc(ValueType.i32, false, 5),
+                                            "global5", WebAssembly.globalAlloc(ValueType.i32, false, 6),
+                                            "global6", WebAssembly.globalAlloc(ValueType.i32, false, 7),
+                                            "global7", WebAssembly.globalAlloc(ValueType.i32, false, 8),
+                                            "global8", WebAssembly.globalAlloc(ValueType.i32, false, 9),
+                            }),
+            });
+            WasmInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                Object sum = lib.execute(WebAssembly.instanceExport(instance, "sum"));
+                int intSum = lib.asInt(sum);
+                Assert.assertEquals("Incorrect sum of imported globals", 45, intSum);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {

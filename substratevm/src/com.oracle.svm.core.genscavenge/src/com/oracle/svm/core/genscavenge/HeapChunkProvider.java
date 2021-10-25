@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -145,6 +146,10 @@ final class HeapChunkProvider {
         } else {
             UnsignedWord freeListBytes = getBytesInUnusedChunks();
             UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
+            UnsignedWord maxHeapFree = WordFactory.unsigned(SubstrateGCOptions.MaxHeapFree.getValue());
+            if (maxHeapFree.aboveThan(0)) {
+                reserveBytes = UnsignedUtils.min(reserveBytes, maxHeapFree);
+            }
             if (freeListBytes.belowThan(reserveBytes)) {
                 maxChunksToKeep = reserveBytes.subtract(freeListBytes).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
             } else {

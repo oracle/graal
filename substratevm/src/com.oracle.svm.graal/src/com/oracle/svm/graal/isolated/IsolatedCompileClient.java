@@ -44,7 +44,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public final class IsolatedCompileClient {
 
     private static final FastThreadLocalObject<IsolatedCompileClient> currentClient = //
-                    FastThreadLocalFactory.createObject(IsolatedCompileClient.class);
+                    FastThreadLocalFactory.createObject(IsolatedCompileClient.class, "IsolatedCompileClient.currentClient");
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolatedCompileClient get() {

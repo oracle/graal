@@ -39,10 +39,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
+import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat;
-import com.oracle.svm.core.option.SubstrateOptionsParser.OptionParseResult;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.util.ImageHeapMap;
 
@@ -163,7 +163,8 @@ public final class RuntimeOptionParser {
         Predicate<OptionKey<?>> isHosted = optionKey -> false;
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
-            SubstrateOptionsParser.printFlags(parseResult::matchesFlagsRuntime, options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
+            SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
+                            options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
             System.exit(0);
         }
         if (!parseResult.isValid()) {

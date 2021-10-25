@@ -84,7 +84,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PluginReplacementNode;
+import org.graalvm.compiler.nodes.PluginReplacementInterface;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.SimplifyingGraphDecoder;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -120,6 +120,7 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -600,7 +601,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             appendInvoke(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData, callTarget);
 
-            lastInstr.setNext(invoke.asNode());
+            lastInstr.setNext(invoke.asFixedNode());
             if (invoke instanceof InvokeWithExceptionNode) {
                 lastInstr = ((InvokeWithExceptionNode) invoke).next();
             } else {
@@ -633,10 +634,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected class PEPluginGraphBuilderContext extends PENonAppendGraphBuilderContext {
-        protected FixedWithNextNode insertBefore;
+        protected final FixedNode insertBefore;
         protected ValueNode pushedNode;
 
-        public PEPluginGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode insertBefore) {
+        public PEPluginGraphBuilderContext(PEMethodScope inlineScope, FixedNode insertBefore) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.insertBefore = insertBefore;
         }
@@ -685,9 +686,22 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (value instanceof FixedWithNextNode) {
                 FixedWithNextNode fixed = (FixedWithNextNode) value;
                 graph.addBeforeFixed(insertBefore, fixed);
+            } else if (value instanceof WithExceptionNode) {
+                WithExceptionNode withExceptionNode = (WithExceptionNode) value;
+                GraalError.guarantee(insertBefore instanceof WithExceptionNode, "Cannot replace %s with %s which is a %s", insertBefore, value, WithExceptionNode.class.getSimpleName());
+                WithExceptionNode replacee = (WithExceptionNode) insertBefore;
+                graph.replaceWithExceptionSplit(replacee, withExceptionNode);
+                AbstractBeginNode next = withExceptionNode.next();
+                if (withExceptionNode instanceof MemoryKill) {
+                    /* Insert the correct memory killing begin node at the next edge. */
+                    GraalError.guarantee(next instanceof BeginNode, "Not a BeginNode %s", next);
+                    AbstractBeginNode beginNode = graph.add(withExceptionNode.createNextBegin());
+                    withExceptionNode.setNext(beginNode);
+                    beginNode.setNext(next);
+                }
             } else if (value instanceof FixedNode) {
                 // Block terminating fixed nodes shouldn't be inserted
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(String.format("value: %s, insertBefore: %s", value, insertBefore));
             }
         }
     }
@@ -822,11 +836,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else {
             assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
         }
-        if (encodedGraph.getFields() != null) {
-            for (ResolvedJavaField field : encodedGraph.getFields()) {
-                graph.recordField(field);
-            }
-        }
         if (encodedGraph.hasUnsafeAccess()) {
             graph.markUnsafeAccess();
         }
@@ -944,7 +953,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (callTarget.invokeKind().isInterface()) {
                 Invoke invoke = invokeData.invoke;
                 ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
-                return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
+                return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asFixedNode());
             }
             return callTarget;
         }
@@ -1063,7 +1072,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             } else {
                 /* Intrinsification failed, restore original state: invoke is in Graph. */
-                invokePredecessor.setNext(invoke.asNode());
+                invokePredecessor.setNext(invoke.asFixedNode());
                 return false;
             }
         }
@@ -1132,7 +1141,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         Invoke invoke = invokeData.invoke;
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
         FixedWithNextNode predecessor = (FixedWithNextNode) invokeNode.predecessor();
         invokeData.invokePredecessor = predecessor;
         invokeNode.replaceAtPredecessor(null);
@@ -1188,7 +1197,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         LoopScope loopScope = inlineScope.callerLoopScope;
         InvokeData invokeData = inlineScope.invokeData;
         Invoke invoke = invokeData.invoke;
-        FixedNode invokeNode = invoke.asNode();
+        FixedNode invokeNode = invoke.asFixedNode();
 
         ValueNode exceptionValue = null;
         int returnNodeCount = 0;
@@ -1487,10 +1496,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 }
             }
         }
-        if (node instanceof PluginReplacementNode) {
-            PluginReplacementNode pluginReplacementNode = (PluginReplacementNode) node;
+        if (node instanceof PluginReplacementInterface) {
+            PluginReplacementInterface pluginReplacementNode = (PluginReplacementInterface) node;
             PEPluginGraphBuilderContext graphBuilderContext = new PEPluginGraphBuilderContext(methodScope,
-                            pluginReplacementNode);
+                            pluginReplacementNode.asFixedNode());
             boolean success = pluginReplacementNode.replace(graphBuilderContext, providers.getReplacements());
             if (success) {
                 replacedNode = graphBuilderContext.pushedNode;

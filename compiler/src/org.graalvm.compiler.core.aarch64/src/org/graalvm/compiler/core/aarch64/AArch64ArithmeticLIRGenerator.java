@@ -56,7 +56,6 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
-import org.graalvm.compiler.lir.aarch64.AArch64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
@@ -117,23 +116,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    public Value emitExtendMemory(boolean isSigned, AArch64Kind memoryKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
-        // Issue a zero extending load of the proper bit size and set the result to
-        // the proper kind.
+    public Value emitExtendMemory(boolean isSigned, AArch64Kind accessKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
+        /*
+         * Issue an extending load of the proper bit size and set the result to the proper kind.
+         */
+        GraalError.guarantee(accessKind.isInteger(), "can only extend integer kinds");
         Variable result = getLIRGen().newVariable(LIRKind.value(resultBits == 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD));
 
-        int targetSize = resultBits <= 32 ? 32 : 64;
-        switch (memoryKind) {
-            case BYTE:
-            case WORD:
-            case DWORD:
-            case QWORD:
-                getLIRGen().append(new AArch64Unary.MemoryOp(isSigned, targetSize,
-                                memoryKind.getSizeInBytes() * Byte.SIZE, result, address, state));
-                break;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
+        int dstBitSize = resultBits <= 32 ? 32 : 64;
+        AArch64Move.ExtendKind extend = isSigned ? AArch64Move.ExtendKind.SIGN_EXTEND : AArch64Move.ExtendKind.ZERO_EXTEND;
+        getLIRGen().append(new AArch64Move.LoadOp(accessKind, dstBitSize, extend, result, address, state));
         return result;
     }
 

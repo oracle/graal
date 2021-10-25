@@ -355,7 +355,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static UncachedLocationNode createUncachedLocation(TruffleLanguage<?> hostLanguage) {
         UncachedLocationNode location = new UncachedLocationNode(hostLanguage);
         // this is intended to trigger Truffle runtime initialization in the background
-        Truffle.getRuntime().createCallTarget(location);
+        location.getCallTarget();
         return location;
     }
 
@@ -1393,12 +1393,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    static void cancel(PolyglotContextImpl context, List<Future<Void>> cancelationFutures) {
-        cancelOrInterrupt(context, cancelationFutures, 0, null);
+    static void cancelOrExit(PolyglotContextImpl context, List<Future<Void>> cancelationFutures) {
+        cancelOrExitOrInterrupt(context, cancelationFutures, 0, null);
     }
 
     @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-    static boolean cancelOrInterrupt(PolyglotContextImpl context, List<Future<Void>> futures, long startMillis, Duration timeout) {
+    static boolean cancelOrExitOrInterrupt(PolyglotContextImpl context, List<Future<Void>> futures, long startMillis, Duration timeout) {
         try {
             synchronized (context) {
                 assert context.singleThreaded || !context.isActive(Thread.currentThread()) : "Cancel while entered is only allowed for single-threaded contexts!";
@@ -1541,7 +1541,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
                     Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
-                    boolean allowValueSharing) {
+                    boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
         boolean replayEvents;
         boolean contextAddedToEngine;
@@ -1616,7 +1616,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                             allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
                             allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
-                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing);
+                            environmentAccess, environment, zone, polyglotLimits, hostClassLoader, hostAccess, allowValueSharing, useSystemExit);
             context = loadPreinitializedContext(config);
             replayEvents = false;
             contextAddedToEngine = false;
@@ -1635,12 +1635,23 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             throw PolyglotImpl.guestToHostException(this, t);
         }
         boolean hasContextBindings;
+        boolean hasThreadBindings;
         try {
             if (replayEvents) { // loaded context
-                // we might have new instruments to run with a preinitialized context
+                /*
+                 * There might be new instruments to run with a preinitialized context and these
+                 * instruments might define context locals and context thread locals. The
+                 * instruments were created during the context loading before the context was added
+                 * to the engine's contexts set, and so the instrument creation did not update the
+                 * context's locals and thread locals. Since the context loading needs to enter the
+                 * context on the current thread for patching, we need to update both the context
+                 * locals and context thread locals.
+                 */
                 synchronized (context) {
                     context.resizeContextLocals(this.contextLocalLocations);
                     context.initializeInstrumentContextLocals(context.contextLocals);
+                    context.resizeContextThreadLocals(this.contextThreadLocalLocations);
+                    context.initializeInstrumentContextThreadLocals();
                 }
             } else { // is new context
                 try {
@@ -1661,12 +1672,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
             hasContextBindings = EngineAccessor.INSTRUMENT.hasContextBindings(this);
+            hasThreadBindings = EngineAccessor.INSTRUMENT.hasThreadBindings(this);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
         }
-        if (replayEvents && hasContextBindings) {
-            // replace events for preinitialized contexts
-            // events must be replayed without engine lock.
+        if (replayEvents && (hasContextBindings || hasThreadBindings)) {
+            /*
+             * Replay events for preinitialized contexts. Events must be replayed without engine
+             * lock. The events to replay are the context events and also the thread initialization
+             * event for the current thread which was initialized for context patching.
+             */
             final Object[] prev;
             try {
                 prev = enter(context);
@@ -1967,12 +1982,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
         }
         for (PolyglotContextImpl context : aliveContexts) {
-            synchronized (context) {
-                if (context.localsCleared) {
-                    continue;
-                }
-                context.resizeContextLocals(newStableLocations);
-            }
+            context.resizeLocals(newStableLocations);
         }
         return newLocations;
     }
@@ -2000,12 +2010,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             newLocations = Arrays.copyOfRange(locationsCopy, stableLocations.locations.length, index);
         }
         for (PolyglotContextImpl context : aliveContexts) {
-            synchronized (context) {
-                if (context.localsCleared) {
-                    continue;
-                }
-                context.resizeContextThreadLocals(newStableLocations);
-            }
+            context.resizeThreadLocals(newStableLocations);
         }
         return newLocations;
     }

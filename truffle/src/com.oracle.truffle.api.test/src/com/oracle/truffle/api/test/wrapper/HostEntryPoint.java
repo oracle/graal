@@ -123,7 +123,7 @@ final class HostEntryPoint {
                         false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], null, null,
                         false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null, true);
+                        null, null, null, null, null, true, false);
         return guestToHost(remoteContext);
     }
 

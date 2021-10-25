@@ -24,14 +24,15 @@
  */
 package com.oracle.svm.jni.access;
 
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.util.ImageHeapMap;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -40,8 +41,8 @@ import jdk.vm.ci.meta.MetaUtil;
  */
 public final class JNIAccessibleClass {
     private final Class<?> classObject;
-    private Map<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
-    private Map<String, JNIAccessibleField> fields;
+    private EconomicMap<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
+    private EconomicMap<String, JNIAccessibleField> fields;
 
     JNIAccessibleClass(Class<?> clazz) {
         this.classObject = clazz;
@@ -51,12 +52,12 @@ public final class JNIAccessibleClass {
         return classObject;
     }
 
-    public Collection<JNIAccessibleField> getFields() {
-        return (fields != null) ? fields.values() : Collections.emptySet();
+    public Iterable<JNIAccessibleField> getFields() {
+        return (fields != null) ? fields.getValues() : Collections::emptyIterator;
     }
 
-    Map<String, JNIAccessibleField> getFieldsByName() {
-        return (fields != null) ? fields : Collections.emptyMap();
+    MapCursor<String, JNIAccessibleField> getFieldsByName() {
+        return (fields != null) ? fields.getEntries() : EconomicMap.emptyCursor();
     }
 
     public JNIAccessibleField getField(String name) {
@@ -66,25 +67,29 @@ public final class JNIAccessibleClass {
     @Platforms(HOSTED_ONLY.class)
     void addFieldIfAbsent(String name, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
-            fields = new HashMap<>();
+            fields = ImageHeapMap.create();
         }
-        fields.computeIfAbsent(name, mappingFunction);
+        if (!fields.containsKey(name)) {
+            fields.put(name, mappingFunction.apply(name));
+        }
     }
 
     @Platforms(HOSTED_ONLY.class)
     void addMethodIfAbsent(JNIAccessibleMethodDescriptor descriptor, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
-            methods = new HashMap<>();
+            methods = ImageHeapMap.create();
         }
-        methods.computeIfAbsent(descriptor, mappingFunction);
+        if (!methods.containsKey(descriptor)) {
+            methods.put(descriptor, mappingFunction.apply(descriptor));
+        }
     }
 
-    public Collection<JNIAccessibleMethod> getMethods() {
-        return (methods != null) ? methods.values() : Collections.emptySet();
+    public Iterable<JNIAccessibleMethod> getMethods() {
+        return (methods != null) ? methods.getValues() : Collections::emptyIterator;
     }
 
-    public Map<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> getMethodsByDescriptor() {
-        return (methods != null) ? methods : Collections.emptyMap();
+    public MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> getMethodsByDescriptor() {
+        return (methods != null) ? methods.getEntries() : EconomicMap.emptyCursor();
     }
 
     public JNIAccessibleMethod getMethod(JNIAccessibleMethodDescriptor descriptor) {

@@ -44,6 +44,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
@@ -51,7 +52,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -296,7 +296,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 }
                 break;
             default:
-                throw shouldNotReachHere("Field recomputation of kind " + kind + " specified by alias " + annotated.format("%H.%n") + " not yet supported");
+                throw shouldNotReachHere("Field recomputation of kind " + kind + " for field " + original.format("%H.%n") +
+                                (annotated != null ? " specified by alias " + annotated.format("%H.%n") : "") +
+                                " not yet supported");
         }
         putCached(receiver, result);
         return result;

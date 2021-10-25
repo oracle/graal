@@ -30,8 +30,12 @@ package com.oracle.svm.core.graal.code;
 public interface NativeImagePatcher {
     /**
      * Patch directly in the code buffer with an offset relative to the start of this instruction.
+     *
+     * @param methodStartAddress address of method start within runtime installed code
+     * @param relative pc-relative offset
+     * @param code machine code generated for this method
      */
-    void patchCode(int relative, byte[] code);
+    void patchCode(long methodStartAddress, int relative, byte[] code);
 
     /**
      * The position from the beginning of the method where the patch is applied. This offset is used

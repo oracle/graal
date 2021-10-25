@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -63,10 +62,9 @@ public interface LoadSourceSectionListener {
      * attached}.
      *
      * <b>Implementation Note:</b> Source load events are notified when the guest language
-     * implementation uses a new {@link Source source} by invoking
-     * {@link TruffleRuntime#createCallTarget(RootNode)} with a root node that uses a new source in
-     * {@link Node#getSourceSection()}. It assumes that all nodes of an AST have the same
-     * {@link Source source} as their root.
+     * implementation uses a new {@link Source source} by invoking {@link RootNode#getCallTarget()}
+     * with a root node that uses a new source in {@link Node#getSourceSection()}. It assumes that
+     * all nodes of an AST have the same {@link Source source} as their root.
      * </p>
      *
      * @param event an event with context information

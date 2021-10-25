@@ -25,6 +25,8 @@
 
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,7 +64,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
@@ -71,6 +73,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -217,7 +220,7 @@ public final class ResourcesFeature implements Feature {
          */
 
         ImageClassLoader loader = accessImpl.imageClassLoader;
-        Stream.concat(loader.modulepath().stream(), loader.classpath().stream()).forEach(classpathFile -> {
+        Stream.concat(loader.modulepath().stream(), loader.classpath().stream()).distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(debugContext, classpathFile, includePatterns, excludePatterns);
@@ -268,7 +271,7 @@ public final class ResourcesFeature implements Feature {
             /* Resources always use / as the separator, as do our resource inclusion patterns */
             String relativeFilePath;
             if (entry != root) {
-                relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, '/');
+                relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
                 allEntries.add(relativeFilePath);
             } else {
                 relativeFilePath = "";
@@ -291,7 +294,7 @@ public final class ResourcesFeature implements Feature {
         }
 
         for (String entry : allEntries) {
-            int last = entry.lastIndexOf('/');
+            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             String key = last == -1 ? "" : entry.substring(0, last);
             List<String> dirContent = matchedDirectoryResources.get(key);
             if (dirContent != null && !dirContent.contains(entry)) {
@@ -328,14 +331,16 @@ public final class ResourcesFeature implements Feature {
     }
 
     private static boolean matches(Pattern[] includePatterns, Pattern[] excludePatterns, String relativePath) {
+        VMError.guarantee(!relativePath.contains("\\"), "Resource path contains backslash!");
+        String relativePathWithTrailingSlash = relativePath + RESOURCES_INTERNAL_PATH_SEPARATOR;
         for (Pattern p : excludePatterns) {
-            if (p.matcher(relativePath).matches()) {
+            if (p.matcher(relativePath).matches() || p.matcher(relativePathWithTrailingSlash).matches()) {
                 return false;
             }
         }
 
         for (Pattern p : includePatterns) {
-            if (p.matcher(relativePath).matches()) {
+            if (p.matcher(relativePath).matches() || p.matcher(relativePathWithTrailingSlash).matches()) {
                 return true;
             }
         }

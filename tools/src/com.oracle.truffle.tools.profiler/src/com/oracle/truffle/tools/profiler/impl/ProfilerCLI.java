@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -292,11 +293,10 @@ abstract class ProfilerCLI {
             }
 
             SourceLocation that = (SourceLocation) o;
-
-            if (sourceSection != null ? !sourceSection.equals(that.sourceSection) : that.sourceSection != null) {
+            if (!Objects.equals(sourceSection, that.sourceSection)) {
                 return false;
             }
-            return rootName != null ? rootName.equals(that.rootName) : that.rootName == null;
+            return Objects.equals(rootName, that.rootName);
         }
 
         @Override
@@ -312,9 +312,6 @@ abstract class ProfilerCLI {
             if (option.hasBeenSet(env.getOptions())) {
                 final String outputPath = option.getValue(env.getOptions());
                 final File file = new File(outputPath);
-                if (file.exists()) {
-                    throw new IllegalArgumentException("Cannot redirect output to an existing file!");
-                }
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());

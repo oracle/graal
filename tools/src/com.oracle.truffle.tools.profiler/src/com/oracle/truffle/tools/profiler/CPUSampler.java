@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -133,8 +134,20 @@ public final class CPUSampler implements Closeable {
     private SourceSectionFilter filter = DEFAULT_FILTER;
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
+    private Thread processingThread;
+    private ResultProcessingRunnable processingThreadRunnable;
+
     private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
     private boolean gatherSelfHitTimes = false;
+
+    /*
+     * The results queue will block if it exceeds the capacity. This is intentional as we do not
+     * want the sampling results to grow infinitely in the worst case. It is better if the sampling
+     * thread blocks at some point as well. However, it is very unlikely that processing takes such
+     * a long time that this actually happens, but situations like this might be more frequent when
+     * debugging.
+     */
+    private final ArrayBlockingQueue<SamplingResult> resultsToProcess = new ArrayBlockingQueue<>(256);
 
     CPUSampler(Env env) {
         this.env = env;
@@ -515,6 +528,9 @@ public final class CPUSampler implements Closeable {
                 return Collections.emptyMap();
             }
             TruffleContext context = activeContexts.keySet().iterator().next();
+            if (context.isActive()) {
+                throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+            }
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
             List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
             for (StackSample stackSample : sample) {
@@ -531,12 +547,19 @@ public final class CPUSampler implements Closeable {
         if (!collecting || closed) {
             return;
         }
+        if (processingThread == null) {
+            processingThreadRunnable = new ResultProcessingRunnable();
+            processingThread = new Thread(processingThreadRunnable, "Sampling Processing Thread");
+            processingThread.setDaemon(true);
+        }
+        this.processingThread.start();
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
         this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
         this.samplerTask = new SamplingTimerTask();
-        this.samplerThread.schedule(samplerTask, delay, period);
+        this.samplerThread.scheduleAtFixedRate(samplerTask, delay, period);
+
     }
 
     private void cleanup() {
@@ -548,6 +571,11 @@ public final class CPUSampler implements Closeable {
         if (samplerThread != null) {
             samplerThread.cancel();
             samplerThread = null;
+        }
+        if (processingThread != null) {
+            processingThreadRunnable.cancelled = true;
+            processingThread.interrupt();
+            processingThread = null;
         }
     }
 
@@ -742,34 +770,48 @@ public final class CPUSampler implements Closeable {
         }
     }
 
-    private class SamplingTimerTask extends TimerTask {
+    /*
+     * Process samples in a separate thread to avoid further delays during sampling and increase
+     * accuracy.
+     */
+    private class ResultProcessingRunnable implements Runnable {
 
-        @Override
+        private volatile boolean cancelled;
+
         public void run() {
-            long taskStartTime = System.currentTimeMillis();
-            for (TruffleContext context : contexts()) {
-                if (context.isClosed()) {
-                    continue;
+            while (true) {
+                if (cancelled) {
+                    return;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
-                synchronized (CPUSampler.this) {
-                    if (!collecting) {
-                        return;
-                    }
-                    if (context.isClosed()) {
+                SamplingResult result = null;
+                try {
+                    result = resultsToProcess.take();
+                } catch (InterruptedException e) {
+                    // check for cancelled
+                }
+                if (cancelled) {
+                    return;
+                }
+                if (result != null) {
+                    if (result.context.isClosed()) {
                         continue;
                     }
-                    final MutableSamplerData mutableSamplerData = activeContexts.get(context);
-                    for (StackSample sample : samples) {
-                        mutableSamplerData.biasStatistic.accept(sample.biasNs);
-                        mutableSamplerData.durationStatistic.accept(sample.durationNs);
-                        ProfilerNode<Payload> threadNode = mutableSamplerData.threadData.computeIfAbsent(sample.thread, new Function<Thread, ProfilerNode<Payload>>() {
-                            @Override
-                            public ProfilerNode<Payload> apply(Thread thread) {
-                                return new ProfilerNode<>();
-                            }
-                        });
-                        record(sample, threadNode, taskStartTime, mutableSamplerData);
+                    synchronized (CPUSampler.this) {
+                        if (!collecting) {
+                            return;
+                        }
+                        final MutableSamplerData mutableSamplerData = activeContexts.get(result.context);
+                        for (StackSample sample : result.samples) {
+                            mutableSamplerData.biasStatistic.accept(sample.biasNs);
+                            mutableSamplerData.durationStatistic.accept(sample.durationNs);
+                            ProfilerNode<Payload> threadNode = mutableSamplerData.threadData.computeIfAbsent(sample.thread, new Function<Thread, ProfilerNode<Payload>>() {
+                                @Override
+                                public ProfilerNode<Payload> apply(Thread thread) {
+                                    return new ProfilerNode<>();
+                                }
+                            });
+                            record(sample, threadNode, result.startTime, mutableSamplerData);
+                        }
                     }
                 }
             }
@@ -779,7 +821,6 @@ public final class CPUSampler implements Closeable {
             if (sample.stack.size() == 0) {
                 return;
             }
-            // now traverse the stack and insert the path into the tree
             ProfilerNode<Payload> treeNode = threadNode;
             for (int i = sample.stack.size() - 1; i >= 0; i--) {
                 StackTraceEntry location = sample.stack.get(i);
@@ -817,6 +858,37 @@ public final class CPUSampler implements Closeable {
             }
             return child;
         }
+
+    }
+
+    static class SamplingResult {
+
+        final List<StackSample> samples;
+        final TruffleContext context;
+        final long startTime;
+
+        SamplingResult(List<StackSample> samples, TruffleContext context, long startTime) {
+            this.samples = samples;
+            this.context = context;
+            this.startTime = startTime;
+        }
+
+    }
+
+    private class SamplingTimerTask extends TimerTask {
+
+        @Override
+        public void run() {
+            long taskStartTime = System.currentTimeMillis();
+            for (TruffleContext context : contexts()) {
+                if (context.isClosed()) {
+                    continue;
+                }
+                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
+                resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
+            }
+        }
+
     }
 
     static class MutableSamplerData {

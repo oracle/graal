@@ -146,6 +146,7 @@ meth protected static boolean isDelegated(com.oracle.truffle.api.library.Library
 meth protected static java.lang.Object readDelegate(com.oracle.truffle.api.library.Library,java.lang.Object)
 meth protected {com.oracle.truffle.api.library.LibraryFactory%0} createAssertions({com.oracle.truffle.api.library.LibraryFactory%0})
 meth protected {com.oracle.truffle.api.library.LibraryFactory%0} createDelegate({com.oracle.truffle.api.library.LibraryFactory%0})
+meth public final java.util.List<com.oracle.truffle.api.library.Message> getMessages()
 meth public final {com.oracle.truffle.api.library.LibraryFactory%0} create(java.lang.Object)
 meth public final {com.oracle.truffle.api.library.LibraryFactory%0} createDispatched(int)
 meth public final {com.oracle.truffle.api.library.LibraryFactory%0} getUncached()
@@ -157,10 +158,13 @@ hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,UNSAFE,afterBuiltinDefaultExports,aot,
 hcls CachedAOTExports,ProxyExports,ResolvedDispatch
 
 CLSS public abstract com.oracle.truffle.api.library.Message
+cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,int,java.lang.Class<?>,java.lang.Class<?>[])
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,java.lang.Class<?>,java.lang.Class<?>[])
+ anno 0 java.lang.Deprecated()
 meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth public final boolean equals(java.lang.Object)
 meth public final com.oracle.truffle.api.library.LibraryFactory<?> getFactory()
+meth public final int getId()
 meth public final int getParameterCount()
 meth public final int hashCode()
 meth public final java.lang.Class<? extends com.oracle.truffle.api.library.Library> getLibraryClass()
@@ -175,7 +179,7 @@ meth public final java.util.List<java.lang.Class<?>> getParameterTypes()
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String)
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,boolean)
 supr java.lang.Object
-hfds hash,library,libraryClass,parameterCount,parameterTypes,parameterTypesArray,qualifiedName,returnType,simpleName
+hfds hash,id,library,libraryClass,parameterCount,parameterTypes,parameterTypesArray,qualifiedName,returnType,simpleName
 
 CLSS public abstract com.oracle.truffle.api.library.ReflectionLibrary
 cons protected init()

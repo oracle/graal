@@ -2,6 +2,18 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.0.0
+* Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
+* Added a [Message#getId()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/Message.html#getId--) method returning a unique message id within a library.
+* Added a [LibraryFactory#getMessages()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/LibraryFactory.html#getMessages--) method returning a list of messages that the library provides.
+*  Changed behavior of `RootNode#getCallTarget()` such that it lazily initializes its call target. This enforces a one-to-one relationship between root nodes and call targets, which avoids several problems, for example, with regard to instrumentation. As a consequence, `RootNode.setCallTarget()` and `TruffleRuntime#createCallTarget()` are deprecated now. Please use `RootNode#getCallTarget()` to access the call target of a root node from now on.
+* In `TruffleLanguage.finalizeContext(Object)`, there is a new requirement for leaving all remaining unclosed inner contexts created by the language on all threads where the contexts are still active.
+No active inner context is allowed after `TruffleLanguage.finalizeContext(Object)` returns. Not complying with this requirement will result in an internal error. Please note that inactive inner contexts are still closed implicitly by the parent context.
+* Added `TruffleContext.closeExited(Node, int)` to hard exit an entered truffle context. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md).
+* Added `TruffleLanguage.exitContext(Object, ExitMode, int)` to allow languages perform actions before natural/hard context exit. Languages are encouraged to run all their shutdown hooks in exitContext instead of finalizeContext.
+* Improved the output format for `engine.TraceCompilation` and `engine.TraceCompilationDetails`. See [Optimizing.md](https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md) for details.
+* Extended `HostObject` so that it exposes the `length` field and the `clone()` method of Java arrays as interop members. This can be disabled with `HostAccess.Builder.allowArrayAccess(false)`.
+
 ## Version 21.3.0
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
 * The native image `TruffleCheckBlackListedMethods` option was deprecated and replaced by the `TruffleCheckBlockListMethods` option.

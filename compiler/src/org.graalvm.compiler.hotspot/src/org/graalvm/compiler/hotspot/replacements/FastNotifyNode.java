@@ -81,7 +81,7 @@ public class FastNotifyNode extends AbstractMemoryCheckpoint implements Lowerabl
 
     @Override
     public void computeStateDuring(FrameState currentStateAfter) {
-        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci, asNode().getStackKind());
+        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci, getStackKind());
         setStateDuring(newStateDuring);
     }
 

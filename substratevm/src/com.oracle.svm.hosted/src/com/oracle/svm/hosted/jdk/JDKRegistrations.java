@@ -48,19 +48,19 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
             rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
         }
 
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
             /*
              * Holds system and user library paths derived from the `java.library.path` and
              * `sun.boot.library.path` system properties.
              */
             rerunClassInit(a, "jdk.internal.loader.NativeLibraries$LibraryPaths");
-        }
-        if (JavaVersionUtil.JAVA_SPEC >= 16) {
             /*
              * Contains lots of state that is only available at run time: loads a native library,
              * stores a `Random` object and the temporary directory in a static final field.
              */
             rerunClassInit(a, "sun.nio.ch.UnixDomainSockets");
+
+            rerunClassInit(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
         }
 
         /*

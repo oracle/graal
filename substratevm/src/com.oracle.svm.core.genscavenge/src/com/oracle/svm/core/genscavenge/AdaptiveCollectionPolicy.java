@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
+
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -94,11 +96,18 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private static final boolean ADAPTIVE_SIZE_USE_COST_ESTIMATORS = true;
     private static final int ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS = ADAPTIVE_SIZE_POLICY_READY_THRESHOLD;
     /** The minimum increase in throughput in percent for expanding a space by 1% of its size. */
-    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF = 0.8;
+    private static final double ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF = 0.5;
     /** The effective number of most recent data points used by estimator (exponential decay). */
-    private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = ADAPTIVE_TIME_WEIGHT;
+    private static final int ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH = 12;
     /** Threshold for triggering a complete collection after repeated minor collections. */
     private static final int CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO = 2;
+    /**
+     * When the GC cost of a generation is above this value, its estimator is ignored and sizes are
+     * increased to avoid starving the mutator.
+     */
+    private static final double ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT = 0.5;
+
+    private static final int INITIAL_NEW_RATIO = 1; // same size for young and old generation
 
     /* Constants derived from other constants. */
     private static final double THROUGHPUT_GOAL = 1.0 - 1.0 / (1.0 + GC_TIME_RATIO);
@@ -111,7 +120,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptivePaddedAverage avgPromoted = new AdaptivePaddedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT, PROMOTED_PADDING, true);
     private final ReciprocalLeastSquareFit minorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long minorCount;
-    private long latestMinorMutatorIntervalSeconds;
+    private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
     private UnsignedWord youngGenSizeIncrementSupplement = WordFactory.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
     private long youngGenChangeForMinorThroughput;
@@ -125,12 +134,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
     private UnsignedWord oldGenSizeIncrementSupplement = WordFactory.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
-    private long latestMajorMutatorIntervalSeconds;
+    private long latestMajorMutatorIntervalNanos;
     private boolean oldSizeExceededInPreviousCollection;
     private long oldGenChangeForMajorThroughput;
 
     AdaptiveCollectionPolicy() {
-        super(INITIAL_TENURING_THRESHOLD);
+        super(INITIAL_NEW_RATIO, INITIAL_TENURING_THRESHOLD);
     }
 
     @Override
@@ -142,15 +151,15 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_{attempt_scavenge,full_GC}
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection) {
+        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(true)) {
             /*
-             * Always do an incremental collection first because we expect most of the objects in
-             * the young generation to be garbage, and we can reuse their leftover chunks for
-             * copying the live objects in the old generation with fewer allocations.
+             * Default to always doing an incremental collection first because we expect most of the
+             * objects in the young generation to be garbage, and we can reuse their leftover chunks
+             * for copying the live objects in the old generation with fewer allocations.
              */
             return false;
         }
-        if (oldSizeExceededInPreviousCollection) {
+        if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
             /*
              * In the preceding incremental collection, we promoted objects to the old generation
              * beyond its current capacity to avoid a promotion failure, but due to the chunked
@@ -181,16 +190,14 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         return promotionEstimate.aboveThan(oldFree);
     }
 
-    private void updateAverages(UnsignedWord survivedChunkBytes, UnsignedWord survivorOverflowObjectBytes, UnsignedWord promotedObjectBytes) {
-        /*
-         * Adding the object bytes of overflowed survivor objects does not consider the overhead of
-         * partially filled chunks in the many survivor spaces, so it underestimates the necessary
-         * survivors capacity. However, this should self-correct as we expand the survivor space and
-         * reduce the tenuring age to avoid overflowing survivor objects in the first place.
-         */
-        avgSurvived.sample(survivedChunkBytes.add(survivorOverflowObjectBytes));
+    private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survivedChunkBytes, UnsignedWord promotedChunkBytes) {
+        UnsignedWord survived = survivedChunkBytes;
+        if (isSurvivorOverflow) {
+            survived = survived.add(promotedChunkBytes); // guess
+        }
+        avgSurvived.sample(survived);
 
-        avgPromoted.sample(promotedObjectBytes);
+        avgPromoted.sample(promotedChunkBytes);
     }
 
     private void computeSurvivorSpaceSizeAndThreshold(boolean isSurvivorOverflow, UnsignedWord survivorLimit) {
@@ -232,9 +239,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
     private void computeEdenSpaceSize() {
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = ADAPTIVE_SIZE_USE_COST_ESTIMATORS && youngGenChangeForMinorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS;
-        if (useEstimator) {
-            expansionReducesCost = minorCostEstimator.getSlope(UnsignedUtils.toDouble(edenSize)) <= 0;
+        if (shouldUseEstimator(youngGenChangeForMinorThroughput, minorGcCost())) {
+            expansionReducesCost = expansionSignificantlyReducesCost(minorCostEstimator, edenSize);
+            /*
+             * Note that if the estimator thinks expanding does not lead to significant improvement,
+             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
+             */
         }
 
         UnsignedWord desiredEdenSize = edenSize;
@@ -245,16 +255,9 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledEdenHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(edenHeapDelta));
 
-            expansionReducesCost = !useEstimator || expansionSignificantlyReducesCost(minorCostEstimator, edenSize, scaledEdenHeapDelta);
-            if (expansionReducesCost) {
-                desiredEdenSize = alignUp(desiredEdenSize.add(scaledEdenHeapDelta));
-                desiredEdenSize = UnsignedUtils.max(desiredEdenSize, edenSize);
-                youngGenChangeForMinorThroughput++;
-            }
-            /*
-             * If the estimator says expanding by delta does not lead to a significant improvement,
-             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
-             */
+            desiredEdenSize = alignUp(desiredEdenSize.add(scaledEdenHeapDelta));
+            desiredEdenSize = UnsignedUtils.max(desiredEdenSize, edenSize);
+            youngGenChangeForMinorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
             UnsignedWord desiredSum = edenSize.add(promoSize);
@@ -275,20 +278,21 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         edenSize = desiredEdenSize;
     }
 
-    private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size, UnsignedWord delta) {
+    private static boolean shouldUseEstimator(long genChangeForThroughput, double cost) {
+        return ADAPTIVE_SIZE_USE_COST_ESTIMATORS && genChangeForThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS && cost <= ADAPTIVE_SIZE_COST_ESTIMATOR_GC_COST_LIMIT;
+    }
+
+    private static boolean expansionSignificantlyReducesCost(ReciprocalLeastSquareFit estimator, UnsignedWord size) {
         double x0 = UnsignedUtils.toDouble(size);
-        double x0Throughput = 1 - estimator.estimate(x0);
-        if (x0 == 0 || x0Throughput == 0) { // division by zero below
+        double deltax = (1.01 - 1) * x0;
+        if (deltax == 0) { // division by zero below
             return false;
         }
-        double x1 = x0 + UnsignedUtils.toDouble(delta);
-        double x1Throughput = 1 - estimator.estimate(x1);
-        if (x0 >= x1 || x0Throughput >= x1Throughput) {
-            return false;
-        }
-        double min = (x1 / x0 - 1) * ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_THROUGHPUT_TRADEOFF;
-        double estimated = x1Throughput / x0Throughput - 1;
-        return (estimated >= min);
+        double y0 = estimator.estimate(x0);
+        double y1 = y0 * (1 - 0.01 * ADAPTIVE_SIZE_ESTIMATOR_MIN_SIZE_COST_TRADEOFF);
+        double minSlope = (y1 - y0) / deltax;
+        double estimatedSlope = estimator.getSlope(x0);
+        return estimatedSlope <= minSlope;
     }
 
     private static UnsignedWord adjustEdenForFootprint(UnsignedWord curEden, UnsignedWord desiredSum) {
@@ -299,7 +303,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         UnsignedWord reducedSize = curEden.subtract(change);
         assert reducedSize.belowOrEqual(curEden);
-        return alignUp(reducedSize);
+        return alignDown(reducedSize);
     }
 
     private static UnsignedWord scaleDown(UnsignedWord change, UnsignedWord part, UnsignedWord total) {
@@ -346,6 +350,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double gcCost() {
+        /*
+         * Because we're dealing with averages, gcCost() can be larger than 1.0 if just the sum of
+         * the minor cost and the major cost is used. Worse than that is the fact that the minor
+         * cost and the major cost each tend toward 1.0 in the extreme of high GC costs. Limit the
+         * value of gcCost() to 1.0 so that the mutator cost stays non-negative.
+         */
         double cost = Math.min(1, minorGcCost() + majorGcCost());
         assert cost >= 0 : "Both minor and major costs are non-negative";
         return cost;
@@ -360,22 +370,17 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private double secondsSinceMajorGc() { // time_since_major_gc
-        majorTimer.close();
-        try {
-            return TimeUtils.nanosToSecondsDouble(majorTimer.getMeasuredNanos());
-        } finally {
-            majorTimer.open();
-        }
+        return TimeUtils.nanosToSecondsDouble(System.nanoTime() - majorTimer.getOpenedTime());
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection) { // {major,minor}_collection_begin
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) { // {major,minor}_collection_begin
         Timer timer = completeCollection ? majorTimer : minorTimer;
-        timer.close();
+        timer.closeAt(requestingNanoTime);
         if (completeCollection) {
-            latestMajorMutatorIntervalSeconds = timer.getMeasuredNanos();
+            latestMajorMutatorIntervalNanos = timer.getMeasuredNanos();
         } else {
-            latestMinorMutatorIntervalSeconds = timer.getMeasuredNanos();
+            latestMinorMutatorIntervalNanos = timer.getMeasuredNanos();
         }
 
         // Capture the fraction of bytes in aligned chunks at the start to include all allocated
@@ -397,13 +402,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         if (completeCollection) {
             updateCollectionEndAverages(avgMajorGcCost, avgMajorPause, majorCostEstimator, avgMajorIntervalSeconds,
-                            cause, latestMajorMutatorIntervalSeconds, timer.getMeasuredNanos(), promoSize);
+                            cause, latestMajorMutatorIntervalNanos, timer.getMeasuredNanos(), promoSize);
             majorCount++;
             minorCountSinceMajorCollection = 0;
 
         } else {
             updateCollectionEndAverages(avgMinorGcCost, avgMinorPause, minorCostEstimator, null,
-                            cause, latestMinorMutatorIntervalSeconds, timer.getMeasuredNanos(), edenSize);
+                            cause, latestMinorMutatorIntervalNanos, timer.getMeasuredNanos(), edenSize);
             minorCount++;
             minorCountSinceMajorCollection++;
 
@@ -419,24 +424,29 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 
-        /*
-         * Update the averages that survivor space and tenured space sizes are derived from. Note
-         * that we use chunk bytes (not object bytes) for the survivors. This is because they are
-         * kept in many spaces (one for each age), which potentially results in significant overhead
-         * from chunks that may only be partially filled, especially when the heap is small. Using
-         * chunk bytes here ensures that the needed survivor capacity is not underestimated.
-         */
-        UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
-        UnsignedWord survivorOverflowObjectBytes = accounting.getSurvivorOverflowObjectBytes();
-        UnsignedWord tenuredObjBytes = accounting.getTenuredObjectBytes(); // includes overflowed
-        updateAverages(survivedChunkBytes, survivorOverflowObjectBytes, tenuredObjBytes);
+        if (!completeCollection) {
+            /*
+             * Update the averages that survivor space and tenured space sizes are derived from.
+             * Note that we use chunk bytes (not object bytes) for the survivors. This is because
+             * they are kept in many spaces (one for each age), which potentially results in
+             * significant overhead from chunks that may only be partially filled, especially when
+             * the heap is small. Using chunk bytes here ensures that the needed survivor capacity
+             * is not underestimated.
+             */
+            boolean survivorOverflow = accounting.hasLastIncrementalCollectionOverflowedSurvivors();
+            UnsignedWord survivedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorChunkBytes();
+            UnsignedWord tenuredChunkBytes = accounting.getLastIncrementalCollectionPromotedChunkBytes();
+            updateAverages(survivorOverflow, survivedChunkBytes, tenuredChunkBytes);
 
-        computeSurvivorSpaceSizeAndThreshold(survivorOverflowObjectBytes.aboveThan(0), sizes.maxSurvivorSize());
-        computeEdenSpaceSize();
-        if (completeCollection) {
-            computeOldGenSpaceSize(oldLive);
+            computeSurvivorSpaceSizeAndThreshold(survivorOverflow, sizes.maxSurvivorSize());
         }
-        decaySupplementalGrowth(completeCollection);
+        if (shouldUpdateStats(cause)) {
+            computeEdenSpaceSize();
+            if (completeCollection) {
+                computeOldGenSpaceSize(oldLive);
+            }
+            decaySupplementalGrowth(completeCollection);
+        }
     }
 
     private void computeOldGenSpaceSize(UnsignedWord oldLive) { // compute_old_gen_free_space
@@ -447,9 +457,12 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         promoLimit = alignDown(UnsignedUtils.max(promoSize, promoLimit));
 
         boolean expansionReducesCost = true; // general assumption
-        boolean useEstimator = ADAPTIVE_SIZE_USE_COST_ESTIMATORS && oldGenChangeForMajorThroughput > ADAPTIVE_SIZE_POLICY_INITIALIZING_STEPS;
-        if (useEstimator) {
-            expansionReducesCost = majorCostEstimator.getSlope(UnsignedUtils.toDouble(promoSize)) <= 0;
+        if (shouldUseEstimator(oldGenChangeForMajorThroughput, majorGcCost())) {
+            expansionReducesCost = expansionSignificantlyReducesCost(majorCostEstimator, promoSize);
+            /*
+             * Note that if the estimator thinks expanding does not lead to significant improvement,
+             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
+             */
         }
 
         UnsignedWord desiredPromoSize = promoSize;
@@ -460,16 +473,9 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             assert scaleByRatio >= 0 && scaleByRatio <= 1;
             UnsignedWord scaledPromoHeapDelta = UnsignedUtils.fromDouble(scaleByRatio * UnsignedUtils.toDouble(promoHeapDelta));
 
-            expansionReducesCost = !useEstimator || expansionSignificantlyReducesCost(majorCostEstimator, promoSize, scaledPromoHeapDelta);
-            if (expansionReducesCost) {
-                desiredPromoSize = alignUp(promoSize.add(scaledPromoHeapDelta));
-                desiredPromoSize = UnsignedUtils.max(desiredPromoSize, promoSize);
-                oldGenChangeForMajorThroughput++;
-            }
-            /*
-             * If the estimator says expanding by delta does not lead to a significant improvement,
-             * shrink so to not get stuck in a supposed optimum and to keep collecting data points.
-             */
+            desiredPromoSize = alignUp(promoSize.add(scaledPromoHeapDelta));
+            desiredPromoSize = UnsignedUtils.max(desiredPromoSize, promoSize);
+            oldGenChangeForMajorThroughput++;
         }
         if (!expansionReducesCost || (USE_ADAPTIVE_SIZE_POLICY_FOOTPRINT_GOAL && youngGenPolicyIsReady && adjustedMutatorCost() >= THROUGHPUT_GOAL)) {
             UnsignedWord desiredSum = edenSize.add(promoSize);
@@ -499,7 +505,7 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
 
         UnsignedWord reducedSize = curPromo.subtract(change);
         assert reducedSize.belowOrEqual(curPromo);
-        return alignUp(reducedSize);
+        return alignDown(reducedSize);
     }
 
     private static UnsignedWord promoDecrement(UnsignedWord curPromo) {
@@ -530,9 +536,13 @@ final class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         }
     }
 
+    private static boolean shouldUpdateStats(GCCause cause) { // should_update_{eden,promo}_stats
+        return cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC;
+    }
+
     private static void updateCollectionEndAverages(AdaptiveWeightedAverage costAverage, AdaptivePaddedAverage pauseAverage, ReciprocalLeastSquareFit costEstimator,
                     AdaptiveWeightedAverage intervalSeconds, GCCause cause, long mutatorNanos, long pauseNanos, UnsignedWord sizeBytes) {
-        if (cause == GenScavengeGCCause.OnAllocation || USE_ADAPTIVE_SIZE_POLICY_WITH_SYSTEM_GC) {
+        if (shouldUpdateStats(cause)) {
             double cost = 0;
             double mutatorInSeconds = TimeUtils.nanosToSecondsDouble(mutatorNanos);
             double pauseInSeconds = TimeUtils.nanosToSecondsDouble(pauseNanos);

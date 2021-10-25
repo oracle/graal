@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public class ProfileBooleanNode extends MacroStateSplitNode implements Simplifiable {
+public class ProfileBooleanNode extends MacroNode implements Simplifiable {
     public static final NodeClass<ProfileBooleanNode> TYPE = NodeClass.create(ProfileBooleanNode.class);
     private final ConstantReflectionProvider constantProvider;
 

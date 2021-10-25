@@ -43,13 +43,20 @@ package com.oracle.truffle.api.dsl.test;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+
+import java.lang.annotation.Repeatable;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Method;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ConstructorAnnotationsTestNodeGen;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldNoGetterTestNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldTestNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.MultipleFieldsTestNodeFactory;
@@ -293,6 +300,86 @@ public class NodeFieldTest {
         Object s0() {
             return getFoo();
         }
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface OtherAnnotations {
+
+        OtherAnnotation[] value();
+
+    }
+
+    @Repeatable(OtherAnnotations.class)
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface OtherAnnotation {
+
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @interface MyAnnotation {
+
+        String string();
+
+        String[] stringArray();
+
+        int primitive();
+
+        int[] primitiveArray();
+
+        Class<?> type();
+
+        Class<?>[] typeArray();
+
+        OtherAnnotation annotation();
+
+        OtherAnnotation[] annotationArray();
+
+    }
+
+    public abstract static class ConstructorAnnotationsTestNode extends Node {
+
+        private final int field;
+
+        ConstructorAnnotationsTestNode(@MyAnnotation(string = "42", stringArray = {"41", "42"}, //
+                        primitive = 42, primitiveArray = {41, 42}, //
+                        type = ConstructorAnnotationsTestNode.class, //
+                        typeArray = {ConstructorAnnotationsTestNode.class, ConstructorAnnotationsTestNode.class}, //
+                        annotation = @OtherAnnotation, //
+                        annotationArray = {@OtherAnnotation, @OtherAnnotation}) int arg0,
+                        @OtherAnnotation @OtherAnnotation int arg1) { // also test repeatable
+            this.field = arg0 + arg1;
+        }
+
+        abstract Object execute();
+
+        @Specialization
+        int s0() {
+            return field;
+        }
+    }
+
+    @Test
+    public void testConstructorAnnotations() throws NoSuchMethodException, SecurityException {
+        assertEquals(42, ConstructorAnnotationsTestNodeGen.create(21, 21).execute());
+        Method method = ConstructorAnnotationsTestNodeGen.class.getMethod("create", int.class, int.class);
+        MyAnnotation annotation = method.getParameters()[0].getAnnotation(MyAnnotation.class);
+        assertEquals("42", annotation.string());
+        assertEquals("41", annotation.stringArray()[0]);
+        assertEquals("42", annotation.stringArray()[1]);
+        assertEquals(42, annotation.primitive());
+        assertEquals(41, annotation.primitiveArray()[0]);
+        assertEquals(42, annotation.primitiveArray()[1]);
+        assertSame(ConstructorAnnotationsTestNode.class, annotation.type());
+        assertSame(ConstructorAnnotationsTestNode.class, annotation.typeArray()[0]);
+        assertSame(ConstructorAnnotationsTestNode.class, annotation.typeArray()[1]);
+
+        assertNotNull(annotation.annotation());
+        assertNotNull(annotation.annotationArray()[0]);
+        assertNotNull(annotation.annotationArray()[1]);
+
+        OtherAnnotations other = method.getParameters()[1].getAnnotation(OtherAnnotations.class);
+        assertNotNull(other.value()[0]);
+        assertNotNull(other.value()[1]);
     }
 
 }

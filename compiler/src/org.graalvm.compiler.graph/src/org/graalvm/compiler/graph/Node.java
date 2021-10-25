@@ -82,7 +82,7 @@ import sun.misc.Unsafe;
  * only performed if assertions are enabled.
  */
 @NodeInfo
-public abstract class Node implements Cloneable, Formattable, NodeInterface {
+public abstract class Node implements Cloneable, Formattable {
 
     private static final Unsafe UNSAFE = getUnsafe();
 
@@ -304,11 +304,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         return id;
     }
 
-    @Override
-    public Node asNode() {
-        return this;
-    }
-
     /**
      * Gets the graph context of this node.
      */
@@ -444,7 +439,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Checks whether this node has only usages of that type.
+     * Checks whether this node has only usages of a given {@link InputType}.
      *
      * @param type the type of usages to look for
      */
@@ -459,6 +454,24 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             }
         }
         return true;
+    }
+
+    /**
+     * Checks whether this node has usages of a given {@link InputType}.
+     *
+     * @param type the type of usages to look for
+     */
+    public final boolean hasUsagesOfType(InputType type) {
+        for (Node usage : usages()) {
+            for (Position pos : usage.inputPositions()) {
+                if (pos.get(usage) == this) {
+                    if (pos.getInputType() == type) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -620,10 +633,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    protected void updateUsagesInterface(NodeInterface oldInput, NodeInterface newInput) {
-        updateUsages(oldInput == null ? null : oldInput.asNode(), newInput == null ? null : newInput.asNode());
-    }
-
     /**
      * Updates the predecessor of the given nodes after a successor slot is changed from
      * oldSuccessor to newSuccessor: removes this node from oldSuccessor's predecessors and adds
@@ -640,6 +649,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             if (newSuccessor != null) {
                 assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
+                maybeNotifyInputChanged(newSuccessor);
             }
             maybeNotifyInputChanged(this);
         }

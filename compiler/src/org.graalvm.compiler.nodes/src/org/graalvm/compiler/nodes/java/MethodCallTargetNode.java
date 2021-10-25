@@ -179,7 +179,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
 
         if (invokeKind.isInterface()) {
-            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asNode());
+            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asFixedNode());
             assert result == this;
         }
     }

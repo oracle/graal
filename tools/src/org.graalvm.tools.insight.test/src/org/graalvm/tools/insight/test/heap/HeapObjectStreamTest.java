@@ -90,7 +90,7 @@ public class HeapObjectStreamTest {
 
     @Test
     public void dumpToStream() throws Exception {
-        Source nullSource = new Source(null, null, null, null, null);
+        Source nullSource = new Source("no.src", null, null, null, null);
         invokeDump(heap, 1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
         });

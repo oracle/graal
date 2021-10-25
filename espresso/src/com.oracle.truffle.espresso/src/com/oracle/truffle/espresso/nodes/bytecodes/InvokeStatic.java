@@ -103,7 +103,7 @@ public abstract class InvokeStatic extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
+            return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
     }

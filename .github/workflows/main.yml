@@ -2,6 +2,8 @@ name: GraalVM Gate
 
 on:
   push:
+    branches-ignore:
+      - 'github/**'
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
@@ -31,6 +33,7 @@ env:
   MX_GIT_CACHE: refcache
   MX_PYTHON_VERSION: 3
   JAVA_HOME: ${{ github.workspace }}/jdk
+  JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
 
 jobs:
@@ -122,7 +125,7 @@ jobs:
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --jdk-id ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id ${JDK} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
       if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
       run: sudo apt update
@@ -148,16 +151,6 @@ jobs:
 
           # the style gate needs the full commit history for checking copyright years
           git fetch --unshallow
-        fi
-
-        if [[ ${GATE} == *fullbuild* ]]
-        then
-          # Only test JDT on JDK8
-          if [ "${JDK}" == "openjdk8" ]
-          then
-            export JDT=${MX_PATH}/ecj.jar
-            wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
-          fi
         fi
 
         echo ${JAVA_HOME}

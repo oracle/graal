@@ -91,13 +91,13 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         return request.graph;
     }
 
-    protected final OptimizedCallTarget createDummyNode() {
-        return (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+    protected static final OptimizedCallTarget createDummyNode() {
+        return (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
+        }.getCallTarget();
     }
 
     protected class CallsInnerNodeTwice extends RootNode {

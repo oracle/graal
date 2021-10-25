@@ -56,7 +56,7 @@ public final class Prestat {
     }
 
     /** Size of this structure, in bytes. */
-    public static int CONTENTSOFFSET = 4;
+    public static final int CONTENTSOFFSET = 4;
 
     /** Reads union tag. */
     public static Preopentype readTag(Node node, WasmMemory memory, int address) {

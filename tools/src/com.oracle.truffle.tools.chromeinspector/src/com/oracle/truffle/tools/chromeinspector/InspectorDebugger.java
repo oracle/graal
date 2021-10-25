@@ -429,11 +429,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                 // should not be, double-check
                 continue;
             }
-            int scriptId = scriptsHandler.assureLoaded(source);
-            if (scriptId < 0) {
-                continue;
-            }
-            Script script = scriptsHandler.getScript(scriptId);
+            Script script = scriptsHandler.assureLoaded(source);
             List<Scope> scopes = new ArrayList<>();
             DebugScope dscope;
             try {
@@ -1270,6 +1266,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
         private final ThreadGroup group;
 
+        @SuppressWarnings("deprecation")
         SchedulerThreadFactory() {
             SecurityManager s = System.getSecurityManager();
             this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();

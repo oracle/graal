@@ -343,7 +343,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, false, stampProvider, constantReflection);
 
-        calleeEntryNode.setNext(invoke.asNode());
+        calleeEntryNode.setNext(invoke.asFixedNode());
 
         return inline(invoke, methodAt(0), inlineableElementAt(0), false, reason);
     }
@@ -385,7 +385,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                     PhiNode exceptionObjectPhi, boolean useForInlining) {
         Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
-        calleeEntryNode.setNext(duplicatedInvoke.asNode());
+        calleeEntryNode.setNext(duplicatedInvoke.asFixedNode());
 
         EndNode endNode = graph.add(new EndNode());
         duplicatedInvoke.setNext(endNode);
@@ -465,7 +465,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, true, stampProvider, constantReflection);
 
-        invocationEntry.setNext(invoke.asNode());
+        invocationEntry.setNext(invoke.asFixedNode());
         ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
         invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);

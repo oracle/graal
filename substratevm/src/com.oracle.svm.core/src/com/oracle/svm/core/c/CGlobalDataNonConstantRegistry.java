@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.core.c;
 
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.util.ImageHeapMap;
 
 /*
  * The following class is a helper registry, that contains only CGlobalDataInfo for
@@ -40,11 +42,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class CGlobalDataNonConstantRegistry {
 
-    private final EconomicMap<CGlobalDataImpl<?>, CGlobalDataInfo> cGlobalDataInfos = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<CGlobalDataImpl<?>, CGlobalDataInfo> cGlobalDataInfos = ImageHeapMap.create(Equivalence.IDENTITY);
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Lock lock = new ReentrantLock();
 
+    /**
+     * Invoked at runtime via com.oracle.svm.hosted.c.CGlobalDataFeature#getCGlobalDataInfoMethod.
+     */
     public CGlobalDataInfo getCGlobalDataInfo(CGlobalDataImpl<?> cGlobalData) {
         return cGlobalDataInfos.get(cGlobalData);
     }

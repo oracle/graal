@@ -121,8 +121,8 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.getIterator = HostToGuestRootNode.createTarget(GetIteratorNodeGen.create(this));
-            this.apply = HostToGuestRootNode.createTarget(new Apply(this));
+            this.getIterator = GetIteratorNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
             this.iteratorType = new ParameterizedIteratorType(valueType);
         }
 

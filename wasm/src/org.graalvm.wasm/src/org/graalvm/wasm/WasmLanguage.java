@@ -44,11 +44,9 @@ import java.io.IOException;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -81,14 +79,14 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         isFirst = false;
         final Source source = request.getSource();
         final byte[] data = source.getBytes().toByteArray();
-        final WasmModule module = WasmContext.readModule(moduleName, data, null, source);
+        final WasmModule module = context.readModule(moduleName, data, null, source);
         final WasmInstance instance = context.readInstance(module);
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public WasmInstance execute(VirtualFrame frame) {
                 return instance;
             }
-        });
+        }.getCallTarget();
     }
 
     @Override
@@ -106,9 +104,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         super.finalizeContext(context);
         for (int i = 0; i < context.memories().count(); ++i) {
             final WasmMemory memory = context.memories().memory(i);
-            if (memory instanceof UnsafeWasmMemory) {
-                ((UnsafeWasmMemory) memory).free();
-            }
+            memory.close();
         }
         try {
             context.fdManager().close();

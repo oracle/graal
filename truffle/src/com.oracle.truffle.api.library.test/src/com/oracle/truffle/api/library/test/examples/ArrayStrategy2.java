@@ -45,13 +45,12 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ArgumentNode;
-import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExampleRootNode;
+import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy2Factory.ArrayReadNodeGen;
 
 /**
@@ -118,7 +117,7 @@ public class ArrayStrategy2 {
     @Test
     public void runExample() {
         ArrayReadNode read = ArrayReadNodeGen.create(new ArgumentNode(0), new ArgumentNode(1));
-        CallTarget target = Truffle.getRuntime().createCallTarget(new ExampleRootNode(read));
+        CallTarget target = new ExampleRootNode(read).getCallTarget();
 
         assertEquals(3, target.call(new SequenceArray(1, 2, 3), 1));
         assertEquals(0, target.call(new BufferArray(2), 1));

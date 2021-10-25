@@ -83,8 +83,7 @@ public abstract class MHLinkToNode extends MethodHandleIntrinsicNode {
         if (!resolutionSeed.getAssumption().isValid()) {
             if (resolutionSeed.getMethod().isRemovedByRedefition()) {
                 Klass receiverKlass = hasReceiver ? ((StaticObject) basicArgs[0]).getKlass() : resolutionSeed.getMethod().getDeclaringKlass();
-                resolutionSeed = resolutionSeed.getMethod().getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed.getMethod(), receiverKlass,
-                                hasReceiver ? ((StaticObject) basicArgs[0]) : null).getMethodVersion();
+                resolutionSeed = resolutionSeed.getMethod().getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed.getMethod(), receiverKlass).getMethodVersion();
             }
         }
 

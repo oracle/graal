@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.thread;
 
+import com.oracle.svm.core.posix.headers.Sched;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -74,6 +75,17 @@ public final class PosixVMThreads extends VMThreads {
         ts.set_tv_sec(milliseconds / TimeUtils.millisPerSecond);
         ts.set_tv_nsec((milliseconds % TimeUtils.millisPerSecond) * TimeUtils.nanosPerMilli);
         Time.NoTransitions.nanosleep(ts, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void yield() {
+        Sched.NoTransitions.sched_yield();
+    }
+
+    @Override
+    public boolean supportsPatientSafepoints() {
+        return true;
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostTestNodeFactory;
+import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostViaMethodOverrideNodeFactory;
 import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostWithNodeInfoNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -84,6 +85,29 @@ public class NodeCostTest {
         @Specialization(replaces = {"costInt", "costBool"})
         Object cost(Object left) {
             return left;
+        }
+
+    }
+
+    @Test
+    public void testNodeCostViaMethodOverride() {
+        TestRootNode<CostViaMethodOverrideNode> node = TestHelper.createRoot(CostViaMethodOverrideNodeFactory.getInstance());
+        assertEquals(NodeCost.NONE, node.getNode().getCost());
+        assertEquals(21, executeWith(node, 21));
+        assertEquals(NodeCost.NONE, node.getNode().getCost());
+    }
+
+    @NodeChild
+    abstract static class CostViaMethodOverrideNode extends ValueNode {
+
+        @Specialization
+        int costInt(int left) {
+            return left;
+        }
+
+        @Override
+        public final NodeCost getCost() {
+            return NodeCost.NONE;
         }
 
     }

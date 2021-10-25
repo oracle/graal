@@ -19,7 +19,9 @@ Access to the static fields that were initialized at build time is transparent t
 Specifying class initialization policies can be complicated due to the following constraints that come from class initialization semantics:
 
 * When a class is initialized, all super classes and super interfaces with default methods must also be initialized.
-Interfaces without default methods, however, are not initialized. To describe this, a short-term "relevant supertype" is used furhter, and a relevant subtype for subtypes of classes and interfaces with default methods.
+Interfaces without default methods, however, are not initialized.
+To describe this, a short-term "relevant supertype" is used furhter, and a relevant subtype for subtypes of classes and interfaces with default methods.
+
 * Relevant supertypes of types initialized at build time must also be initialized at build time.
 * Relevant subtypes of types initialized at run time must also be initialized at run time.
 * No instances classes that are initialized at run time must be present in the image.
@@ -31,7 +33,8 @@ To enjoy the complete out-of-the-box experience of Native Image and still get th
 * [Explicitly Specifying Class Initialization](#explicitly-specifying-class-initialization)
 
 To track which classes were initialized and why, one can use the flag `-H:+PrintClassInitialization`.
-This flag greatly helps to configure the image build to work as intended. The goal is to have as many classes as possible initialized at build time, yet keep the correct semantics of the program.
+This flag greatly helps to configure the image build to work as intended.
+The goal is to have as many classes as possible initialized at build time, yet keep the correct semantics of the program.
 
 ## Build-Time Initialization of Native Image Runtime
 

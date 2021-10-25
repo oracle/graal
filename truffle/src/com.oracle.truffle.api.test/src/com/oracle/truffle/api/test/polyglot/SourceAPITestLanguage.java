@@ -43,7 +43,6 @@ package com.oracle.truffle.api.test.polyglot;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.SourceAPITestLanguage.LanguageContext;
@@ -81,7 +80,7 @@ public class SourceAPITestLanguage extends TruffleLanguage<LanguageContext> {
         if (result == null) {
             result = "null result";
         }
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
+        return RootNode.createConstantNode(result).getCallTarget();
     }
 
     @Override

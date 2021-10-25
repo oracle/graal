@@ -89,6 +89,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -120,7 +121,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
@@ -735,7 +735,7 @@ public final class GraalFeature implements Feature {
                 InliningUtil.nonNullReceiver(invoke);
             }
             FixedGuardNode guard = new FixedGuardNode(LogicConstantNode.forBoolean(true, node.graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true);
-            node.graph.addBeforeFixed(invoke.asNode(), node.graph.add(guard));
+            node.graph.addBeforeFixed(invoke.asFixedNode(), node.graph.add(guard));
         }
     }
 

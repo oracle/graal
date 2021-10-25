@@ -293,6 +293,26 @@ import org.graalvm.polyglot.proxy.Proxy;
  * currently executing code. If the context is currently executing some code, a different thread may
  * kill the running execution and close the context using {@link #close(boolean)}.
  *
+ * <h3>Context Exit</h3>
+ *
+ * A context is exited naturally by calling the {@link #close} method. A context may also be exited
+ * at the guest application request. There are two ways a guest language may exit.
+ * <ul>
+ * <li>Soft exit. A guest language throws a special exception that causes the embedder thread to
+ * eventually throw a {@link PolyglotException} with {@link PolyglotException#isExit()} returning
+ * <code>true</code> and {@link PolyglotException#getExitStatus()} returning the exit status code
+ * specified by the guest application. The special exception does not influence other threads and
+ * does not trigger context close on its own. Closing the context is up to the embedder.
+ * <li>Hard exit. A guest language uses a builtin command that unwinds all context threads and
+ * closes the context by force. Embedder threads also throw a {@link PolyglotException} with
+ * {@link PolyglotException#isExit()} returning <code>true</code> and
+ * {@link PolyglotException#getExitStatus()} returning the exit status code specified by the guest
+ * application. However, the context is closed automatically. The hard exit can be customized using
+ * {@link Builder#useSystemExit(boolean)}. If <code>true</code>, the context threads are unwound by
+ * calling {@link System#exit(int)} with the exit status parameter specified by the guest
+ * application. This operation terminates the whole host application.
+ * </ul>
+ *
  * <h3>Pre-Initialization</h3>
  *
  * The context pre-initialization can be used to perform expensive builtin creation in the time of
@@ -376,7 +396,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return dispatch.eval(receiver, source.getLanguage(), source.receiver);
+        return dispatch.eval(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -457,7 +477,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return dispatch.parse(receiver, source.getLanguage(), source.receiver);
+        return dispatch.parse(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -1024,6 +1044,7 @@ public final class Context implements AutoCloseable {
         private ZoneId zone;
         private Path currentWorkingDirectory;
         private ClassLoader hostClassLoader;
+        private boolean useSystemExit;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1685,6 +1706,18 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Specifies whether {@link System#exit(int)} may be used to improve efficiency of stack
+         * unwinding for context exit requested by the guest application.
+         *
+         * @since 22.0
+         * @see Context
+         */
+        public Builder useSystemExit(boolean enabled) {
+            this.useSystemExit = enabled;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -1796,7 +1829,7 @@ public final class Context implements AutoCloseable {
                             io, hostClassLoading, experimentalOptions,
                             localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing);
+                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }
 

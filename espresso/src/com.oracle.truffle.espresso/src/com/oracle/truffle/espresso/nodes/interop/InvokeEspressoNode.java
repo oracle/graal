@@ -49,8 +49,7 @@ public abstract class InvokeEspressoNode extends Node {
             // OK, we know it's a removed method then
             resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
                             method,
-                            method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(),
-                            (StaticObject) receiver).getMethodVersion();
+                            method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass()).getMethodVersion();
         }
         Object result = executeMethod(resolutionSeed, receiver, arguments);
         /*

@@ -41,13 +41,10 @@
 package com.oracle.truffle.polyglot;
 
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
@@ -61,10 +58,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -72,111 +65,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
-    private final PolyglotImpl engineImpl;
 
     PolyglotManagementDispatch(PolyglotImpl engineImpl) {
         super(engineImpl);
-        this.engineImpl = engineImpl;
     }
 
     // implementation for org.graalvm.polyglot.management.ExecutionListener
-
-    @Override
-    public Object attachExecutionListener(Object engineReceiver, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
-                    boolean roots,
-                    Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
-        PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
-        Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
-
-        List<Class<? extends Tag>> tags = new ArrayList<>();
-        if (expressions) {
-            tags.add(StandardTags.ExpressionTag.class);
-        }
-        if (statements) {
-            tags.add(StandardTags.StatementTag.class);
-        }
-        if (roots) {
-            tags.add(StandardTags.RootTag.class);
-        }
-
-        if (tags.isEmpty()) {
-            throw new IllegalArgumentException("No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
-        }
-        if (onReturn == null && onEnter == null) {
-            throw new IllegalArgumentException("At least one event consumer must be provided for onEnter or onReturn.");
-        }
-
-        SourceSectionFilter.Builder filterBuilder = SourceSectionFilter.newBuilder().tagIs(tags.toArray(new Class<?>[0]));
-        filterBuilder.includeInternal(false);
-
-        ListenerImpl config = new ListenerImpl(engine, onEnter, onReturn, collectInputValues, collectReturnValues, collectExceptions);
-
-        filterBuilder.sourceIs(new SourcePredicate() {
-            public boolean test(com.oracle.truffle.api.source.Source s) {
-                String language = s.getLanguage();
-                if (language == null) {
-                    return false;
-                } else if (!engine.idToLanguage.containsKey(language)) {
-                    return false;
-                } else if (sourceFilter != null) {
-                    try {
-                        return sourceFilter.test(PolyglotImpl.getOrCreatePolyglotSource(engineImpl, s));
-                    } catch (Throwable e) {
-                        if (config.closing) {
-                            // configuration is closing ignore errors.
-                            return false;
-                        }
-                        throw engine.host.toHostException(null, e);
-                    }
-                } else {
-                    return true;
-                }
-            }
-        });
-
-        if (rootFilter != null) {
-            filterBuilder.rootNameIs(new Predicate<String>() {
-                public boolean test(String s) {
-                    try {
-                        return rootFilter.test(s);
-                    } catch (Throwable e) {
-                        if (config.closing) {
-                            // configuration is closing ignore errors.
-                            return false;
-                        }
-                        throw engine.host.toHostException(null, e);
-                    }
-                }
-            });
-        }
-
-        SourceSectionFilter filter = filterBuilder.build();
-        EventBinding<?> binding;
-        try {
-            boolean mayNeedInputValues = config.collectInputValues && config.onReturn != null;
-            boolean mayNeedReturnValue = config.collectReturnValues && config.onReturn != null;
-            boolean mayNeedExceptions = config.collectExceptions;
-
-            if (mayNeedInputValues || mayNeedReturnValue || mayNeedExceptions) {
-                binding = instrumenter.attachExecutionEventFactory(filter, mayNeedInputValues ? filter : null, new ExecutionEventNodeFactory() {
-                    public ExecutionEventNode create(EventContext context) {
-                        return new ProfilingNode(config, context);
-                    }
-                });
-            } else {
-                // fast path no collection of additional profiles
-                binding = instrumenter.attachExecutionEventFactory(filter, null, new ExecutionEventNodeFactory() {
-                    public ExecutionEventNode create(EventContext context) {
-                        return new DefaultNode(config, context);
-                    }
-                });
-            }
-        } catch (Throwable t) {
-            throw wrapException(engine, t);
-        }
-        config.binding = binding;
-        return config;
-    }
 
     @Override
     public void closeExecutionListener(Object impl) {
@@ -258,6 +152,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
     static class ListenerImpl {
 
+        final AbstractManagementDispatch managementDispatch;
         final PolyglotEngineImpl engine;
         final Consumer<ExecutionEvent> onEnter;
         final Consumer<ExecutionEvent> onReturn;
@@ -269,11 +164,12 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         volatile EventBinding<?> binding;
         volatile boolean closing;
 
-        ListenerImpl(PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
+        ListenerImpl(AbstractManagementDispatch managementDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
                         Consumer<ExecutionEvent> onReturn,
                         boolean collectInputValues,
                         boolean collectReturnValues,
                         boolean collectExceptions) {
+            this.managementDispatch = managementDispatch;
             this.engine = engine;
             this.onEnter = onEnter;
             this.onReturn = onReturn;
@@ -479,7 +375,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
             PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
-            config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
+            config.onReturn.accept(config.management.newExecutionEvent(config.managementDispatch, new DynamicEvent(this, inputValues, null, ex)));
         }
 
     }
@@ -525,7 +421,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
             this.config = config;
             this.context = context;
             this.location = PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
-            this.cachedEvent = config.engine.impl.getManagement().newExecutionEvent(this);
+            this.cachedEvent = config.management.newExecutionEvent(config.managementDispatch, this);
         }
 
         public String getRootName() {
@@ -574,7 +470,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeReturnAllocate(List<Value> inputValues, Value returnValue) {
-            config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, returnValue, null)));
+            config.onReturn.accept(config.management.newExecutionEvent(config.managementDispatch, new DynamicEvent(this, inputValues, returnValue, null)));
         }
 
         public final SourceSection getLocation() {

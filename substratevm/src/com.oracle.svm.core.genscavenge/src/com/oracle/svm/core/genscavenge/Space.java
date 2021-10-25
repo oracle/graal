@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -172,25 +173,28 @@ public final class Space {
 
     /**
      * Allocate memory from an AlignedHeapChunk in this Space.
-     *
-     * This is "slow-path" memory allocation.
      */
+    @AlwaysInline("GC performance")
     private Pointer allocateMemory(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
-        /* First try allocating in the last chunk. */
+        /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
         if (oldChunk.isNonNull()) {
             result = AlignedHeapChunk.allocateMemory(oldChunk, objectSize);
         }
-        /* If oldChunk did not provide, try allocating a new chunk for the requested memory. */
-        if (result.isNull()) {
-            AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
-            if (newChunk.isNonNull()) {
-                /* Allocate the Object within the new chunk. */
-                result = AlignedHeapChunk.allocateMemory(newChunk, objectSize);
-            }
+        if (result.isNonNull()) {
+            return result;
         }
-        return result;
+        /* Slow-path: try allocating a new chunk for the requested memory. */
+        return allocateInNewChunk(objectSize);
+    }
+
+    private Pointer allocateInNewChunk(UnsignedWord objectSize) {
+        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
+        if (newChunk.isNonNull()) {
+            return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
+        }
+        return WordFactory.nullPointer();
     }
 
     public void releaseChunks(ChunkReleaser chunkReleaser) {
@@ -352,6 +356,7 @@ public final class Space {
     }
 
     /** Promote an aligned Object to this Space. */
+    @AlwaysInline("GC performance")
     Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
@@ -363,11 +368,12 @@ public final class Space {
         return copy;
     }
 
+    @AlwaysInline("GC performance")
     private Object copyAlignedObject(Object originalObj) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
 
-        UnsignedWord size = LayoutEncoding.getSizeFromObject(originalObj);
+        UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(originalObj);
         Pointer copyMemory = allocateMemory(size);
         if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
             return null;

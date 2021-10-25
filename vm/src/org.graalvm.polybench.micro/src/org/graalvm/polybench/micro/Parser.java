@@ -25,7 +25,6 @@
 package org.graalvm.polybench.micro;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.source.Source;
 import org.graalvm.polybench.micro.expr.EvalExpression;
 import org.graalvm.polybench.micro.expr.EvalExpressionNodeGen;
@@ -85,7 +84,7 @@ public final class Parser {
         Microbench spec = parseMicrobenchStatement();
 
         SetupRootNode setupNode = SetupRootNodeGen.create(language, spec, preparedState);
-        return Truffle.getRuntime().createCallTarget(setupNode);
+        return setupNode.getCallTarget();
     }
 
     void parseDeclarations() throws IOException {

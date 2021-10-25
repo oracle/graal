@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
+
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -53,7 +55,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     private int shrinkFactor;
 
     ProportionateSpacesPolicy() {
-        super(MAX_TENURING_THRESHOLD);
+        super(NEW_RATIO, MAX_TENURING_THRESHOLD);
     }
 
     @Override
@@ -65,6 +67,11 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
         guaranteeSizeParametersInitialized();
 
+        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
+            // Note that for non-ParallelGC, HotSpot resets the default of ScavengeBeforeFullGC to
+            // false, see GCArguments::initialize.
+            return false;
+        }
         if (followingIncrementalCollection && oldSizeExceededInPreviousCollection) {
             /*
              * We promoted objects to the old generation beyond its current capacity to avoid a
@@ -78,7 +85,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
-    public void onCollectionBegin(boolean completeCollection) {
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
     }
 
     @Override

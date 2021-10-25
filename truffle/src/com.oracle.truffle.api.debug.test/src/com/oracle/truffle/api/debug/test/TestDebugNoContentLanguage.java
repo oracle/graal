@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -90,7 +89,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
             }
         }
         varLocation = sourceInfo.copySection(source.createSection(varStartPos, source.getLength() - varStartPos));
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, source, sourceInfo));
+        return new TestRootNode(languageInstance, source, sourceInfo).getCallTarget();
     }
 
     @Override

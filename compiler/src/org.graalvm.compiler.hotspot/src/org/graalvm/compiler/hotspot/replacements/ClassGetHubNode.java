@@ -128,8 +128,12 @@ public final class ClassGetHubNode extends FloatingNode implements Lowerable, Ca
     @NodeIntrinsic
     public static native KlassPointer readClass(Class<?> clazzNonNull);
 
+    public static KlassPointer piCastNonNull(KlassPointer object, GuardingNode anchor) {
+        return intrinsifiedPiNode(object, anchor, PiNode.INTRINSIFY_OP_NON_NULL);
+    }
+
     @NodeIntrinsic(PiNode.class)
-    public static native KlassPointer piCastNonNull(Object object, GuardingNode anchor);
+    private static native KlassPointer intrinsifiedPiNode(KlassPointer object, GuardingNode anchor, @ConstantNodeParameter int intrinsifyOp);
 
     @Override
     public ValueNode getValue() {

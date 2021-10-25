@@ -56,7 +56,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -212,7 +211,7 @@ public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 String code = source.getCharacters().toString();
-                CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                CallTarget target = new RootNode(languageInstance) {
 
                     @Node.Children private CustomMaterializeNode[] children = parseNodes(code, source);
 
@@ -231,7 +230,7 @@ public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest
                         return source.createSection(1);
                     }
 
-                });
+                }.getCallTarget();
                 targets.add(target);
                 return target;
             }

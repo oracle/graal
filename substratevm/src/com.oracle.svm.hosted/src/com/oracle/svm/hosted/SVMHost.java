@@ -43,10 +43,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiConsumer;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -69,6 +67,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -80,6 +79,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -103,7 +103,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -125,7 +124,6 @@ public class SVMHost implements HostVM {
     private final Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes;
     private final Platform platform;
     private final OptionValues options;
-    private final ForkJoinPool executor;
     private final ClassLoader classLoader;
     private final ClassInitializationSupport classInitializationSupport;
     private final HostedStringDeduplication stringTable;
@@ -149,10 +147,9 @@ public class SVMHost implements HostVM {
 
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
-    public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
+    public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         this.options = options;
-        this.executor = executor;
         this.classLoader = classLoader;
         this.classInitializationSupport = classInitializationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
@@ -209,11 +206,6 @@ public class SVMHost implements HostVM {
     @Override
     public OptionValues options() {
         return options;
-    }
-
-    @Override
-    public ForkJoinPool executor() {
-        return executor;
     }
 
     @Override
@@ -399,9 +391,6 @@ public class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        /* JDK 15 added support for Hidden Classes. Record if this javaClass is hidden. */
-        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
-
         Class<?> nestHost = null;
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
@@ -411,6 +400,7 @@ public class SVMHost implements HostVM {
             }
         }
 
+        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
@@ -746,6 +736,12 @@ public class SVMHost implements HostVM {
     public boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
             Package p = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(universe, p)) {
+                return false;
+            }
+        }
+        if (element instanceof Class) {
+            Package p = ((Class<?>) element).getPackage();
             if (p != null && !platformSupported(universe, p)) {
                 return false;
             }

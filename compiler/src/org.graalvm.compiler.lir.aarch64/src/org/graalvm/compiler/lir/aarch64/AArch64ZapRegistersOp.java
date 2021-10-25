@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -60,7 +61,8 @@ public final class AArch64ZapRegistersOp extends AArch64LIRInstruction {
         for (int i = 0; i < zappedRegisters.length; i++) {
             Register reg = zappedRegisters[i];
             if (reg != null) {
-                AArch64Move.const2reg(crb, masm, reg, zapValues[i]);
+                AArch64Kind moveKind = (AArch64Kind) crb.target.arch.getPlatformKind(zapValues[i].getJavaKind());
+                AArch64Move.const2reg(moveKind, crb, masm, reg, zapValues[i]);
             }
         }
     }

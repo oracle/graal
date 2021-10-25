@@ -296,7 +296,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             registerServiceReachabilityHandlers(access);
         }
 
-        if (JavaVersionUtil.JAVA_SPEC < 16) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             // https://bugs.openjdk.java.net/browse/JDK-8235710
             access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
                             method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
@@ -314,8 +314,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         if (isWindows()) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
             // statically linking sunmscapi conflicts with sunEC
-            // after the removal of sunEC in jdk 16, we can statically link sunmscapi
-            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            // after the removal of sunEC in jdk 17, we can statically link sunmscapi
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 access.registerReachabilityHandler(SecurityServicesFeature::linkSunMSCAPI, clazz(access, "sun.security.mscapi.SunMSCAPI"));
                 /* Resolve calls to sun_security_mscapi* as builtIn. */
                 PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
@@ -736,10 +736,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     @SuppressWarnings("unchecked")
     private Function<Object, Object> constructVerificationCacheCleaner() {
         /*
-         * Before JDK 16, the verification cache was a Provider -> Verification result
+         * For JDK 8 and JDK 11, the verification cache is a Provider -> Verification result
          * IdentityHashMap.
          */
-        if (JavaVersionUtil.JAVA_SPEC <= 15) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return obj -> {
                 Map<Provider, Object> original = (Map<Provider, Object>) obj;
                 Map<Provider, Object> verificationResults = new IdentityHashMap<>(original);
@@ -750,7 +750,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             };
         }
         /*
-         * For JDK 16 and later, the verification cache is an IdentityWrapper -> Verification result
+         * For JDK 17 and later, the verification cache is an IdentityWrapper -> Verification result
          * ConcurrentHashMap. The IdentityWrapper contains the actual provider in the 'obj' field.
          */
         Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");

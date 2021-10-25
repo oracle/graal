@@ -207,7 +207,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         stackMapDumper.close();
 
         HostedMethod firstMethod = (HostedMethod) getFirstCompilation().getMethods()[0];
-        buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));
+        buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));
     }
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {

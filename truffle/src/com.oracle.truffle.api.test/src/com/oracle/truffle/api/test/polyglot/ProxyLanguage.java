@@ -180,6 +180,15 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
+    protected void exitContext(LanguageContext context, ExitMode exitMode, int exitCode) {
+        if (wrapper) {
+            delegate.exitContext(context, exitMode, exitCode);
+        } else {
+            super.exitContext(context, exitMode, exitCode);
+        }
+    }
+
+    @Override
     protected void disposeContext(LanguageContext context) {
         if (wrapper) {
             delegate.languageInstance = this;

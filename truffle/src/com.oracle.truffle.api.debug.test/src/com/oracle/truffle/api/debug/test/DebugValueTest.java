@@ -52,14 +52,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.collections.Pair;
-
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -318,7 +316,7 @@ public class DebugValueTest extends AbstractDebugTest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance));
+                return new TestRootNode(languageInstance).getCallTarget();
             }
 
             final class TestRootNode extends RootNode {

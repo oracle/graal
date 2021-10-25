@@ -46,13 +46,13 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;

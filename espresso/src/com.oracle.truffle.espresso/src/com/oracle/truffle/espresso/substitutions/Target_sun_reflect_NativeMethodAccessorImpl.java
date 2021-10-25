@@ -254,8 +254,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         if (reflectedMethod.isRemovedByRedefition()) {
             reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
                             reflectedMethod,
-                            reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass(),
-                            receiver);
+                            reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+
         }
 
         Method method;      // actual method to invoke

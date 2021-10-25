@@ -233,15 +233,6 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
-@mx.command(_suite.name, "llimul")
-def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
-    """uses Sulong to execute a LLVM IR file"""
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    dists = []
-    if "tools" in (s.name for s in mx.suites()):
-        dists.append('CHROMEINSPECTOR')
-    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
-
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None):
     """run lli via the current GraalVM"""
@@ -314,8 +305,12 @@ if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
 
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
-
+# Legacy bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
+# Polybench bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
+# LLVM unit tests suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 
 _toolchains = {}
 
@@ -498,28 +493,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=[],
-            language='llvm',
-        ),
-    ],
-    installable=False,
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='LLVM Multi-Context Runtime Launcher',
-    short_name='llmulrl',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    truffle_jars=[],
-    support_distributions=[],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:llimul>',
-            jar_distributions=['sulong:SULONG_LAUNCHER'],
-            main_class='com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher',
             build_args=[],
             language='llvm',
         ),

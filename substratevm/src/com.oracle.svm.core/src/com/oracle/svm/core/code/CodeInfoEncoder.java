@@ -116,7 +116,7 @@ public class CodeInfoEncoder {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
             this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            if (FrameInfoDecoder.encodeDebugNames() || FrameInfoDecoder.encodeSourceReferences()) {
+            if (FrameInfoDecoder.encodeSourceReferences()) {
                 this.names = FrequencyEncoder.createEqualityEncoder();
             } else {
                 this.names = null;
@@ -127,28 +127,22 @@ public class CodeInfoEncoder {
             JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
             Class<?>[] sourceClassesArray = null;
             String[] sourceMethodNamesArray = null;
-            String[] namesArray = null;
-            final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
-            if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
+            if (FrameInfoDecoder.encodeSourceReferences()) {
                 sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
                 sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
             }
-            if (encodeDebugNames) {
-                namesArray = names.encodeAll(new String[names.getLength()]);
-            }
-            install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, namesArray, adjuster);
+            install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, adjuster);
         }
 
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
         private static void install(CodeInfo target, JavaConstant[] objectConstantsArray, Class<?>[] sourceClassesArray,
-                        String[] sourceMethodNamesArray, String[] namesArray, ReferenceAdjuster adjuster) {
+                        String[] sourceMethodNamesArray, ReferenceAdjuster adjuster) {
 
             NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray);
             NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? adjuster.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
             NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? adjuster.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> frameInfoNames = (namesArray != null) ? adjuster.copyOfObjectArray(namesArray) : NonmovableArrays.nullArray();
 
-            CodeInfoAccess.setEncodings(target, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames);
+            CodeInfoAccess.setEncodings(target, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames);
         }
     }
 
@@ -334,7 +328,7 @@ public class CodeInfoEncoder {
             writeSizeEncoding(encodingBuffer, data, entryFlags);
             writeExceptionOffset(encodingBuffer, data, entryFlags);
             writeReferenceMapIndex(encodingBuffer, data, entryFlags);
-            writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
+            writeEncodedFrameInfo(encodingBuffer, data, entryFlags);
         }
 
         codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
@@ -439,7 +433,7 @@ public class CodeInfoEncoder {
     private static int flagsForDeoptFrameInfo(IPData data) {
         if (data.frameData == null) {
             return CodeInfoDecoder.FI_NO_DEOPT;
-        } else if (TypeConversion.isS4(data.frameData.indexInEncodings)) {
+        } else if (TypeConversion.isS4(data.frameData.encodedFrameInfoIndex)) {
             if (data.frameData.frame.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
             } else {
@@ -450,11 +444,11 @@ public class CodeInfoEncoder {
         }
     }
 
-    private static void writeDeoptFrameInfo(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
+    private static void writeEncodedFrameInfo(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
         switch (CodeInfoDecoder.extractFI(entryFlags)) {
             case CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4:
             case CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4:
-                writeBuffer.putS4(data.frameData.indexInEncodings);
+                writeBuffer.putS4(data.frameData.encodedFrameInfoIndex);
                 break;
         }
     }
@@ -519,7 +513,7 @@ class CodeInfoVerifier {
 
     private static void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         assert (expectedFrame == null) == (actualFrame == null);
-        if (expectedFrame == null || !actualFrame.needLocalValues) {
+        if (expectedFrame == null || !actualFrame.hasLocalValueInfo()) {
             return;
         }
         verifyFrame(compilation, expectedFrame.caller(), actualFrame.getCaller(), visitedVirtualObjects);

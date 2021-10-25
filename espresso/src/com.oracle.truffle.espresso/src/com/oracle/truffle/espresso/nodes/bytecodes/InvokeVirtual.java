@@ -161,7 +161,7 @@ public abstract class InvokeVirtual extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
+            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
         }
         /*
          * Surprisingly, INVOKEVIRTUAL can try to invoke interface methods, even non-default ones.

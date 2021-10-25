@@ -56,14 +56,14 @@ import java.util.stream.Collectors;
 /**
  * This feature:
  * <ul>
- *      <li> synthesizes the runtime boot module layer </li>
- *      <li> ensures that fields/methods from the {@link ClassLoader} class are reachable in order to
- *      make native methods of the {@link Module} class work </li>
+ * <li>synthesizes the runtime boot module layer</li>
+ * <li>ensures that fields/methods from the {@link ClassLoader} class are reachable in order to make
+ * native methods of the {@link Module} class work</li>
  * </ul>
  * <p>
- * This feature synthesizes the runtime boot module layer by using type reachability information.
- * If a type is reachable, its module is also reachable and therefore should be included in the
- * runtime boot module layer.
+ * This feature synthesizes the runtime boot module layer by using type reachability information. If
+ * a type is reachable, its module is also reachable and therefore should be included in the runtime
+ * boot module layer.
  * </p>
  * <p>
  * The configuration for the runtime boot module layer is resolved using the module reachability
@@ -73,8 +73,8 @@ import java.util.stream.Collectors;
  * We are purposefully avoiding public API for module layer creation, such as
  * {@link ModuleLayer#defineModulesWithOneLoader(Configuration, ClassLoader)}, because as a side
  * effect this will create a new class loader. Instead, we use a private constructor to construct
- * the {@link ModuleLayer} instance, which we then patch using the module reachability data
- * provided to us by the analysis.
+ * the {@link ModuleLayer} instance, which we then patch using the module reachability data provided
+ * to us by the analysis.
  * </p>
  * <p>
  * Because the result of this feature is dependant on the analysis results, and because this feature
@@ -108,8 +108,8 @@ public final class ModuleLayerFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         Map<String, Module> baseModules = ModuleLayer.boot().modules()
-                .stream()
-                .collect(Collectors.toMap(Module::getName, m -> m));
+                        .stream()
+                        .collect(Collectors.toMap(Module::getName, m -> m));
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
@@ -120,12 +120,12 @@ public final class ModuleLayerFeature implements Feature {
         AnalysisUniverse universe = accessImpl.getUniverse();
 
         Map<String, Module> reachableModules = universe.getTypes()
-                .stream()
-                .filter(t -> t.isReachable() && !t.isArray())
-                .map(t -> t.getJavaClass().getModule())
-                .distinct()
-                .filter(m -> m.isNamed() && !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
-                .collect(Collectors.toMap(Module::getName, m -> m));
+                        .stream()
+                        .filter(t -> t.isReachable() && !t.isArray())
+                        .map(t -> t.getJavaClass().getModule())
+                        .distinct()
+                        .filter(m -> m.isNamed() && !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
+                        .collect(Collectors.toMap(Module::getName, m -> m));
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, reachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -144,7 +144,7 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Map<String, Module> reachableModules) {
+    private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Map<String, Module> reachableModules) {
         ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
         ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
         Set<String> roots = reachableModules.keySet();
@@ -164,25 +164,24 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-
     static class BootModuleLayerModuleFinder implements ModuleFinder {
 
         @Override
         public Optional<ModuleReference> find(String name) {
             return ModuleLayer.boot()
-                    .configuration()
-                    .findModule(name)
-                    .map(ResolvedModule::reference);
+                            .configuration()
+                            .findModule(name)
+                            .map(ResolvedModule::reference);
         }
 
         @Override
         public Set<ModuleReference> findAll() {
             return ModuleLayer.boot()
-                    .configuration()
-                    .modules()
-                    .stream()
-                    .map(ResolvedModule::reference)
-                    .collect(Collectors.toSet());
+                            .configuration()
+                            .modules()
+                            .stream()
+                            .map(ResolvedModule::reference)
+                            .collect(Collectors.toSet());
         }
     }
 }

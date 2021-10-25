@@ -99,6 +99,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
                 graph.addBeforeFixed(loadExceptionObject, thread);
                 ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
+                loadExceptionC.computeStateDuring(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());

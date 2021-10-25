@@ -603,13 +603,13 @@ public class NativeImageResourcePath implements Path {
         }
         for (byte c : path) {
             if (c == '.') {
-                return doGetResolved(this);
+                return getResolved(this);
             }
         }
         return path;
     }
 
-    private static byte[] doGetResolved(NativeImageResourcePath p) {
+    public static byte[] getResolved(NativeImageResourcePath p) {
         int nc = p.getNameCount();
         byte[] path = p.path;
         int[] offsets = p.offsets;

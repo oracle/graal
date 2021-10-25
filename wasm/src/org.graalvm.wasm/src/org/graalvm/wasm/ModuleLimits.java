@@ -87,7 +87,7 @@ public final class ModuleLimits {
         return Integer.compareUnsigned(a, b) < 0 ? a : b;
     }
 
-    static ModuleLimits DEFAULTS = new ModuleLimits(
+    static final ModuleLimits DEFAULTS = new ModuleLimits(
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,

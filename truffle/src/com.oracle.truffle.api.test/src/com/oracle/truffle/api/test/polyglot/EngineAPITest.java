@@ -262,7 +262,7 @@ public class EngineAPITest {
         Engine engine = Engine.create();
         String implName = engine.getImplementationName();
         assertEquals(Truffle.getRuntime().getName(), engine.getImplementationName());
-        String name = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0)).getClass().getSimpleName();
+        String name = RootNode.createConstantNode(0).getCallTarget().getClass().getSimpleName();
         if (name.equals("DefaultCallTarget")) {
             assertEquals(implName, "Interpreted");
         } else if (name.endsWith("OptimizedCallTarget")) {

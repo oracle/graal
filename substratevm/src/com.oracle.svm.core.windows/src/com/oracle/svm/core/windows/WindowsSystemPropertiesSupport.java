@@ -92,7 +92,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
     @Override
     protected String userHomeValue() {
         WinBase.LPHANDLE tokenHandle = StackValue.get(WinBase.LPHANDLE.class);
-        if (Process.OpenProcessToken(Process.GetCurrentProcess(), Process.TOKEN_QUERY(), tokenHandle) == 0) {
+        if (Process.NoTransitions.OpenProcessToken(Process.NoTransitions.GetCurrentProcess(), Process.TOKEN_QUERY(), tokenHandle) == 0) {
             return "C:\\"; // matches openjdk
         }
 

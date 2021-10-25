@@ -154,35 +154,26 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
     }
 
     @Override
-    public MachORelocationElement getOrCreateRelocationElement(boolean useImplicitAddend) {
-        return getOwner().getOrCreateRelocationElement(useImplicitAddend);
+    public MachORelocationElement getOrCreateRelocationElement(long addend) {
+        return getOwner().getOrCreateRelocationElement();
     }
 
     @Override
-    public void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        MachORelocationElement el = getOrCreateRelocationElement(useImplicitAddend);
+    public void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, long addend) {
+        MachORelocationElement el = getOrCreateRelocationElement(addend);
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
         sbb.pushSeek(offset);
         /*
          * NOTE: Mach-O does not support explicit addends, and inline addends are applied even
-         * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
-         * implicit one by updating our content.
+         * during dynamic linking.
          */
         int length = ObjectFile.RelocationKind.getRelocationSize(k);
-        long currentInlineAddendValue = sbb.readTruncatedLong(length);
-        long desiredInlineAddendValue;
-        if (explicitAddend != null) {
-            /*
-             * This assertion is conservatively disallowing double-addend (could
-             * "add currentValue to explicitAddend"), because that seems more likely to be a bug
-             * than a feature.
-             */
-            assert currentInlineAddendValue == 0;
-            desiredInlineAddendValue = explicitAddend;
-        } else {
-            desiredInlineAddendValue = currentInlineAddendValue;
-        }
+        /*
+         * The addend is passed as a method parameter. The initial implicit addend value within the
+         * instruction does not need to be read, as it is noise.
+         */
+        long desiredInlineAddendValue = addend;
 
         /*
          * One more complication: for PC-relative relocation, at least on x86-64, Mach-O linkers
@@ -212,7 +203,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
 
         // return ByteBuffer cursor to where it was
         sbb.pop();
-        RelocationInfo rec = new RelocationInfo(el, this, offset, length, k, symbolName, createAsLocalReloc);
+        MachORelocationInfo rec = new MachORelocationInfo(el, this, offset, length, k, symbolName, createAsLocalReloc);
         el.add(rec);
     }
 }

@@ -105,7 +105,7 @@ public final class ModuleUtil {
             Module actualModule = namedPackage.module;
             if (!actualModule.equals(module)) {
                 throw new IllegalArgumentException("Package " + pn + " found in module " + actualModule.getName() +
-                        ", not in module: " + module.getName());
+                                ", not in module: " + module.getName());
             }
         }
         if (!module.getPackages().contains(pn)) {
@@ -115,23 +115,23 @@ public final class ModuleUtil {
 
     public static List<String> getPackagesDefinedToLoader(ClassLoader loader) {
         return getDefinedModules().getOrDefault(loader, Set.of())
-                .stream()
-                .flatMap(m -> m.getPackages().stream())
-                .collect(Collectors.toUnmodifiableList());
+                        .stream()
+                        .flatMap(m -> m.getPackages().stream())
+                        .collect(Collectors.toUnmodifiableList());
     }
 
     public static Object getModuleContainingPackage(ClassLoader loader, String pn) {
         return getDefinedModules().getOrDefault(loader, Set.of())
-                .stream()
-                .filter(m -> m.getPackages().contains(pn))
-                .findFirst().orElse(null);
+                        .stream()
+                        .filter(m -> m.getPackages().contains(pn))
+                        .findFirst().orElse(null);
     }
 
     public static boolean bootLayerContainsModule(String name) {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> m.getName().equals(name));
     }
 
-    //Checkstyle: allow synchronization
+    // Checkstyle: allow synchronization
     public static void defineModule(Module module, boolean isOpen, List<String> pns) {
         if (Objects.isNull(module)) {
             throw new NullPointerException("Null module object");
@@ -178,7 +178,7 @@ public final class ModuleUtil {
 
             if (loader != ClassLoader.getPlatformClassLoader() && ModuleUtil.isPackageNameForbidden(pn)) {
                 throw new IllegalArgumentException("Class loader (instance of): " + loader.getClass().getName() +
-                        " tried to define prohibited package name: " + pn);
+                                " tried to define prohibited package name: " + pn);
             }
         }
 
@@ -202,11 +202,9 @@ public final class ModuleUtil {
         } else if (Objects.nonNull(definedPackage)) {
             Module moduleContainingDefinedPackage = SubstrateUtil.cast(ModuleUtil.getModuleContainingPackage(loader, definedPackage), Module.class);
             if (moduleContainingDefinedPackage.isNamed()) {
-                throw new IllegalStateException("Package " + definedPackage + " is already in another module, "
-                        + moduleContainingDefinedPackage.getName() + ", defined to the class loader");
+                throw new IllegalStateException("Package " + definedPackage + " is already in another module, " + moduleContainingDefinedPackage.getName() + ", defined to the class loader");
             } else {
-                throw new IllegalStateException("Package " + definedPackage
-                        + " is already in the unnamed module defined to the class loader");
+                throw new IllegalStateException("Package " + definedPackage + " is already in the unnamed module defined to the class loader");
             }
         }
 

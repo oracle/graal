@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -29,6 +30,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -226,7 +228,21 @@ public abstract class InstanceOf extends Node {
             this.superType = superType;
         }
 
-        @Specialization
+        protected LeafTypeAssumption getLeafAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType);
+        }
+
+        /**
+         * If {@code superType} is a leaf type, {@code maybeSubtype} is a subtype of
+         * {@code superType} iff it is equal to {@code superType}.
+         */
+        @Specialization(assumptions = "superTypeIsLeaf")
+        public boolean doLeaf(ObjectKlass maybeSubtype,
+                        @SuppressWarnings("unused") @Cached("getLeafAssumption().getAssumption()") Assumption superTypeIsLeaf) {
+            return superType == maybeSubtype;
+        }
+
+        @Specialization(replaces = "doLeaf")
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             return superType == maybeSubtype || superType.checkOrdinaryClassSubclassing(maybeSubtype);
         }

@@ -881,6 +881,7 @@ final class Target_java_lang_SecurityManager {
 }
 
 final class SecurityManagerHolder {
+    @SuppressWarnings("deprecation") // SecurityManager deprecated since 17.
     static final SecurityManager SECURITY_MANAGER = new SecurityManager();
 }
 

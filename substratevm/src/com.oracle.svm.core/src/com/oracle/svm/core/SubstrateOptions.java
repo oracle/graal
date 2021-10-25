@@ -125,12 +125,6 @@ public class SubstrateOptions {
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
-    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
-    public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
-
-    @Option(help = "Print extra help, if available, based on comma-separated option names. Pass * to show all options that contain extra help.")//
-    public static final OptionKey<String> PrintFlagsWithExtraHelp = new OptionKey<>(null);
-
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(2) {
         @Override
@@ -278,7 +272,7 @@ public class SubstrateOptions {
      * Object and array allocation options.
      */
     @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(3);
+    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(4);
 
     @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
@@ -288,6 +282,14 @@ public class SubstrateOptions {
 
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
+
+    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
+                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
+                    "Each Java thread has its own allocation point.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(192);
+
+    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
     /*
      * Isolate tear down options.
@@ -306,17 +308,6 @@ public class SubstrateOptions {
     public static final long getTearDownFailureNanos() {
         return TearDownFailureNanos.getValue().longValue();
     }
-
-    /*
-     * The default value is derived by taking the common value from HotSpot configs.
-     */
-    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
-                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
-                    "Each Java thread has its own allocation point.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(256);
-
-    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(16);
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
     public static final HostedOptionKey<Integer> MaxUnrolledObjectZeroingStores = new HostedOptionKey<>(8);
@@ -354,6 +345,9 @@ public class SubstrateOptions {
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
+    @Option(help = "Use compressed frame encoding for frames without local values.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
+
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
@@ -362,7 +356,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 9) {
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
                     /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                     GraalOptions.EmitStringSubstitutions.update(values, false);
                 }
@@ -620,4 +614,7 @@ public class SubstrateOptions {
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Limit method reflection metadata to configuration entries instead of including it for all reachable methods")//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
+
+    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
+    public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 }

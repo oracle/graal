@@ -233,9 +233,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class);
+    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class, "ThreadingSupportImpl.activeTimer");
 
-    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt("ThreadingSupportImpl.currentPauseDepth");
 
     private static final String enableSupportOption = SubstrateOptionsParser.commandArgument(SupportRecurringCallback, "+");
 

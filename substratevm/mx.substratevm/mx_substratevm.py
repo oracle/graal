@@ -45,6 +45,7 @@ import mx_compiler
 import mx_gate
 import mx_unittest
 import mx_sdk_vm
+import mx_sdk_vm_impl
 import mx_javamodules
 import mx_subst
 import mx_substratevm_benchmark  # pylint: disable=unused-import
@@ -115,16 +116,6 @@ def svmbuild_dir(suite=None):
     return join(suite.dir, 'svmbuild')
 
 
-def is_musl_gcc_wrapper_on_path():
-    mx.logv('Probing if musl-gcc exists on path.')
-    throwaway_capture = mx.LinesOutputCapture()
-    try:
-        ret_code = mx.run(['musl-gcc', '-v'], nonZeroIsFatal=False, out=throwaway_capture, err=throwaway_capture)
-        return ret_code == 0
-    except OSError as _:
-        return False
-
-
 def is_musl_supported():
     jdk = mx.get_jdk(tag='default')
     if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
@@ -176,6 +167,14 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
         primary_suite_dir = config.primary_suite_dir
     else:
         config_args = []
+        if not mx_sdk_vm_impl._jlink_libraries():
+            config_args += ['--no-jlinking']
+        native_images = mx_sdk_vm_impl._parse_cmd_arg('native_images')
+        if native_images:
+            config_args += ['--native-images=' + ','.join(native_images)]
+        components = mx_sdk_vm_impl._components_include_list()
+        if components:
+            config_args += ['--components=' + ','.join(c.name for c in components)]
         dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
         if dynamic_imports:
             config_args += ['--dynamicimports', ','.join(dynamic_imports)]
@@ -234,10 +233,7 @@ def vm_executable_path(executable, config=None):
 
 def run_musl_basic_tests():
     if is_musl_supported():
-        if is_musl_gcc_wrapper_on_path():
-            helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
-        else:
-            mx.abort('Attempted to run musl tests without a musl-gcc wrapper.')
+        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
 
 
 @contextmanager
@@ -434,7 +430,13 @@ def native_unittests_task():
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
-    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
+    if svm_java_compliance() == '17':
+        # The following tests fail with --builder-on-modulepath enabled (GR-34117)
+        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.jdk11.jfr.*')
+        if mx.is_windows():
+            mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
+
+    native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args)
 
 
 def javac_image_command(javac_path):
@@ -442,7 +444,7 @@ def javac_image_command(javac_path):
             join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False):
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, builder_on_modulepath=False):
     build_args = build_args or []
     javaProperties = {}
     for dist in suite.dists:
@@ -469,7 +471,8 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
-        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
+        macro_junit = '--macro:junit' + ('' if builder_on_modulepath else 'cp')
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
@@ -492,13 +495,14 @@ def unmask(args):
 
 def _native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--builder-on-modulepath']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
+    parser.add_argument('--builder-on-modulepath', help='perform image build with builder on module-path', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
 
@@ -519,7 +523,11 @@ def _native_unittest(native_image, cmdline_args):
             mx.log('warning: could not read blacklist: ' + blacklist)
 
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image)
+    builder_on_modulepath = pargs.builder_on_modulepath
+    if builder_on_modulepath and svm_java8():
+        mx.log('On Java 8, unittests cannot be built with imagebuilder on module-path. Reverting to imagebuilder on classpath.')
+        builder_on_modulepath = False
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, builder_on_modulepath)
 
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
@@ -761,6 +769,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:SVM',
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
+        'substratevm:NATIVE_IMAGE_BASE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
@@ -928,8 +937,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM'],
-    jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
+    jar_distributions=['substratevm:JUNIT_SUPPORT', 'mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
+    jlink=False,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='Native Image JUnit with image-builder on classpath',
+    short_name='njucp',
+    dir_name='junitcp',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['SubstrateVM'],
+    jar_distributions=['substratevm:JUNIT_SUPPORT', 'mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
+    support_distributions=['substratevm:NATIVE_IMAGE_JUNITCP_SUPPORT'],
     jlink=False,
 ))
 
@@ -1004,6 +1026,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         )
     ],
     jlink=False,
+    installable_id='native-image',
+    installable=True,
+    priority=10,
 ))
 
 
@@ -1541,7 +1566,5 @@ if is_musl_supported():
     doc_string = "Runs a musl based Hello World static native-image with custom build arguments."
     @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
     def musl_helloworld(args, config=None):
-        if not is_musl_gcc_wrapper_on_path():
-            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/StaticImages.md')
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')

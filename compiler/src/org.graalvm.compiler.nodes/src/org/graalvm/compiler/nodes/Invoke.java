@@ -65,6 +65,10 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
 
     void setNext(FixedNode x);
 
+    default boolean isAlive() {
+        return asFixedNode().isAlive();
+    }
+
     CallTargetNode callTarget();
 
     Node predecessor();

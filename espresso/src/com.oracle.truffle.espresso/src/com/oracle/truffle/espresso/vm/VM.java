@@ -128,6 +128,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
+import com.oracle.truffle.espresso.overlay.ReferenceSupport;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -138,14 +139,15 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
+import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -798,7 +800,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentThread();
         try {
-            Target_java_lang_Thread.fromRunnable(currentThread, meta, (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
+            meta.getThreadAccess().fromRunnable(currentThread, (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
@@ -814,7 +816,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         } catch (InterruptedException e) {
             profiler.profile(0);
-            Target_java_lang_Thread.setInterrupt(currentThread, false);
+            getThreadAccess().clearInterruptStatus(currentThread);
             throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
@@ -826,7 +828,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
             }
-            Target_java_lang_Thread.toRunnable(currentThread, meta, State.RUNNABLE);
+            meta.getThreadAccess().toRunnable(currentThread);
         }
     }
 
@@ -1517,8 +1519,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             return JNI_OK;
         }
         getLogger().fine(() -> {
-            Meta meta = getMeta();
-            String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+            String guestName = getThreadAccess().getThreadName(currentThread);
             return "DetachCurrentThread: " + guestName;
         });
         // HotSpot will wait forever if the current VM this thread was attached to has exited
@@ -1538,8 +1539,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (lastJavaMethod != null) {
             // this thread is executing
             getLogger().warning(() -> {
-                Meta meta = getMeta();
-                String guestName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                String guestName = getThreadAccess().getThreadName(currentThread);
                 return "DetachCurrentThread called while thread is still executing Java code (" + guestName + ")";
             });
             return JNI_ERR;
@@ -1553,12 +1553,12 @@ public final class VM extends NativeEnv implements ContextAccess {
                 meta.java_lang_Thread_dispatchUncaughtException.invokeDirect(currentThread, pendingException);
             }
 
-            Target_java_lang_Thread.terminate(currentThread, meta);
+            getThreadAccess().terminate(currentThread);
         } catch (EspressoException e) {
             try {
                 StaticObject ex = e.getExceptionObject();
                 String exception = ex.getKlass().getExternalName();
-                String threadName = Target_java_lang_Thread.getThreadName(meta, currentThread);
+                String threadName = getThreadAccess().getThreadName(currentThread);
                 context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
                 Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
                 printStackTrace.invokeDirect(ex);
@@ -1970,7 +1970,18 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (Types.isPrimitive(type)) {
             result = null;
         } else {
-            result = meta.resolveSymbolOrNull(type, loader, JVM_GetProtectionDomain(caller));
+            StaticObject protectionDomain;
+            // If loader is null, shouldn't call ClassLoader.checkPackageAccess; otherwise get
+            // NPE. Put it in another way, the bootstrap class loader has all permission and
+            // thus no checkPackageAccess equivalence in the VM class loader.
+            // The caller is also passed as NULL by the java code if there is no security
+            // manager to avoid the performance cost of getting the calling class.
+            if (!StaticObject.isNull(caller) && !StaticObject.isNull(loader)) {
+                protectionDomain = JVM_GetProtectionDomain(caller);
+            } else {
+                protectionDomain = StaticObject.NULL;
+            }
+            result = meta.resolveSymbolOrNull(type, loader, protectionDomain);
         }
         if (result == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, NativeUtils.interopPointerToString(namePtr));
@@ -2324,9 +2335,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject instance = meta.java_lang_AssertionStatusDirectives.allocateInstance();
         meta.java_lang_AssertionStatusDirectives.lookupMethod(Name._init_, Signature._void).invokeDirect(instance);
         meta.java_lang_AssertionStatusDirectives_classes.set(instance, meta.java_lang_String.allocateReferenceArray(0));
-        meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateReferenceArray(0));
+        meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
         meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateReferenceArray(0));
-        meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateReferenceArray(0));
+        meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
         boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
         meta.java_lang_AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
@@ -3432,19 +3443,21 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getContext().hasReferencePendingList();
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
-    public boolean JVM_PhantomReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject object,
+    public boolean JVM_PhantomReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        assert InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
-        // At this point, we would need to call the host's PhantomReference.refersTo() method, but
-        // it is not available in Java 8 or 11.
-        return false;
+        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+        assert host instanceof Reference;
+        // Call host's refersTo. Not available in 8 or 11.
+        return ReferenceSupport.phantomReferenceRefersTo((Reference) host, object);
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
     public boolean JVM_ReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
                     @Inject SubstitutionProfiler profiler) {
@@ -3452,8 +3465,10 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        assert !InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
-        return Target_java_lang_ref_Reference.get(ref, getMeta()) == object;
+        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+        assert host instanceof Reference;
+        // Call host's refersTo. Not available in 8 or 11.
+        return ReferenceSupport.referenceRefersTo((Reference) host, object);
     }
 
     @VmImpl(isJni = true)

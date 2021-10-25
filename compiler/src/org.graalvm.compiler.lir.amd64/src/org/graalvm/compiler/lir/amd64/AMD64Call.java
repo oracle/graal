@@ -26,7 +26,6 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -196,7 +195,7 @@ public class AMD64Call {
 
     public static void directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
         int before;
-        if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
+        if (scratch != null) {
             assert !align;
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
@@ -215,7 +214,7 @@ public class AMD64Call {
 
     public static void directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, Register scratch) {
         int before;
-        if (scratch != null && !GeneratePIC.getValue(crb.getOptions())) {
+        if (scratch != null) {
             // offset might not fit a 32-bit immediate, generate an
             // indirect call with a 64-bit immediate
             before = masm.directJmp(0L, scratch);

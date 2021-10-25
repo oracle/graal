@@ -34,6 +34,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -307,7 +308,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * latter has been subject to instrumentation.
      */
     public boolean canProduceBytecodeFrame() {
-        return code != null && code.getCode() == code.getMethod().getCode();
+        return code != null && Arrays.equals(code.getCode(), code.getMethod().getCode());
     }
 
     public void addVirtualObjectMapping(EscapeObjectState virtualObject) {

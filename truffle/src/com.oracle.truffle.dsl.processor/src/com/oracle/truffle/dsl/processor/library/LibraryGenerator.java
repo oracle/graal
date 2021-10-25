@@ -148,12 +148,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeTreeBuilder statics = staticsMethod.createBuilder();
 
         List<MessageObjects> methods = new ArrayList<>();
-        for (int messageIndex = 0; messageIndex < model.getMethods().size(); messageIndex++) {
-            LibraryMessage message = model.getMethods().get(messageIndex);
+        int messageIndex = 0;
+        for (LibraryMessage message : model.getMethods()) {
             if (message.hasErrors()) {
                 continue;
             }
-            MessageObjects objects = new MessageObjects(message, messageIndex);
+            int useIndex = message.getName().equals(ACCEPTS) ? -1 : messageIndex++;
+            MessageObjects objects = new MessageObjects(message, useIndex);
             methods.add(objects);
         }
 
@@ -200,7 +201,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         // class MessageImpl
         final CodeTypeElement messageClass = createClass(model, null, modifiers(PRIVATE, STATIC), "MessageImpl", types.Message);
-        messageClass.add(new CodeVariableElement(modifiers(FINAL), context.getType(int.class), "index"));
         CodeExecutableElement messageConstructor = new CodeExecutableElement(modifiers(), null, messageClass.getSimpleName().toString());
         messageConstructor.addParameter(new CodeVariableElement(context.getType(String.class), "name"));
         messageConstructor.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
@@ -208,8 +208,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         messageConstructor.addParameter(new CodeVariableElement(context.getType(Class[].class), "parameters"));
         messageConstructor.setVarArgs(true);
         builder = messageConstructor.createBuilder();
-        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("returnType").string("parameters").end().end();
-        builder.statement("this.index = index");
+        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("index").string("returnType").string("parameters").end().end();
         messageClass.add(messageConstructor);
         genClass.add(messageClass);
 
@@ -352,7 +351,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         builder.end().startBlock();
         builder.startStatement();
-        builder.string("bitSet.set(((").type(messageClass.asType()).string(") message).index)");
+        builder.string("bitSet.set(message.getId())");
         builder.end();
         builder.end(); // for
 
@@ -452,7 +451,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         delegateIsAdoptable.createBuilder().startReturn().string("this.delegateLibrary.isAdoptable()").end();
         delegateClass.add(delegateIsAdoptable);
 
-        genClass.add(createGenericDispatch(methods, messageClass));
+        genClass.add(createGenericDispatch(methods));
 
         // CachedToUncachedDispatchNode
         final CodeTypeElement cachedToUncached = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedToUncachedDispatch", libraryTypeMirror);
@@ -871,7 +870,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         return new CodeAnnotationMirror(types.ExplodeLoop);
     }
 
-    private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods, CodeTypeElement messageClass) {
+    private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods) {
         CodeTreeBuilder builder;
         CodeExecutableElement reflectionGenericDispatch = GeneratorUtils.override(types.LibraryFactory, "genericDispatch");
         reflectionGenericDispatch.getParameters().set(0, new CodeVariableElement(types.Library, "library"));
@@ -879,13 +878,12 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         reflectionGenericDispatch.getModifiers().remove(ABSTRACT);
         builder = reflectionGenericDispatch.createBuilder();
         builder.declaration(model.getTemplateType().asType(), "lib", builder.create().cast(model.getTemplateType().asType()).string("originalLib"));
-        builder.declaration(messageClass.asType(), "messageImpl", builder.create().cast(messageClass.asType()).string("message").build());
-        builder.startIf().string("messageImpl.getParameterCount() - 1 != args.length - offset").end().startBlock();
+        builder.startIf().string("message.getParameterCount() - 1 != args.length - offset").end().startBlock();
         builder.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
         builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Invalid number of arguments.").end().end();
         builder.end();
         boolean uncheckedCast = false;
-        builder.startSwitch().string("messageImpl.index").end().startBlock();
+        builder.startSwitch().string("message.getId()").end().startBlock();
         for (MessageObjects message : methods) {
             if (message.model.getName().equals(ACCEPTS)) {
                 continue;

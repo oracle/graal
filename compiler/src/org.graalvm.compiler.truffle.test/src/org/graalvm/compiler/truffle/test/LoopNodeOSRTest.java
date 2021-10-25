@@ -121,7 +121,7 @@ public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
         FrameSlot iterationSlot = desc.addFrameSlot("iteration", FrameSlotKind.Int);
         CheckStackWalkBody loop = new CheckStackWalkBody(osrThreshold * 2, desc, iterationSlot);
         TestLoopRootNode rootNode = new TestLoopRootNode(loop, desc, iterationSlot);
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
 
         target.call(ARGUMENTS);
 

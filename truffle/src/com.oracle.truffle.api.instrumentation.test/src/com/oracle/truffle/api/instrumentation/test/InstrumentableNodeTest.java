@@ -57,7 +57,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -348,7 +347,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
             String code = source.getCharacters().toString();
-            CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            CallTarget target = new RootNode(this) {
 
                 @Node.Children private MaterializableNode[] children = code.startsWith("num") ? new MaterializableNode[]{} : createChildren(MaterializationLanguage.this, source, 1);
 
@@ -373,7 +372,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
                     return source.createSection(1);
                 }
 
-            });
+            }.getCallTarget();
             targets.add(target);
             return target;
         }

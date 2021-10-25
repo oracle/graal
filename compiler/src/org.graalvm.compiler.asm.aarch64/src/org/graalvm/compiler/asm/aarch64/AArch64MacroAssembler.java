@@ -965,7 +965,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 + shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
+     * dst = src1 - shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -986,7 +986,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = -src1.
+     * dst = -src.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -994,6 +994,19 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void neg(int size, Register dst, Register src) {
         sub(size, dst, zr, src);
+    }
+
+    /**
+     * dst = -(shiftType(src, shiftAmt & (size - 1))).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src general purpose register. May not be null or stackpointer.
+     * @param shiftType right or left shift, arithmetic or logical.
+     * @param shiftAmt number of shift bits. Has to be between 0 and (size - 1).
+     */
+    public void neg(int size, Register dst, Register src, ShiftType shiftType, int shiftAmt) {
+        sub(size, dst, zr, src, shiftType, shiftAmt);
     }
 
     /**
@@ -1781,7 +1794,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Branches if condition is true. Address of jump is patched up by HotSpot c++ code.
+     * Branches if condition is true. Address of jump is patched up by the runtime.
      *
      * @param condition any condition value allowed. Non null.
      */
@@ -1820,11 +1833,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Immediate jump instruction fixed up by HotSpot c++ code.
+     * Immediate jump instruction fixed up by the runtime.
      */
     public void jmp() {
-        // Offset has to be fixed up by c++ code.
-        super.b(0);
+        super.b();
     }
 
     /**
@@ -2057,16 +2069,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchLdrLo12(originalInst, (int) targetAddress & 0xFFF, srcSize);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2081,16 +2092,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchAddLo12(originalInst, (int) targetAddress & 0xFFF);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2128,13 +2138,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
+        public void patch(long startAddress, int relative, byte[] code) {
             /*
              * Each move has a 16 bit immediate operand. We use a series of shifted moves to
              * represent immediate values larger than 16 bits.
              */
             // first retrieving the target address
-            long curValue = ((long) instructionPosition) + relative;
+            long curValue = startAddress + relative;
             int siteOffset = 0;
             boolean containsNegatedMov = false;
             for (MovAction include : includeSet) {

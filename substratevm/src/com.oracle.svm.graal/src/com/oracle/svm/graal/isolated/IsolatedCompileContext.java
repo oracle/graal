@@ -44,7 +44,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
  */
 public final class IsolatedCompileContext {
     private static final FastThreadLocalObject<IsolatedCompileContext> currentContext = //
-                    FastThreadLocalFactory.createObject(IsolatedCompileContext.class);
+                    FastThreadLocalFactory.createObject(IsolatedCompileContext.class, "IsolatedCompileContext.currentContext");
 
     public static IsolatedCompileContext get() {
         return currentContext.get();

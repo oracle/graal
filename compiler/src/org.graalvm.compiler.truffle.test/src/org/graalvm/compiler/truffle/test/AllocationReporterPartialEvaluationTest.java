@@ -28,13 +28,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -52,8 +50,6 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class AllocationReporterPartialEvaluationTest extends TestWithSynchronousCompiling {
 
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-
     @Test
     public void testConsistentAssertions() {
         // Test that onEnter()/onReturnValue() are not broken
@@ -64,20 +60,20 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertNotNull(tester);
         final AllocationReporter reporter = (AllocationReporter) context.getPolyglotBindings().getMember(AllocationReporter.class.getSimpleName()).asHostObject();
         final Long[] value = new Long[]{1L};
-        OptimizedCallTarget enterTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        OptimizedCallTarget enterTarget = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 reporter.onEnter(value[0], 4, 8);
                 return null;
             }
-        });
-        OptimizedCallTarget returnTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        }.getCallTarget();
+        OptimizedCallTarget returnTarget = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 reporter.onReturnValue(value[0], 4, 8);
                 return null;
             }
-        });
+        }.getCallTarget();
 
         // Interpret both:
         assertNotCompiled(enterTarget);

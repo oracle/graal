@@ -36,11 +36,13 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -48,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -90,6 +93,16 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         context.initialize(SHARED_LANGUAGE);
         context.enter();
         return context;
+    }
+
+    /*
+     * This test verifies that JVMCI has all the features it needs for a GraalTruffleRuntime.
+     */
+    @Test
+    public void testJVMCIIsLatest() {
+        Assume.assumeTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
+        GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        assertTrue(runtime.isLatestJVMCI());
     }
 
     @Test
@@ -267,6 +280,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             assertLookupsInnerContext();
         } finally {
             innerContext.leave(null, prev);
+            innerContext.close();
         }
         assertLookupsInnerContext();
         context.leave();

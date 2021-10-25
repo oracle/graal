@@ -269,9 +269,7 @@ final class LinkedKlassFieldLayout {
                 return new HiddenField[]{
                                 new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13)),
                                 new HiddenField(Name.HIDDEN_HOST_THREAD),
-                                new HiddenField(Name.HIDDEN_DEATH),
-                                new HiddenField(Name.HIDDEN_DEATH_THROWABLE),
-                                new HiddenField(Name.HIDDEN_SUSPEND_LOCK),
+                                new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
 
                                 // Only used for j.l.management bookkeeping.
                                 new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),

@@ -89,7 +89,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @Override
         public CallTarget createTestCallTarget(Closeable testContext, RootNode testNode) {
-            return createCallTarget(testNode);
+            return testNode.getCallTarget();
         }
 
         @Override
@@ -120,9 +120,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @SuppressWarnings("deprecation")
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        DefaultCallTarget target = new DefaultCallTarget(rootNode);
-        DefaultRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
-        return target;
+        return rootNode.getCallTarget();
     }
 
     @Override

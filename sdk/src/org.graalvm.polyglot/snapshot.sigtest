@@ -178,8 +178,9 @@ meth public org.graalvm.polyglot.Context$Builder processHandler(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.polyglot.ResourceLimits)
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
+meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder

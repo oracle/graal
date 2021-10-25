@@ -130,7 +130,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
             ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);
             invoke.callTarget().replaceFirstInput(nonNullReceiver, anchoredReceiver);
 
-            graph.addBeforeFixed(invoke.asNode(), guard);
+            graph.addBeforeFixed(invoke.asFixedNode(), guard);
         }
     }
 

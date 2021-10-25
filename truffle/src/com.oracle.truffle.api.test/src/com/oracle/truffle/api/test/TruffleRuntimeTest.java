@@ -109,11 +109,14 @@ public class TruffleRuntimeTest {
         assertNotNull(runtime.getName());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testCreateCallTarget() {
         RootNode rootNode = createTestRootNode(null);
         RootCallTarget target = runtime.createCallTarget(rootNode);
         assertNotNull(target);
+        assertSame(target, rootNode.getCallTarget());
+        assertSame(target, runtime.createCallTarget(rootNode));
         for (int i = 0; i < 10000; i++) {
             assertEquals(target.call(), 42);
         }

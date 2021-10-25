@@ -44,8 +44,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -75,10 +73,8 @@ public class ArgumentsTest {
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestRootNode rootNode = new TestRootNode(new TestArgumentNode[]{new TestArgumentNode(0), new TestArgumentNode(1)});
-        CallTarget target = runtime.createCallTarget(rootNode);
-        Object result = target.call(new Object[]{20, 22});
+        Object result = rootNode.getCallTarget().call(new Object[]{20, 22});
         Assert.assertEquals(42, result);
     }
 

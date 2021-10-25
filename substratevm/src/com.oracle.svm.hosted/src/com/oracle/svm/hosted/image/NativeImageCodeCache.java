@@ -214,7 +214,7 @@ public abstract class NativeImageCodeCache {
 
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
-        FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
+        HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
@@ -435,7 +435,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private static class FrameInfoCustomization extends FrameInfoEncoder.NamesFromMethod {
+    private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
         int numDeoptEntryPoints;
         int numDuringCallEntryPoints;
 
@@ -447,12 +447,12 @@ public abstract class NativeImageCodeCache {
         }
 
         @Override
-        protected boolean shouldStoreMethod() {
+        protected boolean storeDeoptTargetMethod() {
             return false;
         }
 
         @Override
-        protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
             CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
             BytecodeFrame topFrame = infopoint.debugInfo.frame();
 

@@ -43,8 +43,8 @@ toolsWeekly: ${tools-weekly-notifications} {
 
 builds += [
   ${linux-amd64} ${oraclejdk8}    ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-8"},
-  ${linux-amd64} ${oraclejdk11}   ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-oraclejdk-11"},
-  ${linux-amd64} ${oraclejdk17}   ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-oraclejdk-17"},
+  ${linux-amd64} ${oraclejdk11}   ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-oraclejdk-11"},
+  ${linux-amd64} ${oraclejdk17}   ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-oraclejdk-17"},
   ${linux-amd64} ${oraclejdk8}    ${toolsCommon} {
     run : [
         ["mx", "build"],

@@ -70,6 +70,11 @@ public final class StatisticsPrinter {
 
         beginObject(out);
 
+        if (AnalysisReportsOptions.PrintCallEdges.getValue(bb.getOptions())) {
+            int[] callEdges = getNumCallEdges(bb);
+            print(out, "total_call_edges", callEdges[0]);
+            print(out, "app_call_edges", callEdges[1]);
+        }
         print(out, "total_reachable_types", reachableTypes[0]);
         print(out, "app_reachable_types", reachableTypes[1]);
         print(out, "total_reachable_methods", reachableMethods[0]);
@@ -106,6 +111,21 @@ public final class StatisticsPrinter {
 
     public static void printLast(PrintWriter out, String key, long value) {
         out.format("%s\"%s\": %d%n", INDENT, key, value);
+    }
+
+    private static int[] getNumCallEdges(BigBang bb) {
+        int callEdges = 0;
+        int appCallEdges = 0;
+        for (AnalysisMethod method : bb.getUniverse().getMethods()) {
+            if (method.isImplementationInvoked()) {
+                int callers = method.getCallers().size();
+                callEdges += callers;
+                if (!isRuntimeLibraryType(method.getDeclaringClass())) {
+                    appCallEdges += callers;
+                }
+            }
+        }
+        return new int[]{callEdges, appCallEdges};
     }
 
     private static int[] getNumReachableTypes(BigBang bb) {

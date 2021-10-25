@@ -79,6 +79,10 @@ public final class JNIUtil {
                     "getPlatformClassLoader",
                     "()Ljava/lang/ClassLoader;"
     };
+    private static final String[] METHOD_GET_SYSTEM_CLASS_LOADER = {
+                    "getSystemClassLoader",
+                    "()Ljava/lang/ClassLoader;"
+    };
     private static final String[] METHOD_LOAD_CLASS = {
                     "loadClass",
                     "(Ljava/lang/String;)Ljava/lang/Class;"
@@ -511,6 +515,24 @@ public final class JNIUtil {
             }
             return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
         }
+    }
+
+    /**
+     * Returns the {@link ClassLoader#getSystemClassLoader()}.
+     */
+    public static JObject getSystemClassLoader(JNIEnv env) {
+        JClass clazz;
+        try (CCharPointerHolder className = CTypeConversion.toCString(JNIUtil.getBinaryName(ClassLoader.class.getName()))) {
+            clazz = JNIUtil.FindClass(env, className.get());
+        }
+        if (clazz.isNull()) {
+            throw new InternalError("No such class " + ClassLoader.class.getName());
+        }
+        JMethodID getClassLoaderId = findMethod(env, clazz, true, true, METHOD_GET_SYSTEM_CLASS_LOADER[0], METHOD_GET_SYSTEM_CLASS_LOADER[1]);
+        if (getClassLoaderId.isNull()) {
+            throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_SYSTEM_CLASS_LOADER[0], ClassLoader.class.getName()));
+        }
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
     }
 
     public static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, String methodName, String methodSignature) {

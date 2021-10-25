@@ -95,7 +95,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
             /* Nothing to be cloned if the input state is not a concrete type state. */
             resultState = inputState.forNonNull(bb);
         } else {
-            resultState = inputState.typesStream()
+            resultState = inputState.typesStream(bb)
                             .filter(t -> !currentState.containsType(t))
                             .map(type -> TypeState.forClone(bb, cloneSite, type, allocationContext))
                             .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
@@ -115,7 +115,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
         TypeState inputState = input.getState();
         TypeState cloneState = this.getState();
 
-        for (AnalysisType type : inputState.types()) {
+        for (AnalysisType type : inputState.types(bb)) {
             if (type.isArray()) {
                 if (bb.analysisPolicy().aliasArrayTypeFlows()) {
                     /* All arrays are aliased, no need to model the array clone operation. */

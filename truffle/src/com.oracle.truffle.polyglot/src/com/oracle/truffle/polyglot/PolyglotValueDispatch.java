@@ -67,7 +67,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -155,10 +154,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    final AbstractPolyglotImpl impl;
+    final PolyglotImpl impl;
     final PolyglotEngineImpl engine;
 
-    PolyglotValueDispatch(AbstractPolyglotImpl impl, PolyglotEngineImpl engine) {
+    PolyglotValueDispatch(PolyglotImpl impl, PolyglotEngineImpl engine) {
         super(impl);
         this.impl = impl;
         this.engine = engine;
@@ -1601,7 +1600,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     static CallTarget createTarget(InteropNode root) {
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
+        CallTarget target = root.getCallTarget();
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
             RUNTIME.initializeProfile(target, types);
@@ -2017,7 +2016,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
 
-        InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
+        InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
             super(polyglot, languageInstance.getEngine());
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));

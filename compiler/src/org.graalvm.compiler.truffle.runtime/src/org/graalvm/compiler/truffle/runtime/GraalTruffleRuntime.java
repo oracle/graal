@@ -186,6 +186,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
+    public boolean isLatestJVMCI() {
+        return true;
+    }
+
     public abstract ThreadLocalHandshake getThreadLocalHandshake();
 
     @Override
@@ -691,14 +695,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public abstract SpeculationLog createSpeculationLog();
 
     @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public final RootCallTarget createCallTarget(RootNode rootNode) {
-        CompilerAsserts.neverPartOfCompilation();
-        final OptimizedCallTarget target = createClonedCallTarget(rootNode, null);
-        TruffleSplittingStrategy.newTargetCreated(target);
-        return target;
+        return rootNode.getCallTarget();
     }
 
-    public final OptimizedCallTarget createClonedCallTarget(RootNode rootNode, OptimizedCallTarget source) {
+    public final OptimizedCallTarget newCallTarget(RootNode rootNode, OptimizedCallTarget source) {
         CompilerAsserts.neverPartOfCompilation();
         OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
         GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
@@ -713,7 +716,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public final OptimizedCallTarget createOSRCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
         OptimizedCallTarget target = createOptimizedCallTarget(null, rootNode);
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+        GraalRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
         return target;
     }
 
@@ -778,7 +781,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (debug == null) {
                     debug = compiler.openDebugContext(optionsMap, compilation);
                 }
-                listeners.onCompilationStarted(callTarget, task.tier());
+                listeners.onCompilationStarted(callTarget, task);
                 compilationStarted = true;
                 try {
                     compiler.doCompile(debug, compilation, optionsMap, task, listeners.isEmpty() ? null : listeners);

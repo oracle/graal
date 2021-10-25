@@ -125,6 +125,14 @@ public class AnalysisError extends Error {
         }
     }
 
+    public static class InterruptAnalysis extends AnalysisError {
+        private static final long serialVersionUID = 7126612141948542452L;
+
+        InterruptAnalysis(String msg) {
+            super(msg);
+        }
+    }
+
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {
         throw new TypeNotFoundError(type);
     }
@@ -165,5 +173,9 @@ public class AnalysisError extends Error {
             throw new AnalysisError(String.format(format, args));
             // Checkstyle: resume
         }
+    }
+
+    public static RuntimeException interruptAnalysis(String msg) {
+        throw new InterruptAnalysis(msg);
     }
 }

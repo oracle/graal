@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
@@ -127,7 +126,7 @@ public class ContextPreInitializationNativeImageTest {
                 }
             });
 
-            Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     /*
@@ -160,7 +159,7 @@ public class ContextPreInitializationNativeImageTest {
                     return null;
                 }
 
-            }).call();
+            }.getCallTarget().call();
 
         }
 

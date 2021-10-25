@@ -62,7 +62,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.svm.core.InvalidVTableEntryHandler;
+import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -70,7 +71,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
-import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -367,7 +367,7 @@ public class UniverseBuilder {
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class,
+                    FunctionPointerHolder.class,
                     FillerObject.class));
 
     static {
@@ -674,7 +674,7 @@ public class UniverseBuilder {
          * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
          * stub that reports a fatal error.
          */
-        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray()) {
@@ -925,7 +925,7 @@ public class UniverseBuilder {
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[idx] = MethodPointer.factory(type.vtable[idx]);
+                vtable[idx] = new MethodPointer(type.vtable[idx]);
             }
 
             // pointer maps in Dynamic Hub
@@ -999,6 +999,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
     }
 }

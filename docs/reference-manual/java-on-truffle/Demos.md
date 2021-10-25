@@ -131,7 +131,7 @@ GraalVM Native Image technology allows compiling applications ahead-of-time (AOT
 The main trade off for using Native Image is that the analysis and compilation of your program happens under the closed world assumption, meaning the static analysis needs to process all bytecode which will ever be executed in the application.
 This makes using some language features like dynamic class loading or reflection tricky.
 
-Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/).
+Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](../../../truffle/docs/README.md).
 It is essentially a Java application, as are the Truffle framework itself and the GraalVM JIT compiler.
 All three of them can be compiled ahead-of-time with `native-image`.
 Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native image on the rest of your code.
@@ -144,10 +144,9 @@ It is a REPL capable of evaluating Java code and consists of two parts:
 This design naturally fits the point we are trying to illustrate. We can build a native executable of the JShell's UI part, and make it include Java on Truffle to run the code dynamically specified at run time.
 
 Prerequisites:
-* [GraalVM 21.0](/downloads/)
-* [Native Image](/reference-manual/native-image/#install-native-image)
-* [Java on Truffle](/reference-manual/java-on-truffle/#install-java-on-truffle)
-
+* [GraalVM 21.0](https://www.graalvm.org/downloads/)
+* [Native Image](../native-image/README.md#install-native-image)
+* [Java on Truffle](README.md#install-java-on-truffle)
 
 1. Clone the [project](https://github.com/graalvm/graalvm-demos) with the demo applications and navigate to the `espresso-jshell` directory:
 

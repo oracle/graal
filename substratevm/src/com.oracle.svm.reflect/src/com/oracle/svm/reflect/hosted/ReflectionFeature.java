@@ -154,7 +154,7 @@ public class ReflectionFeature implements GraalFeature {
     private CFunctionPointer register(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         analysisAccess.registerAsCompiled(aMethod);
-        return MethodPointer.factory(aMethod);
+        return new MethodPointer(aMethod);
     }
 
     protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {

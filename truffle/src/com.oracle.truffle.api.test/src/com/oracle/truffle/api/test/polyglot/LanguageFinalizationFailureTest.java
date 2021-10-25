@@ -122,7 +122,8 @@ public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
         });
         context.close(true);
         Assert.assertTrue(disposeCalled.get());
-        Assert.assertTrue(outStream.toString().contains("Exception was thrown while finalizing a polyglot context that is being cancelled. Such exceptions are expected during cancelling."));
+        Assert.assertTrue(outStream.toString().contains(
+                        "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting."));
     }
 
     @Test

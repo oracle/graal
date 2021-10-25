@@ -40,7 +40,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -257,7 +256,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     }
 
     private static void assertReturns42(RootNode program) {
-        Object result = Truffle.getRuntime().createCallTarget(program).call();
+        Object result = program.getCallTarget().call();
         Assert.assertEquals(Integer.valueOf(42), result);
     }
 

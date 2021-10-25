@@ -92,7 +92,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
         TypeState currentTypeState = getState();
 
         /* Generate a heap object for every new incoming type. */
-        TypeState resultState = newTypeState.typesStream()
+        TypeState resultState = newTypeState.typesStream(bb)
                         .filter(t -> !currentTypeState.containsType(t))
                         .map(type -> TypeState.forAllocation(bb, allocationSite, type, allocationContext))
                         .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));

@@ -57,7 +57,6 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -819,7 +818,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+            return RootNode.createConstantNode(true).getCallTarget();
         }
 
         public static Env getContext(String language) {

@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -57,7 +56,7 @@ public class ContextAPITestInternalLanguage extends TruffleLanguage<Object> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+        return RootNode.createConstantNode("").getCallTarget();
     }
 
 }

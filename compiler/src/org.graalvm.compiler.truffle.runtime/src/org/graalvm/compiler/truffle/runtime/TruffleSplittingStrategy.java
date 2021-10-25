@@ -52,31 +52,43 @@ final class TruffleSplittingStrategy {
     static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
         final EngineData engineData = currentTarget.engine;
         if (engineData.traceSplittingSummary) {
-            if (currentTarget.getCallCount() == 0) {
-                synchronized (engineData.splittingStatistics) {
-                    engineData.splittingStatistics.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
-                }
-            }
+            traceSplittingPreShouldSplit(engineData, currentTarget);
         }
         if (shouldSplit(engineData, call)) {
-            engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
             doSplit(engineData, call);
         }
     }
 
-    private static void doSplit(EngineData engineData, OptimizedDirectCallNode call) {
-        if (engineData.traceSplittingSummary) {
+    private static void traceSplittingPreShouldSplit(final EngineData engineData, OptimizedCallTarget currentTarget) {
+        if (currentTarget.getCallCount() == 0) {
             synchronized (engineData.splittingStatistics) {
-                calculateSplitWasteImpl(call.getCurrentCallTarget());
+                engineData.splittingStatistics.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
             }
+        }
+    }
+
+    private static void doSplit(EngineData engineData, OptimizedDirectCallNode call) {
+        engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
+        if (engineData.traceSplittingSummary) {
+            traceSplittingPreSplit(engineData, call);
         }
         call.split();
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.splittingStatistics) {
-                engineData.splittingStatistics.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-                engineData.splittingStatistics.splitCount++;
-                engineData.splittingStatistics.splitTargets.put(call.getCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
-            }
+            traceSplittingPostSplit(engineData, call);
+        }
+    }
+
+    private static void traceSplittingPreSplit(EngineData engineData, OptimizedDirectCallNode call) {
+        synchronized (engineData.splittingStatistics) {
+            calculateSplitWasteImpl(call.getCurrentCallTarget());
+        }
+    }
+
+    private static void traceSplittingPostSplit(EngineData engineData, OptimizedDirectCallNode call) {
+        synchronized (engineData.splittingStatistics) {
+            engineData.splittingStatistics.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+            engineData.splittingStatistics.splitCount++;
+            engineData.splittingStatistics.splitTargets.put(call.getCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
         }
     }
 
@@ -137,10 +149,14 @@ final class TruffleSplittingStrategy {
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             doSplit(engineData, call);
             if (engineData.traceSplittingSummary) {
-                synchronized (engineData.splittingStatistics) {
-                    engineData.splittingStatistics.forcedSplitCount++;
-                }
+                traceSplittingForcedSplit(engineData);
             }
+        }
+    }
+
+    private static void traceSplittingForcedSplit(final EngineData engineData) {
+        synchronized (engineData.splittingStatistics) {
+            engineData.splittingStatistics.forcedSplitCount++;
         }
     }
 
@@ -200,9 +216,13 @@ final class TruffleSplittingStrategy {
             engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
         }
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.splittingStatistics) {
-                engineData.splittingStatistics.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
-            }
+            traceSplittingNewCallTarget(callTarget, engineData);
+        }
+    }
+
+    private static void traceSplittingNewCallTarget(OptimizedCallTarget callTarget, EngineData engineData) {
+        synchronized (engineData.splittingStatistics) {
+            engineData.splittingStatistics.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
         }
     }
 
@@ -222,11 +242,15 @@ final class TruffleSplittingStrategy {
 
     static void newPolymorphicSpecialize(Node node, EngineData engineData) {
         if (engineData.traceSplittingSummary) {
-            synchronized (engineData.splittingStatistics) {
-                final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.splittingStatistics.polymorphicNodes;
-                final Class<? extends Node> aClass = node.getClass();
-                polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
-            }
+            traceSplittingNewPolymorphicSpecialize(node, engineData);
+        }
+    }
+
+    private static void traceSplittingNewPolymorphicSpecialize(Node node, EngineData engineData) {
+        synchronized (engineData.splittingStatistics) {
+            final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.splittingStatistics.polymorphicNodes;
+            final Class<? extends Node> aClass = node.getClass();
+            polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
         }
     }
 

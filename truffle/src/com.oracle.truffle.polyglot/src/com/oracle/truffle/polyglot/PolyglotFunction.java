@@ -170,7 +170,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
             Apply apply = new Apply(receiverClass, returnClass, returnType, paramClass, paramType);
             CallTarget target = lookupHostCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, apply, createTarget(apply), CallTarget.class);
+                target = installHostCodeCache(languageContext, apply, apply.getCallTarget(), CallTarget.class);
             }
             return target;
         }

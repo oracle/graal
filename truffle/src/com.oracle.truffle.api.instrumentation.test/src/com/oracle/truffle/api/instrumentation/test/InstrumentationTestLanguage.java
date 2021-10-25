@@ -61,6 +61,8 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.Assert;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -72,6 +74,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -215,7 +218,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "READ_VAR", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT"};
 
     public InstrumentationTestLanguage() {
     }
@@ -258,7 +261,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         if (code != null) {
             SourceSection outer = code.createSection(0, code.getLength());
             BaseNode node = parse(code);
-            RootCallTarget rct = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, node));
+            RootCallTarget rct = new InstrumentationTestRootNode(this, "", outer, node).getCallTarget();
             rct.call();
             if (context.runInitAfterExec) {
                 context.afterTarget = rct;
@@ -282,7 +285,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             throw new IOException(e);
         }
         RootCallTarget afterTarget = InstrumentContext.get(null).afterTarget;
-        return lastParsed = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(this, "", outer, afterTarget, node));
+        return lastParsed = new InstrumentationTestRootNode(this, "", outer, afterTarget, node).getCallTarget();
     }
 
     public static RootNode parse(String code) {
@@ -381,7 +384,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
             int numberOfIdents = 0;
             if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("READ_VAR") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") ||
-                            tag.equals("SLEEP") || tag.equals("SPAWN") | tag.equals("CATCH")) {
+                            tag.equals("SLEEP") || tag.equals("SPAWN") || tag.equals("CATCH") || tag.equals("EXIT")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
@@ -550,6 +553,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new UnexpectedResultNode(idents[0]);
                 case "MULTIPLE":
                     return new MultipleNode(childArray, multipleTags);
+                case "EXIT":
+                    return new ExitNode(idents[0]);
                 default:
                     throw new AssertionError();
             }
@@ -1456,7 +1461,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
-            this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
+            this.target = new InstrumentationTestRootNode(lang, identifier, functionSection, children).getCallTarget();
         }
 
         @Override
@@ -1513,6 +1518,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                         returnValue = child.execute(frame);
                     }
                 }
+                /*
+                 * Normally we would go through call target here which guarantees poll at the end.
+                 * This language doesn't use call target here, for simplicity, so we need to poll
+                 * manually.
+                 */
+                TruffleSafepoint.pollHere(this);
             } finally {
                 inner.leave(this, prev);
                 inner.close();
@@ -1558,6 +1569,31 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new CallNode(identifier, cloneUninitialized(children, materializedTags));
+        }
+    }
+
+    static class ExitNode extends InstrumentedNode {
+        private final int exitCode;
+
+        ExitNode(String exitCodeStr) {
+            this.exitCode = Integer.parseInt(exitCodeStr);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throwExitException();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void throwExitException() {
+            InstrumentContext context = InstrumentContext.get(this);
+            context.env.getContext().closeExited(this, exitCode);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new ExitNode(String.valueOf(exitCode));
         }
     }
 
@@ -1639,7 +1675,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         return (t, e) -> {
             InteropLibrary interop = InteropLibrary.getUncached();
             boolean interrupted;
-            boolean cancelled = false;
+            boolean cancelledOrExited = false;
             if (interop.isException(e)) {
                 try {
                     ExceptionType exceptionType = interop.getExceptionType(e);
@@ -1649,9 +1685,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             } else {
                 interrupted = e != null && e.getCause() instanceof InterruptedException;
-                cancelled = e instanceof ThreadDeath;
+                cancelledOrExited = e instanceof ThreadDeath;
             }
-            if (e != null && !interrupted && !cancelled) {
+            if (e != null && !interrupted && !cancelledOrExited) {
                 Env currentEnv = context.env;
                 try {
                     e.printStackTrace(new PrintStream(currentEnv.err()));
@@ -3218,6 +3254,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected void finalizeContext(InstrumentContext context) {
         joinSpawnedThreads(context, true);
+    }
+
+    @Override
+    protected void exitContext(InstrumentContext context, ExitMode exitMode, int exitCode) {
+        if (exitMode == ExitMode.HARD) {
+            CallTarget callTarget = context.env.parseInternal(Source.newBuilder(ID, "CONSTANT(42)", "ConstandFortyTwo").build());
+            Object result = callTarget.call();
+            Assert.assertEquals(42, result);
+        }
     }
 }
 

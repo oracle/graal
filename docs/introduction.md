@@ -26,7 +26,7 @@ This page provides an architectural overview of GraalVM and its runtime modes, s
 
 GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](https://github.com/oracle/graal/tree/master/compiler), which is written in Java, to the HotSpot Java Virtual Machine.
 
-In addition to running Java and JVM-based languages, GraalVM's [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
+In addition to running Java and JVM-based languages, [GraalVM's language implementation framework (Truffle)](../truffle/docs/README.md) makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
 With GraalVM Truffle, Java and other supported languages can directly interoperate with each other and pass data back and forth in the same memory space.
 
 ## Runtime Modes
@@ -34,18 +34,18 @@ With GraalVM Truffle, Java and other supported languages can directly interopera
 GraalVM is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java applications can be run on either).
 
 #### JVM Runtime Mode
-When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](/reference-manual/compiler/) as the top-tier JIT compiler.
+When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](reference-manual/compiler.md) as the top-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
-Interpreters for supported languages, written on top of the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/), are themselves Java programs that run on the JVM.
+Interpreters for supported languages, written on top of the [Truffle framework](../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
-[Native Image](/reference-manual/native-image/) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
+[Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
 The Java bytecode that is processed during the native image build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
-[Java on Truffle](/reference-manual/java-on-truffle/) is an implementation of the Java Virtual Machine Specification, built with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/).
+[Java on Truffle](reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle language implementation framework](../truffle/docs/README.md).
 It is a complete Java VM that includes all core components, implements the same API as the Java Runtime Environment library, and reuses all JARs and native libraries from GraalVM.
 Java on Trufle is an experimental technology in GraalVM, available as of version 21.0.0.
 
@@ -55,9 +55,9 @@ GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** edition
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
 GraalVM is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The GraalVM distribution based on Oracle JDK 16 is experimental with [several known limitations](/release-notes/known-issues/).
+The GraalVM distribution based on Oracle JDK 17 is experimental with [several known limitations](https://www.graalvm.org/release-notes/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
-See the [Getting Started guide](/docs/getting-started/) for installation instructions.
+See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
 ## Distribution Components List
 
@@ -77,24 +77,24 @@ The core components enable using GraalVM as a runtime platform for programs writ
 **Utilities**
 * JavaScript REPL with the JavaScript interpreter
 * `lli` tool to directly execute programs from LLVM bitcode
-* [GraalVM Updater](/reference-manual/graalvm-updater/) to install additional functionalities
+* [GraalVM Updater](reference-manual/graalvm-updater.md) to install additional functionalities
 
 ### Additional Components
 GraalVM core installation can be extended with more languages runtimes and utilities.
 
 Tools/Utilities:
 
-* [Native Image](/reference-manual/native-image/) -- a technology to compile an application ahead-of-time into a native executable.
-* [LLVM toolchain](/reference-manual/llvm/) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime.
-* [Java on Truffle](/reference-manual/java-on-truffle/) -- a JVM implementation built upon the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) to run Java via a Java bytecode interpreter.
+* [Native Image](reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable.
+* [LLVM toolchain](reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime.
+* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
 
 Runtimes:
 
-* [Node.js](/reference-manual/js/) -- the Node.js 14.16.1 runtime for JavaScript
-* [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
-* [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
-* [GraalWasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
+* [Node.js](reference-manual/js/README.md) -- the Node.js 14.17.6 runtime for JavaScript
+* [Python](reference-manual/python/README.md) -- Python 3.8.5 compatible
+* [Ruby](reference-manual/ruby/README.md) -- Ruby 2.7.3 compatible
+* [R](reference-manual/r/README.md) -- GNU R 4.0.3 compatible
+* [GraalWasm](reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 
 ## Licensing and Support
 
@@ -126,11 +126,11 @@ The following table lists production-ready and experimental features in GraalVM 
 
 ## What to Read Next
 
-Whether you are new to GraalVM or have little experience using it, continue to [Get Started with GraalVM](/docs/getting-started/).
+Whether you are new to GraalVM or have little experience using it, continue to [Get Started with GraalVM](getting-started/graalvm-community/get-started-graalvm-community.md).
 Install GraalVM on your local machine, try running the examples provided in the guide, or test GraalVM with your workload.
-After that we suggest you to look at more complex [Examples Applications](/examples/).
+After that we suggest you to look at more complex [Examples Applications](examples/examples.md).
 
-Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](/reference-manual/) for in-depth coverage of GraalVM technologies.
+Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](reference-manual/reference-manuals.md) for in-depth coverage of GraalVM technologies.
 
 To start coding with the GraalVM Polyglot APIs, check out the [GraalVM SDK Java API Reference](http://www.graalvm.org/sdk/javadoc).
 

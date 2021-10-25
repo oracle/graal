@@ -111,11 +111,6 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             updateUsagesInterface(this.guard, guard);
             this.guard = guard;
         }
-
-        @Override
-        public ValueNode asNode() {
-            return this;
-        }
     }
 
     @Override
@@ -190,11 +185,12 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
         @Override
         public FixedWithNextNode lastFixedNode() {
+            GraalError.guarantee(lastFixedNode.isAlive(), "The last fixed node %s was deleted by a previous lowering", lastFixedNode);
             return lastFixedNode;
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
-            assert n.isAlive() : n;
+            GraalError.guarantee(n.isAlive(), "Cannot add last fixed node %s because it is not alive", n);
             lastFixedNode = n;
         }
     }

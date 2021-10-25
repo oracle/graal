@@ -40,8 +40,13 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -110,21 +115,6 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     }
 
     @Override
-    public AbstractSourceDispatch getSourceDispatch() {
-        return getNext().getSourceDispatch();
-    }
-
-    @Override
-    public AbstractSourceSectionDispatch getSourceSectionDispatch() {
-        return getNext().getSourceSectionDispatch();
-    }
-
-    @Override
-    public AbstractManagementDispatch getManagementDispatch() {
-        return getNext().getManagementDispatch();
-    }
-
-    @Override
     public Class<?> loadLanguageClass(String className) {
         return getNext().loadLanguageClass(className);
     }
@@ -168,4 +158,34 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
         return Integer.MAX_VALUE;
     }
 
+    @Override
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException {
+        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding);
+    }
+
+    @Override
+    public String findLanguage(File file) throws IOException {
+        return getNext().findLanguage(file);
+    }
+
+    @Override
+    public String findLanguage(URL url) throws IOException {
+        return getNext().findLanguage(url);
+    }
+
+    @Override
+    public String findMimeType(File file) throws IOException {
+        return getNext().findMimeType(file);
+    }
+
+    @Override
+    public String findMimeType(URL url) throws IOException {
+        return getNext().findMimeType(url);
+    }
+
+    @Override
+    public String findLanguage(String mimeType) {
+        return getNext().findLanguage(mimeType);
+    }
 }

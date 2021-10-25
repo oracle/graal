@@ -328,10 +328,11 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns <code>true</code> if this exception is caused by an attempt of a guest language
-     * program to exit the application using a builtin command. The provided exit code can be
-     * accessed using {@link #getExitStatus()}.
+     * program to exit the application. The provided exit code can be accessed using
+     * {@link #getExitStatus()}. This can be the result of either the soft or the hard exit.
      *
      * @since 19.0
+     * @see Context
      */
     public boolean isExit() {
         return dispatch.isExit(impl);
@@ -378,9 +379,11 @@ public final class PolyglotException extends RuntimeException {
 
     /**
      * Returns the exit status if this exception indicates that the application was {@link #isExit()
-     * exited}. The exit status is intended to be passed to {@link System#exit(int)}.
+     * exited}. The exit status is intended to be passed to {@link System#exit(int)}. In case of
+     * hard exit the application can be configured to call {@link System#exit(int)} directly using
+     * {@link Context.Builder#useSystemExit(boolean)}.
      *
-     * @see #isExit()
+     * @see Context
      * @since 19.0
      */
     public int getExitStatus() {

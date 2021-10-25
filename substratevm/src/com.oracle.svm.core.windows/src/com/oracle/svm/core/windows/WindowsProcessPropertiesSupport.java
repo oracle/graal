@@ -85,7 +85,7 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public long getProcessID() {
-        return Process.GetCurrentProcessId();
+        return Process.NoTransitions.GetCurrentProcessId();
     }
 
     @Override
@@ -135,11 +135,11 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public boolean destroyForcibly(long processID) {
-        HANDLE handle = Process.OpenProcess(Process.PROCESS_TERMINATE(), 0, (int) processID);
+        HANDLE handle = Process.NoTransitions.OpenProcess(Process.PROCESS_TERMINATE(), 0, (int) processID);
         if (handle.isNull()) {
             return false;
         }
-        boolean result = Process.TerminateProcess(handle, 1) != 0;
+        boolean result = Process.NoTransitions.TerminateProcess(handle, 1) != 0;
         WinBase.CloseHandle(handle);
         return result;
     }

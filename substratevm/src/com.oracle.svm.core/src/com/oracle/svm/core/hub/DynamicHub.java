@@ -79,8 +79,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.JDK16OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
@@ -176,12 +175,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static final int IS_INSTANTIATED_FLAG_BIT = 0;
 
     /**
-     * Is this a Hidden Class (Since JDK 15).
+     * Is this a Hidden Class.
      */
     private static final int IS_HIDDED_FLAG_BIT = 1;
 
     /**
-     * Is this a Record Class (Since JDK 15).
+     * Is this a Record Class.
      */
     private static final int IS_RECORD_FLAG_BIT = 2;
 
@@ -807,13 +806,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isHidden() {
         return isFlagSet(IS_HIDDED_FLAG_BIT);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecord() {
         return isFlagSet(IS_RECORD_FLAG_BIT);
     }
@@ -1283,11 +1282,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK16OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private native Target_java_lang_reflect_RecordComponent[] getRecordComponents();
 
     @Substitute
-    @TargetElement(onlyWith = JDK16OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
         Object[] result = rd.recordComponents;
         if (result == null) {
@@ -1567,14 +1566,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub componentType() {
         return componentType;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub arrayType() {
         return arrayHub;
@@ -1587,20 +1586,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private Class<?> elementType() {
         throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public String descriptorString() {
         throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public Optional<?> describeConstable() {
         throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
@@ -1687,21 +1686,21 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
  */
 
 @Substitute
-@TargetClass(className = "java.lang.constant.Constable", onlyWith = JDK15OrLater.class)
+@TargetClass(className = "java.lang.constant.Constable", onlyWith = JDK17OrLater.class)
 interface Target_java_lang_constant_Constable {
     @KeepOriginal
     Optional<?> describeConstable();
 }
 
 @Substitute
-@TargetClass(className = "java.lang.invoke.TypeDescriptor", onlyWith = JDK15OrLater.class)
+@TargetClass(className = "java.lang.invoke.TypeDescriptor", onlyWith = JDK17OrLater.class)
 interface Target_java_lang_invoke_TypeDescriptor {
     @KeepOriginal
     String descriptorString();
 }
 
 @Substitute
-@TargetClass(className = "java.lang.invoke.TypeDescriptor", innerClass = "OfField", onlyWith = JDK15OrLater.class)
+@TargetClass(className = "java.lang.invoke.TypeDescriptor", innerClass = "OfField", onlyWith = JDK17OrLater.class)
 interface Target_java_lang_invoke_TypeDescriptor_OfField<F extends Target_java_lang_invoke_TypeDescriptor_OfField<F>> extends Target_java_lang_invoke_TypeDescriptor {
     @KeepOriginal
     boolean isArray();
@@ -1737,6 +1736,6 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 }
 
-@TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK16OrLater.class)
+@TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK17OrLater.class)
 final class Target_java_lang_reflect_RecordComponent {
 }

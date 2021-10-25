@@ -51,6 +51,7 @@ import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmOptions;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.test.options.WasmTestOptions;
@@ -294,6 +295,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
                 contextBuilder.arguments(WasmLanguage.ID, prepend(commandLineArgs.split(" "), ""));
+            }
+
+            final String saturatingFloatToIntProperty = "wasm." + WasmOptions.SATURATING_FLOAT_TO_INT_NAME;
+            final String saturatingFloatToIntValue = testCase.options().getProperty(saturatingFloatToIntProperty);
+            if (saturatingFloatToIntValue != null) {
+                contextBuilder.option(saturatingFloatToIntProperty, saturatingFloatToIntValue);
             }
 
             final String envString = testCase.options().getProperty("env");

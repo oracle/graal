@@ -90,7 +90,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     private void testMergedStackTraceImpl() throws Exception {
         setupContext("engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreFatal", Boolean.FALSE.toString());
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
@@ -138,10 +138,6 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
         @Override
         public void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout, int tier) {
-        }
-
-        @Override
-        public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
         }
     }
 

@@ -43,23 +43,54 @@ Note: Most options also require the additional `--experimental-options` flag set
 The `--engine.TraceCompilation` command prints a line each time a method is compiled:
 
 ```shell
-[engine] opt done     EqualityConstraint.execute                                  |AST   17|Tier      2|Time  152( 143+9   )ms|Inlined   2Y   0N|IR   266/  300|CodeSize   1010|Addr 0x7f60068c82d0|Src octane-deltablue.js:528
+[engine] opt done   id=244   EqualityConstraint.execute                         |Tier 1|Time   268( 220+47  )ms|AST   17|Inlined   0Y   2N|IR    238/   437|CodeSize    1874|Timestamp 758868036671903|Src octane-deltablue.js:528
 ```
 
-The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, started, or completed:
+Here is a quick overview of the information provided in these logs:
+- `id` - Unique identifier of the call target.
+- `Tier` - For which compilation tier was the targed scheduled.
+- `Time` - How long did the compilation last, with separation between the Truffle tier (mainly partial evaluation) and the Graal Tiers.
+- `AST` - The targets non-trivial node count.
+- `Inlined` - How many calls were inlined and how many remained calls after inlining.
+- `IR` - Graal node count after partial evaluation and after compilation.
+- `CodeSize` - The size of the code generated for the call target.
+- `Timestamp` - The time when the event happened as reported by `System.nanoTime()`.
+- `Src` - Abbreviated source section of the call target.
+
+The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, unqueued, started, or completed:
 
 ```shell
-[engine] opt queued   BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1725905750
-[engine] opt start    BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1734518023
-[engine] opt queued   OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1743713143
-[engine] opt start    OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1744034479
-[engine] opt queued   Planner.addConstraintsConsumingTo                           |AST   51|Tier      2|Calls/Thres     368/    3|CallsAndLoop/Thres    1001/ 1000|Src octane-deltablue.js:743|QueueSize      1|Time 1791073465
-... more queues ...
-[engine] opt queued   BinaryConstraint.markInputs                                 |AST   13|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:402|QueueSize     27|Time 2813136318
-[engine] opt done     BinaryConstraint.output                                     |AST   19|Tier      2|Time 1146( 851+295 )ms|Inlined   0Y   0N|IR   106/  167|CodeSize    634|Addr 0x7f600586f990|Src octane-deltablue.js:416
-[engine] opt start    Planner.removePropagateFrom                                 |AST  149|Tier      2|Calls/Thres       8/    3|CallsAndLoop/Thres    2052/ 1000|Src octane-deltablue.js:717|QueueSize     26|Time 2903518862
-[engine] opt queued   UnaryConstraint.output                                      |AST    7|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:255|QueueSize     27|Time 3175165217
+[engine] opt queued id=237   BinaryConstraint.output                            |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865671350686|Src octane-deltablue.js:416
+[engine] opt start  id=237   BinaryConstraint.output                            |Tier 1|Priority        25|Rate 0.000000|Queue: Size    0 Change +0  Load  0.06 Time     0us|Timestamp 758865708273384|Src octane-deltablue.js:416
+[engine] opt queued id=239   OrderedCollection.size                             |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865727664193|Src octane-deltablue.js:71
+[engine] opt queued id=52    Array.prototype.push                               |Tier 1|Count/Thres         25/       50|Queue: Size    2 Change +1  Load  0.13 Time     0us|Timestamp 758865744191674|Src <builtin>:1
+... more log ...
+[engine] opt start  id=239   OrderedCollection.size                             |Tier 1|Priority    181875|Rate 0.000001|Queue: Size   11 Change -1  Load  0.63 Time   575us|Timestamp 758866381654116|Src octane-deltablue.js:71
+[engine] opt done   id=237   BinaryConstraint.output                            |Tier 1|Time   717( 654+64  )ms|AST   19|Inlined   0Y   0N|IR    143/   220|CodeSize     882|Timestamp 758866435391354|Src octane-deltablue.js:416
+[engine] opt start  id=236   BinaryConstraint.input                             |Tier 1|Priority    144000|Rate 0.000001|Queue: Size   10 Change -1  Load  0.56 Time    48us|Timestamp 758866452554530|Src octane-deltablue.js:409
+... more log ...
+[engine] opt queued id=239   OrderedCollection.size                             |Tier 2|Count/Thres       8750/     8125|Queue: Size   18 Change +1  Load  0.81 Time     0us|Timestamp 758867756295139|Src octane-deltablue.js:71
+[engine] opt queued id=237   BinaryConstraint.output                            |Tier 2|Count/Thres       8499/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758867758263099|Src octane-deltablue.js:416
+[engine] opt start  id=244   EqualityConstraint.execute                         |Tier 1|Priority   2618289|Rate 0.000015|Queue: Size   19 Change -1  Load  0.88 Time   180us|Timestamp 758867767116908|Src octane-deltablue.js:528
+... more log ...
+[engine] opt done   id=246   OrderedCollection.at                               |Tier 2|Time    89(  80+9   )ms|AST   15|Inlined   0Y   0N|IR     50/   110|CodeSize     582|Timestamp 758873628915755|Src octane-deltablue.js:67
+[engine] opt start  id=237   BinaryConstraint.output                            |Tier 2|Priority    173536|Rate 0.000054|Queue: Size   18 Change -1  Load  0.94 Time    18us|Timestamp 758873629411012|Src octane-deltablue.js:416
+[engine] opt queued id=238   Planner.addPropagate                               |Tier 2|Count/Thres       9375/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758873663196884|Src octane-deltablue.js:696
+[engine] opt queued id=226   Variable.addConstraint                             |Tier 2|Count/Thres       8771/     9375|Queue: Size   20 Change +1  Load  0.94 Time     0us|Timestamp 758873665823697|Src octane-deltablue.js:556
+[engine] opt done   id=293   change                                             |Tier 1|Time   167( 130+37  )ms|AST   60|Inlined   0Y   6N|IR    576/  1220|CodeSize    5554|Timestamp 758873669483749|Src octane-deltablue.js:867
+[engine] opt start  id=270   Plan.execute                                       |Tier 2|Priority    157871|Rate 0.000072|Queue: Size   19 Change -1  Load  1.00 Time    17us|Timestamp 758873669912101|Src octane-deltablue.js:778
+[engine] opt done   id=237   BinaryConstraint.output                            |Tier 2|Time    58(  52+6   )ms|AST   19|Inlined   0Y   0N|IR    103/   181|CodeSize     734|Timestamp 758873687678394|Src octane-deltablue.js:416
+... more log ...
+[engine] opt unque. id=304   Date.prototype.valueOf                             |Tier 2|Count/Thres      80234/     3125|Queue: Size    4 Change  0  Load  0.31 Time     0us|Timestamp 758899904132076|Src <builtin>:1|Reason Target inlined into only caller
 ```
+
+Here is a quick overview of the information added in these logs:
+- `Count/Thres` - What is the call and loop count of the target and what is the threshold needed to add the compilation to the queue.
+- `Queue: Size` - How many compilations are in the compilation queue.
+- `Queue: Change` - How did this event impact the compilation queue (e.g. certain events can prune the queue of unneeded compilation tasks).
+- `Queue: Load` - A metric of whether the queue is over/under loaded. Normal load is represented with 1, less then 1 is underloaded and greater than 1 is overloaded.
+- `Queue: Time` - How long did the event take.
+- `Reason` - The runtime reported reason for the event.
 
 The `--engine.TraceCompilationAST` command prints the Truffle AST for each compilation:
 
@@ -577,7 +608,7 @@ The `--engine.TraceCompilation` option also shows CallTarget invalidations with 
 
 ## Ideal Graph Visualizer
 
-The [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/21/docs/tools/igv/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
+The [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
 
 A typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`, which will show you Truffle ASTs, guest-language call graphs, and the Graal graphs as they leave the Truffle phase.
 If the `-Dgraal.PrintGraph=Network` flag is omitted then the dump files are placed in the `graal_dumps` directory, which you should then open in IGV.

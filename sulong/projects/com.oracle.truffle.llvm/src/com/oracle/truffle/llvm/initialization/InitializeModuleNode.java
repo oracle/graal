@@ -112,7 +112,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
             FrameDescriptor frameDescriptor = new FrameDescriptor();
             LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor,
                             parserResult.getRuntime().getNodeFactory().createStackAccess(frameDescriptor));
-            return LLVMLanguage.createCallTarget(root);
+            return root.getCallTarget();
         } else {
             return null;
         }

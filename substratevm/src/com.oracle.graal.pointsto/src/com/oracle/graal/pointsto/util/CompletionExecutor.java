@@ -62,14 +62,15 @@ public class CompletionExecutor {
     private final LongAdder postedOperations;
     private final LongAdder completedOperations;
     private final List<DebugContextRunnable> postedBeforeStart;
-    private volatile CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
-    public ExecutorService executorService;
+    private ExecutorService executorService;
     private final Runnable heartbeatCallback;
 
-    private BigBang bb;
+    private final BigBang bb;
     private Timing timing;
     private Object vmConfig;
+    private final Thread startingThread;
 
     public interface Timing {
         long getPrintIntervalNanos();
@@ -91,6 +92,7 @@ public class CompletionExecutor {
         postedOperations = new LongAdder();
         completedOperations = new LongAdder();
         postedBeforeStart = new ArrayList<>();
+        startingThread = Thread.currentThread();
     }
 
     public void init() {
@@ -142,6 +144,11 @@ public class CompletionExecutor {
             case UNUSED:
                 throw JVMCIError.shouldNotReachHere();
             case BEFORE_START:
+                /*
+                 * The postedBeforeStart list is not thread safe. Make sure that it is only updated
+                 * from the same thread that created the executor.
+                 */
+                assert Thread.currentThread() == startingThread;
                 postedBeforeStart.add(command);
                 break;
             case STARTED:
@@ -167,14 +174,14 @@ public class CompletionExecutor {
         }
     }
 
-    public void executeService(DebugContextRunnable command) {
+    private void executeService(DebugContextRunnable command) {
         executorService.execute(() -> {
             executeCommand(command);
         });
     }
 
     @SuppressWarnings("try")
-    public void executeCommand(DebugContextRunnable command) {
+    private void executeCommand(DebugContextRunnable command) {
         bb.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
         if (timing != null) {
@@ -282,10 +289,6 @@ public class CompletionExecutor {
         return state.get() == State.STARTED;
     }
 
-    public ExecutorService getExecutorService() {
-        return executorService;
-    }
-
     public int parallelism() {
         if (executorService instanceof ForkJoinPool) {
             return ((ForkJoinPool) executorService).getParallelism();
@@ -298,6 +301,10 @@ public class CompletionExecutor {
             return ((ForkJoinPool) executorService).getPoolSize();
         }
         return 1;
+    }
+
+    public ExecutorService getExecutorService() {
+        return executorService;
     }
 
     public void setExecutorService(ExecutorService executorService) {

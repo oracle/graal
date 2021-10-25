@@ -161,6 +161,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
             self.base_image_build_args += ['-H:+ConfigureReflectionMetadata']
             if vm.is_llvm:
@@ -581,6 +582,17 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": ("<section>", str),
             }),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<total_call_edges>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "call-edges",
+            }, ['total_call_edges']),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
@@ -1063,22 +1075,24 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
+        from mx_sdk_vm_impl import get_native_image_locations, has_component
+
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
         host_vm = None
         if isinstance(vm, mx_benchmark.GuestVm):
             host_vm = vm.host_vm()
             assert host_vm
+        name = 'graalvm-ee' if has_component('svmee') else 'graalvm-ce'
         dims = {
-            "vm": vm.name(),
-            "host-vm": host_vm.name() if host_vm else vm.name(),
+            # the vm and host-vm fields are hardcoded to one of the accepted names of the field
+            "vm": name,
+            "host-vm": name,
             "host-vm-config": self.host_vm_config_name(host_vm, vm),
-            "guest-vm": vm.name() if host_vm else "none",
+            "guest-vm": name if host_vm else "none",
             "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
         }
-
-        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
-        from mx_sdk_vm_impl import get_native_image_locations
 
         out = ""
         for gcomponent in graalvm_components():

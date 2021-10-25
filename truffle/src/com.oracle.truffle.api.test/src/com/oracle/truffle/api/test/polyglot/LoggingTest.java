@@ -74,7 +74,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -362,6 +361,63 @@ public class LoggingTest {
                 assertImmutable(r);
             }
             Assert.assertTrue(logged);
+        }
+    }
+
+    @Test
+    public void testNoParameters() {
+        String message = "Test{0}";
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+            @Override
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
+                for (TruffleLogger logger : loggers) {
+                    logger.log(Level.WARNING, message);
+                    logger.log(Level.WARNING, () -> message);
+                    logger.logp(Level.WARNING, "C", "M", message);
+                    logger.logp(Level.WARNING, "C", "M", () -> message);
+                }
+                return false;
+            }
+        };
+        final TestHandler handler = new TestHandler();
+        try (Context ctx1 = newContextBuilder().logHandler(handler).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            int loggedCount = 0;
+            for (LogRecord r : handler.getRawLog()) {
+                loggedCount++;
+                Assert.assertEquals(message, r.getMessage());
+                Assert.assertNull(r.getParameters());
+            }
+            Assert.assertEquals(4 * AbstractLoggingLanguage.LOGGER_NAMES.length, loggedCount);
+        }
+    }
+
+    @Test
+    public void testParametersOutput() {
+        String message = "Test{0} {1}";
+        assertLoggerOutput(message, logger -> logger.log(Level.WARNING, message));
+        assertLoggerOutput(message, logger -> logger.log(Level.WARNING, () -> message));
+        assertLoggerOutput(message, logger -> logger.logp(Level.WARNING, "C", "M", message));
+        assertLoggerOutput(message, logger -> logger.logp(Level.WARNING, "C", "M", () -> message));
+        assertLoggerOutput("TestA {1}", logger -> logger.log(Level.WARNING, message, "A"));
+        assertLoggerOutput("TestA {1}", logger -> logger.logp(Level.WARNING, "C", "M", message, "A"));
+        assertLoggerOutput("TestA B", logger -> logger.log(Level.WARNING, message, new String[]{"A", "B"}));
+        assertLoggerOutput("TestA B", logger -> logger.logp(Level.WARNING, "C", "M", message, new String[]{"A", "B"}));
+    }
+
+    private static void assertLoggerOutput(String expected, Consumer<TruffleLogger> log) {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, TruffleLogger[]>() {
+            @Override
+            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
+                log.accept(loggers[0]);
+                return false;
+            }
+        };
+        final ByteArrayOutputStream logStream = new ByteArrayOutputStream();
+        try (Context ctx1 = Context.newBuilder().logHandler(logStream).build()) {
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            final String output = new String(logStream.toByteArray());
+            Assert.assertTrue(output, output.indexOf(expected) > 0);
         }
     }
 
@@ -1537,7 +1593,7 @@ public class LoggingTest {
                     return getReference().get(this).getEnv().asGuestValue(null);
                 }
             };
-            return Truffle.getRuntime().createCallTarget(root);
+            return root.getCallTarget();
         }
 
         private void doLog() {

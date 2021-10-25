@@ -77,8 +77,6 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -354,7 +352,7 @@ public class HostAccessTest {
             fail();
         } catch (UnsupportedOperationException e) {
         }
-        assertEquals(0, value.getMemberKeys().size());
+        assertEquals(2 /* arr.length and arr.clone(). */, value.getMemberKeys().size());
         ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
@@ -417,45 +415,23 @@ public class HostAccessTest {
      */
     @Test
     public void testBuilderCannotChangeMembersAndTargetMappingsOfHostAccess() throws Exception {
-        APIAccess apiAccess = findAPIAccess();
-
         // Set up hostAccess
         Builder builder = HostAccess.newBuilder();
-        Field okField = OK.class.getField("value");
-        Field banField = Ban.class.getField("value");
-        builder.allowAccess(okField);
-        builder.targetTypeMapping(Integer.class, Integer.class, null, (v) -> 42);
+        builder.allowAccess(OK.class.getField("value"));
+        builder.targetTypeMapping(Value.class, String.class, (v) -> v.isString(), (v) -> "foo");
         HostAccess hostAccess = builder.build();
-        List<Object> targetMappings = apiAccess.getTargetMappings(hostAccess);
-
-        // Verify hostAccess
-        assertTrue(apiAccess.allowsAccess(hostAccess, okField));
-        assertFalse(apiAccess.allowsAccess(hostAccess, banField));
-        assertEquals(1, targetMappings.size());
 
         // Try to change members or targetMappings through child builder
         Builder childBuilder = HostAccess.newBuilder(hostAccess);
-        childBuilder.allowAccess(banField);
-        childBuilder.targetTypeMapping(Integer.class, Character.class, null, (v) -> (char) 42);
-        HostAccess childHostAccess = childBuilder.build();
-        List<Object> childTargetMappings = apiAccess.getTargetMappings(childHostAccess);
-
-        // Verify childHostAccess
-        assertTrue(apiAccess.allowsAccess(childHostAccess, okField));
-        assertTrue(apiAccess.allowsAccess(childHostAccess, banField));
-        assertEquals(2, childTargetMappings.size());
+        childBuilder.allowAccess(Ban.class.getField("value"));
+        childBuilder.targetTypeMapping(Value.class, Integer.class, null, (v) -> 42);
 
         // Ensure hostAccess has not been altered by child builder
-        assertTrue(apiAccess.allowsAccess(hostAccess, okField));
-        assertFalse(apiAccess.allowsAccess(hostAccess, banField));
-        assertEquals(1, targetMappings.size());
-        assertNotSame(targetMappings, childTargetMappings);
-    }
-
-    APIAccess findAPIAccess() throws ReflectiveOperationException {
-        Method getImplMethod = Engine.class.getDeclaredMethod("getImpl");
-        getImplMethod.setAccessible(true);
-        return ((AbstractPolyglotImpl) getImplMethod.invoke(null)).getAPIAccess();
+        try (Context c = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertAccess(c);
+            assertEquals("foo", c.asValue("a string").as(String.class));
+            assertEquals(123, (int) c.asValue(123).as(Integer.class));
+        }
     }
 
     @Test

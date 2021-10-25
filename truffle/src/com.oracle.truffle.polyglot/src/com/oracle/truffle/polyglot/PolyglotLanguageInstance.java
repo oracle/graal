@@ -52,7 +52,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -105,7 +104,7 @@ final class PolyglotLanguageInstance implements VMObject {
     }
 
     CallTarget installCallTarget(RootNode rootNode) {
-        return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> Truffle.getRuntime().createCallTarget(rootNode));
+        return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> rootNode.getCallTarget());
     }
 
     public PolyglotEngineImpl getEngine() {

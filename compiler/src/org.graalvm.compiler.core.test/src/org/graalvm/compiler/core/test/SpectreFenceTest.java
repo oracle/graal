@@ -64,6 +64,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
         } else {
             SideEffectL = UNSAFE.getLong(m, ARRAY_LONG_BASE_OFFSET);
         }
+        GraalDirectives.controlFlowAnchor();
         return UNSAFE.getLong(m, ARRAY_LONG_BASE_OFFSET);
     }
 
@@ -75,7 +76,9 @@ public class SpectreFenceTest extends GraalCompilerTest {
             } else {
                 return Memory[1];
             }
+            GraalDirectives.controlFlowAnchor();
         }
+        GraalDirectives.controlFlowAnchor();
         return Memory[2];
     }
 
@@ -88,6 +91,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
                 return 1;
             }
         }
+        GraalDirectives.controlFlowAnchor();
         return 4;
     }
 
@@ -102,6 +106,7 @@ public class SpectreFenceTest extends GraalCompilerTest {
             if (beginNode.hasSpeculationFence()) {
                 computedFences++;
             }
+            GraalDirectives.controlFlowAnchor();
         }
         Assert.assertEquals("Expected fences", fences, computedFences);
     }

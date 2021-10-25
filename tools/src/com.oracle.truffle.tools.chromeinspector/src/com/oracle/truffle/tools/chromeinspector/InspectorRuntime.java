@@ -213,10 +213,8 @@ public final class InspectorRuntime extends RuntimeDomain {
             exceptionText[0] = "<Not suspended>";
         }
         if (parsed && persistScript) {
-            int id = slh.assureLoaded(source);
-            if (id != -1) {
-                ret.put("scriptId", Integer.toString(id));
-            }
+            int id = slh.assureLoaded(source).getId();
+            ret.put("scriptId", Integer.toString(id));
         }
         if (exceptionText[0] != null) {
             fillExceptionDetails(ret, exceptionText[0]);

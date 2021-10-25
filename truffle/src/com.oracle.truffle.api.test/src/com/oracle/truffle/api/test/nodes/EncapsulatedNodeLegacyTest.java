@@ -53,7 +53,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -68,22 +67,22 @@ public class EncapsulatedNodeLegacyTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testCallNodePickedByCallTargetCall() {
-        CallTarget iterateFrames = create(new RootNode(null) {
+        CallTarget iterateFrames = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return captureStack();
             }
-        });
+        }.getCallTarget();
         Node callLocation = adopt(new Node() {
         });
 
-        CallTarget root = create(new RootNode(null) {
+        CallTarget root = new RootNode(null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 return boundary(callLocation, () -> IndirectCallNode.getUncached().call(iterateFrames, new Object[0]));
             }
-        });
+        }.getCallTarget();
         List<TruffleStackTraceElement> frames = (List<TruffleStackTraceElement>) root.call();
         assertEquals(2, frames.size());
         Iterator<TruffleStackTraceElement> iterator = frames.iterator();
@@ -103,12 +102,12 @@ public class EncapsulatedNodeLegacyTest {
     public void testCallNodePickedWithoutCallTarget() {
         Node callLocation = adopt(new Node() {
         });
-        CallTarget root = create(new RootNode(null) {
+        CallTarget root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return boundary(callLocation, () -> captureStack());
             }
-        });
+        }.getCallTarget();
 
         List<TruffleStackTraceElement> frames = (List<TruffleStackTraceElement>) root.call();
         assertEquals(1, frames.size());
@@ -207,10 +206,6 @@ public class EncapsulatedNodeLegacyTest {
             return;
         }
         fail();
-    }
-
-    static CallTarget create(RootNode root) {
-        return Truffle.getRuntime().createCallTarget(root);
     }
 
     @TruffleBoundary

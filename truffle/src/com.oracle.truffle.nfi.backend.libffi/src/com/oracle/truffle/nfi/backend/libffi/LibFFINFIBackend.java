@@ -42,7 +42,6 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -112,7 +111,7 @@ final class LibFFINFIBackend implements NFIBackend {
             }
             root = new LoadLibraryNode(language, descriptor.getFilename(), flags);
         }
-        return Truffle.getRuntime().createCallTarget(root);
+        return root.getCallTarget();
     }
 
     private static class LoadLibraryNode extends RootNode {

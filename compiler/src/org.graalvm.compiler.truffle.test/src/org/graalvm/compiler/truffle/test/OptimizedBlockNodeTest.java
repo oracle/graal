@@ -105,6 +105,38 @@ public class OptimizedBlockNodeTest {
     }
 
     @Test
+    public void testBoundaryBlockSize() {
+        /*
+         * Internal blockRanges and blockSizes arrays grow during partial blocks computation as
+         * needed. This test tests that the growth of the arrays works correctly.
+         */
+        for (int blockSize = 2; blockSize < 20; blockSize++) {
+            setup(1);
+            OptimizedBlockNode<TestElement> block = createBlock(blockSize, 1);
+            OptimizedCallTarget target = createTest(block);
+            target.computeBlockCompilations();
+            target.call();
+            target.compile(true);
+
+            // should not trigger and block compilation
+            PartialBlocks<TestElement> partialBlocks = block.getPartialBlocks();
+            assertNotNull(partialBlocks);
+            assertNotNull(partialBlocks.getBlockRanges());
+            assertEquals(blockSize - 1, partialBlocks.getBlockRanges().length);
+            for (int i = 0; i < (blockSize - 1); i++) {
+                assertEquals(i + 1, partialBlocks.getBlockRanges()[i]);
+            }
+            assertNotNull(partialBlocks.getBlockTargets());
+            assertEquals(blockSize, partialBlocks.getBlockTargets().length);
+            for (int i = 0; i < blockSize; i++) {
+                assertTrue(partialBlocks.getBlockTargets()[i].isValid());
+            }
+
+            assertEquals(blockSize - 1, target.call());
+        }
+    }
+
+    @Test
     public void testBlockSizePlusOne() {
         int groupSize = 1;
         for (int i = 0; i < 5; i++) {
@@ -570,7 +602,7 @@ public class OptimizedBlockNodeTest {
 
     private static OptimizedCallTarget createTest(BlockNode<?> block) {
         TestRootNode root = new TestRootNode(block, "Block[" + block.getElements().length + "]");
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         root.accept(new NodeVisitor() {
             @Override
             public boolean visit(Node node) {
