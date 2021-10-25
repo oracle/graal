@@ -30,6 +30,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.util.LazyFinalReference;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,6 +50,7 @@ public final class Target_java_lang_ClassLoader_JDK11OrLater {
     volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
 
     @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)//
     ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
         ConcurrentHashMap<?, ?> result = classLoaderValueMap;
         if (result == null) {
