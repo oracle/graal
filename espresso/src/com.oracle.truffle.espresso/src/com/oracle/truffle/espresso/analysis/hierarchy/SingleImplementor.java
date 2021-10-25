@@ -33,8 +33,9 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
- * Represents a single implementor of a class or an interface. Throughout its lifetime, an instance
- * of {@code SingleImplementor} undergoes up to 3 states in the following order:
+ * Represents a single implementor of a class or an interface. Throughout its lifetime,
+ * {@code currentState} of {@code SingleImplementor} undergoes up to 3 states in the following
+ * order:
  * <p>
  * 1) no implementor: {@code value == null}, {@code hasValue} is invalid
  * <p>
@@ -47,22 +48,22 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
 public final class SingleImplementor {
-    @CompilationFinal private volatile AssumptionGuardedValue<ObjectKlass> currentSnapshot;
-    @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<SingleImplementor, AssumptionGuardedValue> SNAPSHOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+    @CompilationFinal private volatile AssumptionGuardedValue<ObjectKlass> currentState;
+    @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<SingleImplementor, AssumptionGuardedValue> STATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
                     SingleImplementor.class,
-                    AssumptionGuardedValue.class, "currentSnapshot");
+                    AssumptionGuardedValue.class, "currentState");
 
-    static AssumptionGuardedValue<ObjectKlass> NoImplementorsSnapshot = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
-    static SingleImplementor MultipeImplementors = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
-    static AssumptionGuardedValue<ObjectKlass> MultipleImplementorsSnapshot = MultipeImplementors.read();
+    static AssumptionGuardedValue<ObjectKlass> NoImplementorsState = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
+    static SingleImplementor MultipleImplementors = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
+    static AssumptionGuardedValue<ObjectKlass> MultipleImplementorsState = MultipleImplementors.read();
 
-    // Used only to create the Invalid instance
+    // Used directly only to create MultipeImplementors instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        this.currentSnapshot = new AssumptionGuardedValue<>(assumption, value);
+        this.currentState = new AssumptionGuardedValue<>(assumption, value);
     }
 
     SingleImplementor() {
-        this.currentSnapshot = NoImplementorsSnapshot;
+        this.currentState = NoImplementorsState;
     }
 
     SingleImplementor(ObjectKlass implementor) {
@@ -74,29 +75,29 @@ public final class SingleImplementor {
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
 
-        if (currentSnapshot == MultipleImplementorsSnapshot) {
+        if (currentState == MultipleImplementorsState) {
             return;
         }
         AssumptionGuardedValue<ObjectKlass> singleImplementor = new AssumptionGuardedValue<>(Truffle.getRuntime().createAssumption("single implementor"), implementor);
-        if (!SNAPSHOT_UPDATER.compareAndSet(this, NoImplementorsSnapshot, singleImplementor)) {
+        if (!STATE_UPDATER.compareAndSet(this, NoImplementorsState, singleImplementor)) {
             // CAS failed, i.e. there already exists an implementor
-            AssumptionGuardedValue<ObjectKlass> snapshot = currentSnapshot;
+            AssumptionGuardedValue<ObjectKlass> state = currentState;
             // adding the same implementor repeatedly, so the class / interface still has a single
             // implementor
-            if (snapshot.value == implementor) {
+            if (state.value == implementor) {
                 return;
             }
-            while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
-                snapshot = currentSnapshot;
+            while (!STATE_UPDATER.compareAndSet(this, state, MultipleImplementorsState)) {
+                state = currentState;
             }
             // whoever executed the CAS successfully is responsible for invalidating the assumption
-            snapshot.hasValue().invalidate();
+            state.hasValue().invalidate();
         }
     }
 
     public AssumptionGuardedValue<ObjectKlass> read() {
         CompilerAsserts.partialEvaluationConstant(this);
-        CompilerAsserts.partialEvaluationConstant(currentSnapshot);
-        return currentSnapshot;
+        CompilerAsserts.partialEvaluationConstant(currentState);
+        return currentState;
     }
 }
