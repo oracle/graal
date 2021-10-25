@@ -59,9 +59,9 @@ public abstract class InvokeStatic extends Node {
     @Specialization
     Object callWithClassInitCheck(Object[] args,
                     @Cached InitCheck initCheck,
-                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeVirtual) {
+                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeStatic) {
         initCheck.execute(staticMethod.getDeclaringKlass());
-        return invokeVirtual.execute(args);
+        return invokeStatic.execute(args);
     }
 
     @ImportStatic(InvokeStatic.class)
