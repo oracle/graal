@@ -317,6 +317,11 @@ public class TypecheckBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
+    public boolean instanceOfClassShouldFold(ThreadState state) {
+        return state.aa1 instanceof AA;
+    }
+
+    @Benchmark
     public int classIsAssignableFrom(ThreadState state) {
         int res = 0;
         Object[] objects = state.object;
@@ -346,5 +351,21 @@ public class TypecheckBenchmark extends BenchmarkBase {
 
     boolean classIsInstance(Object obj) {
         return AA1.class.isInstance(obj);
+    }
+
+    @Benchmark
+    public int instanceOfClass(ThreadState state) {
+        int res = 0;
+        Object[] objects = state.object;
+        for (int i = 0; i < objects.length; i++) {
+            if (instanceOfClass(objects[i])) {
+                res++;
+            }
+        }
+        return res;
+    }
+
+    boolean instanceOfClass(Object obj) {
+        return obj instanceof AA1;
     }
 }
