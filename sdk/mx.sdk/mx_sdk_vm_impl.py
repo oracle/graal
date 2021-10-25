@@ -2843,7 +2843,7 @@ def _infer_env(graalvm_dist):
     if not nativeImages:
         nativeImages = ['false']
 
-    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables)
+    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), _no_licenses()
 
 
 def graalvm_enter(args):
@@ -2901,7 +2901,7 @@ def graalvm_enter(args):
         return
 
     graalvm_dist = get_final_graalvm_distribution()
-    dynamicImports, components, exclude_components, nativeImages, disableInstallables = _infer_env(graalvm_dist)
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables, noLicenses = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
@@ -2910,6 +2910,8 @@ def graalvm_enter(args):
     env['NATIVE_IMAGES'] = ','.join(nativeImages)
     env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
     env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
+    if noLicenses:
+        env['NO_LICENSES'] = 'true'
 
     # Disable loading of the global ~/.mx/env file in the subshell. The contents of this file are already in the current
     # environment. Parsing the ~/.mx/env file again would lead to confusing results, especially if it contains settings
@@ -2989,12 +2991,14 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 if val:
                     print(name + '=' + ','.join(val))
             print('Inferred env file:')
-            dynamic_imports, components, exclude_components, native_images, disable_installables = _infer_env(graalvm_dist)
+            dynamic_imports, components, exclude_components, native_images, disable_installables, no_licenses = _infer_env(graalvm_dist)
             _print_env('DYNAMIC_IMPORTS', dynamic_imports)
             _print_env('COMPONENTS', components)
             _print_env('EXCLUDE_COMPONENTS', exclude_components)
             _print_env('NATIVE_IMAGES', native_images)
             _print_env('DISABLE_INSTALLABLES', disable_installables)
+            if no_licenses:
+                print('NO_LICENSES=true')
 
 
 def _get_dists(dist_class):
