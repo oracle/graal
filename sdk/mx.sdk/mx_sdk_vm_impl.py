@@ -2811,6 +2811,33 @@ def print_standalone_home(args):
     print(standalone_home(args.comp_dir_name))
 
 
+def _infer_env(graalvm_dist):
+    components = []
+    dynamicImports = set()
+    foundLibpoly = False
+    for component in registered_graalvm_components():
+        if component.short_name == 'libpoly':
+            foundLibpoly = True  # 'libpoly' is special, we need to exclude it instead of including
+        else:
+            components.append(component.short_name)
+        suite = component.suite
+        if suite.dir == suite.vc_dir:
+            dynamicImports.add(os.path.basename(suite.dir))
+        else:
+            dynamicImports.add("/" + os.path.basename(suite.dir))
+
+    nativeImages = []
+    for p in _suite.projects:
+        if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
+            if p.is_native():
+                nativeImages.append(p.native_image_name)
+        elif isinstance(p, GraalVmLibrary):
+            if not p.is_skipped():
+                library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
+                nativeImages.append('lib:' + library_name)
+    return dynamicImports, components, foundLibpoly, nativeImages
+
+
 def graalvm_enter(args):
     """enter a subshell for developing with a particular GraalVM config"""
     env = os.environ.copy()
@@ -2866,30 +2893,7 @@ def graalvm_enter(args):
         return
 
     graalvm_dist = get_final_graalvm_distribution()
-
-    components = []
-    dynamicImports = set()
-    foundLibpoly = False
-    for component in registered_graalvm_components():
-        if component.short_name == 'libpoly':
-            foundLibpoly = True  # 'libpoly' is special, we need to exclude it instead of including
-        else:
-            components.append(component.short_name)
-        suite = component.suite
-        if suite.dir == suite.vc_dir:
-            dynamicImports.add(os.path.basename(suite.dir))
-        else:
-            dynamicImports.add("/" + os.path.basename(suite.dir))
-
-    nativeImages = []
-    for p in _suite.projects:
-        if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
-            if p.is_native():
-                nativeImages.append(p.native_image_name)
-        elif isinstance(p, GraalVmLibrary):
-            if not p.is_skipped():
-                library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
-                nativeImages.append('lib:' + library_name)
+    dynamicImports, components, foundLibpoly, nativeImages = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
