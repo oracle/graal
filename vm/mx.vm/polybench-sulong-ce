@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle,/vm
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
 COMPONENTS=cmp,lg,llrc,llrl,llrn,nfi,ni,nil,pbm,sdk,svm,svmnfi,tfl,tflm
 EXCLUDE_COMPONENTS=libpoly
 NATIVE_IMAGES=lib:jvmcicompiler,polybench
