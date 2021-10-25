@@ -2840,6 +2840,8 @@ def _infer_env(graalvm_dist):
             if not p.is_skipped():
                 library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
                 nativeImages.append('lib:' + library_name)
+    if not nativeImages:
+        nativeImages = ['false']
 
     return dynamicImports, components, excludeComponents, nativeImages, disableInstallables
 
