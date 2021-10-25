@@ -1015,6 +1015,9 @@ public final class GCImpl implements GC {
                 boolean promoted = false;
                 if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
                     promoted = heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+                    if (!promoted) {
+                        accounting.onSurvivorOverflowed();
+                    }
                 }
                 if (!promoted) {
                     heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
