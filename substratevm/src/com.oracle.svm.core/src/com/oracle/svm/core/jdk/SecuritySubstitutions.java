@@ -86,7 +86,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -95,7 +95,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -104,7 +104,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -113,7 +113,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -187,6 +187,13 @@ class AccessControllerUtil {
         } else {
             return ex;
         }
+    }
+
+    static Throwable wrapCheckedExceptionForPrivilegedAction(Throwable ex) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return wrapCheckedException(ex);
+        }
+        return ex;
     }
 }
 
