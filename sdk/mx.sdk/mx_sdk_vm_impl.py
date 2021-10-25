@@ -3160,9 +3160,11 @@ def _debug_images():
 
 
 def _components_include_list():
-    included = _parse_cmd_arg('components', parse_bool=False, default_value=None)
+    included = _parse_cmd_arg('components', parse_bool=True, default_value=None)
     if included is None:
         return None
+    if isinstance(included, bool):
+        return mx_sdk_vm.graalvm_components() if included else []
     components = []
     for name in included:
         if name.startswith('suite:'):
