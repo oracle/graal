@@ -341,6 +341,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
+        self.stage1 = stage1
         self.skip_archive = stage1 # Do not build *.tar archive for stage1 distributions
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
@@ -2835,7 +2836,7 @@ def _infer_env(graalvm_dist):
         if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
             if p.is_native():
                 nativeImages.append(p.native_image_name)
-        elif isinstance(p, GraalVmLibrary):
+        elif not graalvm_dist.stage1 and isinstance(p, GraalVmLibrary):
             if not p.is_skipped():
                 library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
                 nativeImages.append('lib:' + library_name)
