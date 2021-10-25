@@ -1,4 +1,5 @@
-DYNAMIC_IMPORTS=/substratevm,/sulong
-COMPONENTS=SubstrateVM,LLVM Runtime Native,LLVM.org toolchain
-NATIVE_IMAGES=graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,graalvm-native-binutil
-DISABLE_POLYGLOT=true
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
+COMPONENTS=cmp,llp,llrc,llrn,nfi,sdk,svm,svmnfi,tfl,tflm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld
+DISABLE_INSTALLABLES=False
