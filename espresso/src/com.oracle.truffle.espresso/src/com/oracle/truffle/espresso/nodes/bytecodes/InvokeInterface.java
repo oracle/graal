@@ -76,7 +76,6 @@ public abstract class InvokeInterface extends Node {
         return (StaticObject) args[0];
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeInterface.class)
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -156,7 +155,6 @@ public abstract class InvokeInterface extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKEINTERFACE dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 
