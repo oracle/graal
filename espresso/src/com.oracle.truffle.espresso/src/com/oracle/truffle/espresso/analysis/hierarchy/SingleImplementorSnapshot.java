@@ -24,10 +24,8 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * {@code SingleImplementorSnapshot} represents a single state of {@link SingleImplementor}. The
@@ -53,14 +51,9 @@ public final class SingleImplementorSnapshot {
         return hasSingleImplementor;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static void reportInvalidValueAccess() {
-        throw EspressoError.shouldNotReachHere("Accessed the value behind an invalid assumption");
-    }
-
     public ObjectKlass getImplementor() {
         if (!hasSingleImplementor.isValid()) {
-            reportInvalidValueAccess();
+            return null;
         }
         return implementor;
     }
