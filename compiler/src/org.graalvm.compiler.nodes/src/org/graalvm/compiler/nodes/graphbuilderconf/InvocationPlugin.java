@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -221,6 +223,9 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
             if (m.getName().equals("apply") || m.getName().equals("defaultHandler")) {
                 return String.format("%s.%s()", m.getClass().getName(), m.getName());
             }
+        }
+        if (IS_IN_NATIVE_IMAGE) {
+            return String.format("%s.%s()", c.getName(), "apply");
         }
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
     }

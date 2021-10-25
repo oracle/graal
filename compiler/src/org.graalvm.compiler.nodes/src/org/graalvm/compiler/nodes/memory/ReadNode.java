@@ -34,8 +34,6 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
@@ -47,6 +45,9 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -54,6 +55,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -109,16 +111,29 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CanonicalizerTool tool) {
+        if (!tool.canonicalizeReads()) {
+            return read;
+        }
         NodeView view = NodeView.from(tool);
+        return canonicalizeRead(read, address, locationIdentity, tool, view);
+    }
+
+    public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CoreProviders tool, NodeView view) {
         MetaAccessProvider metaAccess = tool.getMetaAccess();
-        if (tool.canonicalizeReads() && address instanceof OffsetAddressNode) {
+        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+        return canonicalizeRead(read, address, locationIdentity, tool, view, metaAccess, constantReflection);
+    }
+
+    public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CoreProviders tool, NodeView view, MetaAccessProvider metaAccess,
+                    ConstantReflectionProvider constantReflection) {
+        if (address instanceof OffsetAddressNode) {
             OffsetAddressNode objAddress = (OffsetAddressNode) address;
             ValueNode object = objAddress.getBase();
             // Note: readConstant cannot be used to read the array length, so in order to avoid an
             // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
             // check if we are reading the array length location first.
             if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
-                ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, tool.getConstantReflection());
+                ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
                 if (length != null) {
                     return length;
                 }
@@ -126,7 +141,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
                 long displacement = objAddress.getOffset().asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
-                    Constant constant = read.stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), object.asConstant(), displacement);
+                    Constant constant = read.stamp(view).readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement);
                     boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                         return ConstantNode.forConstant(read.stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);

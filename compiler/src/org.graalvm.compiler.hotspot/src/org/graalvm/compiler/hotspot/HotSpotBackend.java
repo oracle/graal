@@ -53,9 +53,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -149,42 +147,28 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private final HotSpotGraalRuntimeProvider runtime;
 
     /**
-     * @see AESCryptSubstitutions#encryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
+     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor ENCRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
+    public static final HotSpotForeignCallDescriptor AESCRYPT_ENCRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
+                    "aescrypt_encryptBlock", void.class, Word.class, Word.class, Pointer.class);
 
     /**
-     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
+     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.AESCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor DECRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
+    public static final HotSpotForeignCallDescriptor AESCRYPT_DECRYPTBLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
+                    "aescrypt_decryptBlock", void.class, Word.class, Word.class, Pointer.class);
 
     /**
-     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
+     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor DECRYPT_BLOCK_WITH_ORIGINAL_KEY = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "decrypt_block_with_original_key", void.class, Word.class, Word.class, Pointer.class,
-                    Pointer.class);
+    public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,
+                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_encrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
 
     /**
-     * @see CipherBlockChainingSubstitutions#crypt
+     * @see org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.CipherBlockChainingCryptPlugin
      */
-    public static final HotSpotForeignCallDescriptor ENCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
-
-    /**
-     * @see CipherBlockChainingSubstitutions#crypt
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
-
-    /**
-     * @see CipherBlockChainingSubstitutions#crypt
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT_WITH_ORIGINAL_KEY = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "decrypt_with_original_key", void.class, Word.class, Word.class, Pointer.class, Pointer.class,
-                    int.class, Pointer.class);
+    public static final HotSpotForeignCallDescriptor CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE,
+                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "cipherBlockChaining_decrypt_aescrypt", int.class, Word.class, Word.class, Pointer.class, Pointer.class, int.class);
 
     /**
      * @see BigIntegerSubstitutions#multiplyToLen
@@ -201,19 +185,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xIn, int xLen, Word yIn, int yLen, Word zIn, int zLen);
 
     public static final HotSpotForeignCallDescriptor MUL_ADD = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int), "mulAdd",
-                    int.class,
-                    Word.class, Word.class, int.class, int.class, int.class);
+                    int.class, Word.class, Word.class, int.class, int.class, int.class);
 
     public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class,
-                    Word.class);
+                    "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor SQUARE_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implSquareToLen",
-                    void.class, Word.class, int.class, Word.class, int.class);
+                    "implSquareToLen", void.class, Word.class, int.class, Word.class, int.class);
 
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompress", void.class, Word.class,
                     Object.class);
@@ -280,16 +261,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.
      */
     public static final HotSpotForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "counterModeAESCrypt", int.class,
-                    Word.class, Word.class, Word.class, Word.class, int.class,
-                    Word.class, Word.class);
-
-    public static int counterModeAESCrypt(Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr, Word used) {
-        return counterModeAESCrypt(COUNTERMODE_IMPL_CRYPT, srcAddr, dstAddr, kPtr, cntPtr, len, encCntPtr, used);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int counterModeAESCrypt(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr,
-                    Word used);
+                    Word.class, Word.class, Word.class, Word.class, int.class, Word.class, Word.class);
 
     /**
      * Descriptor for {@code StubRoutines::_vectorizedMismatch}.
