@@ -84,7 +84,7 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     }
 
     @Override
-    public SingleImplementorSnapshot readSingleImplementor(ObjectKlass klass) {
+    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
         return klass.getImplementor(classHierarchyInfoAccessor).read();
     }
 }

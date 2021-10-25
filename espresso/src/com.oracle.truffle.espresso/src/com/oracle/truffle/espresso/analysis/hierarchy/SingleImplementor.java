@@ -47,17 +47,18 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
 public final class SingleImplementor {
-    @CompilationFinal private volatile SingleImplementorSnapshot currentSnapshot;
-    private static final AtomicReferenceFieldUpdater<SingleImplementor, SingleImplementorSnapshot> SNAPSHOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SingleImplementor.class,
-                    SingleImplementorSnapshot.class, "currentSnapshot");
+    @CompilationFinal private volatile AssumptionGuardedValue<ObjectKlass> currentSnapshot;
+    @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<SingleImplementor, AssumptionGuardedValue> SNAPSHOT_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    SingleImplementor.class,
+                    AssumptionGuardedValue.class, "currentSnapshot");
 
-    static SingleImplementorSnapshot NoImplementorsSnapshot = new SingleImplementorSnapshot(NeverValidAssumption.INSTANCE, null);
+    static AssumptionGuardedValue<ObjectKlass> NoImplementorsSnapshot = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
     static SingleImplementor MultipeImplementors = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
-    static SingleImplementorSnapshot MultipleImplementorsSnapshot = MultipeImplementors.read();
+    static AssumptionGuardedValue<ObjectKlass> MultipleImplementorsSnapshot = MultipeImplementors.read();
 
     // Used only to create the Invalid instance
     private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        this.currentSnapshot = new SingleImplementorSnapshot(assumption, value);
+        this.currentSnapshot = new AssumptionGuardedValue<>(assumption, value);
     }
 
     SingleImplementor() {
@@ -76,24 +77,24 @@ public final class SingleImplementor {
         if (currentSnapshot == MultipleImplementorsSnapshot) {
             return;
         }
-        SingleImplementorSnapshot singleImplementor = new SingleImplementorSnapshot(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+        AssumptionGuardedValue<ObjectKlass> singleImplementor = new AssumptionGuardedValue<>(Truffle.getRuntime().createAssumption("single implementor"), implementor);
         if (!SNAPSHOT_UPDATER.compareAndSet(this, NoImplementorsSnapshot, singleImplementor)) {
             // CAS failed, i.e. there already exists an implementor
-            SingleImplementorSnapshot snapshot = currentSnapshot;
+            AssumptionGuardedValue<ObjectKlass> snapshot = currentSnapshot;
             // adding the same implementor repeatedly, so the class / interface still has a single
             // implementor
-            if (snapshot.implementor == implementor) {
+            if (snapshot.value == implementor) {
                 return;
             }
             while (!SNAPSHOT_UPDATER.compareAndSet(this, snapshot, MultipleImplementorsSnapshot)) {
                 snapshot = currentSnapshot;
             }
             // whoever executed the CAS successfully is responsible for invalidating the assumption
-            snapshot.hasImplementor().invalidate();
+            snapshot.hasValue().invalidate();
         }
     }
 
-    public SingleImplementorSnapshot read() {
+    public AssumptionGuardedValue<ObjectKlass> read() {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(currentSnapshot);
         return currentSnapshot;

@@ -58,5 +58,5 @@ public interface ClassHierarchyOracle {
 
     SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass);
 
-    SingleImplementorSnapshot readSingleImplementor(ObjectKlass klass);
+    AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
 }

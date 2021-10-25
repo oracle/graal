@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementorSnapshot;
+import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -94,18 +94,18 @@ public abstract class InvokeInterface extends Node {
 
         public abstract Object execute(Object[] args);
 
-        protected SingleImplementorSnapshot readSingleImplementor() {
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
-        @Specialization(assumptions = {"maybeSingleImplementor.hasImplementor()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") SingleImplementorSnapshot maybeSingleImplementor,
-                        @Cached("maybeSingleImplementor.getImplementor()") ObjectKlass implementor,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
+                        @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
                         @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode,
                         @Cached BranchProfile notAnImplementorProfile) {

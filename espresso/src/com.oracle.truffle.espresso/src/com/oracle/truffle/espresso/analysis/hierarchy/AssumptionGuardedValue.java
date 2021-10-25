@@ -24,43 +24,30 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.meta.EspressoError;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Represents a value whose correctness is determined by the assumption. The value is safe to use if
- * and only if the assumption is valid.
+ * Represents an immutable value whose correctness is determined by the assumption. The value is
+ * safe to use if and only if the assumption is valid.
  *
- * The semantics of the setter might vary, therefore setters are defined in the children of the
- * class.
- * 
  * @param <T> Type of the stored value
  */
-abstract class AssumptionGuardedValue<T> {
-    @CompilationFinal protected AtomicReference<Assumption> hasValue;
-    @CompilationFinal protected AtomicReference<T> value;
+public final class AssumptionGuardedValue<T> {
+    private final Assumption hasValue;
+    final T value;
 
-    AssumptionGuardedValue(Assumption hasValue, T value) {
-        this.hasValue = new AtomicReference<>(hasValue);
-        this.value = new AtomicReference<>(value);
-    }
-
-    @TruffleBoundary
-    private static void reportInvalidValueAccess() {
-        throw EspressoError.shouldNotReachHere("Accessed the value behind an invalid assumption");
-    }
-
-    public T get() {
-        if (!hasValue.get().isValid()) {
-            reportInvalidValueAccess();
-        }
-        return value.get();
+    public AssumptionGuardedValue(Assumption hasValue, T value) {
+        this.hasValue = hasValue;
+        this.value = value;
     }
 
     public Assumption hasValue() {
-        return hasValue.get();
+        return hasValue;
+    }
+
+    public T get() {
+        if (!hasValue.isValid()) {
+            return null;
+        }
+        return value;
     }
 }
