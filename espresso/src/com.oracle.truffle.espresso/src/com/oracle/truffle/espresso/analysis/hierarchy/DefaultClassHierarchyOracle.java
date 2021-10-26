@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -74,7 +75,7 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     @Override
     public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
-        if (klass == klass.getMeta().java_io_Serializable || klass == klass.getMeta().java_lang_Cloneable) {
+        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
             return SingleImplementor.MultipleImplementors;
         }
         if (klass.isAbstract() || klass.isInterface()) {
