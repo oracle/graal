@@ -34,11 +34,10 @@
   ],
 
   builds: [
-    common.oraclejdk8  + tools_gate,
     common.oraclejdk11 + tools_gate,
     common.oraclejdk17 + tools_gate,
 
-    common["linux-amd64"] + common.oraclejdk8 + tools_common + {
+    common["linux-amd64"] + common.oraclejdk11 + tools_common + {
       name: "gate-tools-javadoc",
       run: [
         ["mx", "build"],
@@ -47,7 +46,7 @@
       targets: ["gate"],
     },
 
-    common["windows-amd64"] + common.oraclejdk8 + devkits["windows-oraclejdk8"] + tools_gate_lite + {
+    common["windows-amd64"] + common.oraclejdk11 + devkits["windows-oraclejdk11"] + tools_gate_lite + {
       packages+: {
         "mx": "HEAD",
         "pip:isort": "==4.3.19",
@@ -57,13 +56,12 @@
       },
     },
 
-    common["darwin-amd64"] + common.oraclejdk8  + tools_gate_lite,
     common["darwin-amd64"] + common.oraclejdk11 + tools_gate_lite,
     common["darwin-amd64"] + common.oraclejdk17 + tools_gate_lite,
     
     common["linux-aarch64"] + common.labsjdk11 + tools_gate_lite,
 
-    common["linux-amd64"] + common.oraclejdk8 + tools_common + common.eclipse + common.jdt + {
+    common["linux-amd64"] + common.oraclejdk11 + tools_common + common.eclipse + common.jdt + {
       name: "weekly-tools-coverage",
       run: [
         ["mx"] + coverage_whitelisting + [
