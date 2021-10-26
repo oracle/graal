@@ -261,7 +261,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                     if (((base == value && index == null) || (base == null && index == value)) && address.getMaxConstantDisplacement() < implicitNullCheckLimit) {
                         // Opportunity for implicit null check as part of an existing read found!
                         fixedAccessNode.setStateBefore(deopt.stateBefore());
-                        fixedAccessNode.setNullCheck(true);
+                        fixedAccessNode.setUsedAsNullCheck(true);
                         fixedAccessNode.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
                         graph.removeSplit(ifNode, nonTrappingContinuation);
                         trappingNullCheck = fixedAccessNode;
