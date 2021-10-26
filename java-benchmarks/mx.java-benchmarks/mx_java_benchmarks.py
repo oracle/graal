@@ -803,7 +803,7 @@ _daCapoSizes = {
     "pmd":          ["default", "small", "large"],
     "sunflow":      ["default", "small", "large"],
     "tomcat":       ["default", "small", "large", "huge"],
-    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradebeans":   ["small", "large", "huge"],
     "tradesoap":    ["default", "small", "large", "huge"],
     "xalan":        ["default", "small", "large"]
 }
