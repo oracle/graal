@@ -58,8 +58,8 @@ public interface ClassHierarchyOracle {
     ClassHierarchyAssumption isLeaf(ObjectKlass klass);
 
     /**
-     * @return the assumption, valid only if {@code klass} is abstract and an interface and has no
-     *         implementors. Automatically invalidated in
+     * @return the assumption, valid only if {@code klass} has no implementors, including itself
+     *         (i.e. it must be abstract or an interface). Automatically invalidated in
      *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
      *         {@code klass} is created.
      */
