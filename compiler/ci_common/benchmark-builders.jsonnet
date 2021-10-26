@@ -78,15 +78,12 @@
   for suite in bench.groups.main_suites
   ]),
 
-  local economy_builds = std.flattenArrays([
-    [
-    c.daily + hw.x52 + jdk + cc.libgraal + suite + cc.economy_mode + { job_prefix:: "bench-compiler-economy" },
-    c.daily + hw.x52 + jdk + cc.jargraal + suite + cc.economy_mode + { job_prefix:: "bench-compiler-economy" }
-    ]
-  for jdk in amd64_jdks
-  for suite in bench.groups.economy_suites
-  if suite.is_jdk_supported(jdk.jdk_version)
-  ]),
+  local economy_builds = [
+      c.daily + hw.x52 + jdk + cc.libgraal_economy + suite
+    for jdk in amd64_jdks
+    for suite in bench.groups.economy_suites
+    if suite.is_jdk_supported(jdk.jdk_version)
+  ],
 
   local all_builds = main_builds + weekly_forks_builds + profiling_builds + aarch64_builds + economy_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
