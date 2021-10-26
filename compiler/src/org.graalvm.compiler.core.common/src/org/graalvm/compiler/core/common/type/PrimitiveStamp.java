@@ -24,8 +24,17 @@
  */
 package org.graalvm.compiler.core.common.type;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
+
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * Type describing primitive values.
@@ -47,7 +56,7 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
     /**
      * The width in bits of the value described by this stamp.
      */
-    public int getBits() {
+    public final int getBits() {
         return bits;
     }
 
@@ -62,13 +71,70 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
         try {
-            return provider.readPrimitiveConstant(getStackKind(), base, displacement, getBits());
+            int numBits = getBits();
+            GraalError.guarantee((numBits & 7) == 0, "numBits not a multiple of 8: %d", numBits);
+            int numBytes = numBits / 8;
+            boolean aligned = displacement % numBytes == 0;
+            if (aligned) {
+                return provider.readPrimitiveConstant(getStackKind(), base, displacement, numBits);
+            } else {
+                return readConstantUnaligned(provider, base, displacement, numBytes, getStackKind());
+            }
         } catch (IllegalArgumentException e) {
             /*
              * It's possible that the base and displacement aren't valid together so simply return
              * null.
              */
             return null;
+        }
+    }
+
+    /**
+     * As a result of JDK-8275874, {@link MemoryAccessProvider#readPrimitiveConstant} cannot be used
+     * for unaligned reads. Instead, it has to be done by reading individual bytes and stitching
+     * them together. The read is non-atomic which is fine for constant folding stable values (i.e.
+     * compile-time constant fields/elements).
+     */
+    private static Constant readConstantUnaligned(MemoryAccessProvider provider, Constant base, long displacement, int numBytes, JavaKind stackKind) {
+        ByteBuffer buf = ByteBuffer.allocate(numBytes);
+        for (int i = 0; i < numBytes; i++) {
+            JavaConstant c = provider.readPrimitiveConstant(JavaKind.Byte, base, displacement + i, 8);
+            if (c == null) {
+                // Some implementations of MemoryAccessProvider (e.g. HostedMemoryAccessProvider)
+                // can return null from readPrimitiveConstant
+                return null;
+            }
+            byte b = (byte) c.asInt();
+            buf.put(b);
+        }
+        BufferUtil.asBaseBuffer(buf).rewind();
+        buf.order(ByteOrder.nativeOrder());
+        if (numBytes == 8) {
+            return forPrimitive(stackKind, buf.getLong());
+        }
+        if (numBytes == 4) {
+            return forPrimitive(stackKind, buf.getInt());
+        }
+        GraalError.guarantee(numBytes == 2, "unexpected numBytes: %d", numBytes);
+        return forPrimitive(stackKind, buf.getShort());
+    }
+
+    /**
+     * Work around for {@code JavaConstant.forPrimitive(JavaKind kind, long rawValue)} only be
+     * available in more recent JVMCI versions.
+     */
+    private static PrimitiveConstant forPrimitive(JavaKind stackKind, long rawValue) {
+        switch (stackKind) {
+            case Int:
+                return JavaConstant.forInt((int) rawValue);
+            case Long:
+                return JavaConstant.forLong(rawValue);
+            case Float:
+                return JavaConstant.forFloat(Float.intBitsToFloat((int) rawValue));
+            case Double:
+                return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
+            default:
+                throw new IllegalArgumentException("Unexpected stack kind: " + stackKind);
         }
     }
 
