@@ -103,6 +103,11 @@ public class Graph {
     int nodesSize;
 
     /**
+     * The modification count driven by the {@link NodeEventListener} machinery;
+     */
+    int modificationCount;
+
+    /**
      * Records the modification count for nodes. This is only used in assertions.
      */
     private int[] nodeModCounts;
@@ -307,7 +312,7 @@ public class Graph {
         return id;
     }
 
-    int modCount(Node node) {
+    int getNodeModCountmodCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeModCounts.length) {
             return nodeModCounts[id];
@@ -315,7 +320,7 @@ public class Graph {
         return 0;
     }
 
-    void incModCount(Node node) {
+    void incNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeModCounts.length) {
@@ -327,7 +332,7 @@ public class Graph {
         }
     }
 
-    int usageModCount(Node node) {
+    int nodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeUsageModCounts.length) {
             return nodeUsageModCounts[id];
@@ -335,7 +340,7 @@ public class Graph {
         return 0;
     }
 
-    void incUsageModCount(Node node) {
+    void incNodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeUsageModCounts.length) {
@@ -345,6 +350,10 @@ public class Graph {
         } else {
             assert false;
         }
+    }
+
+    public int getModificationCount() {
+        return modificationCount;
     }
 
     /**
@@ -1112,6 +1121,7 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_ADDED, node);
         }
+        modificationCount++;
         afterRegister(node);
     }
 
@@ -1175,6 +1185,7 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_REMOVED, node);
         }
+        modificationCount++;
 
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }

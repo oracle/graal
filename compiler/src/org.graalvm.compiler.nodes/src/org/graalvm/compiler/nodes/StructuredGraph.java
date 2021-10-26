@@ -532,6 +532,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void getDebugProperties(Map<Object, Object> properties) {
         super.getDebugProperties(properties);
         properties.put("compilationIdentifier", compilationId());
+        properties.put("modificationCount", getModificationCount());
         properties.put("assumptions", String.valueOf(getAssumptions()));
     }
 

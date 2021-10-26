@@ -600,27 +600,27 @@ public abstract class Node implements Cloneable, Formattable {
 
     public final int modCount() {
         if (isModificationCountsEnabled() && graph != null) {
-            return graph.modCount(this);
+            return graph.getNodeModCountmodCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
         if (isModificationCountsEnabled() && graph != null) {
-            graph.incModCount(this);
+            graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
         if (isModificationCountsEnabled() && graph != null) {
-            return graph.usageModCount(this);
+            return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
         if (isModificationCountsEnabled() && graph != null) {
-            graph.incUsageModCount(this);
+            graph.incNodeUsageModCount(this);
         }
     }
 
@@ -1092,6 +1092,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
+            graph.modificationCount++;
         }
     }
 
@@ -1107,6 +1108,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.ZERO_USAGES, node);
             }
+            graph.modificationCount++;
         }
     }
 

@@ -149,6 +149,9 @@ public class DebugOptions {
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
 
+    @Option(help = "Dump graphs even if the graph hasn't changed since that last dump.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
+
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
         @Override
