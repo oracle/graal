@@ -14,9 +14,9 @@
   },
 
   builds: [
-    common["linux-amd64"]  + common.oraclejdk8  + sdk_gate + common.eclipse + common.jdt,
     common["linux-amd64"]  + common.oraclejdk11 + sdk_gate + common.eclipse + common.jdt,
     common["linux-amd64"]  + common.oraclejdk17 + sdk_gate + common.eclipse + common.jdt,
-    common["darwin-amd64"] + common.oraclejdk8  + sdk_gate,
+    common["darwin-amd64"] + common.oraclejdk11 + sdk_gate,
+    common["darwin-amd64"] + common.oraclejdk17 + sdk_gate,
   ]
 }
