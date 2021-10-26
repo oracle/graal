@@ -1,9 +1,12 @@
 {
   local common = import '../common.jsonnet',
+  local bench_hw = (import '../bench-common.libsonnet').bench_hw,
+  local devkits = (import "../common.json").devkits,
+
   local darwin_amd64 = common["darwin-amd64"],
   local linux_amd64 = common["linux-amd64"],
   local windows_amd64 = common["windows-amd64"],
-  local devkits = (import "../common.json").devkits,
+  local amd64_jdks = [common.oraclejdk8, common.oraclejdk11, common.oraclejdk17],
 
   local truffle_common = {
     packages+: {
@@ -20,7 +23,7 @@
     timelimit: "30:00",
   },
 
-  local bench_common = linux_amd64 + common.oraclejdk8 + {
+  local bench_common = {
     environment: {
       BENCH_RESULTS_FILE_PATH: "bench-results.json",
       MX_PYTHON: "python3",
@@ -30,14 +33,6 @@
       ["mx", "build" ],
       ["mx", "hsdis", "||", "true"],
     ]
-  },
-
-  local bench_weekly = bench_common + {
-    targets: ["bench", "weekly"],
-    timelimit: "3:00:00",
-    teardown: [
-      ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
-    ],
   },
 
   local gate_lite = truffle_common + {
@@ -113,25 +108,21 @@
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
 
-  local truffle_weekly = common.weekly + {notify_groups:: ["truffle_weekly"]},
+  local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
 
-  builds: [
-    sigtest + linux_amd64 + common.oraclejdk8,
-    sigtest + linux_amd64 + common.oraclejdk11,
-    sigtest + linux_amd64 + common.oraclejdk17,
+  builds: std.flattenArrays([
+      [
+        linux_amd64  + jdk + sigtest,
+        linux_amd64  + jdk + simple_tool_maven_project_gate,
+        linux_amd64  + jdk + simple_language_maven_project_gate,
+        darwin_amd64 + jdk + truffle_weekly + gate_lite,
+      ] for jdk in amd64_jdks
+    ]) + [
+    linux_amd64 + common.oraclejdk8  + truffle_gate + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdk11 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    simple_tool_maven_project_gate + linux_amd64 + common.oraclejdk8,
-    simple_tool_maven_project_gate + linux_amd64 + common["labsjdk-ee-11"],
-    simple_tool_maven_project_gate + linux_amd64 + common["labsjdk-ee-17"],
-    simple_language_maven_project_gate + linux_amd64 + common.oraclejdk8,
-    simple_language_maven_project_gate + linux_amd64 + common["labsjdk-ee-11"],
-    simple_language_maven_project_gate + linux_amd64 + common["labsjdk-ee-17"],
-
-    truffle_gate + linux_amd64 + common.oraclejdk8  + {timelimit: "45:00"},
-    truffle_gate + linux_amd64 + common.oraclejdk11 + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
-    truffle_gate + linux_amd64 + common.oraclejdk17 + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
-
-    truffle_common + linux_amd64 + common.oraclejdk8 + {
+    linux_amd64 + common.oraclejdk8 + truffle_common + {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -139,7 +130,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk8 + {
+    linux_amd64 + common.oraclejdk8 + truffle_common + {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -150,45 +141,46 @@
       ],
     },
 
-    gate_lite + darwin_amd64 + common.oraclejdk8  + truffle_weekly,
-    gate_lite + darwin_amd64 + common.oraclejdk11 + truffle_weekly,
-    gate_lite + darwin_amd64 + common.oraclejdk17 + truffle_weekly,
-
     windows_amd64 + common.oraclejdk8 + devkits["windows-oraclejdk8"] + truffle_common + {
       name: "gate-truffle-nfi-windows-8",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
       run: [
         ["mx", "build" ],
-        ["mx", "unittest", "--verbose" ]
+        ["mx", "unittest", "--verbose" ],
       ],
     },
 
-    # BENCHMARKS
-
-    bench_weekly + {
-      name: "bench-truffle-jmh",
-      notify_groups:: ["truffle_bench"],
-      run: [
-        ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],
-      ],
-    },
-
-    bench_common + {
-      name: "gate-truffle-test-benchmarks-8",
-      run: [
-        ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
-      ],
-      targets: ["gate"],
-    },
-
-    truffle_common + linux_amd64 + common.oraclejdk8 + common.eclipse + common.jdt + {
+    linux_amd64 + common.oraclejdk8 + truffle_common + common.eclipse + common.jdt + {
       name: "weekly-truffle-coverage-8-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
         ["mx", "coverage-upload"]
       ],
       targets: ["weekly"],
+    },
+
+    # BENCHMARKS
+
+    bench_hw.x52 + linux_amd64 + common.oraclejdk11 + bench_common + {
+      name: "bench-truffle-jmh",
+      notify_groups:: ["truffle_bench"],
+      run: [
+        ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],
+      ],
+      targets+: ["weekly"],
+      timelimit: "3:00:00",
+      teardown: [
+        ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"],
+      ],
+    },
+
+    linux_amd64 + common.oraclejdk11 + bench_common + {
+      name: "gate-truffle-test-benchmarks-11",
+      run: [
+        ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
+      ],
+      targets: ["gate"],
     },
   ]
 }
