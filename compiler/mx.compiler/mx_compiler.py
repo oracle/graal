@@ -498,8 +498,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
         if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Xbatch'])
 
-    # ensure benchmark counters still work
-    if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
+    # ensure benchmark counters still work but omit this test on
+    # fastdebug as benchmark counter threads may not produce
+    # output in a timely manner
+    out = mx.OutputCapture()
+    mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
+    if 'fastdebug' not in out.data:
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
