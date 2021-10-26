@@ -133,7 +133,7 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private ExtensionFieldsMetadata extensionFieldsMetadata;
 
-    // used for class redefintion when refreshing vtables etc.
+    // used for class redefinition when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
 
     public static final int LOADED = 0;
@@ -1355,15 +1355,18 @@ public final class ObjectKlass extends Klass {
         ExtensionFieldsMetadata metadata = extensionFieldsMetadata;
         if (metadata == null) {
             if (create) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    if (extensionFieldsMetadata == null) {
-                        extensionFieldsMetadata = metadata = new ExtensionFieldsMetadata();
-                    }
-                }
+                metadata = createExtensionFieldsMetadata();
             }
         }
         return metadata;
+    }
+
+    @TruffleBoundary
+    private synchronized ExtensionFieldsMetadata createExtensionFieldsMetadata() {
+        if (extensionFieldsMetadata == null) {
+            extensionFieldsMetadata = new ExtensionFieldsMetadata();
+        }
+        return extensionFieldsMetadata;
     }
 
     private void markForReResolution(List<ParserField> addedFields, List<ObjectKlass> invalidatedClasses) {
