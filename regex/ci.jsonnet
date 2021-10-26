@@ -8,13 +8,13 @@
     timelimit: "30:00",
   },
 
-  local regex_gate = regex_common + common["linux-amd64"] + common.eclipse + common.jdt + {
+  local regex_gate = regex_common + common.eclipse + common.jdt + {
     name: 'gate-regex-oraclejdk' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
   },
 
-  local regex_gate_lite = regex_common + common["darwin-amd64"] + {
+  local regex_gate_lite = regex_common + {
     name: 'gate-regex-mac-lite-oraclejdk' + self.jdk_version,
     run: [
       ["mx", "build"],
@@ -24,10 +24,13 @@
     targets: ["weekly"],
   },
 
-  builds: [
-    regex_gate      + common.oraclejdk8,
-    regex_gate      + common.oraclejdk11,
-    regex_gate_lite + common.oraclejdk8,
-    regex_gate_lite + common.oraclejdk11,
-  ],
+  builds: std.flattenArrays([
+    [
+      common["linux-amd64"]  + jdk + regex_gate,
+      common["darwin-amd64"] + jdk + regex_gate_lite,
+    ] for jdk in [
+      common.oraclejdk11,
+      common.oraclejdk17,
+    ]
+  ]),
 }
