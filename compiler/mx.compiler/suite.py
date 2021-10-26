@@ -434,6 +434,7 @@ suite = {
       ],
       "annotationProcessors" : [
       ],
+      "spotbugs" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "workingSets" : "API,Graal",

@@ -47,6 +47,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
+import org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
@@ -740,7 +741,7 @@ public class AMD64ControlFlow {
                 }
             }
 
-            JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, 4);
+            JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, EntryFormat.OFFSET);
             crb.compilationResult.addAnnotation(jt);
         }
     }
@@ -800,13 +801,8 @@ public class AMD64ControlFlow {
             masm.jmp(scratchReg);
 
             // Inserting padding so that jump the table address is aligned
-            int entrySize;
-            if (defaultTarget != null) {
-                entrySize = 8;
-            } else {
-                entrySize = 4;
-            }
-            masm.align(entrySize);
+            EntryFormat entryFormat = defaultTarget == null ? EntryFormat.OFFSET : EntryFormat.KEY2_OFFSET;
+            masm.align(entryFormat.size);
 
             // Patch LEA instruction above now that we know the position of the jump table
             // this is ugly but there is no better way to do this given the assembler API
@@ -834,7 +830,7 @@ public class AMD64ControlFlow {
                 }
             }
 
-            JumpTable jt = new JumpTable(jumpTablePos, keys[0].asInt(), keys[keys.length - 1].asInt(), entrySize);
+            JumpTable jt = new JumpTable(jumpTablePos, 0, keys.length - 1, entryFormat);
             crb.compilationResult.addAnnotation(jt);
         }
     }

@@ -40,6 +40,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
+import org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
@@ -443,7 +444,7 @@ public class AArch64ControlFlow {
                 for (LabelRef target : targets) {
                     masm.jmp(target.label());
                 }
-                JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, 4);
+                JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET);
                 crb.compilationResult.addAnnotation(jt);
             }
         }
