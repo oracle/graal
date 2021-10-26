@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static org.graalvm.compiler.hotspot.stubs.StubUtil.printNumber;
-import static org.graalvm.compiler.hotspot.stubs.StubUtil.printString;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -41,34 +40,25 @@ import org.graalvm.compiler.word.Word;
 import jdk.vm.ci.code.Register;
 
 /**
- * Stub to allocate an {@link ArrayIndexOutOfBoundsException} thrown by a bytecode.
+ * Stub to allocate a {@link NegativeArraySizeException} thrown by a bytecode when the length of an
+ * array allocation is negative.
  */
-public class OutOfBoundsExceptionStub extends CreateExceptionStub {
-    public OutOfBoundsExceptionStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super("createOutOfBoundsException", options, providers, linkage);
+public class NegativeArraySizeExceptionStub extends CreateExceptionStub {
+    public NegativeArraySizeExceptionStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
+        super("createNegativeArraySizeException", options, providers, linkage);
     }
 
-    // JDK-8201593: Print array length in ArrayIndexOutOfBoundsException.
     private static final boolean PRINT_LENGTH_IN_EXCEPTION = JavaVersionUtil.JAVA_SPEC >= 11;
-    static final int MAX_INT_STRING_SIZE = Integer.toString(Integer.MIN_VALUE).length();
-    private static final String STR_INDEX = "Index ";
-    private static final String STR_OUTOFBOUNDSFORLENGTH = " out of bounds for length ";
 
     @Override
     protected Object getConstantParameterValue(int index, String name) {
         switch (index) {
-            case 2:
+            case 1:
                 return providers.getRegisters().getThreadRegister();
-            case 3:
-                int bytes;
-                if (PRINT_LENGTH_IN_EXCEPTION) {
-                    bytes = STR_INDEX.length() + STR_OUTOFBOUNDSFORLENGTH.length() + 2 * MAX_INT_STRING_SIZE;
-                } else {
-                    bytes = MAX_INT_STRING_SIZE;
-                }
+            case 2:
                 // required bytes for maximum length + nullbyte
-                return bytes + 1;
-            case 4:
+                return OutOfBoundsExceptionStub.MAX_INT_STRING_SIZE + 1;
+            case 3:
                 return PRINT_LENGTH_IN_EXCEPTION;
             default:
                 throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
@@ -76,19 +66,15 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
     }
 
     @Snippet
-    private static Object createOutOfBoundsException(int idx, int length, @ConstantParameter Register threadRegister, @ConstantParameter int bufferSizeInBytes,
+    private static Object createNegativeArraySizeException(int length, @ConstantParameter Register threadRegister, @ConstantParameter int bufferSizeInBytes,
                     @ConstantParameter boolean printLengthInException) {
-        Word buffer = AllocaNode.alloca(bufferSizeInBytes, HotSpotReplacementsUtil.wordSize());
-        Word ptr;
         if (printLengthInException) {
-            ptr = printString(buffer, STR_INDEX);
-            ptr = printNumber(ptr, idx);
-            ptr = printString(ptr, STR_OUTOFBOUNDSFORLENGTH);
-            ptr = printNumber(ptr, length);
+            Word buffer = AllocaNode.alloca(bufferSizeInBytes, HotSpotReplacementsUtil.wordSize());
+            Word ptr = printNumber(buffer, length);
+            ptr.writeByte(0, (byte) 0);
+            return createException(threadRegister, NegativeArraySizeException.class, buffer);
         } else {
-            ptr = printNumber(buffer, idx);
+            return createException(threadRegister, NegativeArraySizeException.class);
         }
-        ptr.writeByte(0, (byte) 0);
-        return createException(threadRegister, ArrayIndexOutOfBoundsException.class, buffer);
     }
 }

@@ -757,7 +757,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
             } else if (oNode.getClass() == NewArrayNode.class) {
                 NewArrayNode oNew = (NewArrayNode) oNode;
-                NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), node(oNew.length()), oNew.fillContents()));
+                NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), b.maybeEmitExplicitNegativeArraySizeCheck(node(oNew.length())), oNew.fillContents()));
                 transplanted.put(oNew, tNew);
                 return true;
 

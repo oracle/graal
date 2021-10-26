@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
-import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -196,15 +196,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object newMultiArrayStub(Word dynamicHub, int rank, Word dimensionsStackValue) {
-        /*
-         * All dimensions must be checked here up front, since a previous dimension of length 0
-         * stops allocation of inner dimensions.
-         */
-        for (int i = 0; i < rank; i++) {
-            if (dimensionsStackValue.readInt(i * 4) < 0) {
-                throw new NegativeArraySizeException();
-            }
-        }
         // newMultiArray does not have a fast path, so there is no need to encode the hub as an
         // object header.
         DynamicHub hub = (DynamicHub) dynamicHub.toObject();

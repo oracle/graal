@@ -4704,7 +4704,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private void genNewPrimitiveArray(int typeCode) {
         ResolvedJavaType elementType = getMetaAccess().lookupJavaType(arrayTypeCodeToClass(typeCode));
-        ValueNode length = frameState.pop(JavaKind.Int);
+        ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewArray(this, elementType, length)) {
@@ -4717,14 +4717,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private void genNewObjectArray(int cpi) {
         JavaType type = lookupType(cpi, ANEWARRAY);
-        genNewObjectArray(type);
-    }
-
-    private void genNewObjectArray(JavaType type) {
         if (typeIsResolved(type)) {
             genNewObjectArray((ResolvedJavaType) type);
         } else {
-            ValueNode length = frameState.pop(JavaKind.Int);
+            ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
             handleUnresolvedNewObjectArray(type, length);
         }
     }
@@ -4736,7 +4732,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             classInitializationPlugin.apply(this, resolvedType.getArrayClass(), this::createCurrentFrameState);
         }
 
-        ValueNode length = frameState.pop(JavaKind.Int);
+        ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewArray(this, resolvedType, length)) {
                 return;
@@ -4750,15 +4746,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         JavaType type = lookupType(cpi, MULTIANEWARRAY);
         int rank = getStream().readUByte(bci() + 3);
         ValueNode[] dims = new ValueNode[rank];
-        genNewMultiArray(type, rank, dims);
-    }
-
-    private void genNewMultiArray(JavaType type, int rank, ValueNode[] dims) {
         if (typeIsResolved(type)) {
             genNewMultiArray((ResolvedJavaType) type, rank, dims);
         } else {
             for (int i = rank - 1; i >= 0; i--) {
-                dims[i] = frameState.pop(JavaKind.Int);
+                dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
             }
             handleUnresolvedNewMultiArray(type, dims);
         }
@@ -4772,7 +4764,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         for (int i = rank - 1; i >= 0; i--) {
-            dims[i] = frameState.pop(JavaKind.Int);
+            dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
