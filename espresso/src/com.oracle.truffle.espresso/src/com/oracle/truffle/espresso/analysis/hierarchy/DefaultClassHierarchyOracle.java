@@ -32,16 +32,34 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
  * initialized.
  */
-public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
+public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         if (newKlass.isConcrete()) {
             addImplementorToAncestors(newKlass);
         }
         if (newKlass.isFinalFlagSet()) {
-            return AlwaysValid;
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
         return new ClassHierarchyAssumptionImpl(newKlass);
+    }
+
+    @Override
+    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+        if (klass.isConcrete()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+    }
+
+    @Override
+    public ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass) {
+        if (klass.isAbstract() || klass.isInterface()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
     }
 
     /**
@@ -49,8 +67,8 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * parent interfaces.
      */
     private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
-        superInterface.getNoConcreteSubclassesAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
-        superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
+        superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+        superInterface.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(implementor);
         for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
             addImplementor(ancestorInterface, implementor);
         }
@@ -63,8 +81,8 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
         while (currentKlass != null) {
-            currentKlass.getNoConcreteSubclassesAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
-            currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
+            currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+            currentKlass.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
@@ -86,6 +104,6 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
 
     @Override
     public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
-        return klass.getImplementor(classHierarchyInfoAccessor).read();
+        return klass.getImplementor(ClassHierarchyAccessor.accessor).read();
     }
 }
