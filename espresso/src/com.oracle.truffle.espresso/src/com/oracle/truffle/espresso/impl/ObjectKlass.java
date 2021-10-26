@@ -1355,6 +1355,7 @@ public final class ObjectKlass extends Klass {
         ExtensionFieldsMetadata metadata = extensionFieldsMetadata;
         if (metadata == null) {
             if (create) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 metadata = createExtensionFieldsMetadata();
             }
         }
