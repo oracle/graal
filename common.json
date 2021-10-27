@@ -11,7 +11,7 @@
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-21.3-b03", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.13+9-jvmci-21.3-b03", "platformspecific": true },
 
-    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
+    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03-debug", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03", "platformspecific": true },
