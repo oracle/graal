@@ -32,6 +32,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -156,6 +158,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 classpath = System.getProperty("sun.boot.class.path");
             } else {
                 classpath = JRT_CLASS_PATH_ENTRY;
+                String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
+                if (upgradeModulePath != null) {
+                    classpath += File.pathSeparator + upgradeModulePath;
+                }
             }
 
             // Also process classes that go into the libgraal native image.
@@ -280,39 +286,43 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     if (path.equals(JRT_CLASS_PATH_ENTRY)) {
                         for (String className : ModuleSupport.getJRTGraalClassNames()) {
                             if (isGSON(className)) {
-                                /*
-                                 * GSON classes are compiled with old JDK
-                                 */
                                 continue;
                             }
                             classNames.add(className);
                         }
                     } else {
-                        final ZipFile zipFile = new ZipFile(new File(path));
-                        for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
-                            final ZipEntry zipEntry = entry.nextElement();
-                            String name = zipEntry.getName();
-                            if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
-                                String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                                if (isInNativeImage(className)) {
-                                    /*
-                                     * Native Image is an external tool and does not need to follow
-                                     * the Graal invariants.
-                                     */
-                                    continue;
+                        File file = new File(path);
+                        if (!file.exists()) {
+                            continue;
+                        }
+                        if (file.isDirectory()) {
+                            Path root = file.toPath();
+                            Files.walk(root).forEach(p -> {
+                                String name = root.relativize(p).toString();
+                                if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
+                                    String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                                    if (!(isInNativeImage(className) || isGSON(className))) {
+                                        classNames.add(className);
+                                    }
                                 }
-                                if (isGSON(className)) {
-                                    /*
-                                     * GSON classes are compiled with old JDK
-                                     */
-                                    continue;
+                            });
+                        } else {
+                            final ZipFile zipFile = new ZipFile(file);
+                            for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
+                                final ZipEntry zipEntry = entry.nextElement();
+                                String name = zipEntry.getName();
+                                if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
+                                    String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                                    if (isInNativeImage(className) || isGSON(className)) {
+                                        continue;
+                                    }
+                                    classNames.add(className);
                                 }
-                                classNames.add(className);
                             }
                         }
                     }
                 } catch (IOException ex) {
-                    Assert.fail(ex.toString());
+                    throw new AssertionError(ex);
                 }
             }
         }
@@ -538,10 +548,16 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
     }
 
+    /**
+     * Native Image is an external tool and does not need to follow the Graal invariants.
+     */
     private static boolean isInNativeImage(String className) {
         return className.startsWith("org.graalvm.nativeimage");
     }
 
+    /**
+     * GSON classes are compiled with old JDK.
+     */
     private static boolean isGSON(String className) {
         return className.contains("com.google.gson");
     }
