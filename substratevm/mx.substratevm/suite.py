@@ -210,15 +210,6 @@ suite = {
             "spotbugs": "false",
         },
 
-        "com.oracle.svm.core.jdk8": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "javaCompliance": "8",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
         "com.oracle.svm.core.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -382,21 +373,6 @@ suite = {
             },
             "javaCompliance": "11+",
             "checkstyleVersion": "8.36.1",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.hosted.jdk8": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "javaCompliance": "8",
-            "checkstyle" : "com.oracle.svm.hosted",
-            "checkPackagePrefix" : "false",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -1072,11 +1048,9 @@ suite = {
                 "com.oracle.svm.graal",
                 "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
-                "com.oracle.svm.hosted.jdk8",
                 "com.oracle.svm.hosted.jdk11",
                 "com.oracle.svm.hosted.jdk17",
                 "com.oracle.svm.core",
-                "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
