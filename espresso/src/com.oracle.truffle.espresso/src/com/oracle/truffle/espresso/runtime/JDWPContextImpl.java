@@ -783,7 +783,8 @@ public final class JDWPContextImpl implements JDWPContext {
     private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefintionNotSupportedException {
         // list to hold removed inner classes that must be marked removed
         List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-        // list of classes that need to refresh due to changes in other classes for things like vtable
+        // list of classes that need to refresh due to
+        // changes in other classes for things like vtable
         List<ObjectKlass> invalidatedClasses = new ArrayList<>();
         // list of all classes that have been redefined within this transaction
         List<ObjectKlass> redefinedClasses = new ArrayList<>();
