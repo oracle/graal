@@ -821,6 +821,9 @@ public final class CPUSampler implements Closeable {
             if (sample.stack.size() == 0) {
                 return;
             }
+            if (syntheticOnly(sample)) {
+                return;
+            }
             ProfilerNode<Payload> treeNode = threadNode;
             for (int i = sample.stack.size() - 1; i >= 0; i--) {
                 StackTraceEntry location = sample.stack.get(i);
@@ -829,6 +832,15 @@ public final class CPUSampler implements Closeable {
                 recordCompilationInfo(location, payload, i == 0, timestamp);
             }
             mutableSamplerData.samplesTaken.incrementAndGet();
+        }
+
+        private boolean syntheticOnly(StackSample sample) {
+            for (StackTraceEntry entry : sample.stack) {
+                if (!entry.isSynthetic()){
+                    return false;
+                }
+            }
+            return true;
         }
 
         private void recordCompilationInfo(StackTraceEntry location, Payload payload, boolean topOfStack, long timestamp) {
