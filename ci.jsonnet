@@ -7,6 +7,9 @@ local wasm = import 'wasm/ci.jsonnet';
 # Espresso
 local espresso = import 'espresso/ci.jsonnet';
 
+# Regex
+local regex = import 'regex/ci.jsonnet';
+
 # SDK
 local sdk = import 'sdk/ci.jsonnet';
 
@@ -33,6 +36,7 @@ local add_excludes_guard(build) = build + {
     compiler.builds +
     wasm.builds +
     espresso.builds +
+    regex.builds +
     sdk.builds +
     sulong.builds +
     javadoc.builds
