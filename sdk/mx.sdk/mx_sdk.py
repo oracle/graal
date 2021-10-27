@@ -143,6 +143,7 @@ AbstractNativeImageConfig = mx_sdk_vm.AbstractNativeImageConfig
 LauncherConfig = mx_sdk_vm.LauncherConfig
 LanguageLauncherConfig = mx_sdk_vm.LanguageLauncherConfig
 LibraryConfig = mx_sdk_vm.LibraryConfig
+LanguageLibraryConfig = mx_sdk_vm.LanguageLibraryConfig
 GraalVmComponent = mx_sdk_vm.GraalVmComponent
 GraalVmTruffleComponent = mx_sdk_vm.GraalVmTruffleComponent
 GraalVmLanguage = mx_sdk_vm.GraalVmLanguage

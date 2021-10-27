@@ -191,13 +191,27 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
 
+
+class LanguageLibraryConfig(LibraryConfig):
+    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, **kwargs):
+        """
+        :param str language
+        :param str main_class
+        """
+        super(LanguageLibraryConfig, self).__init__(destination, jar_distributions, build_args, home_finder=True, **kwargs)
+        self.is_sdk_launcher = is_sdk_launcher
+        self.main_class = main_class
+        self.language = language
+        self.default_symlinks = None
+        self.relative_home_paths = {}
+        self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
 
 class GraalVmComponent(object):
     def __init__(self,
