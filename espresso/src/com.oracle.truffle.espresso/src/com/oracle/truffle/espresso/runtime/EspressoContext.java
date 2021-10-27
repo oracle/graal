@@ -166,6 +166,7 @@ public final class EspressoContext {
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
     private ClassRedefinition classRedefinition;
+    private final boolean arbitraryChangesSupport;
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
@@ -305,6 +306,7 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
+        this.arbitraryChangesSupport = env.getOptions().get(EspressoOptions.ArbitraryChangesSupport);
         if (this.EnableClassHierarchyAnalysis) {
             this.classHierarchyOracle = new DefaultClassHierarchyOracle();
         } else {
@@ -1048,6 +1050,10 @@ public final class EspressoContext {
 
     public ClassRedefinition getClassRedefinition() {
         return classRedefinition;
+    }
+
+    public boolean arbitraryChangesSupported() {
+        return arbitraryChangesSupport;
     }
 
     public ClassHierarchyOracle getClassHierarchyOracle() {
