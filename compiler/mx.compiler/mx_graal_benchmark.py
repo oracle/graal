@@ -143,8 +143,11 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
             elif len(variant) == 3:
                 var_name, var_args, var_priority = variant
                 compiler_config = 'community'
-            else:
+            elif len(variant) == 4:
                 var_name, var_args, var_priority, compiler_config = variant
+            else:
+                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 4)".format(variant))
+
             variant_args = extended_extra_args + var_args + ['-Dgraal.CompilerConfiguration=' + compiler_config]
             mx_benchmark.add_java_vm(
                 JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
