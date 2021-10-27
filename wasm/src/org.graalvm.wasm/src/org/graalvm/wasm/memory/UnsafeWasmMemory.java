@@ -48,6 +48,7 @@ import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.lang.reflect.Field;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import org.graalvm.wasm.constants.Sizes;
@@ -88,6 +89,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     private ByteBuffer buffer;
 
     private static final Unsafe unsafe;
+    private static final long addressOffset;
 
     private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
         assert compareUnsigned(declaredMinSize, initialSize) <= 0;
@@ -115,9 +117,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
         }
     }
 
-    @TruffleBoundary
     private static long getBufferAddress(ByteBuffer buffer) {
-        return ((sun.nio.ch.DirectBuffer) buffer).address();
+        return unsafe.getLong(buffer, addressOffset);
     }
 
     public UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
@@ -144,8 +145,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @Override
     public void reset() {
         size = declaredMinSize;
-        unsafe.freeMemory(startAddress);
-        startAddress = unsafe.allocateMemory(byteSize());
+        buffer = allocateBuffer(byteSize());
+        startAddress = getBufferAddress(buffer);
     }
 
     @Override
@@ -383,6 +384,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
             final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
+            Field addressField = Buffer.class.getDeclaredField("address");
+            addressOffset = unsafe.objectFieldOffset(addressField);
         } catch (Exception e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }
