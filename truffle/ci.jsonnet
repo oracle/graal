@@ -122,7 +122,7 @@
     linux_amd64 + common.oraclejdk11 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
     linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    linux_amd64 + common.oraclejdk8 + truffle_common + {
+    linux_amd64 + common.oraclejdk11 + truffle_common + {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -130,7 +130,7 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk8 + truffle_common + {
+    linux_amd64 + common.oraclejdk11 + truffle_common + {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -141,8 +141,8 @@
       ],
     },
 
-    windows_amd64 + common.oraclejdk8 + devkits["windows-oraclejdk8"] + truffle_common + {
-      name: "gate-truffle-nfi-windows-8",
+    windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + truffle_common + {
+      name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
       run: [
@@ -151,11 +151,11 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk8 + truffle_common + common.eclipse + common.jdt + {
-      name: "weekly-truffle-coverage-8-linux-amd64",
+    linux_amd64 + common.oraclejdk11 + truffle_common + common.eclipse + common.jdt + {
+      name: "weekly-truffle-coverage-11-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],
-        ["mx", "coverage-upload"]
+        ["mx", "coverage-upload"],
       ],
       targets: ["weekly"],
     },
