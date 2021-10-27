@@ -45,7 +45,7 @@ public final class RedefineAddedField extends Field {
     }
 
     @Override
-    public final boolean hasCompatibleField() {
+    public boolean hasCompatibleField() {
         return compatibleField != null;
     }
 

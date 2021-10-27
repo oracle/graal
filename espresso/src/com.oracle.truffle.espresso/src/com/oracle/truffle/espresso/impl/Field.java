@@ -161,7 +161,7 @@ public class Field extends Member<Type> implements FieldRef {
     }
 
     @TruffleBoundary
-    private final void doResolveType() {
+    private void doResolveType() {
         synchronized (this) {
             Klass tk = typeKlassCache;
             if (tk == null) {
