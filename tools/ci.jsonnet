@@ -63,10 +63,11 @@
     common["linux-amd64"]   + common.oraclejdk17 + tools_gate,
 
     common["linux-amd64"]   + common.oraclejdk11 + tools_javadoc,
-    common["linux-amd64"]   + common.oraclejdk11 + tools_coverage_weekly,
-    common["linux-aarch64"] + common.labsjdk11   + tools_gate_lite,
+    common["linux-amd64"]   + common.oraclejdk17 + tools_coverage_weekly,
+    common["linux-aarch64"] + common.labsjdk17   + tools_gate_lite,
 
     common["windows-amd64"] + common.oraclejdk11 + devkits["windows-jdk11"] + tools_gate_lite,
+    common["windows-amd64"] + common.oraclejdk17 + devkits["windows-jdk17"] + tools_gate_lite,
 
     common["darwin-amd64"]  + common.oraclejdk11 + tools_gate_lite,
     common["darwin-amd64"]  + common.oraclejdk17 + tools_gate_lite,
