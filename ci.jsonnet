@@ -16,6 +16,9 @@ local sdk = import 'sdk/ci.jsonnet';
 # Sulong
 local sulong = import 'sulong/ci.jsonnet';
 
+# Tools
+local tools = import 'tools/ci.jsonnet';
+
 # JavaDoc
 local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 
@@ -39,6 +42,7 @@ local add_excludes_guard(build) = build + {
     regex.builds +
     sdk.builds +
     sulong.builds +
+    tools.builds +
     javadoc.builds
   )]
 }
