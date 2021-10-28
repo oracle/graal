@@ -284,7 +284,15 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public ResolvedJavaMethod getMethod() {
-        return method;
+        /*
+         * Invocation plugins expect to get the caller method that triggers the intrinsification.
+         * Since we are compiling the intrinsic on its own, we do not have any such caller method.
+         *
+         * In particular, returning `method` would be misleading because it is the method that is
+         * intrinsified, not the caller. The invocation plugin gets that method passed in as the
+         * `targetMethod` already.
+         */
+        return null;
     }
 
     @Override

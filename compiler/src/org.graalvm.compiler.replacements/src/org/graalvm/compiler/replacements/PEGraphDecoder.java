@@ -352,7 +352,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public boolean isParsingInvocationPlugin() {
-            throw GraalError.shouldNotReachHere();
+            return false;
         }
 
         /**
@@ -449,6 +449,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public ResolvedJavaMethod getMethod() {
+            if (isParsingInvocationPlugin()) {
+                /*
+                 * While processing an invocation plugin, it is required to return the method that
+                 * calls the intrinsified method. But our methodScope object is for the callee,
+                 * i.e., the intrinsified method itself, for various other reasons. So we need to
+                 * compensate for that.
+                 */
+                return methodScope.caller.method;
+            }
             return methodScope.method;
         }
 
