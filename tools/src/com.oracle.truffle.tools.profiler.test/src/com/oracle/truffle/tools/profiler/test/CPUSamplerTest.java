@@ -90,7 +90,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Map<TruffleContext, CPUSamplerData> data = sampler.getData();
         assertEquals(1, data.size());
 
-        assertEquals(1, searchInitializeContext(data).size());
+        assertEquals(0, searchInitializeContext(data).size());
     }
 
     @Test
