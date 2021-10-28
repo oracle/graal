@@ -36,6 +36,8 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
@@ -49,6 +51,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
@@ -575,4 +578,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
 
     @NodeIntrinsic
     public static native Class<?> forClass(@ConstantNodeParameter ResolvedJavaType type);
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        Constant value = getValue();
+        if (value instanceof PrimitiveConstant) {
+            return InterpreterValuePrimitive.ofPrimitiveConstant(value);
+        }
+
+        // TODO: non-primitives
+        GraalError.unimplemented("Non-primitive ConstantNode not implemented yet.");
+        return null;
+    }
 }

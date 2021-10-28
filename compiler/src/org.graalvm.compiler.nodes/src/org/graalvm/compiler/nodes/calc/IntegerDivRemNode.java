@@ -27,16 +27,22 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
 public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lowerable, IterableNodeType {
@@ -86,5 +92,44 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     @Override
     public boolean canDeoptimize() {
         return canDeopt;
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue divisor =  interpreter.interpretDataflowNode(getY());
+
+        GraalError.guarantee(divisor.isPrimitive(), "divisor doesn't interpret to primitive value");
+        GraalError.guarantee(divisor.getJavaKind().isNumericInteger(), "divisor doesn't interpret to an integer");
+        GraalError.guarantee(!(divisor.asPrimitiveConstant().isDefaultForKind()), "divisor evaluates to 0");
+
+        InterpreterValue dividend =  interpreter.interpretDataflowNode(getX());
+
+        GraalError.guarantee(dividend.isPrimitive(), "dividend doesn't interpret to primitive value");
+        GraalError.guarantee(dividend.getJavaKind().isNumericInteger(), "dividend doesn't interpret to an integer");
+
+        long result;
+        if (getOp() == Op.DIV) {
+            if (getType() == Type.SIGNED) {
+                result = dividend.asPrimitiveConstant().asLong() / divisor.asPrimitiveConstant().asLong();
+            } else { // UNSIGNED
+                result = Long.divideUnsigned(dividend.asPrimitiveConstant().asLong(), divisor.asPrimitiveConstant().asLong());
+            }
+        } else { // REM
+            if (getType() == Type.SIGNED) {
+                result = dividend.asPrimitiveConstant().asLong() % divisor.asPrimitiveConstant().asLong();
+            } else { // UNSIGNED
+                result = Long.remainderUnsigned(dividend.asPrimitiveConstant().asLong(), divisor.asPrimitiveConstant().asLong());
+            }
+        }
+
+        InterpreterValue resultValue = InterpreterValuePrimitive.ofPrimitiveConstant(JavaConstant.forIntegerKind(dividend.getJavaKind(), result));
+        interpreter.setNodeLookupValue(this, resultValue);
+
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.getNodeLookupValue(this);
     }
 }

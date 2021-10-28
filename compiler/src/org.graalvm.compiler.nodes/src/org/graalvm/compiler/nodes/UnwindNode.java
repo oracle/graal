@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
@@ -58,5 +59,14 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
+    }
+
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        interpreter.setNodeLookupValue(this, interpreter.interpretDataflowNode(exception()));
+
+        // the last node in this execution
+        return null;
     }
 }

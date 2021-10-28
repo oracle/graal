@@ -32,6 +32,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
@@ -39,6 +40,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
@@ -66,5 +68,10 @@ public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtuali
     @Override
     public void lower(LoweringTool tool) {
         graph().replaceFixedWithFixed(this, graph().add(new MembarNode(LOAD_STORE | STORE_STORE)));
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        return next();
     }
 }

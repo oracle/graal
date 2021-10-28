@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Denotes the merging of multiple control-flow paths.
@@ -54,5 +55,11 @@ public final class MergeNode extends AbstractMergeNode {
     public boolean verify() {
         assertTrue(this.forwardEndCount() > 1, "Must merge more than one end.");
         return super.verify();
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        interpreter.visitMerge(this);
+        return next();
     }
 }

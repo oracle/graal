@@ -29,8 +29,13 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -47,6 +52,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -145,5 +151,21 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             VirtualArrayNode virtualArray = (VirtualArrayNode) alias;
             tool.replaceWithValue(ConstantNode.forInt(virtualArray.entryCount(), graph()));
         }
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue arrayVal = interpreter.interpretDataflowNode(array());
+        GraalError.guarantee(arrayVal instanceof InterpreterValueArray, "ArrayLengthNode input doesn't interpret to an array");
+
+        int length = ((InterpreterValueArray) arrayVal).getLength();
+        interpreter.setNodeLookupValue(this, InterpreterValuePrimitive.ofInt(length));
+
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.getNodeLookupValue(this);
     }
 }

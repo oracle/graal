@@ -32,12 +32,14 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.MultiKillingBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -46,6 +48,7 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.word.LocationIdentity;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
@@ -122,5 +125,17 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        // TODO: is this the best way to do this?
+        interpreter.setNodeLookupValue(this, interpreter.interpretDataflowNode(predecessor()));
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.interpretDataflowNode(this);
     }
 }

@@ -28,12 +28,17 @@ import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Logic node that negates its argument.
@@ -87,5 +92,12 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
             return TriState.get(thisNegated);
         }
         return getValue().implies(!thisNegated, other);
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+        GraalError.guarantee(val.getJavaKind() == JavaKind.Boolean, "LogicNegationNode input does not interpret to a boolean value");
+        return InterpreterValuePrimitive.ofBoolean(!val.asPrimitiveConstant().asBoolean());
     }
 }

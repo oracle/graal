@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.nodes;
 
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(allowedUsageTypes = {InputType.Association}, nameTemplate = "End")
 public final class EndNode extends AbstractEndNode {
@@ -34,6 +36,30 @@ public final class EndNode extends AbstractEndNode {
 
     public EndNode() {
         super(TYPE);
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        boolean seen = false;
+
+        FixedNode next = null;
+        for (Node nextNode : cfgSuccessors()) {
+            // Should just have one successor
+            if (seen) {
+                throw new UnsupportedOperationException("EndNode has more than one CFG successor");
+            }
+
+            AbstractMergeNode mergeNode = (AbstractMergeNode) nextNode;
+            int index = mergeNode.phiPredecessorIndex(this);
+
+            // Since we are interpreting this EndNode, we can assume that this is the node is the index to use for
+            // phi node lookups associated with the next MergeNode.
+            interpreter.setMergeNodeIncomingIndex(mergeNode, index);
+            next = mergeNode;
+            seen = true;
+        }
+
+        return next;
     }
 
 }

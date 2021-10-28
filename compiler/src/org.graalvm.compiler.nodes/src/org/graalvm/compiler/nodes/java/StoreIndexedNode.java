@@ -29,6 +29,9 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -36,6 +39,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -44,6 +48,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -123,5 +128,20 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
             return new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
         return this;
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue index = interpreter.interpretDataflowNode(index());
+        InterpreterValue array = interpreter.interpretDataflowNode(array());
+        InterpreterValue value = interpreter.interpretDataflowNode(value());
+
+        GraalError.guarantee(index.isPrimitive() && index.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "StoreIndexedNode index doesn't interpret to int");
+        GraalError.guarantee(array.isArray(), "StoreIndexedNode array did not interpret to an array");
+
+        // TODO: check type of value is compatible?
+        ((InterpreterValueArray) array).setAtIndex(index.asPrimitiveConstant().asInt(), value);
+
+        return next();
     }
 }

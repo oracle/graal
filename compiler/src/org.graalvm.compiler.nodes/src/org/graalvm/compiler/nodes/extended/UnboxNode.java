@@ -28,11 +28,15 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -41,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -132,4 +137,16 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
         return null;
     }
 
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+        GraalError.guarantee(val.isPrimitive() && val.getJavaKind() == JavaKind.Object, "UnboxNode input doesn't interpret to boxed primitive");
+        interpreter.setNodeLookupValue(this, ((InterpreterValuePrimitive) val).asUnboxed());
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.getNodeLookupValue(this);
+    }
 }

@@ -32,8 +32,12 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
@@ -51,6 +55,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -197,5 +202,24 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
             }
         }
         return null;
+    }
+
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue index = interpreter.interpretDataflowNode(index());
+        InterpreterValue array = interpreter.interpretDataflowNode(array());
+
+        GraalError.guarantee(index.isPrimitive() && index.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "LoadIndexNode index doesn't interpret to int");
+        GraalError.guarantee(array.isArray(), "LoadIndexNode array did not interpret to an array");
+
+        interpreter.setNodeLookupValue(this, ((InterpreterValueArray) array).getAtIndex(index.asPrimitiveConstant().asInt()));
+
+        return next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.interpretDataflowNode(this);
     }
 }

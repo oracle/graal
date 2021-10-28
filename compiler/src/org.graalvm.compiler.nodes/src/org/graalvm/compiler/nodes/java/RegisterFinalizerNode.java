@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -136,5 +138,11 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        // TODO: avoid using this: generalise away the need to create a graph for the object init method.
+        return next();
     }
 }

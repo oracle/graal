@@ -27,12 +27,14 @@ package org.graalvm.compiler.nodes;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -43,6 +45,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SerializableConstant;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * This class represents a value within the graph, including local variables, phis, and all other
@@ -308,5 +311,10 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
 
         return true;
+    }
+
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        GraalError.unimplemented("interpretDataFlow: " + this.getClass());
+        return null;
     }
 }

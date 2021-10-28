@@ -356,6 +356,19 @@ suite = {
       "workingSets" : "Graal,Debug,Test",
     },
 
+    "org.graalvm.compiler.interpreter.value" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "dependencies" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+      ],
+      "annotationProcessors" : ["GRAAL_PROCESSOR"],
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Debug",
+    },
+
     "org.graalvm.compiler.code" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1246,6 +1259,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.lir",
+        "org.graalvm.compiler.interpreter.value",
         "sdk:GRAAL_SDK",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",

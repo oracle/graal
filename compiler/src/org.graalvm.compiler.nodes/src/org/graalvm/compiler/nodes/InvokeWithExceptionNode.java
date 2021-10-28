@@ -36,6 +36,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
@@ -273,5 +275,18 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
             tool.addToWorkList(newBegin.next());
             tool.addToWorkList(newBegin);
         }
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue out = interpreter.interpretMethod(callTarget(), callTarget().arguments().snapshot());
+        interpreter.setNodeLookupValue(this, out);
+
+        return out.isException() ? exceptionEdge() : next();
+    }
+
+    @Override
+    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+        return interpreter.getNodeLookupValue(this);
     }
 }

@@ -28,11 +28,14 @@ import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
@@ -44,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(nameTemplate = "FixedGuard(!={p#negated}) {p#reason/s}", allowedUsageTypes = Guard, size = SIZE_2, cycles = CYCLES_2)
 public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowerable, IterableNodeType, SwitchFoldable {
@@ -211,5 +215,18 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     @Override
     public double defaultProbability() {
         return 1.0d;
+    }
+
+    @Override
+    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+        InterpreterValue condValue = interpreter.interpretDataflowNode(getCondition());
+
+        GraalError.guarantee(condValue.getJavaKind() == JavaKind.Boolean, "FixedGuardNode condition didn't evaluate to boolean");
+
+        // TODO: don't think this is the way to handle this
+        boolean condResult = condValue.asPrimitiveConstant().asBoolean();
+        GraalError.guarantee(isNegated() ? !condResult : condResult, "FixedGuardNode condition evaluated to false");
+
+        return next();
     }
 }
