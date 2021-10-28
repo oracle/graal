@@ -67,8 +67,8 @@ jobs:
     - name: Build graalvm native-image
       run: |
         cd substratevm
-        ${MX_PATH}/mx --native=native-image --components="Native Image" build
-        mv $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
+        ${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" build
+        mv $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
         ${GRAALVM_HOME}/bin/native-image --version
     - name: Tar GraalVM
       shell: bash
