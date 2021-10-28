@@ -97,7 +97,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    static class EnableOptionData {
+    static final class EnableOptionData {
         final boolean enabled;
         final Output output;
 
