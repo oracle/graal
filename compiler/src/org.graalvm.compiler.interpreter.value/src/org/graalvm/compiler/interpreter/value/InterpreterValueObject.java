@@ -12,7 +12,7 @@ public class InterpreterValueObject extends InterpreterValue {
     final ResolvedJavaType type;
     final HashMap<ResolvedJavaField, InterpreterValue> instanceFields;
 
-    public InterpreterValueObject(ResolvedJavaType type, Function<JavaType, JavaKind> getStorageKind)  {
+    public InterpreterValueObject(ResolvedJavaType type, Function<JavaType, JavaKind> getStorageKind) {
         this.type = type;
         this.instanceFields = new HashMap<>();
 
@@ -33,6 +33,7 @@ public class InterpreterValueObject extends InterpreterValue {
         return instanceFields.get(field);
     }
 
+    @Override
     public boolean isException() {
         try {
             return Exception.class.isAssignableFrom(Class.forName(type.toClassName()));

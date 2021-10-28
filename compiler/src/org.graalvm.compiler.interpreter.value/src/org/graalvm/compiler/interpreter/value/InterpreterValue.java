@@ -49,8 +49,6 @@ public abstract class InterpreterValue {
         private InterpreterValueNullPointer() {
         }
 
-        public boolean isPrimitive() { return false; }
-
         @Override
         public JavaKind getJavaKind() {
             return JavaKind.Object;
@@ -73,7 +71,10 @@ public abstract class InterpreterValue {
         private InterpreterValueVoid() {
         }
 
-        public boolean isPrimitive() { return true; }
+        @Override
+        public boolean isPrimitive() {
+            return true;
+        }
 
         @Override
         public JavaKind getJavaKind() {

@@ -204,7 +204,6 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
         return null;
     }
 
-
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
         InterpreterValue index = interpreter.interpretDataflowNode(index());

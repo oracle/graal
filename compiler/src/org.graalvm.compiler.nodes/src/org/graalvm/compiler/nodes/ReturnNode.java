@@ -97,7 +97,7 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
         interpreter.setNodeLookupValue(this,
-                result() == null ? InterpreterValue.InterpreterValueVoid.INSTANCE : interpreter.interpretDataflowNode(result()));
+                        result() == null ? InterpreterValue.InterpreterValueVoid.INSTANCE : interpreter.interpretDataflowNode(result()));
 
         // the last node in this execution
         return null;

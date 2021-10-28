@@ -96,13 +96,13 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
 
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue divisor =  interpreter.interpretDataflowNode(getY());
+        InterpreterValue divisor = interpreter.interpretDataflowNode(getY());
 
         GraalError.guarantee(divisor.isPrimitive(), "divisor doesn't interpret to primitive value");
         GraalError.guarantee(divisor.getJavaKind().isNumericInteger(), "divisor doesn't interpret to an integer");
         GraalError.guarantee(!(divisor.asPrimitiveConstant().isDefaultForKind()), "divisor evaluates to 0");
 
-        InterpreterValue dividend =  interpreter.interpretDataflowNode(getX());
+        InterpreterValue dividend = interpreter.interpretDataflowNode(getX());
 
         GraalError.guarantee(dividend.isPrimitive(), "dividend doesn't interpret to primitive value");
         GraalError.guarantee(dividend.getJavaKind().isNumericInteger(), "dividend doesn't interpret to an integer");

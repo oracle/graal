@@ -200,7 +200,8 @@ public final class LoopEndNode extends AbstractEndNode {
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
         LoopBeginNode loopBeginNode = loopBegin();
 
-        // Since we are interpreting this LoopEndNode, we can assume that this is the node is the index to use for
+        // Since we are interpreting this LoopEndNode, we can assume that this is the node is the
+        // index to use for
         // phi node lookups associated with the corresponding LoopBeginNode.
         int index = loopBeginNode.phiPredecessorIndex(this);
         interpreter.setMergeNodeIncomingIndex(loopBeginNode, index);

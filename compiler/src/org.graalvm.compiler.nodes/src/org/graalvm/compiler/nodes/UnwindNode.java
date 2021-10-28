@@ -61,7 +61,6 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
         gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
     }
 
-
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
         interpreter.setNodeLookupValue(this, interpreter.interpretDataflowNode(exception()));

@@ -53,7 +53,7 @@ public class GraalInterpreter {
         }
 
         // TODO: static class initialisation? (<clinit>): Does loadStaticFields handle this?
-        InterpreterValue returnValue =  myState.interpretGraph(graph, evaluatedParams);
+        InterpreterValue returnValue = myState.interpretGraph(graph, evaluatedParams);
 
         // TODO: this needs to be implemented in InterpreterValueObject
         Object returnObject = returnValue.asObject();
@@ -154,14 +154,10 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue interpretMethod(CallTargetNode target, List<ValueNode> argumentNodes) {
-            List<InterpreterValue> evaluatedArgs = argumentNodes.stream()
-                    .map(this::interpretDataflowNode)
-                    .collect(Collectors.toList());
+            List<InterpreterValue> evaluatedArgs = argumentNodes.stream().map(this::interpretDataflowNode).collect(Collectors.toList());
 
             StructuredGraph methodGraph = new StructuredGraph.Builder(target.getOptions(),
-                    target.getDebug(), StructuredGraph.AllowAssumptions.YES)
-                    .method(target.targetMethod())
-                    .build();
+                            target.getDebug(), StructuredGraph.AllowAssumptions.YES).method(target.targetMethod()).build();
             context.getGraphBuilderSuite().apply(methodGraph, context);
 
             return interpretGraph(methodGraph, evaluatedArgs);
@@ -303,8 +299,8 @@ public class GraalInterpreter {
 
         private InterpreterValueArray createArray(ResolvedJavaType componentType, int length, boolean populateWithDefaults) {
             return new InterpreterValueArray(componentType, length,
-                    populateWithDefaults ? context.getMetaAccessExtensionProvider().getStorageKind(componentType) : null,
-                    populateWithDefaults);
+                            populateWithDefaults ? context.getMetaAccessExtensionProvider().getStorageKind(componentType) : null,
+                            populateWithDefaults);
         }
 
         @Override
@@ -314,7 +310,8 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValueArray createMultiArray(ResolvedJavaType elementalType, int[] dimensions) {
-            // The current logic only makes sense if the type given is the elemental type - that is, the non-array type in the last dimension
+            // The current logic only makes sense if the type given is the elemental type - that is,
+            // the non-array type in the last dimension
             if (!elementalType.getElementalType().equals(elementalType)) {
                 throw new IllegalArgumentException();
             }

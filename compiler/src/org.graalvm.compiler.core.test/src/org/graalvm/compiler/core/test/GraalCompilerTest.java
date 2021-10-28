@@ -810,7 +810,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final Result test(String name, Object... args) {
-        //return test(getInitialOptions(), name, args);
+        // return test(getInitialOptions(), name, args);
         Result result = test(getInitialOptions(), name, args);
 
         // TODO: move above to a more general place
@@ -1538,6 +1538,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     private static final boolean ALL_TESTS = false;
+
     public void checkAgainstInterpreter(String name, GraalCompilerTest.Result expectedResult, Object... args) {
         try {
             ResolvedJavaMethod method;
@@ -1547,7 +1548,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 return;
             }
 
-            // TODO: temporary filter while this functionality is not fully implemented in the interpreter.
+            // TODO: temporary filter while this functionality is not fully implemented in the
+            // interpreter.
             boolean testFilter = method.isStatic() && primitiveArgs(args) && expectedResult.exception == null;
             if (!(testFilter || ALL_TESTS)) {
                 return;

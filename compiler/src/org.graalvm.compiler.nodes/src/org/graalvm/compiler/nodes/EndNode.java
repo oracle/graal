@@ -52,7 +52,8 @@ public final class EndNode extends AbstractEndNode {
             AbstractMergeNode mergeNode = (AbstractMergeNode) nextNode;
             int index = mergeNode.phiPredecessorIndex(this);
 
-            // Since we are interpreting this EndNode, we can assume that this is the node is the index to use for
+            // Since we are interpreting this EndNode, we can assume that this is the node is the
+            // index to use for
             // phi node lookups associated with the next MergeNode.
             interpreter.setMergeNodeIncomingIndex(mergeNode, index);
             next = mergeNode;

@@ -100,7 +100,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
         for (int i = 0; i < dimensions().size(); i++) {
             InterpreterValue dimensionValue = interpreter.interpretDataflowNode(dimension(i));
             GraalError.guarantee(dimensionValue.isPrimitive() && dimensionValue.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int,
-                    "NewMultiArrayNode dimension does not interpret to an int");
+                            "NewMultiArrayNode dimension does not interpret to an int");
             dimensionsEvaluated[i] = dimensionValue.asPrimitiveConstant().asInt();
         }
 

@@ -142,7 +142,8 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
 
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        // TODO: avoid using this: generalise away the need to create a graph for the object init method.
+        // TODO: avoid using this: generalise away the need to create a graph for the object init
+        // method.
         return next();
     }
 }
