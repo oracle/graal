@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ public class LLVMAlias extends LLVMSymbol {
     @CompilationFinal private LLVMSymbol target;
 
     public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
-        super(name, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported);
+        super(name, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, exported, false);
         setTarget(target);
     }
 
@@ -105,5 +105,15 @@ public class LLVMAlias extends LLVMSymbol {
             tmp = ((LLVMAlias) tmp).getTarget();
         }
         return tmp;
+    }
+
+    @Override
+    public boolean isElemPtrExpression() {
+        return target.isElemPtrExpression();
+    }
+
+    @Override
+    public LLVMElemPtrSymbol asElemPtrExpression() {
+        return target.asElemPtrExpression();
     }
 }

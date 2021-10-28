@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,14 @@ package org.graalvm.wasm.constants;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class GlobalModifier {
     public static final int CONSTANT = 0x00;
     public static final int MUTABLE = 0x01;
 
     public static String asString(int modifier) {
+        CompilerAsserts.neverPartOfCompilation();
         switch (modifier) {
             case CONSTANT:
                 return "const";

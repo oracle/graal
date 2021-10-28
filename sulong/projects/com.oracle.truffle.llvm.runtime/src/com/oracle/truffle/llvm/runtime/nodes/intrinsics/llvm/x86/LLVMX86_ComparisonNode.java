@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,12 +47,10 @@ public abstract class LLVMX86_ComparisonNode {
         protected LLVMFloatVector doIntrinsic(LLVMFloatVector xmm1, LLVMFloatVector xmm2, byte imm) {
             // https://www.felixcloutier.com/x86/cmpss
             if (xmm1.getLength() != 4) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("xmm1 expected a <4 x float> vector");
+                throw CompilerDirectives.shouldNotReachHere("xmm1 expected a <4 x float> vector");
             }
             if (xmm2.getLength() != 4) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("xmm2 expected a <4 x float> vector");
+                throw CompilerDirectives.shouldNotReachHere("xmm2 expected a <4 x float> vector");
             }
             float[] rv = new float[]{0, xmm1.getValue(1), xmm1.getValue(2), xmm1.getValue(3)};
             float left = xmm1.getValue(0);
@@ -83,8 +81,7 @@ public abstract class LLVMX86_ComparisonNode {
                     rv[0] = (Float.isNaN(left) || Float.isNaN(right)) ? 0 : TRUEMASK;
                     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError("unsupported predicate (not in range 0-7)");
+                    throw CompilerDirectives.shouldNotReachHere("unsupported predicate (not in range 0-7)");
             }
             return LLVMFloatVector.create(rv);
         }

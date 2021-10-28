@@ -106,7 +106,7 @@ static char *add_pointer(char *dest, char *end, void *value) {
         return add_string(dest, end, "(nil)");
     } else {
         dest = add_string(dest, end, "0x");
-        return add_int(dest, end, (int64_t) value, 16);
+        return add_int(dest, end, (int64_t)(intptr_t)value, 16);
     }
 }
 

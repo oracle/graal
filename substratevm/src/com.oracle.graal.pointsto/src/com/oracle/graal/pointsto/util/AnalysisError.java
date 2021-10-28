@@ -27,10 +27,14 @@ package com.oracle.graal.pointsto.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -94,7 +98,7 @@ public class AnalysisError extends Error {
 
         private static String message(AnalysisMethod method) {
             String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
-            msg += parsingContext(method);
+            msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;
         }
 
@@ -103,31 +107,30 @@ public class AnalysisError extends Error {
     public static class FieldNotPresentError extends AnalysisError {
         private static final long serialVersionUID = -7167507945764369928L;
 
-        FieldNotPresentError(AnalysisMethod context, AnalysisField field, AnalysisType type) {
-            super(message(context, field, type));
+        FieldNotPresentError(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, AnalysisType type) {
+            super(message(bb, objectFlow, context, field, type));
         }
 
-        private static String message(AnalysisMethod context, AnalysisField field, AnalysisType type) {
-            String msg = String.format("Field %s is not present on type %s. ", field.format("%H.%n"), type.toJavaName());
+        private static String message(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, AnalysisType type) {
+            String msg = String.format("Analysis is trying to access field %s on an object of type %s. ", field.format("%H.%n"), type.toJavaName());
+            msg += String.format("This usually means that a type constraint is missing in the points-to graph. %n");
+            if (objectFlow != null) {
+                msg += ReportUtils.typePropagationTrace(bb, objectFlow, type);
+            }
             if (context != null) {
-                msg += String.format("Error encountered while analysing %s %n", context.format("%H.%n(%P)"));
-                msg += parsingContext(context);
+                msg += String.format("The error was encountered while analyzing %s.%n", context.getMethod().format("%H.%n(%P)"));
+                msg += "Parsing context:" + ReportUtils.parsingContext(context);
             }
             return msg;
         }
     }
 
-    private static String parsingContext(AnalysisMethod method) {
-        StringBuilder msg = new StringBuilder("Parsing context:");
-        if (method.getTypeFlow().getParsingContext().length > 0) {
-            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
-                msg.append(String.format("%n\tparsing %s", e));
-            }
-            msg.append(String.format("%n"));
-        } else {
-            msg.append(String.format(" <no parsing context available> %n"));
+    public static class InterruptAnalysis extends AnalysisError {
+        private static final long serialVersionUID = 7126612141948542452L;
+
+        InterruptAnalysis(String msg) {
+            super(msg);
         }
-        return msg.toString();
     }
 
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {
@@ -138,8 +141,8 @@ public class AnalysisError extends Error {
         throw new ParsingError(method, original);
     }
 
-    public static FieldNotPresentError fieldNotPresentError(AnalysisMethod context, AnalysisField field, AnalysisType type) {
-        throw new FieldNotPresentError(context, field, type);
+    public static FieldNotPresentError fieldNotPresentError(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, AnalysisType type) {
+        throw new FieldNotPresentError(bb, objectFlow, context, field, type);
     }
 
     public static RuntimeException shouldNotReachHere() {
@@ -170,5 +173,9 @@ public class AnalysisError extends Error {
             throw new AnalysisError(String.format(format, args));
             // Checkstyle: resume
         }
+    }
+
+    public static RuntimeException interruptAnalysis(String msg) {
+        throw new InterruptAnalysis(msg);
     }
 }

@@ -179,7 +179,7 @@ public class CSourceCodeWriter {
         try (BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8)) {
             for (String line : lines) {
                 writer.write(line);
-                writer.write("\n");
+                writer.newLine();
             }
         } catch (ClosedByInterruptException ex) {
             throw new InterruptImageBuilding();

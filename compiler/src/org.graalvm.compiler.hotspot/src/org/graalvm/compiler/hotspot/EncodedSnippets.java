@@ -373,7 +373,7 @@ public class EncodedSnippets {
                         IntrinsicContext.CompilationContext context, EncodedGraph encodedGraph, boolean mustSucceed) {
             super(providers.getCodeCache().getTarget().arch, result, providers, null,
                             replacements.getGraphBuilderPlugins().getInvocationPlugins(), new InlineInvokePlugin[0], parameterPlugin,
-                            null, null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
+                            null, null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), false);
             this.method = method;
             this.encodedGraph = encodedGraph;
             this.mustSucceed = mustSucceed;
@@ -410,7 +410,7 @@ public class EncodedSnippets {
         private final String originalMethod;
 
         SymbolicEncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, String originalMethod, ResolvedJavaType... accessingClasses) {
-            super(encoding, startOffset, objects, types, null, null, null, false, false);
+            super(encoding, startOffset, objects, types, null, null, false, false);
             this.accessingClasses = accessingClasses;
             this.originalMethod = originalMethod;
         }

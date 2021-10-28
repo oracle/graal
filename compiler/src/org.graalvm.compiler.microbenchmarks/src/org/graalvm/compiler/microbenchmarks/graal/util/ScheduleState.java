@@ -27,13 +27,10 @@ package org.graalvm.compiler.microbenchmarks.graal.util;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class ScheduleState extends GraphState {
-
-    public SchedulePhase schedule;
 
     private final SchedulingStrategy selectedStrategy;
 
@@ -45,10 +42,8 @@ public class ScheduleState extends GraphState {
         this(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
     }
 
-    @Override
-    public void beforeInvocation() {
-        schedule = new SchedulePhase(selectedStrategy);
-        super.beforeInvocation();
+    public SchedulingStrategy getSelectedStrategy() {
+        return selectedStrategy;
     }
 
     @Override

@@ -55,7 +55,7 @@ import org.objectweb.asm.Type;
  */
 public class OptionsVerifierTest {
 
-    private static Set<String> WHITELIST = new TreeSet<>(Arrays.asList(//
+    private static Set<String> ALLOWLIST = new TreeSet<>(Arrays.asList(//
                     // Generated options delegating default values to PolyglotCompilerOptions
                     "org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions",
                     // Deprecated options delegating default values to PolyglotCompilerOptions
@@ -67,7 +67,7 @@ public class OptionsVerifierTest {
         for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor desc : opts) {
                 Class<?> descDeclaringClass = desc.getDeclaringClass();
-                if (!WHITELIST.contains(descDeclaringClass.getName())) {
+                if (!ALLOWLIST.contains(descDeclaringClass.getName())) {
                     OptionsVerifier.checkClass(descDeclaringClass, desc, checked);
                 }
             }

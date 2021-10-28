@@ -96,8 +96,9 @@ class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation im
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        annotation.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + annotation.instructionPosition;
+        annotation.patch(startAddress, relative, code);
     }
 
     @Override
@@ -118,10 +119,13 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
+            case 128:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
+                break;
             case 64:
                 secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST64_ABS_LO12_NC;
                 break;
@@ -137,13 +141,14 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             default:
                 throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
         }
-        relocs.addRelocationWithAddend(siteOffset, secondRelocation, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, secondRelocation, ref);
     }
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        macroInstruction.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -165,15 +170,16 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
-        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, Long.valueOf(0), ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, ref);
     }
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        macroInstruction.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        long startAddress = ((long) compStart) + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -225,9 +231,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                     continue;
                 }
                 if (i == lastMovIndex) {
-                    relocs.addRelocationWithAddend(siteOffset, relocations[i], Long.valueOf(0), ref);
+                    relocs.addRelocationWithoutAddend(siteOffset, relocations[i], ref);
                 } else {
-                    relocs.addRelocationWithAddend(siteOffset, noCheckRelocations[i], Long.valueOf(0), ref);
+                    relocs.addRelocationWithoutAddend(siteOffset, noCheckRelocations[i], ref);
                 }
                 siteOffset = siteOffset + 4;
             }
@@ -238,8 +244,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
 
     @Uninterruptible(reason = ".")
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        annotation.patch(codePos, relative, code);
+    public void patch(int compStart, int relative, byte[] code) {
+        /* Patching a move sequence would hardcode an absolute value, not a pc-relative value. */
+        throw VMError.shouldNotReachHere();
     }
 
     @Override

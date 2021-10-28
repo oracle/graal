@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Dynamic Object Model
+permalink: /graalvm-as-a-platform/language-implementation-framework/DynamicObjectModel/
+---
 # Dynamic Object Model
 
 This guide demonstrates how to get started with using the [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) APIs introduced with GraalVM 20.2.0.
@@ -178,4 +184,4 @@ public abstract class MakePairNode extends BinaryExpressionNode {
 
 A high-level description of the object model has been published in [**An Object Storage Model for the Truffle Language Implementation Framework**](http://dl.acm.org/citation.cfm?id=2647517).
 
-See [Truffle documentation](https://github.com/oracle/graal/tree/master/truffle/docs) and [publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more tutorials, presentations, and publications about Truffle and GraalVM.
+See [Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more presentations and publications about Truffle and GraalVM.

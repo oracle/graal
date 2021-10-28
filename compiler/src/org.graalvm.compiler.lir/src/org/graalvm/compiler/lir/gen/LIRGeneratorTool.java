@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -294,8 +294,8 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitSpeculationFence();
 
-    default VirtualStackSlot allocateStackSlots(int slots) {
-        return getResult().getFrameMapBuilder().allocateStackSlots(slots);
+    default VirtualStackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes) {
+        return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }
 
     default Value emitTimeStampWithProcid() {
@@ -319,4 +319,15 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default void emitZeroMemory(Value address, Value length, boolean isAligned) {
         throw GraalError.unimplemented("Bulk zeroing is not implemented on this architecture");
     }
+
+    /**
+     * Emits instruction(s) to flush an individual cache line that starts at {@code address}.
+     */
+    void emitCacheWriteback(Value address);
+
+    /**
+     * Emits instruction(s) to serialize cache writeback operations relative to preceding (if
+     * {@code isPreSync == true}) or following (if {@code isPreSync == false}) memory writes.
+     */
+    void emitCacheWritebackSync(boolean isPreSync);
 }

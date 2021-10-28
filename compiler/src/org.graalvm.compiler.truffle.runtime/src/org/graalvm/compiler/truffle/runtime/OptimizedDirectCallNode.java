@@ -64,7 +64,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         if (CompilerDirectives.inInterpreter()) {
             target = onInterpreterCall(target);
         }
-        if (GraalCompilerDirectives.inFirstTier()) {
+        if (GraalCompilerDirectives.hasNextTier()) {
             incrementCallCount();
         }
         try {

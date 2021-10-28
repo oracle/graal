@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -68,6 +70,7 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Builder;
 import org.graalvm.polyglot.HostAccess.Export;
 import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -112,6 +115,7 @@ public class HostAccessTest {
     public void constantsCanBeCopied() {
         verifyObjectImpl(HostAccess.NONE);
         verifyObjectImpl(HostAccess.EXPLICIT);
+        verifyObjectImpl(HostAccess.SCOPED);
         verifyObjectImpl(HostAccess.ALL);
     }
 
@@ -348,7 +352,7 @@ public class HostAccessTest {
             fail();
         } catch (UnsupportedOperationException e) {
         }
-        assertEquals(0, value.getMemberKeys().size());
+        assertEquals(2 /* arr.length and arr.clone(). */, value.getMemberKeys().size());
         ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
@@ -369,6 +373,65 @@ public class HostAccessTest {
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testBufferAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(true));
+        assertBufferAccessEnabled(context);
+    }
+
+    @Test
+    public void testBufferAccessEnabledHostAccessCloned() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        setupEnv(HostAccess.newBuilder(hostAccess));
+        assertBufferAccessEnabled(context);
+    }
+
+    private static void assertBufferAccessEnabled(Context context) {
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        buffer.put((byte) 42);
+        Value value = context.asValue(buffer);
+        assertTrue(value.hasBufferElements());
+        assertTrue(value.isBufferWritable());
+        assertEquals(2, value.getBufferSize());
+        assertEquals(42, value.readBufferByte(0));
+        value.writeBufferByte(1, (byte) 24);
+        assertEquals(24, value.readBufferByte(1));
+        ValueAssert.assertValue(value, false, Trait.BUFFER_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testBufferAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowBufferAccess(false));
+        ByteBuffer buffer = ByteBuffer.allocate(2);
+        Value value = context.asValue(buffer);
+        assertSame(buffer, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    /*
+     * Test for GR-32346.
+     */
+    @Test
+    public void testBuilderCannotChangeMembersAndTargetMappingsOfHostAccess() throws Exception {
+        // Set up hostAccess
+        Builder builder = HostAccess.newBuilder();
+        builder.allowAccess(OK.class.getField("value"));
+        builder.targetTypeMapping(Value.class, String.class, (v) -> v.isString(), (v) -> "foo");
+        HostAccess hostAccess = builder.build();
+
+        // Try to change members or targetMappings through child builder
+        Builder childBuilder = HostAccess.newBuilder(hostAccess);
+        childBuilder.allowAccess(Ban.class.getField("value"));
+        childBuilder.targetTypeMapping(Value.class, Integer.class, null, (v) -> 42);
+
+        // Ensure hostAccess has not been altered by child builder
+        try (Context c = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            assertAccess(c);
+            assertEquals("foo", c.asValue("a string").as(String.class));
+            assertEquals(123, (int) c.asValue(123).as(Integer.class));
+        }
     }
 
     @Test
@@ -452,6 +515,42 @@ public class HostAccessTest {
     }
 
     @Test
+    public void testMapAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowMapAccess(true));
+        Map<Integer, String> map = new HashMap<>();
+        map.put(1, Integer.toBinaryString(1));
+        map.put(2, Integer.toBinaryString(2));
+        Value value = context.asValue(map);
+        assertTrue(value.hasHashEntries());
+        assertTrue(value.hasHashEntries());
+        assertEquals(2, value.getHashSize());
+        assertEquals(Integer.toBinaryString(1), value.getHashValue(1).asString());
+        assertEquals(Integer.toBinaryString(2), value.getHashValue(2).asString());
+        value.putHashEntry(2, "");
+        assertEquals("", value.getHashValue(2).asString());
+        assertEquals("", map.get(2));
+        value.removeHashEntry(2);
+        assertEquals(1, value.getHashSize());
+        assertSame(map, value.asHostObject());
+        Value entriesIteratorIterator = value.getHashEntriesIterator();
+        assertTrue(entriesIteratorIterator.isIterator());
+        assertTrue(entriesIteratorIterator.hasIteratorNextElement());
+        Value entry = entriesIteratorIterator.getIteratorNextElement();
+        assertTrue(entry.hasArrayElements());
+        assertEquals(1, entry.getArrayElement(0).asInt());
+        assertEquals(Integer.toBinaryString(1), entry.getArrayElement(1).asString());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testMapAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        assertMapAccessDisabled(context);
+    }
+
+    @Test
     public void testIteratorAccessDisabled() {
         setupEnv(HostAccess.newBuilder().allowIteratorAccess(false));
         assertIteratorAccessDisabled(context);
@@ -485,6 +584,13 @@ public class HostAccessTest {
         Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
         Value value = context.asValue(iterator);
         assertSame(iterator, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    private static void assertMapAccessDisabled(Context context) {
+        Map<Integer, String> map = Collections.singletonMap(1, "string");
+        Value value = context.asValue(map);
+        assertSame(map, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 

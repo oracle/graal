@@ -5,6 +5,7 @@ Example:
 
     [
       {
+        "condition":{"typeReachable":"app.DataSerializer"},
         "name":"java.util.ArrayList"
       }
     ]
@@ -23,6 +24,7 @@ serialization-config.json:
 
     [
       {
+        "condition":{"typeReachable":"org.apache.spark.SparkContext"},
         "name":"org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
         "customTargetConstructorClass":"java.lang.Object"
       }

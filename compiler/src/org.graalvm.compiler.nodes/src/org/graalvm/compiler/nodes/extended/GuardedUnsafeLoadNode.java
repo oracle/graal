@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,9 +39,13 @@ public class GuardedUnsafeLoadNode extends RawLoadNode implements GuardedNode {
 
     @OptionalInput(Guard) protected GuardingNode guard;
 
-    public GuardedUnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, ValueNode guard) {
-        super(TYPE, object, offset, accessKind, locationIdentity);
+    public GuardedUnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, ValueNode guard, boolean forceLocation) {
+        super(TYPE, object, offset, accessKind, locationIdentity, forceLocation);
         this.guard = (GuardingNode) guard;
+    }
+
+    public GuardedUnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, ValueNode guard) {
+        this(object, offset, accessKind, locationIdentity, guard, false);
     }
 
     @Override

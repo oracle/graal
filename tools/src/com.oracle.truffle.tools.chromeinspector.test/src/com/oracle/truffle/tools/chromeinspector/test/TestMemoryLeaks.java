@@ -97,7 +97,7 @@ public class TestMemoryLeaks {
         tester.receiveMessages(
                         "{\"method\":\"Debugger.paused\"",
                         "\"url\":\"" + slTestURI + "\"}]}}\n");
-        tester.sendMessage("{\"id\":15,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"8\"}}");
+        tester.sendMessage("{\"id\":15,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"6\"}}");
         tester.receiveMessages(
                         "{\"result\":",
                         "\"name\":\"arg\"",
@@ -115,7 +115,7 @@ public class TestMemoryLeaks {
         tester.receiveMessages(
                         "{\"method\":\"Debugger.paused\"",
                         "\"url\":\"" + slTestURI + "\"}]}}\n");
-        tester.sendMessage("{\"id\":25,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"16\"}}");
+        tester.sendMessage("{\"id\":25,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"12\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[],\"internalProperties\":[]},\"id\":25}\n"));
         assertRemoteObjectsMapsSize(remoteObjectsHandler, 4); // global, func1, func2, func3

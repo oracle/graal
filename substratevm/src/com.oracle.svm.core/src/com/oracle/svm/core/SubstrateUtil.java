@@ -31,29 +31,24 @@ import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.debug.MethodFilter;
+import com.oracle.svm.util.StringUtil;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -61,29 +56,11 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
-import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.ThreadStackPrinter;
-import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
-import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
-import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
-import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -152,15 +129,13 @@ public class SubstrateUtil {
 
     public static String getShellCommandString(List<String> cmd, boolean multiLine) {
         StringBuilder sb = new StringBuilder();
-        for (String arg : cmd) {
-            sb.append(quoteShellArg(arg));
-            if (multiLine) {
-                sb.append(" \\\n");
-            } else {
-                sb.append(' ');
+        for (int i = 0; i < cmd.size(); i++) {
+            if (i > 0) {
+                sb.append(multiLine ? " \\\n" : " ");
             }
+            sb.append(quoteShellArg(cmd.get(i)));
         }
-        return sb.toString().trim();
+        return sb.toString();
     }
 
     @TargetClass(com.oracle.svm.core.SubstrateUtil.class)
@@ -277,355 +252,9 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    private static volatile boolean diagnosticsInProgress = false;
-
-    public static boolean isPrintDiagnosticsInProgress() {
-        return diagnosticsInProgress;
-    }
-
-    /** Prints extensive diagnostic information to the given Log. */
-    public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        printDiagnostics(log, sp, ip, WordFactory.nullPointer());
-    }
-
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    static void printDiagnostics(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
-        log.newline();
-        if (diagnosticsInProgress) {
-            log.string("Error: printDiagnostics already in progress.").newline();
-            log.newline();
-            return;
-        }
-        diagnosticsInProgress = true;
-
-        try {
-            dumpRegisters(log, context);
-        } catch (Exception e) {
-            dumpException(log, "dumpRegisters", e);
-        }
-
-        try {
-            dumpJavaFrameAnchors(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpJavaFrameAnchors", e);
-        }
-
-        try {
-            dumpDeoptStubPointer(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpDeoptStubPointer", e);
-        }
-
-        try {
-            dumpTopFrame(log, sp, ip);
-        } catch (Exception e) {
-            dumpException(log, "dumpTopFrame", e);
-        }
-
-        try {
-            dumpVMThreads(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpVMThreads", e);
-        }
-
-        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
-        try {
-            dumpVMThreadState(log, currentThread);
-        } catch (Exception e) {
-            dumpException(log, "dumpVMThreadState", e);
-        }
-
-        try {
-            dumpRecentVMOperations(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentVMOperations", e);
-        }
-
-        dumpRuntimeCompilation(log);
-
-        try {
-            dumpCounters(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpCounters", e);
-        }
-
-        try {
-            dumpStacktraceRaw(log, sp);
-        } catch (Exception e) {
-            dumpException(log, "dumpStacktraceRaw", e);
-        }
-
-        dumpStacktrace(log, sp, ip);
-
-        if (VMOperationControl.isFrozen()) {
-            /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
-            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CurrentIsolate.getCurrentThread()) {
-                    continue;
-                }
-                try {
-                    dumpStacktrace(log, vmThread);
-                } catch (Exception e) {
-                    dumpException(log, "dumpStacktrace", e);
-                }
-            }
-        }
-
-        try {
-            DiagnosticThunkRegister.getSingleton().callDiagnosticThunks(log);
-        } catch (Exception e) {
-            dumpException(log, "callThunks", e);
-        }
-
-        diagnosticsInProgress = false;
-    }
-
-    private static void dumpException(Log log, String context, Exception e) {
-        log.newline().string("[!!! Exception during ").string(context).string(": ").string(e.getClass().getName()).string("]").newline();
-    }
-
-    private static void dumpRegisters(Log log, RegisterDumper.Context context) {
-        if (context.isNonNull()) {
-            log.string("General Purpose Register Set values:").newline();
-            log.indent(true);
-            RegisterDumper.singleton().dumpRegisters(log, context);
-            log.indent(false);
-        }
-    }
-
-    private static void dumpJavaFrameAnchors(Log log) {
-        log.string("JavaFrameAnchor dump:").newline();
-        log.indent(true);
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNull()) {
-            log.string("No anchors").newline();
-        }
-        while (anchor.isNonNull()) {
-            log.string("Anchor ").zhex(anchor.rawValue()).string(" LastJavaSP ").zhex(anchor.getLastJavaSP().rawValue()).string(" LastJavaIP ").zhex(anchor.getLastJavaIP().rawValue()).newline();
-            anchor = anchor.getPreviousAnchor();
-        }
-        log.indent(false);
-    }
-
-    private static void dumpDeoptStubPointer(Log log) {
-        if (DeoptimizationSupport.enabled()) {
-            log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
-        }
-    }
-
-    private static void dumpTopFrame(Log log, Pointer sp, CodePointer ip) {
-        log.string("TopFrame info:").newline();
-        log.indent(true);
-        if (sp.isNonNull() && ip.isNonNull()) {
-            long totalFrameSize = getTotalFrameSize(sp, ip);
-            DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-            if (deoptFrame != null) {
-                log.string("RSP ").zhex(sp.rawValue()).string(" frame was deoptimized:").newline();
-                log.string("SourcePC ").zhex(deoptFrame.getSourcePC().rawValue()).newline();
-                log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
-            } else if (totalFrameSize != -1) {
-                log.string("TotalFrameSize in CodeInfoTable ").signed(totalFrameSize).newline();
-            }
-
-            if (totalFrameSize == -1) {
-                log.string("Does not look like a Java Frame. Use JavaFrameAnchors to find LastJavaSP:").newline();
-                JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-                while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
-                    anchor = anchor.getPreviousAnchor();
-                }
-
-                if (anchor.isNonNull()) {
-                    log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
-                    Pointer lastSp = anchor.getLastJavaSP();
-                    log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
-                    CodePointer lastIp = anchor.getLastJavaIP();
-                    log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
-                }
-            }
-        }
-        log.indent(false);
-    }
-
-    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    private static long getTotalFrameSize(Pointer sp, CodePointer ip) {
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
-        if (deoptFrame != null) {
-            return deoptFrame.getSourceTotalFrameSize();
-        }
-
-        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
-        if (untetheredInfo.isNonNull()) {
-            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            try {
-                CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-                return getTotalFrameSize0(ip, codeInfo);
-            } finally {
-                CodeInfoAccess.releaseTether(untetheredInfo, tether);
-            }
-        }
-        return -1;
-    }
-
-    @Uninterruptible(reason = "Wrap the now safe call to interruptibly look up the frame size.", calleeMustBe = false)
-    private static long getTotalFrameSize0(CodePointer ip, CodeInfo codeInfo) {
-        return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
-    }
-
-    private static void dumpVMThreads(Log log) {
-        log.string("VMThreads info:").newline();
-        log.indent(true);
-        /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
-        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
-                            .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
-        }
-        log.indent(false);
-    }
-
-    private static void dumpVMThreadState(Log log, IsolateThread currentThread) {
-        log.string("VM Thread State for current thread ").zhex(currentThread.rawValue()).string(":").newline();
-        log.indent(true);
-        VMThreadLocalInfos.dumpToLog(log, currentThread);
-        log.indent(false);
-    }
-
-    private static void dumpRecentVMOperations(Log log) {
-        log.string("VMOperation dump:").newline();
-        log.indent(true);
-        VMOperationControl.logRecentEvents(log);
-        log.indent(false);
-    }
-
-    static void dumpRuntimeCompilation(Log log) {
-        if (DeoptimizationSupport.enabled()) {
-            log.newline().string("RuntimeCodeCache dump:").newline();
-            log.indent(true);
-            try {
-                dumpRecentRuntimeCodeCacheOperations(log);
-            } catch (Exception e) {
-                dumpException(log, "dumpRecentRuntimeCodeCacheOperations", e);
-            }
-            log.newline();
-            try {
-                dumpRuntimeCodeCacheTable(log);
-            } catch (Exception e) {
-                dumpException(log, "dumpRuntimeCodeCacheTable", e);
-            }
-            log.indent(false);
-
-            try {
-                dumpRecentDeopts(log);
-            } catch (Exception e) {
-                dumpException(log, "dumpRecentDeopts", e);
-            }
-        }
-    }
-
-    private static void dumpRecentRuntimeCodeCacheOperations(Log log) {
-        CodeInfoTable.getRuntimeCodeCache().logRecentOperations(log);
-    }
-
-    private static void dumpRuntimeCodeCacheTable(Log log) {
-        CodeInfoTable.getRuntimeCodeCache().logTable(log);
-    }
-
-    private static void dumpRecentDeopts(Log log) {
-        log.string("Deoptimizer dump:").newline();
-        log.indent(true);
-        Deoptimizer.logRecentDeoptimizationEvents(log);
-        log.indent(false);
-    }
-
-    private static void dumpCounters(Log log) {
-        log.string("Dump Counters:").newline();
-        log.indent(true);
-        Counter.logValues();
-        log.indent(false);
-    }
-
-    private static void dumpStacktraceRaw(Log log, Pointer sp) {
-        log.string("Raw Stacktrace:").newline();
-        log.indent(true);
-        /*
-         * We have to be careful here and not dump too much of the stack: if there are not many
-         * frames on the stack, we segfault when going past the beginning of the stack.
-         */
-        log.hexdump(sp, 8, 16);
-        log.indent(false);
-    }
-
-    private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{Stage0StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
-                    StackFramePrintVisitor.SINGLETON};
-
-    private static void dumpStacktrace(Log log, Pointer sp, CodePointer ip) {
-        for (int i = 0; i < PRINT_VISITORS.length; i++) {
-            try {
-                log.string("Stacktrace Stage ").signed(i).string(":").newline();
-                log.indent(true);
-                ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[i], log);
-                log.indent(false);
-            } catch (Exception e) {
-                dumpException(log, "dumpStacktrace", e);
-            }
-        }
-    }
-
-    private static void dumpStacktrace(Log log, IsolateThread vmThread) {
-        log.string("Full Stacktrace for VMThread ").zhex(vmThread.rawValue()).string(":").newline();
-        log.indent(true);
-        JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
-        log.indent(false);
-    }
-
-    /** The functional interface for a "thunk" that does not allocate. */
-    @FunctionalInterface
-    public interface DiagnosticThunk {
-
-        /** The method to be supplied by the implementor. */
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        void invokeWithoutAllocation(Log log);
-    }
-
-    public static class DiagnosticThunkRegister {
-
-        DiagnosticThunk[] diagnosticThunkRegistry;
-
-        /**
-         * Get the register.
-         *
-         * This method is @Fold so anyone who uses it ensures there is a register.
-         */
-        @Fold
-        /* { Checkstyle: allow synchronization. */
-        public static synchronized DiagnosticThunkRegister getSingleton() {
-            if (!ImageSingletons.contains(SubstrateUtil.DiagnosticThunkRegister.class)) {
-                ImageSingletons.add(SubstrateUtil.DiagnosticThunkRegister.class, new DiagnosticThunkRegister());
-            }
-            return ImageSingletons.lookup(SubstrateUtil.DiagnosticThunkRegister.class);
-        }
-        /* } Checkstyle: disallow synchronization. */
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        DiagnosticThunkRegister() {
-            this.diagnosticThunkRegistry = new DiagnosticThunk[0];
-        }
-
-        /** Register a diagnostic thunk to be called after a segfault. */
-        @Platforms(Platform.HOSTED_ONLY.class)
-        /* { Checkstyle: allow synchronization. */
-        public synchronized void register(DiagnosticThunk diagnosticThunk) {
-            final DiagnosticThunk[] newArray = Arrays.copyOf(diagnosticThunkRegistry, diagnosticThunkRegistry.length + 1);
-            newArray[newArray.length - 1] = diagnosticThunk;
-            diagnosticThunkRegistry = newArray;
-        }
-        /* } Checkstyle: disallow synchronization. */
-
-        /** Call each registered diagnostic thunk. */
-        void callDiagnosticThunks(Log log) {
-            for (int i = 0; i < diagnosticThunkRegistry.length; i += 1) {
-                diagnosticThunkRegistry[i].invokeWithoutAllocation(log);
-            }
-        }
+    /** Prints extensive diagnostic information for a fatal error to the given log. */
+    public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
+        return SubstrateDiagnostics.printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
@@ -641,31 +270,7 @@ public class SubstrateUtil {
      * regular expression. This avoids making regular expression code reachable.
      */
     public static String[] split(String value, String separator, int limit) {
-        int offset = 0;
-        int next;
-        ArrayList<String> list = null;
-        while ((next = value.indexOf(separator, offset)) != -1) {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            boolean limited = limit > 0;
-            if (!limited || list.size() < limit - 1) {
-                list.add(value.substring(offset, next));
-                offset = next + separator.length();
-            } else {
-                break;
-            }
-        }
-
-        if (offset == 0) {
-            /* No match found. */
-            return new String[]{value};
-        }
-
-        /* Add remaining segment. */
-        list.add(value.substring(offset));
-
-        return list.toArray(new String[list.size()]);
+        return StringUtil.split(value, separator, limit);
     }
 
     public static String toHex(byte[] data) {
@@ -726,7 +331,8 @@ public class SubstrateUtil {
     }
 
     private static String stripPackage(String qualifiedClassName) {
-        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
+        /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
+        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
     }
 
     /**
@@ -773,17 +379,16 @@ public class SubstrateUtil {
         return mangled;
     }
 
-    /*
-     * This function loads JavaFunction through MethodFilter and this is not allowed in NativeImage.
-     * We put this functionality in a separate class.
-     */
-    public static class NativeImageLoadingShield {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public static boolean isNeverInline(ResolvedJavaMethod method) {
-            List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
+    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
 
-            return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method)));
+    public static boolean isHiddenClass(Class<?> javaClass) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            try {
+                return (boolean) isHiddenMethod.invoke(javaClass);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
+        return false;
     }
 }

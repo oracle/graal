@@ -39,6 +39,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class ReferenceAccessImpl implements ReferenceAccess {
     static void initialize() {
@@ -106,6 +108,17 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
     @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
     public CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
+    }
+
+    @Fold
+    @Override
+    public UnsignedWord getAddressSpaceSize() {
+        int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+        if (compressionShift > 0) {
+            int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+            return WordFactory.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
+        }
+        return UnsignedUtils.MAX_VALUE;
     }
 }
 

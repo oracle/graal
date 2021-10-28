@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -83,11 +84,13 @@ public abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected boolean fromString(String value) {
-        return getSingleStringCharacter(value) != 0;
+    protected boolean fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception) != 0;
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isBoolean(foreigns.asForeign(obj))"})
+    @GenerateAOT.Exclude
     protected boolean fromForeign(Object obj,
                     @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -109,7 +112,7 @@ public abstract class ToI1 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value != 0;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value) != 0;
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached()) != 0;
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asBoolean(value);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,5 +47,25 @@ public interface TruffleCompilationTask {
 
     default int tier() {
         return isFirstTier() ? 1 : 2;
+    }
+
+    TruffleInliningData inliningData();
+
+    boolean hasNextTier();
+
+    default long time() {
+        return 0;
+    }
+
+    default double weight() {
+        return Double.NaN;
+    }
+
+    default double rate() {
+        return Double.NaN;
+    }
+
+    default int queueChange() {
+        return 0;
     }
 }

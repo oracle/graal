@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -47,6 +48,7 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -58,17 +60,19 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,11 +94,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * JDK so that any code that would rely on object identity is error-prone on any JVM.
  */
 public final class ReflectionPlugins {
-
     public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
-        public static AutoCloseable startThreadLocalRegistry() {
-            return ImageSingletons.lookup(ReflectionPluginRegistry.class).startThreadLocalReflectionRegistry();
-        }
     }
 
     static class Options {
@@ -111,35 +111,33 @@ public final class ReflectionPlugins {
     private final ImageClassLoader imageClassLoader;
     private final SnippetReflectionProvider snippetReflection;
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
-    private final SVMHost hostVM;
+    private final ClassInitializationPlugin classInitializationPlugin;
     private final AnalysisUniverse aUniverse;
-    private final boolean analysis;
-    private final boolean hosted;
+    private final ParsingReason reason;
 
-    private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SVMHost hostVM,
-                    AnalysisUniverse aUniverse, boolean analysis, boolean hosted) {
+    private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
+                    ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason) {
         this.imageClassLoader = imageClassLoader;
         this.snippetReflection = snippetReflection;
         this.annotationSubstitutions = annotationSubstitutions;
-        this.hostVM = hostVM;
+        this.classInitializationPlugin = classInitializationPlugin;
         this.aUniverse = aUniverse;
-        this.analysis = analysis;
-        this.hosted = hosted;
+        this.reason = reason;
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
-                    InvocationPlugins plugins, SVMHost hostVM, AnalysisUniverse aUniverse, boolean analysis, boolean hosted) {
+                    ClassInitializationPlugin classInitializationPlugin, InvocationPlugins plugins, AnalysisUniverse aUniverse, ParsingReason reason) {
         /*
          * Initialize the registry if we are during analysis. If hosted is false, i.e., we are
          * analyzing the static initializers, then we always intrinsify, so don't need a registry.
          */
-        if (hosted && analysis) {
+        if (reason == ParsingReason.PointsToAnalysis) {
             if (!ImageSingletons.contains(ReflectionPluginRegistry.class)) {
                 ImageSingletons.add(ReflectionPluginRegistry.class, new ReflectionPluginRegistry());
             }
         }
 
-        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, hostVM, aUniverse, analysis, hosted);
+        ReflectionPlugins rp = new ReflectionPlugins(imageClassLoader, snippetReflection, annotationSubstitutions, classInitializationPlugin, aUniverse, reason);
         rp.registerMethodHandlesPlugins(plugins);
         rp.registerClassPlugins(plugins);
     }
@@ -162,7 +160,7 @@ public final class ReflectionPlugins {
 
     static {
         ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
-                        Class.class, String.class,
+                        Class.class, String.class, ClassLoader.class,
                         Method.class, Constructor.class, Field.class,
                         MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
                         ByteOrder.class));
@@ -207,6 +205,7 @@ public final class ReflectionPlugins {
 
     private void registerClassPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, Class.class,
+                        "isInterface", "isPrimitive",
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
@@ -227,6 +226,12 @@ public final class ReflectionPlugins {
                  * application class loader.
                  */
                 return processClassForName(b, targetMethod, nameNode, initializeNode);
+            }
+        });
+        r.register1("getClassLoader", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processClassGetClassLoader(b, targetMethod, receiver);
             }
         });
     }
@@ -276,16 +281,37 @@ public final class ReflectionPlugins {
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
         }
         Class<?> clazz = typeResult.get();
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return false;
+        }
 
         JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz);
         if (classConstant == null) {
             return false;
         }
 
-        if (initialize && hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(clazz)) {
-            SubstrateClassInitializationPlugin.emitEnsureClassInitialized(b, classConstant);
+        if (initialize) {
+            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null, null);
         }
         return true;
+    }
+
+    /**
+     * For {@link PredefinedClassesSupport predefined classes}, the class loader is not known yet at
+     * image build time. So we must not constant fold Class.getClassLoader for such classes. But for
+     * "normal" classes, it is important to fold it because it unlocks further constant folding of,
+     * e.g., Class.forName calls.
+     */
+    private boolean processClassGetClassLoader(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+        Object classValue = unbox(b, receiver.get(false), JavaKind.Object);
+        if (!(classValue instanceof Class)) {
+            return false;
+        }
+        Class<?> clazz = (Class<?>) classValue;
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return false;
+        }
+        return pushConstant(b, targetMethod, () -> clazz.getName(), JavaKind.Object, clazz.getClassLoader()) != null;
     }
 
     /**
@@ -295,6 +321,7 @@ public final class ReflectionPlugins {
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
+        ModuleSupport.openModuleByClass(declaringClass, ReflectionPlugins.class);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
                 registerFoldInvocationPlugin(plugins, method);
@@ -331,7 +358,12 @@ public final class ReflectionPlugins {
         if (targetMethod.isStatic()) {
             receiverValue = null;
         } else {
-            receiverValue = unbox(b, receiver.get(), JavaKind.Object);
+            /*
+             * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in
+             * the process. It is an error for invocation plugins that do not replace the call to
+             * modify the graph.
+             */
+            receiverValue = unbox(b, receiver.get(false), JavaKind.Object);
             if (receiverValue == null || receiverValue == NULL_MARKER) {
                 return false;
             }
@@ -351,7 +383,7 @@ public final class ReflectionPlugins {
 
         /* String representation of the parameters for debug printing. */
         Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
-                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : arg.toString()).collect(Collectors.joining(", "));
+                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
         Object returnValue;
         try {
@@ -431,6 +463,8 @@ public final class ReflectionPlugins {
         return null;
     }
 
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
      * element if found. Caching intrinsic elements during analysis and reusing the same element
@@ -441,18 +475,17 @@ public final class ReflectionPlugins {
      * initialized. Therefore, we want to intrinsify the same, eagerly initialized object during
      * compilation, not a lossy copy of it.
      */
+    @SuppressWarnings("unchecked")
     private <T> T getIntrinsic(GraphBuilderContext context, T element) {
-        if (!hosted) {
+        if (reason == ParsingReason.UnsafeSubstitutionAnalysis || reason == ParsingReason.EarlyClassInitializerAnalysis) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
-        /*
-         * We don't intrinsify if bci is not unique.
-         */
+        /* We don't intrinsify if bci is not unique. */
         if (context.bciCanBeDuplicated()) {
             return null;
         }
-        if (analysis) {
+        if (parseOnce || reason == ParsingReason.PointsToAnalysis) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
                  * Should not intrinsify. Will fail during the reflective lookup at
@@ -464,11 +497,16 @@ public final class ReflectionPlugins {
 
             Object replaced = aUniverse.replaceObject(element);
 
-            /* We are during analysis, we should intrinsify and cache the intrinsified object. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getCallingContext(), replaced);
+            if (parseOnce) {
+                /* No separate parsing for compilation, so no need to cache the result. */
+                return (T) replaced;
+            }
+
+            /* During parsing for analysis we intrinsify and cache the result for compilation. */
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), replaced);
         }
-        /* We are during compilation, we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getCallingContext());
+        /* During parsing for compilation we only intrinsify if intrinsified during analysis. */
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {

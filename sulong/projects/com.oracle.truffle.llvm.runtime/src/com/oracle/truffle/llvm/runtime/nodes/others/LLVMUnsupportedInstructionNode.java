@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
@@ -66,11 +65,10 @@ public abstract class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
 
     @Specialization
     void doUnsupported() {
-        CompilerDirectives.transferToInterpreter();
         if (message == null) {
             throw new LLVMUnsupportedException(this, reason);
         }
-        throw new LLVMUnsupportedException(this, reason, "Unsupported operation: " + message);
+        throw new LLVMUnsupportedException(this, reason, "Unsupported operation: %s", message);
     }
 
     public abstract static class LLVMUnsupportedExpressionNode extends LLVMExpressionNode {

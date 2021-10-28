@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.core.annotate;
 
+// Checkstyle: allow reflection
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.AnnotatedElement;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -110,4 +113,27 @@ public @interface Uninterruptible {
      * uninterruptible methods like field accesses can be annotated to allow them to be inlined.
      */
     boolean mayBeInlined() default false;
+
+    class Utils {
+        public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
+            Uninterruptible callerUninterruptible = GuardedAnnotationAccess.getAnnotation(caller, Uninterruptible.class);
+            Uninterruptible calleeUninterruptible = GuardedAnnotationAccess.getAnnotation(callee, Uninterruptible.class);
+            if (callerUninterruptible != null) {
+                /*
+                 * When a caller is uninterruptible, the callee must be too. Even when the
+                 * calleeMustBe flag is set to true by the caller, inlining is now allowed: after
+                 * inlining that callee would be uninterruptible too, which would e.g. mean no
+                 * safepoints in loops of the callee. that callee
+                 */
+                return calleeUninterruptible != null;
+            } else {
+                /*
+                 * When the caller is not uninterruptible, the callee must not be either: after
+                 * inlining the callee would no longer be uninterruptible. The mayBeInlined flag is
+                 * specified as an explicit exception to this rule.
+                 */
+                return calleeUninterruptible == null || calleeUninterruptible.mayBeInlined();
+            }
+        }
+    }
 }

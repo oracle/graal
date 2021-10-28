@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -65,16 +64,14 @@ public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     }
 
-    public static LanguageContext getContext() {
-        return getCurrentContext(ContextAPITestLanguage.class);
-    }
+    private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(ContextAPITestLanguage.class);
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Object result = "null result";
         if (runinside != null) {
             try {
-                result = runinside.apply(getContext().env);
+                result = runinside.apply(REFERENCE.get(null).env);
             } finally {
                 runinside = null;
             }
@@ -83,12 +80,12 @@ public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
             result = "null result";
         }
         final Object finalResult = result;
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return finalResult;
             }
-        });
+        }.getCallTarget();
     }
 
     @Override

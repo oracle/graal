@@ -50,7 +50,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 public class ThreadingSupportImpl implements ThreadingSupport {
     public static class Options {
@@ -233,17 +233,19 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class);
+    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class, "ThreadingSupportImpl.activeTimer");
 
-    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt("ThreadingSupportImpl.currentPauseDepth");
 
     private static final String enableSupportOption = SubstrateOptionsParser.commandArgument(SupportRecurringCallback, "+");
 
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         if (callback != null) {
-            UserError.guarantee(SupportRecurringCallback.getValue(), "Recurring callbacks must be enabled during image build with option %s", enableSupportOption);
-            UserError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
+            if (!SupportRecurringCallback.getValue()) {
+                VMError.shouldNotReachHere("Recurring callbacks must be enabled during image build with option " + enableSupportOption);
+            }
+            VMError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
                 throw new IllegalArgumentException("intervalNanos");

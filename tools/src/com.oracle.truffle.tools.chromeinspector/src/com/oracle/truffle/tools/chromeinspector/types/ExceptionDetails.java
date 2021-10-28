@@ -58,7 +58,7 @@ public final class ExceptionDetails {
         this.exceptionId = LAST_ID.incrementAndGet();
     }
 
-    public JSONObject createJSON(InspectorExecutionContext context, boolean generatePreview) {
+    public JSONObject createJSON(InspectorExecutionContext context) {
         JSONObject json = new JSONObject();
         json.put("exceptionId", exceptionId);
         if (debugException == null || debugException.getCatchLocation() != null) {
@@ -103,18 +103,63 @@ public final class ExceptionDetails {
             json.put("stackTrace", stackTrace.toJSON());
         }
         DebugValue exceptionObject = (debugException != null) ? debugException.getExceptionObject() : null;
+        String description = createDescriptionWithStackTrace(context, errorMessage, debugException != null ? debugException.getDebugStackTrace() : null);
         if (exceptionObject != null) {
-            RemoteObject ro = context.createAndRegister(exceptionObject, generatePreview);
-            json.put("exception", ro.toJSON());
+            RemoteObject ro = context.createAndRegister(exceptionObject, false);
+            JSONObject exc = ro.toJSON();
+            exc.put("description", description);
+            exc.put("subtype", "error");
+            json.put("exception", exc);
         } else {
             JSONObject ex = new JSONObject();
-            ex.put("description", errorMessage);
+            ex.put("description", description);
             ex.put("value", errorMessage);
             ex.put("type", "string");
             json.put("exception", ex);
         }
         json.put("executionContextId", context.getId());
         return json;
+    }
+
+    private static String createDescriptionWithStackTrace(InspectorExecutionContext context, String message, List<DebugStackTraceElement> stack) {
+        if (stack == null) {
+            return message;
+        }
+        StringBuilder b = new StringBuilder(message);
+        for (DebugStackTraceElement element : stack) {
+            if (!context.isInspectInternal() && element.isInternal()) {
+                continue;
+            }
+            b.append("\n    at ");
+            String name = element.getName();
+            if (name != null) {
+                b.append(name);
+                b.append(' ');
+            }
+            b.append('(');
+            SourceSection sourceSection = element.getSourceSection();
+            if (sourceSection != null && sourceSection.getSource() != null) {
+                String path = sourceSection.getSource().getPath();
+                if (path == null) {
+                    path = sourceSection.getSource().getName();
+                }
+                b.append(path);
+                b.append(':');
+                if (sourceSection.hasLines()) {
+                    b.append(sourceSection.getStartLine());
+                    if (sourceSection.hasColumns()) {
+                        b.append(':');
+                        b.append(sourceSection.getStartColumn());
+                    }
+                } else {
+                    b.append('?');
+                }
+            } else {
+                b.append("Unknown");
+            }
+            b.append(')');
+        }
+        return b.toString();
     }
 
     /**

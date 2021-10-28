@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -59,7 +60,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -68,8 +68,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.util.Objects;
 
 /**
  * A buggy language for debugger tests. Use {@link ProxyLanguage#setDelegate(ProxyLanguage)} to
@@ -115,7 +115,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
     @Override
     protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, request.getSource(), scopeProvider()));
+        return new TestRootNode(languageInstance, request.getSource(), scopeProvider()).getCallTarget();
     }
 
     @SuppressWarnings("static-method")
@@ -134,7 +134,105 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         return Objects.toString(value);
     }
 
-    private static void throwBug(int v) {
+    @Override
+    protected Object getLanguageView(LanguageContext context, Object value) {
+        return new ProxyInteropObject.InteropWrapper(value) {
+            @Override
+            protected boolean hasLanguage() {
+                return true;
+            }
+
+            @Override
+            protected Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+                return ProxyLanguage.get(null).getClass();
+            }
+
+            @Override
+            protected boolean hasMetaObject() {
+                return findMetaObject(context, value) != null || super.hasMetaObject();
+            }
+
+            @Override
+            protected Object getMetaObject() throws UnsupportedMessageException {
+                Object metaObject = findMetaObject(context, value);
+                if (!InteropLibrary.getUncached().isMetaObject(metaObject)) {
+                    metaObject = new MetaObject(metaObject);
+                }
+                return metaObject;
+            }
+
+            @Override
+            protected Object toDisplayString(boolean allowSideEffects) {
+                return TestDebugBuggyLanguage.this.toString(context, value);
+            }
+
+            @Override
+            protected boolean hasSourceLocation() {
+                return findSourceLocation(context, value) != null || InteropLibrary.getUncached().hasSourceLocation(value);
+            }
+
+            @Override
+            protected SourceSection getSourceLocation() throws UnsupportedMessageException {
+                SourceSection location = findSourceLocation(context, value);
+                if (location == null) {
+                    location = InteropLibrary.getUncached().getSourceLocation(value);
+                }
+                return location;
+            }
+
+            class MetaObject extends ProxyInteropObject.InteropWrapper {
+
+                MetaObject(Object v) {
+                    super(v);
+                }
+
+                @Override
+                protected boolean isMetaObject() {
+                    return true;
+                }
+
+                @Override
+                protected String getMetaSimpleName() throws UnsupportedMessageException {
+                    String metaSimpleName;
+                    try {
+                        metaSimpleName = super.getMetaSimpleName();
+                    } catch (UnsupportedMessageException ex) {
+                        metaSimpleName = null;
+                    }
+                    if (metaSimpleName == null) {
+                        metaSimpleName = delegate.toString();
+                    }
+                    return metaSimpleName;
+                }
+
+                @Override
+                protected String getMetaQualifiedName() throws UnsupportedMessageException {
+                    String metaQualifiedName;
+                    try {
+                        metaQualifiedName = super.getMetaQualifiedName();
+                    } catch (UnsupportedMessageException ex) {
+                        metaQualifiedName = null;
+                    }
+                    if (metaQualifiedName == null) {
+                        metaQualifiedName = delegate.toString();
+                    }
+                    return metaQualifiedName;
+                }
+
+                @Override
+                protected Object toDisplayString(boolean allowSideEffects) {
+                    Object toString = TestDebugBuggyLanguage.this.toString(context, delegate);
+                    if (value.toString().equals(toString)) {
+                        return super.toDisplayString(allowSideEffects);
+                    } else {
+                        return toString;
+                    }
+                }
+            }
+        };
+    }
+
+    static void throwBug(int v) {
         if (v == 1) {
             throw new IllegalStateException(Integer.toString(v));
         } else if (v == 2) {

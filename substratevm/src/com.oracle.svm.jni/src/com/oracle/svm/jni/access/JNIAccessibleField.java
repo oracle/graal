@@ -46,6 +46,7 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Information on a field that can be looked up and accessed via JNI.
@@ -124,7 +125,20 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
-        setHidingSubclasses(access.getMetaAccess(), sub -> anyMatchName(sub.getInstanceFields(false)) || anyMatchName(sub.getStaticFields()));
+        setHidingSubclasses(access.getMetaAccess(), this::anyMatchName);
+    }
+
+    private boolean anyMatchName(ResolvedJavaType sub) {
+        try {
+            return anyMatchName(sub.getInstanceFields(false)) || anyMatchName(sub.getStaticFields());
+
+        } catch (LinkageError ex) {
+            /*
+             * Ignore any linkage errors due to looking up the field. If any field references a
+             * missing type, we have to assume that there is no matching field.
+             */
+            return false;
+        }
     }
 
     private boolean anyMatchName(ResolvedJavaField[] fields) {

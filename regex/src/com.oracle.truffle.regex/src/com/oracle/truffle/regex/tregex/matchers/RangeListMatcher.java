@@ -43,14 +43,18 @@ package com.oracle.truffle.regex.tregex.matchers;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.charset.CharMatchers;
 
 /**
  * Character range matcher using a sorted list of ranges.
  */
-public abstract class RangeListMatcher extends InvertibleCharMatcher {
+public final class RangeListMatcher extends InvertibleCharMatcher {
+
+    /**
+     * This matcher should be used only if the number of ranges is less or equal to this threshold.
+     */
+    public static final int MAX_NUMBER_OF_RANGES = 6;
 
     @CompilationFinal(dimensions = 1) private final int[] ranges;
 
@@ -66,13 +70,14 @@ public abstract class RangeListMatcher extends InvertibleCharMatcher {
     RangeListMatcher(boolean invert, int[] ranges) {
         super(invert);
         this.ranges = ranges;
+        assert ranges.length <= MAX_NUMBER_OF_RANGES * 2 : "this matcher should only be used for short lists, to keep code size under control";
     }
 
     public static RangeListMatcher create(boolean invert, int[] ranges) {
-        return RangeListMatcherNodeGen.create(invert, ranges);
+        return new RangeListMatcher(invert, ranges);
     }
 
-    @Specialization
+    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public boolean match(int c) {
         for (int i = 0; i < ranges.length; i += 2) {

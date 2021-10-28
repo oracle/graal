@@ -36,16 +36,16 @@ import org.graalvm.tools.insight.Insight;
  * in the Insight scripts registered to the instrument.
  */
 public interface InsightAPI {
-    /** ID of the instrument. Version {@code 0.5} has been released as
-     * part of GraalVM 20.1 release.
+    /** ID of the instrument. Version {@code 1.1} has been released as
+     * part of GraalVM 21.1.0 release.
      *
      * @return same value of {@link Insight#ID} - e.g. {@code "insight"}
      * @since 0.3
      */
     String id();
 
-    /** Version of the API. Version {@code 0.1} has been released as
-     * part of GraalVM 19.3.0 release.
+    /** Version of the API. Version {@code 1.1} has been released as
+     * part of GraalVM 21.1.0 release.
      *
      * @return same value of {@link Insight#VERSION}
      * @since 0.1
@@ -158,6 +158,38 @@ public interface InsightAPI {
          * @since 0.4
          */
         int endColumn();
+
+        /**
+         * Returns the 0-based index of the first character in this section.
+         * Returns <code>0</code> for unavailable source
+         * sections.
+         *
+         * @return the starting character index
+         * @since 1.1
+         */
+        int charIndex();
+
+
+        /**
+         * Returns the length of this section in characters. Returns
+         * <code>0</code> for unavailable source
+         * sections.
+         *
+         * @return the number of characters in the section
+         * @since 1.1
+         */
+        int charEndIndex();
+
+
+        /**
+         * Returns the index of the text position immediately following the last
+         * character in the section.
+         * Returns <code>0</code> for unavailable source sections.
+         *
+         * @return the end position of the section
+         * @since 1.1
+         */
+        int charLength();
     }
 
     @FunctionalInterface

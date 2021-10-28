@@ -60,7 +60,7 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
     };
 
     @Snippet
-    private static void ensureClassIsInitializedSnippet(DynamicHub hub) {
+    private static void ensureClassIsInitializedSnippet(@Snippet.NonNullParameter DynamicHub hub) {
         ClassInitializationInfo info = hub.getClassInitializationInfo();
         /*
          * The ClassInitializationInfo field is always initialized by the image generator. We can
@@ -68,7 +68,7 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
          */
         ClassInitializationInfo infoNonNull = (ClassInitializationInfo) PiNode.piCastNonNull(info, SnippetAnchorNode.anchor());
 
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY, !infoNonNull.isInitialized())) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, !infoNonNull.isInitialized())) {
             callInitialize(INITIALIZE, infoNonNull, DynamicHub.toClass(hub));
         }
     }

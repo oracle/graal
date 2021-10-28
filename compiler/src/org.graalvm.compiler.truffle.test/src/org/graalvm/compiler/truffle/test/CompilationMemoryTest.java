@@ -24,16 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.GCUtils;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 
 public class CompilationMemoryTest extends TestWithPolyglotOptions {
 
@@ -45,7 +46,7 @@ public class CompilationMemoryTest extends TestWithPolyglotOptions {
     @Test
     public void testFieldsFreedAfterCompilation() {
         TestObject expected = new TestObject();
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(expected));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(expected).getCallTarget();
         Assert.assertEquals(expected, callTarget.call());
         Assert.assertEquals(expected, callTarget.call());
         Assert.assertTrue(callTarget.isValid());

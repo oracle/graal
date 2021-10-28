@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,10 @@ package org.graalvm.polyglot;
  */
 public final class ResourceLimitEvent {
 
-    private final Object impl;
+    private final Context context;
 
-    ResourceLimitEvent(Object impl) {
-        this.impl = impl;
+    ResourceLimitEvent(Context context) {
+        this.context = context;
     }
 
     /**
@@ -61,7 +61,7 @@ public final class ResourceLimitEvent {
      * @since 19.3
      */
     public Context getContext() {
-        return Engine.getImpl().getLimitEventContext(impl);
+        return context;
     }
 
     /**

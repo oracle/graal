@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -252,7 +251,6 @@ final class LLDBMemoryValue implements LLVMDebugValue {
             return nativePointer.toString() + (offset == 0 ? "" : " + " + LLDBSupport.toSizeString(offset));
         }
 
-        CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Unknown Pointer: " + pointer);
     }
 

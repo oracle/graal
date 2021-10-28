@@ -72,7 +72,7 @@ public final class ImageHeapObjects {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             objectAddress = objectAddress.add(KnownIntrinsics.heapBase());
         }
-        Object obj = KnownIntrinsics.convertUnknownValue(objectAddress.toObject(), Object.class);
+        Object obj = objectAddress.toObject();
         VMError.guarantee(Heap.getHeap().isInImageHeap(obj));
 
         @SuppressWarnings("unchecked")

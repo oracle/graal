@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,8 +142,23 @@ public final class PythonFlags extends AbstractConstantKeysObject {
         return hasFlag(FLAG_TEMPLATE);
     }
 
-    public boolean isUnicode() {
+    public boolean isUnicodeExplicitlySet() {
         return hasFlag(FLAG_UNICODE);
+    }
+
+    /**
+     * Returns {@code true} if the Unicode flag is set or if it would be set by default.
+     */
+    public boolean isUnicode(PythonREMode mode) {
+        switch (mode) {
+            case Str:
+                return isUnicodeExplicitlySet() || !isAscii();
+            case Bytes:
+                return isUnicodeExplicitlySet();
+            case None:
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public boolean isSticky() {
@@ -173,16 +188,16 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 if (isLocale()) {
                     throw RegexSyntaxException.createFlags(source, "cannot use LOCALE flag with a str pattern");
                 }
-                if (isAscii() && isUnicode()) {
+                if (isAscii() && isUnicodeExplicitlySet()) {
                     throw RegexSyntaxException.createFlags(source, "ASCII and UNICODE flags are incompatible");
                 }
-                if (!isAscii() && !isUnicode()) {
+                if (!isAscii() && !isUnicodeExplicitlySet()) {
                     return new PythonFlags(value | FLAG_UNICODE);
                 } else {
                     return this;
                 }
             case Bytes:
-                if (isUnicode()) {
+                if (isUnicodeExplicitlySet()) {
                     throw RegexSyntaxException.createFlags(source, "cannot use UNICODE flag with a bytes pattern");
                 }
                 if (isAscii() && isLocale()) {
@@ -266,7 +281,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
             case "TEMPLATE":
                 return isTemplate();
             case "UNICODE":
-                return isUnicode();
+                return isUnicodeExplicitlySet();
             case "VERBOSE":
                 return isVerbose();
             default:

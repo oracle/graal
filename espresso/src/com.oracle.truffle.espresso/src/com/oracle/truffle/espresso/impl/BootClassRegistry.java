@@ -33,8 +33,8 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * A {@link BootClassRegistry} maps type names to resolved {@link Klass} instances loaded by the
@@ -90,7 +90,7 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getClassLoader() {
         return StaticObject.NULL;
     }
 }

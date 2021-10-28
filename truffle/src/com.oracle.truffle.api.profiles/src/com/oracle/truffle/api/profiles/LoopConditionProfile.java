@@ -146,6 +146,18 @@ public abstract class LoopConditionProfile extends ConditionProfile {
     }
 
     /**
+     * Creates a {@link LoopConditionProfile} using {@link #createCountingProfile()}. This is a
+     * convenience method so it can be used as {@code @Cached LoopConditionProfile loopProfile}
+     * instead of the much longer
+     * {@code @Cached("createCountingProfile()") LoopConditionProfile loopProfile}.
+     *
+     * @since 21.2
+     */
+    public static LoopConditionProfile create() {
+        return createCountingProfile();
+    }
+
+    /**
      * Returns the uncached version of the profile. The uncached version of a profile does nothing.
      *
      * @since 19.0

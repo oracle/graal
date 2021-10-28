@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -59,7 +60,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.c.ProjectHeaderFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.tutorial.CInterfaceTutorial.CInterfaceTutorialDirectives;
@@ -183,7 +183,7 @@ public class CInterfaceTutorial {
 
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         /* Call a C function directly. */
-        if (OS.getCurrent() != OS.WINDOWS) {
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
             /*
              * Calling C functions provided by the main executable from a shared library produced by
              * the native-image is not yet supported on Windows.
@@ -252,7 +252,7 @@ public class CInterfaceTutorial {
     @CEntryPoint(name = "java_print_day")
     protected static void printDay(@SuppressWarnings("unused") IsolateThread thread, DayOfTheWeek day) {
         System.out.format("Day: %s (Java ordinal: %d, C value: %d)%n", day.name(), day.ordinal(), day.getCValue());
-        if (OS.getCurrent() != OS.WINDOWS) {
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
             /*
              * Calling C functions provided by the main executable from a shared library produced by
              * the native-image is not yet supported on Windows.

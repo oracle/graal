@@ -55,19 +55,16 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.options.OptionValues;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 
 public abstract class AbstractNativeImageClassLoaderSupport {
-
-    /*
-     * This cannot be a HostedOption because all Subclasses of OptionDescriptors from inside builtin
-     * modules need to be initialized prior to option parsing so that they can be found.
-     */
-    public static final String PROPERTY_IMAGEINCLUDEBUILTINMODULES = "substratevm.ImageIncludeBuiltinModules";
 
     final List<Path> imagecp;
     private final List<Path> buildcp;
@@ -79,30 +76,66 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
-        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList()));
+        String builderClassPathString = System.getProperty("java.class.path");
+        String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
+        if (Arrays.asList(builderClassPathEntries).contains(".")) {
+            VMError.shouldNotReachHere("The classpath of " + NativeImageGeneratorRunner.class.getName() +
+                            " must not contain \".\". This can happen implicitly if the builder runs exclusively on the --module-path" +
+                            " but specifies the " + NativeImageGeneratorRunner.class.getName() + " main class without --module.");
+        }
+        buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
+                        .map(Paths::get).map(Path::toAbsolutePath)
+                        .collect(Collectors.toList()));
     }
 
     List<Path> classpath() {
-        return Stream.concat(buildcp.stream(), imagecp.stream()).collect(Collectors.toList());
+        return Stream.concat(imagecp.stream(), buildcp.stream()).collect(Collectors.toList());
     }
 
     List<Path> applicationClassPath() {
         return imagecp;
     }
 
-    ClassLoader getClassLoader() {
+    public ClassLoader getClassLoader() {
         return classPathClassLoader;
     }
 
-    abstract Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException;
+    protected abstract Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException;
 
-    abstract List<Path> modulepath();
+    protected abstract Optional<String> getMainClassFromModule(Object module);
 
-    abstract List<Path> applicationModulePath();
+    protected abstract List<Path> modulepath();
 
-    abstract Optional<Object> findModule(String moduleName);
+    protected abstract List<Path> applicationModulePath();
 
-    abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
+    protected abstract Optional<? extends Object> findModule(String moduleName);
+
+    private HostedOptionParser hostedOptionParser;
+    private OptionValues parsedHostedOptions;
+    private List<String> remainingArguments;
+
+    public void setupHostedOptionParser(List<String> arguments) {
+        hostedOptionParser = new HostedOptionParser(getClassLoader());
+        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse(arguments)));
+        parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
+        processClassLoaderOptions(parsedHostedOptions);
+    }
+
+    public HostedOptionParser getHostedOptionParser() {
+        return hostedOptionParser;
+    }
+
+    public List<String> getRemainingArguments() {
+        return remainingArguments;
+    }
+
+    public OptionValues getParsedHostedOptions() {
+        return parsedHostedOptions;
+    }
+
+    protected abstract void processClassLoaderOptions(OptionValues optionValues);
+
+    protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
     protected static class Util {
 
@@ -141,25 +174,23 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
     }
 
-    protected static class ClassInit {
+    protected class ClassInit {
 
         protected final ForkJoinPool executor;
         protected final ImageClassLoader imageClassLoader;
-        protected final AbstractNativeImageClassLoaderSupport nativeImageClassLoader;
 
-        ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoaderSupport nativeImageClassLoader) {
+        protected ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
-            this.nativeImageClassLoader = nativeImageClassLoader;
         }
 
         protected void init() {
-            Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ClassInit::toRealPath));
-            uniquePaths.addAll(nativeImageClassLoader.classpath());
+            Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(this::toRealPath));
+            uniquePaths.addAll(classpath());
             uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(path));
         }
 
-        private static Path toRealPath(Path p) {
+        private Path toRealPath(Path p) {
             try {
                 return p.toRealPath();
             } catch (IOException e) {
@@ -167,9 +198,9 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             }
         }
 
-        private static final Set<Path> excludeDirectories = getExcludeDirectories();
+        private final Set<Path> excludeDirectories = getExcludeDirectories();
 
-        private static Set<Path> getExcludeDirectories() {
+        private Set<Path> getExcludeDirectories() {
             Path root = Paths.get("/");
             return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
                             .map(root::resolve).collect(Collectors.toSet());
@@ -220,7 +251,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
                     if (fileName.endsWith(CLASS_EXTENSION)) {
-                        executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
+                        executor.execute(() -> handleClassFileName(null, fileName, fileSystemSeparatorChar));
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -229,32 +260,6 @@ public abstract class AbstractNativeImageClassLoaderSupport {
                 public FileVisitResult visitFileFailed(Path file, IOException exc) {
                     /* Silently ignore inaccessible files or directories. */
                     return FileVisitResult.CONTINUE;
-                }
-
-                /**
-                 * Take a file name from a possibly-multi-versioned jar file and remove the
-                 * versioning information. See
-                 * https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html for the
-                 * specification of the versioning strings.
-                 *
-                 * Then, depend on the JDK class loading mechanism to prefer the
-                 * appropriately-versioned class when the class is loaded. The same class name be
-                 * loaded multiple times, but each request will return the same
-                 * appropriately-versioned class. If a higher-versioned class is not available in a
-                 * lower-versioned JDK, a ClassNotFoundException will be thrown, which will be
-                 * handled appropriately.
-                 */
-                private String unversionedFileName(String fileName) {
-                    final String versionedPrefix = "META-INF/versions/";
-                    final String versionedSuffix = "/";
-                    String result = fileName;
-                    if (fileName.startsWith(versionedPrefix)) {
-                        final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
-                        if (versionedSuffixIndex >= 0) {
-                            result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
-                        }
-                    }
-                    return classFileWithoutSuffix(result);
                 }
             };
 
@@ -265,20 +270,41 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             }
         }
 
-        static String classFileWithoutSuffix(String result) {
+        /**
+         * Take a file name from a possibly-multi-versioned jar file and remove the versioning
+         * information. See https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html for
+         * the specification of the versioning strings.
+         *
+         * Then, depend on the JDK class loading mechanism to prefer the appropriately-versioned
+         * class when the class is loaded. The same class name be loaded multiple times, but each
+         * request will return the same appropriately-versioned class. If a higher-versioned class
+         * is not available in a lower-versioned JDK, a ClassNotFoundException will be thrown, which
+         * will be handled appropriately.
+         */
+        private String strippedClassFileName(String fileName) {
+            final String versionedPrefix = "META-INF/versions/";
+            final String versionedSuffix = "/";
+            String result = fileName;
+            if (fileName.startsWith(versionedPrefix)) {
+                final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
+                if (versionedSuffixIndex >= 0) {
+                    result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
+                }
+            }
             return result.substring(0, result.length() - CLASS_EXTENSION.length());
         }
 
-        protected void handleClassFileName(String strippedClassFileName, char fileSystemSeparatorChar) {
+        protected void handleClassFileName(Object module, String fileName, char fileSystemSeparatorChar) {
+            String strippedClassFileName = strippedClassFileName(fileName);
             if (strippedClassFileName.equals("module-info")) {
                 return;
             }
-
             String className = strippedClassFileName.replace(fileSystemSeparatorChar, '.');
-
             Class<?> clazz = null;
             try {
-                clazz = imageClassLoader.forName(className);
+                clazz = imageClassLoader.forName(className, module);
+            } catch (AssertionError error) {
+                VMError.shouldNotReachHere(error);
             } catch (Throwable t) {
                 ImageClassLoader.handleClassLoadingError(t);
             }

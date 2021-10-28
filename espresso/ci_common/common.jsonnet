@@ -31,11 +31,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   linux: self.common + {
     packages+: {
-      binutils: '>=2.30',
+      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      '01:binutils': '>=2.34',
       git: '>=1.8.3',
-      gcc: '>=4.9.1',
-      'gcc-build-essentials': '>=4.9.1', # GCC 4.9.0 fails on cluster
-      make: '>=3.83',
       'sys:cmake': '==3.15.2',
       ruby: "==2.6.5",
     },
@@ -52,20 +50,20 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin: self.common + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS High Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
     capabilities: ['darwin', 'amd64'],
   },
 
   // generic targets
-  gate:            {targets+: ['gate']},
-  postMerge:       {targets+: ['post-merge']},
-  bench:           {targets+: ['bench', 'post-merge']},
-  dailyBench:      {targets+: ['bench', 'daily']},
-  daily:           {targets+: ['daily']},
-  weekly:          {targets+: ['weekly']},
-  weeklyBench:     {targets+: ['bench', 'weekly']},
+  gate:            {targets+: ['gate'], timelimit: "1:00:00"},
+  postMerge:       {targets+: ['post-merge'],          notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  bench:           {targets+: ['bench', 'post-merge'], notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  dailyBench:      {targets+: ['bench', 'daily'],      notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  daily:           {targets+: ['daily'],               notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  weekly:          {targets+: ['weekly'],              notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  weeklyBench:     {targets+: ['bench', 'weekly'],     notify_emails: ["gilles.m.duboscq@oracle.com"]},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
@@ -118,6 +116,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk11_on_demand_bench_linux   : base.jdk11  + self.onDemandBench + self.x52,
   jdk11_on_demand_bench_darwin  : base.jdk11  + self.onDemandBench + self.darwin,
   jdk11_on_demand_bench_windows : base.jdk11  + self.onDemandBench + base.windows_11,
+  jdk17_gate_linux              : base.jdk17  + self.gate          + self.linux,
+  jdk17_gate_darwin             : base.jdk17  + self.gate          + self.darwin,
+  jdk17_gate_windows            : base.jdk17  + self.gate          + base.windows_17,
 
   // shared snippets
   eclipse: {
@@ -144,31 +145,28 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // shared functions
   _mx(env, args): ['mx', '--env', env] + args,
 
-  build_espresso(env): {
+  build_espresso(env, debug=false): {
     run+: [
       ['mx', 'sversions'],
-      that._mx(env, ['build']),
+      that._mx(env, (if debug then ['--debug-images'] else []) + ['build']),
     ],
   },
 
   // LD_DEBUG=unused is a workaround for: symbol lookup error: jre/lib/amd64/libnio.so: undefined symbol: fstatat64
   maybe_set_ld_debug_flag(env): if std.startsWith(env, 'jvm') then [['set-export', 'LD_DEBUG', 'unused']] else [],
 
-  espresso_gate(allow_warnings, tags, name, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00'): {
+  espresso_gate(allow_warnings, tags, ld_debug=false, mx_args=[], imports=null, gate_args=[], timelimit='15:00', name=null): {
     local mx_cmd =
       ['mx']
       + mx_args
       + (if imports != null then ['--dynamicimports=' + imports] else []),
-    setup+: [
-      if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
-      mx_cmd + ['sversions'],
-    ],
     run+: [
+      if ld_debug then ['set-export', 'LD_DEBUG', 'unused'] else ['unset', 'LD_DEBUG'],
       mx_cmd + ['--strict-compliance', 'gate', '--strict-mode', '--tags', tags] + ( if allow_warnings then ['--no-warning-as-error'] else []) + gate_args,
     ],
-    timelimit: timelimit,
-    name: name,
-  },
+  }
+  + (if timelimit != null then {timelimit: timelimit} else {})
+  + (if name != null then {name: name} else {}),
 
   espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
     self.build_espresso(env) +
@@ -185,8 +183,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
           ),
       ],
       timelimit: timelimit,
-    } +
-    self.bench_upload,
+    }
+    + self.bench_upload,
 
   espresso_minheap_benchmark(env, suite, guest_jvm_config):
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
@@ -218,8 +216,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
           ),
       ],
       timelimit: '1:00:00',
-    } +
-    self.bench_upload,
+    }
+    + self.bench_upload,
 
   # Scala DaCapo benchmarks that run in both JVM and native modes,
   # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.

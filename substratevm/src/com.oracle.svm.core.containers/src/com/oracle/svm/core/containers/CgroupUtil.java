@@ -51,6 +51,7 @@ public final class CgroupUtil {
             throw (Error) x;
     }
 
+    @SuppressWarnings({"deprecation"}) // doPrivileged is deprecated on JDK 17
     static String readStringValue(CgroupSubsystemController controller, String param) throws IOException {
         PrivilegedExceptionAction<BufferedReader> pea = () ->
                 new BufferedReader(new InputStreamReader(new FileInputStream(Paths.get(controller.path(), param).toString()), StandardCharsets.UTF_8));
@@ -63,6 +64,7 @@ public final class CgroupUtil {
         }
     }
 
+    @SuppressWarnings({"deprecation"}) // doPrivileged is deprecated on JDK 17
     public static List<String> readAllLinesPrivileged(Path path) throws IOException {
         PrivilegedExceptionAction<BufferedReader> pea = () ->
                 new BufferedReader(new InputStreamReader(new FileInputStream(path.toString()), StandardCharsets.UTF_8));

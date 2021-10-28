@@ -28,7 +28,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -60,14 +60,14 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         this.objectFlow = objectFlow;
     }
 
-    public OffsetLoadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, OffsetLoadTypeFlow original) {
+    public OffsetLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetLoadTypeFlow original) {
         super(original, methodFlows);
         this.objectType = original.objectType;
         this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         /* Only a clone should be updated */
         assert this.isClone();
         return super.addState(bb, add);
@@ -79,10 +79,10 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public abstract void onObservedUpdate(BigBang bb);
+    public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         assert this.isClone();
         /* When receiver object flow saturates start observing the flow of the the object type. */
         replaceObservedWith(bb, objectType);
@@ -109,26 +109,21 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, arrayType, arrayType.getComponentType(), arrayFlow, methodFlow);
         }
 
-        public LoadIndexedTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, LoadIndexedTypeFlow original) {
+        public LoadIndexedTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, LoadIndexedTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public LoadIndexedTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public LoadIndexedTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new LoadIndexedTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
             TypeState arrayState = getObjectState();
-            if (arrayState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Index loading from UnknownTypeState. Load: " + source);
-                return;
-            }
-
             for (AnalysisObject object : arrayState.objects()) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
@@ -141,12 +136,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
                 /* Add the indexed load flow as a use to the elements flow. */
                 TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, false);
-                if (elementsFlow.getState().isUnknown()) {
-                    bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                    "Illegal: Index loading UnknownTypeState from array. Store: " + this.getSource());
-                    return;
-                }
-
                 elementsFlow.addUse(bb, this);
             }
         }
@@ -164,12 +153,12 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, methodFlow);
         }
 
-        AbstractUnsafeLoadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AbstractUnsafeLoadTypeFlow original) {
+        AbstractUnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractUnsafeLoadTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public final AbstractUnsafeLoadTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public final AbstractUnsafeLoadTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             AbstractUnsafeLoadTypeFlow copy = makeCopy(bb, methodFlows);
             // Register the unsafe load. It will be force-updated when new unsafe fields are
             // registered. Only the clones are registered since the original flows are not updated.
@@ -177,10 +166,10 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             return copy;
         }
 
-        protected abstract AbstractUnsafeLoadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows);
+        protected abstract AbstractUnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
-        public void initClone(BigBang bb) {
+        public void initClone(PointsToAnalysis bb) {
             /*
              * Unsafe load type flow models unsafe reads from both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe load can
@@ -192,16 +181,11 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
             TypeState objectState = getObjectState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe loading from UnknownTypeState. Load: " + source);
-                return;
-            }
-
             for (AnalysisObject object : objectState.objects()) {
                 AnalysisType objectType = object.type();
                 if (objectType.isArray()) {
@@ -217,21 +201,11 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                      * point.
                      */
                     TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, false);
-                    if (elementsFlow.getState().equals(TypeState.forUnknown())) {
-                        bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                        "Illegal: Unsafe loading UnknownTypeState from object. Load:" + this.getSource());
-                        return;
-                    }
                     elementsFlow.addUse(bb, this);
                 } else {
                     for (AnalysisField field : objectType.unsafeAccessedFields()) {
                         assert field != null;
-                        TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
-                        if (fieldFlow.getState().isUnknown()) {
-                            bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                            "Illegal: Unsafe loading UnknownTypeState from object. Load: " + this.getSource());
-                            return;
-                        }
+                        TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
                         fieldFlow.addUse(bb, this);
                     }
                 }
@@ -245,12 +219,12 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, arrayFlow, methodFlow);
         }
 
-        private UnsafeLoadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, UnsafeLoadTypeFlow original) {
+        private UnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeLoadTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public UnsafeLoadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public UnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafeLoadTypeFlow(bb, methodFlows, this);
         }
 
@@ -272,52 +246,41 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             this.partitionType = partitionType;
         }
 
-        private UnsafePartitionLoadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, UnsafePartitionLoadTypeFlow original) {
+        private UnsafePartitionLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafePartitionLoadTypeFlow original) {
             super(bb, methodFlows, original);
             this.partitionKind = original.partitionKind;
             this.partitionType = original.partitionType;
         }
 
         @Override
-        public UnsafePartitionLoadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public UnsafePartitionLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafePartitionLoadTypeFlow(bb, methodFlows, this);
         }
 
         @Override
-        public TypeState filter(BigBang bb, TypeState update) {
+        public TypeState filter(PointsToAnalysis bb, TypeState update) {
             if (partitionType.equals(bb.getObjectType())) {
                 /* No need to filter. */
                 return update;
             } else {
                 /* Filter the incoming state with the partition type. */
-                return TypeState.forIntersection(bb, update, partitionType.getTypeFlow(bb, true).getState());
+                return TypeState.forIntersection(bb, update, partitionType.getAssignableTypes(true));
             }
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
             assert this.isClone();
 
             TypeState objectState = getObjectState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe loading from UnknownTypeState. Load: " + source);
-                return;
-            }
 
             for (AnalysisObject object : objectState.objects()) {
                 AnalysisType objectType = object.type();
                 assert !objectType.isArray();
 
                 for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
-                    TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
-
-                    if (fieldFlow.getState().isUnknown()) {
-                        bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                        "Illegal: Unsafe loading UnknownTypeState from object. Load: " + this.getSource());
-                        return;
-                    }
-
+                    TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
                     fieldFlow.addUse(bb, this);
                 }
             }
@@ -335,12 +298,12 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, objectFlow, methodFlow);
         }
 
-        public AtomicReadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AtomicReadTypeFlow original) {
+        public AtomicReadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AtomicReadTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public AtomicReadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public AtomicReadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new AtomicReadTypeFlow(bb, methodFlows, this);
         }
 
@@ -356,12 +319,12 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             super(node, objectType, componentType, arrayFlow, methodFlow);
         }
 
-        public JavaReadTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, JavaReadTypeFlow original) {
+        public JavaReadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, JavaReadTypeFlow original) {
             super(bb, methodFlows, original);
         }
 
         @Override
-        public JavaReadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public JavaReadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new JavaReadTypeFlow(bb, methodFlows, this);
         }
 

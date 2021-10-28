@@ -1,0 +1,3 @@
+DYNAMIC_IMPORTS=/substratevm,/graal-js
+COMPONENTS=Polybench Launcher,Polyglot Microbenchmark Harness,Native Image,Graal.js,LibGraal,Truffle NFI
+NATIVE_IMAGES=polybench,lib:jvmcicompiler

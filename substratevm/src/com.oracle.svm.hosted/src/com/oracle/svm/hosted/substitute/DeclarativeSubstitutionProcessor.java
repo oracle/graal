@@ -238,6 +238,8 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
                 result = classDescriptor.delete() ? new DeleteImpl() : null;
             } else if (annotationClass == Substitute.class) {
                 result = classDescriptor.substitute() ? new SubstituteImpl() : null;
+            } else if (annotationClass == KeepOriginal.class) {
+                result = null;
             } else {
                 throw VMError.shouldNotReachHere("Unexpected annotation type: " + annotationClass.getName());
             }
@@ -577,6 +579,11 @@ class FieldDescriptor extends ElementDescriptor {
         @Override
         public boolean isFinal() {
             return get("isFinal", false);
+        }
+
+        @Override
+        public boolean disableCaching() {
+            return get("disableCaching", false);
         }
     }
 

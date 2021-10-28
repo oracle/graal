@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.flow.context;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext.AnalysisContextKey;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -56,13 +56,13 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
      * Given the receiver object, caller context and callee this method returns the callee context
      * for a virtual or special invoke.
      */
-    public abstract C calleeContext(BigBang bb, AnalysisObject receiverObject, C callerContext, MethodTypeFlow callee);
+    public abstract C calleeContext(PointsToAnalysis bb, AnalysisObject receiverObject, C callerContext, MethodTypeFlow callee);
 
     /**
      * Given the invocation location, caller context and callee this method returns the callee
      * context for a static invoke.
      */
-    public abstract C staticCalleeContext(BigBang bb, BytecodeLocation invokeLocation, C callerContext, MethodTypeFlow callee);
+    public abstract C staticCalleeContext(PointsToAnalysis bb, BytecodeLocation invokeLocation, C callerContext, MethodTypeFlow callee);
 
     /**
      * Given the allocator method context this method returns the allocation context for a heap

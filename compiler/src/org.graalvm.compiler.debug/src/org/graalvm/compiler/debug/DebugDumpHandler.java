@@ -40,13 +40,14 @@ public interface DebugDumpHandler extends Closeable, DebugHandler {
      * If the type of {@code object} is supported by this dumper, then a representation of
      * {@code object} is sent to some consumer in a format determined by this object.
      *
-     * @param debug the debug context requesting the dump
      * @param object the object to be dumped
+     * @param debug the debug context requesting the dump
+     * @param forced true if called from {@link DebugContext#forceDump(Object, String, Object...)}
      * @param format a format string specifying a title that describes the context of the dump
      *            (e.g., the compiler phase in which request is made)
      * @param arguments arguments referenced by the format specifiers in {@code format}
      */
-    void dump(DebugContext debug, Object object, String format, Object... arguments);
+    void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments);
 
     /**
      * Flushes and releases resources managed by this dump handler. A subsequent call to

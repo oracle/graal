@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.ENUM_ATTRIBUTE_VALUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.FALSE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
@@ -168,7 +169,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         int kind = LLVM.LLVMGetEnumAttributeKindForName(attribute.name, attribute.name.length());
         LLVMAttributeRef attr;
         if (kind != 0) {
-            attr = LLVM.LLVMCreateEnumAttribute(context, kind, TRUE);
+            attr = LLVM.LLVMCreateEnumAttribute(context, kind, ENUM_ATTRIBUTE_VALUE);
         } else {
             String value = "true";
             attr = LLVM.LLVMCreateStringAttribute(context, attribute.name, attribute.name.length(), value, value.length());
@@ -304,6 +305,10 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public static boolean isIntegerType(LLVMTypeRef type) {
         return LLVM.LLVMGetTypeKind(type) == LLVM.LLVMIntegerTypeKind;
+    }
+
+    public static boolean isVectorType(LLVMTypeRef type) {
+        return LLVM.LLVMGetTypeKind(type) == LLVM.LLVMVectorTypeKind;
     }
 
     public static int integerTypeWidth(LLVMTypeRef intType) {
@@ -457,6 +462,11 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     private LLVMTypeRef metadataType() {
         return LLVM.LLVMMetadataTypeInContext(context);
+    }
+
+    public LLVMTypeRef undefType() {
+        /* Use a non-standard integer size to make sure the value is never used in an instruction */
+        return integerType(42);
     }
 
     public static boolean compatibleTypes(LLVMTypeRef a, LLVMTypeRef b) {
@@ -650,6 +660,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetValueName(value, name);
     }
 
+    public LLVMValueRef getUndef() {
+        return LLVM.LLVMGetUndef(undefType());
+    }
+
     /* Control flow */
 
     public LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
@@ -725,7 +739,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         int kind = LLVM.LLVMGetEnumAttributeKindForName(attribute.name, attribute.name.length());
         LLVMAttributeRef attr;
         if (kind != 0) {
-            attr = LLVM.LLVMCreateEnumAttribute(context, kind, TRUE);
+            attr = LLVM.LLVMCreateEnumAttribute(context, kind, ENUM_ATTRIBUTE_VALUE);
             LLVM.LLVMAddCallSiteAttribute(call, (int) LLVM.LLVMAttributeFunctionIndex, attr);
         } else {
             setCallSiteAttribute(call, attribute, "true");
@@ -1183,8 +1197,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildAlloca(builder, type, DEFAULT_INSTR_NAME);
     }
 
-    public LLVMValueRef buildArrayAlloca(LLVMTypeRef type, int slots) {
-        return LLVM.LLVMBuildArrayAlloca(builder, type, constantInt(slots), DEFAULT_INSTR_NAME);
+    public LLVMValueRef buildArrayAlloca(LLVMTypeRef type, int slots, int alignmentInBytes) {
+        LLVMValueRef alloca = LLVM.LLVMBuildArrayAlloca(builder, type, constantInt(slots), DEFAULT_INSTR_NAME);
+        LLVM.LLVMSetAlignment(alloca, alignmentInBytes);
+        return alloca;
     }
 
     public void buildPrefetch(LLVMValueRef address) {
@@ -1211,8 +1227,8 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, boolean returnValue) {
         LLVMTypeRef exchangeType = typeOf(expectedValue);
-        if (returnValue && isObjectType(typeOf(expectedValue))) {
-            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType)), address, expectedValue, newValue);
+        if (isObjectType(typeOf(expectedValue))) {
+            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType), returnValue), address, expectedValue, newValue);
         }
         return buildAtomicCmpXchg(address, expectedValue, newValue, returnValue);
     }
@@ -1245,5 +1261,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObjectType(typeOf(address)), false));
         return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
+    }
+
+    public void buildClearCache(LLVMValueRef start, LLVMValueRef end) {
+        LLVMTypeRef clearCacheType = functionType(voidType(), rawPointerType(), rawPointerType());
+        buildIntrinsicCall("llvm.clear_cache", clearCacheType, start, end);
     }
 }

@@ -33,7 +33,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
+import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -43,7 +45,6 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -52,7 +53,7 @@ import com.oracle.svm.core.util.VMError;
  *
  * This visitor is used during GC and so it must be constructed during native image generation.
  */
-final class GreyToBlackObjectVisitor implements ObjectVisitor {
+public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     private final DiagnosticReporter diagnosticReporter;
     private final GreyToBlackObjRefVisitor objRefVisitor;
 
@@ -61,7 +62,7 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
         this.objRefVisitor = greyToBlackObjRefVisitor;
         if (DiagnosticReporter.getHistoryLength() > 0) {
             this.diagnosticReporter = new DiagnosticReporter();
-            SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(diagnosticReporter);
+            DiagnosticThunkRegistry.singleton().register(diagnosticReporter);
         } else {
             this.diagnosticReporter = null;
         }
@@ -91,7 +92,7 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
     }
 
     /** A ring buffer of visited objects for diagnostics. */
-    static final class DiagnosticReporter implements SubstrateUtil.DiagnosticThunk {
+    static final class DiagnosticReporter extends DiagnosticThunk {
 
         static class Options {
             @Option(help = "Length of GreyToBlackObjectVisitor history for diagnostics. 0 implies no history is kept.") //
@@ -132,8 +133,13 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void invokeWithoutAllocation(Log log) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")
@@ -149,17 +155,17 @@ final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     int index = countToIndex(historyCount + count);
                     log.string("  index: ").unsigned(index, 3, Log.RIGHT_ALIGN);
                     Word objectEntry = objectHistory[index];
-                    log.string("  objectEntry: ").hex(objectEntry);
+                    log.string("  objectEntry: ").zhex(objectEntry);
                     UnsignedWord headerEntry = headerHistory[index];
                     Pointer headerHub = (Pointer) ObjectHeaderImpl.clearBits(headerEntry);
                     UnsignedWord headerHeaderBits = ObjectHeaderImpl.getHeaderBitsFromHeaderCarefully(headerEntry);
-                    log.string("  headerEntry: ").hex(headerEntry).string(" = ").hex(headerHub).string(" | ").hex(headerHeaderBits).string(" / ");
+                    log.string("  headerEntry: ").zhex(headerEntry).string(" = ").zhex(headerHub).string(" | ").zhex(headerHeaderBits).string(" / ");
                     boolean headerInImageHeap = imageHeapInfo.isInReadOnlyReferencePartition(headerHub) ||
                                     imageHeapInfo.isInReadOnlyRelocatablePartition(headerHub);
                     if (headerInImageHeap) {
-                        DynamicHub hub = (DynamicHub) KnownIntrinsics.convertUnknownValue(headerHub.toObject(), Object.class);
+                        DynamicHub hub = (DynamicHub) headerHub.toObject();
                         log.string("  class: ").string(hub.getName());
-                        Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
+                        Object entryAsObject = objectEntry.toObject();
                         if (LayoutEncoding.isArray(entryAsObject)) {
                             int length = ArrayLengthNode.arrayLength(entryAsObject);
                             log.string("  length: ").signed(length);

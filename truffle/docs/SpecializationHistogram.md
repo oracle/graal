@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Specialization Histogram
+permalink: /graalvm-as-a-platform/language-implementation-framework/SpecializationHistogram/
+---
 # Specialization Histogram
 
 This guide explains how to use the `--engine.SpecializationHistogram` option.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -42,13 +43,13 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMVirtualMalloc extends LLVMIntrinsic {
 
     @Specialization
-    protected LLVMPointer doIntrinsic(long size) {
-        long s = (size + 3) / 4;
-        int is = (int) s;
-        if (is == s) {
-            return LLVMManagedPointer.create(new int[(int) s]);
+    protected LLVMPointer doIntrinsic(long size,
+                    @Cached BranchProfile exception) {
+        int is = (int) size;
+        if (is == size) {
+            return LLVMManagedPointer.create(new byte[is]);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            exception.enter();
             throw new LLVMPolyglotException(this, "Virtual allocation too large: %d", size);
         }
     }

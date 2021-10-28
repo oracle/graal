@@ -26,16 +26,22 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import java.lang.ref.Reference;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
+import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.word.WordTypes;
+
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-
 final class HotSpotTruffleGraphBuilderPlugins {
+
     static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, HotSpotKnownTruffleTypes types) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, Reference.class);
         r.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
@@ -55,4 +61,29 @@ final class HotSpotTruffleGraphBuilderPlugins {
             }
         });
     }
+
+    /**
+     * These HotSpot thread local plugins are intended for the interpreter access stubs.
+     */
+    static void registerHotspotThreadLocalStubPlugins(InvocationPlugins plugins, WordTypes wordTypes, int jvmciReservedReference0Offset) {
+        GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
+
+        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        tl.register0("getJVMCIReservedReference", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
+                return true;
+            }
+        });
+        tl.register1("setJVMCIReservedReference", Object[].class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode value) {
+                b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
+                return true;
+            }
+        });
+    }
+
 }

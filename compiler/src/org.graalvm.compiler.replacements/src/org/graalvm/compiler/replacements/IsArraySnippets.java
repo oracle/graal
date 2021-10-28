@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,12 +41,12 @@ import jdk.vm.ci.code.TargetDescription;
 public abstract class IsArraySnippets implements Snippets {
 
     @Snippet
-    Object objectIsArraySnippet(Object object, Object trueValue, Object falseValue) {
+    Object objectIsArraySnippet(@Snippet.NonNullParameter Object object, Object trueValue, Object falseValue) {
         return classIsArray(object.getClass()) ? trueValue : falseValue;
     }
 
     @Snippet
-    Object classIsArraySnippet(Class<?> clazz, Object trueValue, Object falseValue) {
+    Object classIsArraySnippet(@Snippet.NonNullParameter Class<?> clazz, Object trueValue, Object falseValue) {
         return classIsArray(clazz) ? trueValue : falseValue;
     }
 

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,18 +41,21 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -63,7 +69,7 @@ final class PthreadVMLockFeature implements Feature {
     private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
-            return new PthreadVMMutex();
+            return new PthreadVMMutex(source.getName());
         }
     };
 
@@ -81,7 +87,8 @@ final class PthreadVMLockFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(PthreadVMLockSupport.class, new PthreadVMLockSupport());
+        PthreadVMLockSupport support = new PthreadVMLockSupport();
+        ImageSingletons.add(VMLockSupport.class, support);
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
     }
@@ -105,14 +112,14 @@ final class PthreadVMLockFeature implements Feature {
             nextIndex += conditionSize;
         }
 
-        PthreadVMLockSupport lockSupport = ImageSingletons.lookup(PthreadVMLockSupport.class);
+        PthreadVMLockSupport lockSupport = PthreadVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
         lockSupport.conditions = conditions;
         lockSupport.pthreadStructs = new byte[nextIndex];
     }
 }
 
-public final class PthreadVMLockSupport {
+public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = PthreadVMMutex[].class)//
     protected PthreadVMMutex[] mutexes;
@@ -130,18 +137,24 @@ public final class PthreadVMLockSupport {
     @UnknownObjectField(types = byte[].class)//
     protected byte[] pthreadStructs;
 
+    @Fold
+    public static PthreadVMLockSupport singleton() {
+        return (PthreadVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
+    }
+
     /**
      * Must be called once early during startup, before any mutex or condition is used.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     public static boolean initialize() {
-        for (PthreadVMMutex mutex : ImageSingletons.lookup(PthreadVMLockSupport.class).mutexes) {
+        PthreadVMLockSupport support = PthreadVMLockSupport.singleton();
+        for (PthreadVMMutex mutex : support.mutexes) {
             if (Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()) != 0) {
                 return false;
             }
         }
 
-        for (PthreadVMCondition condition : ImageSingletons.lookup(PthreadVMLockSupport.class).conditions) {
+        for (PthreadVMCondition condition : support.conditions) {
             if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
                 return false;
             }
@@ -151,16 +164,29 @@ public final class PthreadVMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     protected static void checkResult(int result, String functionName) {
         if (result != 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             Log.log().string(functionName).string(" returned ").signed(result).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }
+    }
+
+    @Override
+    public PthreadVMMutex[] getMutexes() {
+        return mutexes;
+    }
+
+    @Override
+    public PthreadVMCondition[] getConditions() {
+        return conditions;
     }
 }
 
@@ -169,12 +195,13 @@ final class PthreadVMMutex extends VMMutex {
     protected UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected PthreadVMMutex() {
+    protected PthreadVMMutex(String name) {
+        super(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     protected Pthread.pthread_mutex_t getStructPointer() {
-        return (Pthread.pthread_mutex_t) Word.objectToUntrackedPointer(ImageSingletons.lookup(PthreadVMLockSupport.class).pthreadStructs).add(structOffset);
+        return (Pthread.pthread_mutex_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
     @Override
@@ -232,7 +259,7 @@ final class PthreadVMCondition extends VMCondition {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     protected Pthread.pthread_cond_t getStructPointer() {
-        return (Pthread.pthread_cond_t) Word.objectToUntrackedPointer(ImageSingletons.lookup(PthreadVMLockSupport.class).pthreadStructs).add(structOffset);
+        return (Pthread.pthread_cond_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
     @Override

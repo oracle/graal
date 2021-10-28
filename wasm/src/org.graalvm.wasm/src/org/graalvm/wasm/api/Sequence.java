@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,15 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import java.util.List;
-
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 @ExportLibrary(InteropLibrary.class)
 public class Sequence<T> implements TruffleObject {
@@ -68,12 +66,14 @@ public class Sequence<T> implements TruffleObject {
 
     @SuppressWarnings({"unused"})
     @ExportMessage
+    @TruffleBoundary
     public long getArraySize() {
         return list.size();
     }
 
     @SuppressWarnings({"unused"})
     @ExportMessage
+    @TruffleBoundary
     public boolean isArrayElementReadable(long index) {
         return index >= 0 && index < getArraySize();
     }
@@ -92,22 +92,18 @@ public class Sequence<T> implements TruffleObject {
 
     @SuppressWarnings({"unused"})
     @ExportMessage
+    @TruffleBoundary
     public Object readArrayElement(long index) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            transferToInterpreter();
             throw InvalidArrayIndexException.create(index);
         }
         return list.get((int) index);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static UnsupportedMessageException unsupported() {
-        return UnsupportedMessageException.create();
-    }
-
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    public final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
-        throw unsupported();
+    @TruffleBoundary
+    public final void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

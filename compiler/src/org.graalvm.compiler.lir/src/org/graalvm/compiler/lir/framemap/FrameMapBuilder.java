@@ -30,6 +30,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
@@ -49,13 +50,14 @@ public abstract class FrameMapBuilder {
     public abstract VirtualStackSlot allocateSpillSlot(ValueKind<?> kind);
 
     /**
-     * Reserves a number of contiguous slots in the frame of the method being compiled. If the
-     * requested number of slots is 0, this method returns {@code null}.
+     * Reserves a contiguous and aligned range of memory in the frame of the method being compiled.
      *
-     * @param slots the number of slots to reserve
+     * @param sizeInBytes the number of bytes to reserve. Must be > 0.
+     * @param alignmentInBytes the required alignment of the memory. Must be > 0, a power of 2, and
+     *            not exceed the {@link TargetDescription#stackAlignment OS stack frame alignment}.
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    public abstract VirtualStackSlot allocateStackSlots(int slots);
+    public abstract VirtualStackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes);
 
     public abstract RegisterConfig getRegisterConfig();
 

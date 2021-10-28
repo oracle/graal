@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -52,16 +49,14 @@ public final class LLVMPThreadStart {
 
     static final class LLVMPThreadRunnable implements Runnable {
 
-        private final boolean isThread;
         private final Object startRoutine;
         private final Object arg;
         private final LLVMContext context;
 
-        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context, boolean isThread) {
+        LLVMPThreadRunnable(Object startRoutine, Object arg, LLVMContext context) {
             this.startRoutine = startRoutine;
             this.arg = arg;
             this.context = context;
-            this.isThread = isThread;
         }
 
         @Override
@@ -86,18 +81,15 @@ public final class LLVMPThreadStart {
                 throw t;
             } finally {
                 // call destructors from key create
-                if (this.isThread) {
-                    for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
-                        final LLVMPointer destructor = pThreadContext.getDestructor(key);
-                        if (destructor != null && !destructor.isNull()) {
-                            final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
-                            if (keyMapping != null) {
-                                assert !keyMapping.isNull();
-                                new LLVMPThreadRunnable(destructor, keyMapping, this.context, false).run();
-                            }
+                for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
+                    final LLVMPointer destructor = pThreadContext.getDestructor(key);
+                    if (destructor != null && !destructor.isNull()) {
+                        final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
+                        if (keyMapping != null) {
+                            assert !keyMapping.isNull();
+                            pThreadContext.getPthreadCallTarget().call(destructor, keyMapping);
                         }
                     }
-                    pThreadContext.clearThreadId();
                 }
             }
         }
@@ -109,8 +101,6 @@ public final class LLVMPThreadStart {
 
         private final FrameSlot functionSlot;
         private final FrameSlot argSlot;
-
-        @CompilationFinal private ContextReference<LLVMContext> ctxRef;
 
         private LLVMPThreadFunctionRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor, FrameSlot functionSlot, FrameSlot argSlot, NodeFactory nodeFactory) {
             super(language, frameDescriptor, nodeFactory.createStackAccess(frameDescriptor));
@@ -134,13 +124,13 @@ public final class LLVMPThreadStart {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
-            if (ctxRef == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ctxRef = lookupContextReference(LLVMLanguage.class);
-            }
+        public boolean isInternal() {
+            return false;
+        }
 
-            stackAccess.executeEnter(frame, ctxRef.get().getThreadingStack().getStack());
+        @Override
+        public Object execute(VirtualFrame frame) {
+            stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack());
             try {
 
                 // copy arguments to frame

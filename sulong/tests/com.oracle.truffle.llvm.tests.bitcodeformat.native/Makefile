@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -38,7 +38,9 @@ TARGETS:=hello-linux-emit-llvm.bc \
          hello-darwin-compile-fembed-bitcode.o \
          hello-darwin-link-fembed-bitcode \
          hello-darwin-link-fembed-bitcode.dylib \
-         hello-darwin-link.bundle
+         hello-darwin-link.bundle \
+         hello-windows-compile-fembed-bitcode.o \
+         hello-windows-link-fembed-bitcode.exe
 
 CLANG?=clang
 

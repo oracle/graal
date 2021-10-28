@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.nodes;
 
+/**
+ * See {@link ValueNodeInterface} for details about these node interfaces.
+ */
 public interface FixedNodeInterface extends ValueNodeInterface {
-    @Override
-    FixedNode asNode();
+    FixedNode asFixedNode();
 }

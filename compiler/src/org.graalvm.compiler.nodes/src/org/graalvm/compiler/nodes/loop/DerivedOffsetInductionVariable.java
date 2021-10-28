@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,10 +54,14 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public Direction direction() {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return base.direction().opposite();
+        Direction baseDirection = base.direction();
+        if (baseDirection == null) {
+            return null;
         }
-        return base.direction();
+        if (value instanceof SubNode && base.valueNode() == value.getY()) {
+            return baseDirection.opposite();
+        }
+        return baseDirection;
     }
 
     @Override
@@ -137,15 +141,19 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     public ValueNode op(ValueNode b, ValueNode o) {
+        return op(b, o, true);
+    }
+
+    public ValueNode op(ValueNode b, ValueNode o, boolean gvn) {
         if (value instanceof AddNode) {
-            return add(graph(), b, o);
+            return add(graph(), b, o, gvn);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return sub(graph(), b, o);
+                return sub(graph(), b, o, gvn);
             } else {
                 assert base.valueNode() == value.getY();
-                return sub(graph(), o, b);
+                return sub(graph(), o, b, gvn);
             }
         }
         throw GraalError.shouldNotReachHere();
@@ -193,11 +201,23 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return op(newBase.valueNode(), offset);
+        return copyValue(newBase, true);
+    }
+
+    @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return op(newBase.valueNode(), offset, gvn);
     }
 
     @Override
     public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
-        return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
+        if (newValue instanceof BinaryArithmeticNode<?>) {
+            return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
+        } else if (newValue instanceof NegateNode) {
+            return new DerivedScaledInductionVariable(loop, newBase, (NegateNode) newValue);
+        } else {
+            assert newValue instanceof IntegerConvertNode<?, ?> : "Expected integer convert operation. New baseIV=" + newBase + " newValue=" + newValue;
+            return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
+        }
     }
 }

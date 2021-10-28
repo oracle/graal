@@ -66,7 +66,7 @@ public final class AArch64HotSpotUnwindOp extends AArch64HotSpotEpilogueOp {
 
         // Get return address (is in lr after frame leave)
         Register returnAddress = asRegister(cc.getArgument(1));
-        masm.movx(returnAddress, lr);
+        masm.mov(64, returnAddress, lr);
 
         AArch64Call.directJmp(crb, masm, linkage);
     }

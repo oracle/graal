@@ -23,9 +23,7 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -122,7 +120,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             // 1. If C is not an interface, interface method resolution throws an
             // IncompatibleClassChangeError.
             if (!holderInterface.isInterface()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(name));
             }
 
             Symbol<Signature> signature = getSignature(pool);
@@ -130,14 +128,10 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             Method method = ((ObjectKlass) holderInterface).resolveInterfaceMethod(name, signature);
 
             if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(name));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderInterface, method)) {
-                context.getLogger().log(Level.WARNING, EspressoOptions.INCEPTION_NAME + " Interface method access check of: " + method.getName() + " in " + holderInterface.getType() + " from " +
-                                accessingKlass.getType() + " throws IllegalAccessError");
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderInterface, method, meta);
 
             method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
 

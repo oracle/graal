@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.nio.file.Paths;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.DebugOptions.PrintGraphTarget;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -47,21 +48,25 @@ public class DumpPathTest extends GraalCompilerTest {
         return new String("snippet");
     }
 
+    @SuppressWarnings("try")
     @Test
-    public void testDump() throws IOException {
+    public void testDump() throws Exception {
         assumeManagementLibraryIsLoadable();
         try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "DumpPathTest")) {
             String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
             EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
             overrides.put(DebugOptions.DumpPath, temp.toString());
+            overrides.put(DebugOptions.ShowDumpFiles, false);
             overrides.put(DebugOptions.PrintCFG, true);
             overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
             overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
             overrides.put(DebugOptions.Dump, "*");
             overrides.put(DebugOptions.MethodFilter, null);
 
-            // Generate dump files.
-            test(new OptionValues(getInitialOptions(), overrides), "snippet");
+            try (AutoCloseable c = new TTY.Filter()) {
+                // Generate dump files.
+                test(new OptionValues(getInitialOptions(), overrides), "snippet");
+            }
             // Check that IGV files got created, in the right place.
             checkForFiles(temp.path, extensions);
         }

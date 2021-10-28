@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,7 +86,7 @@ public final class Version implements Comparable<Version> {
     }
 
     Version(String v) {
-        if (v.equals(SNAPSHOT_STRING)) {
+        if (v.equals(SNAPSHOT_STRING) || v.equals("dev")) {
             snapshot = true;
             versions = new int[0];
             suffix = SNAPSHOT_STRING;

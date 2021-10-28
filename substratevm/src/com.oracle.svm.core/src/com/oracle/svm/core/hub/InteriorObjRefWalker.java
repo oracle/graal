@@ -73,7 +73,7 @@ public class InteriorObjRefWalker {
             Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(layoutEncoding));
             Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
             while (pos.belowThan(end)) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(pos, isCompressed, obj);
+                final boolean visitResult = visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
                 if (!visitResult) {
                     return false;
                 }

@@ -103,30 +103,37 @@ numberTypes.set('Color', 'double'); //TODO: make configurable
 const ANY = 'any';
 
 parseSource(args.source).then((ast:SourceFile) => {
-    traverse([ast.getChildAt(0)], (node: Node) => {
+    traverse([ast.getChildAt(0)], function searchAst(node: Node) {
         switch(node.kind) {
-            case SyntaxKind.TypeAliasDeclaration:
-                const taExported = (node as TypeAliasDeclaration).modifiers && (node as TypeAliasDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+            case SyntaxKind.TypeAliasDeclaration: {
+                const ta = node as TypeAliasDeclaration;
+                const taExported = ta.modifiers && ta.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (taExported) {
-                    typeAliases.set((node as TypeAliasDeclaration).name.getText(), node as TypeAliasDeclaration);
+                    typeAliases.set(ta.name.getText(), ta);
                 }
                 break;
-            case SyntaxKind.ModuleDeclaration:
-                const mdExported = (node as ModuleDeclaration).modifiers && (node as ModuleDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
-                if (mdExported && !modules.has((node as ModuleDeclaration).name.getText())) {
-                    modules.set((node as ModuleDeclaration).name.getText(), <ModuleDeclaration>node);
+            }
+            case SyntaxKind.ModuleDeclaration: {
+                const md = node as ModuleDeclaration;
+                const mdExported = md.modifiers && md.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+                if (mdExported && !modules.has(md.name.getText())) {
+                    modules.set(md.name.getText(), md);
                 }
                 break;
-            case SyntaxKind.InterfaceDeclaration:
-                const idExported = (node as InterfaceDeclaration).modifiers && (node as InterfaceDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+            }
+            case SyntaxKind.InterfaceDeclaration: {
+                const id = node as InterfaceDeclaration;
+                const idExported = id.modifiers && id.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (idExported) {
-                    interfaces.set((node as InterfaceDeclaration).name.getText(), <InterfaceDeclaration>node);
+                    interfaces.set(id.name.getText(), id);
                 }
                 break;
+            }
             case SyntaxKind.EnumDeclaration:
-                const edExported = (node as EnumDeclaration).modifiers && (node as EnumDeclaration).modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
+                const ed = node as EnumDeclaration;
+                const edExported = ed.modifiers && ed.modifiers.find((mod: Modifier) => mod.kind === SyntaxKind.ExportKeyword);
                 if (edExported) {
-                    enums.set((node as EnumDeclaration).name.getText(), <EnumDeclaration>node);
+                    enums.set(ed.name.getText(), ed);
                 }
                 break;
         }
@@ -1713,13 +1720,13 @@ function unionInfoSetter(unionInfo:{typeRef: TypeReferenceNode; enumRef: TypeRef
     }
     if (unionInfo.arrType) {
         text += (hasNull || unionInfo.typeRef ? 'else ' : indent.repeat(baseIndent)) + 'if (' + varName + ' instanceof List) {\n';
-        text += indent.repeat(baseIndent + 1) + 'final JSONArray json = new JSONArray();\n';
+        text += indent.repeat(baseIndent + 1) + 'final JSONArray arr = new JSONArray();\n';
         let elemType: Node = findType(unionInfo.arrType.elementType);
         let elemTypeName: string = getJavaType(elemType);
         text += indent.repeat(baseIndent + 1) + 'for (' + elemTypeName + ' ' + varNameFor(elemTypeName) +  ': (List<' + elemTypeName + '>) ' + varName + ') {\n';
-        text += indent.repeat(baseIndent + 2) + jsonSetter('json', null, varNameFor(elemTypeName), elemType, false) + ';\n';
+        text += indent.repeat(baseIndent + 2) + jsonSetter('arr', null, varNameFor(elemTypeName), elemType, false) + ';\n';
         text += indent.repeat(baseIndent + 1) + '}\n';
-        text += indent.repeat(baseIndent + 1) + jsonSetter(jsonVarName, key, 'json', unionInfo.arrType, false) + ';\n';
+        text += indent.repeat(baseIndent + 1) + jsonSetter(jsonVarName, key, 'arr', unionInfo.arrType, false) + ';\n';
         text += indent.repeat(baseIndent) + '} ';
     }
     if (unionInfo.enumRef) {

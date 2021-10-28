@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
@@ -54,7 +53,7 @@ public class CodeReferenceMapDecoder {
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
-        assert referenceMapIndex != CodeInfoQueryResult.NO_REFERENCE_MAP;
+        assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
         UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
         UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
@@ -126,7 +125,7 @@ public class CodeReferenceMapDecoder {
                  */
                 Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
 
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
                 if (!visitResult) {
                     return false;
                 }
@@ -158,7 +157,7 @@ public class CodeReferenceMapDecoder {
                     Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
                     int innerOffset = NumUtil.safeToInt(derivedPtr.subtract(basePtr).rawValue());
 
-                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed);
+                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, null);
                     if (!derivedVisitResult) {
                         return false;
                     }
@@ -166,7 +165,7 @@ public class CodeReferenceMapDecoder {
                 objRef = objRef.add(refSize);
             } else {
                 for (long c = 0; c < count; c += 1) {
-                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, null);
                     if (!visitResult) {
                         return false;
                     }

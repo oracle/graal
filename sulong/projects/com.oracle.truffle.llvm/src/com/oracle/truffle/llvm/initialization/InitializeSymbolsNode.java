@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,14 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -49,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
@@ -60,12 +60,14 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
  * them into the symbol table. Alias will be unwrapped before they are inserted into the symbol
  * table.
  *
- * @see InitializeScopeNode
  * @see InitializeGlobalNode
  * @see InitializeModuleNode
  * @see InitializeExternalNode
@@ -78,9 +80,11 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @Child private LLVMAllocateNode allocRoSection;
     @Child private LLVMAllocateNode allocRwSection;
 
+    private final BranchProfile exception;
+
     /**
-     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type
-     * ({@link LLVMGlobalContainer}).
+     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type (
+     * {@link LLVMGlobalContainer}).
      */
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
@@ -92,7 +96,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
 
-    private final int bitcodeID;
+    private final BitcodeID bitcodeID;
     private final int globalLength;
 
     public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws Type.TypeOverflowException {
@@ -103,6 +107,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.bitcodeID = result.getRuntime().getBitcodeID();
         this.moduleName = moduleName;
 
+        this.exception = BranchProfile.create();
+
         // allocate all non-pointer types as two structs
         // one for read-only and one for read-write
         DataSection roSection = new DataSection(dataLayout);
@@ -112,7 +118,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         this.globalOffsets = new int[globalsCount];
         this.globalIsReadOnly = new boolean[globalsCount];
         this.globals = new LLVMSymbol[globalsCount];
-        LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+        LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.get(null).getCapability(LLVMIntrinsicProvider.class);
 
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
@@ -180,7 +186,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         allocFunctions(ctx);
 
         if (allocRoSection != null) {
-            ctx.registerReadOnlyGlobals(bitcodeID, roBase, nodeFactory);
+            ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
         }
         if (allocRwSection != null) {
             ctx.registerGlobals(rwBase, nodeFactory);
@@ -193,8 +199,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
             LLVMSymbol allocGlobal = globals[i];
             LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.getName());
             if (descriptor == null) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(String.format("Global variable %s not found", allocGlobal.getName()));
+                exception.enter();
+                throw new LLVMLinkerException(this, "Global variable %s not found", allocGlobal.getName());
             }
             if (!context.checkSymbol(allocGlobal)) {
                 // because of our symbol overriding support, it can happen that the global was
@@ -211,6 +217,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
                 list.add(descriptor);
                 context.registerSymbolReverseMap(list, ref);
             }
+
         }
     }
 
@@ -344,6 +351,12 @@ public final class InitializeSymbolsNode extends LLVMNode {
         @Override
         LLVMPointer allocate(LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = createAndResolve(context);
+            if (context.isAOTCacheLoad() || context.isAOTCacheStore()) {
+                // Initialize the native state in the descriptor to prevent deopts/unstable ifs. The
+                // function in the descriptor should already be resolved after the auxiliary engine
+                // cache was loaded.
+                functionDescriptor.toNative();
+            }
             return LLVMManagedPointer.create(functionDescriptor);
         }
     }

@@ -1,0 +1,12 @@
+> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid-heap.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
+>[0] javac -cp $CP HeapQuery.java
+#> export TMP_DIR=/tmp
+>[??] rm -rf ${TMP_DIR}/sample.hprof*
+>[7?] js --insight=agent-dump.js --heap.dump=${TMP_DIR}/sample.hprof agent-fib.js
+# a JavaScript heap has been generated
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/sample.hprof -e 'heap.forEachClass((c) => c.name.startsWith("frame:") && print(c.name))'
+frame:minusTwo
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/sample.hprof -e 'let arr = []; heap.forEachObject((frame) => { for (let p in frame) { arr.push(p); } }, "frame:minusTwo"); arr.sort(); print(arr);'
+["n", "this"]
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/sample.hprof -e 'heap.forEachObject((frame) => print(frame.n.value), "frame:minusTwo");'
+2

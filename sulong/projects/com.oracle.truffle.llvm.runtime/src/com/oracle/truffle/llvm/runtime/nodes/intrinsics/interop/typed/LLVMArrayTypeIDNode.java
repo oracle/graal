@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,8 +51,7 @@ public abstract class LLVMArrayTypeIDNode extends LLVMExpressionNode {
 
     @Fallback
     Object doError(@SuppressWarnings("unused") Object base, Object len) {
-        CompilerDirectives.transferToInterpreter();
-        if (len instanceof Number && ((Number) len).longValue() < 0) {
+        if (len instanceof Long && ((Long) len) < 0) {
             throw new LLVMPolyglotException(this, "Negative array length %s in polyglot_array_typeid.", len);
         } else {
             throw new LLVMPolyglotException(this, "Invalid typeid in polyglot_array_typeid.");

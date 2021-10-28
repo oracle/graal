@@ -27,6 +27,10 @@ generate                  generates configuration file(s) from all inputs.
                           reads a dynamic proxy configuration file at <path>.
     --resource-input=<path>
                           reads a resource configuration file at <path>.
+    --serialization-input=<path>
+                          reads a serialization configuration file at <path>.
+    --predefined-classes-input=<path>
+                          reads a class predefinition config file at <path>.
     --output-dir=<path>
                           writes a set of configuration files to the directory
                           at the given path. Existing files are replaced. This
@@ -54,6 +58,14 @@ generate                  generates configuration file(s) from all inputs.
                           -H:ResourceConfigurationFiles=<path>.
                           The paths in the configuration file might need to be
                           adjusted for the build directories/classpath.
+    --serialization-input=<path>
+                          writes a serialization configuration file to <path>.
+                          This file can be later provided to native-image with
+                          -H:SerializationConfigurationFiles=<path>.
+    --predefined-classes-input=<path>
+                          writes a class predefinition config file to <path>.
+                          This file can be later provided to native-image with
+                          -H:PredefinedClassesConfigurationFiles=<path>.
     --caller-filter-file=<path>
                           Provides a custom filter file for excluding usages
                           of JNI, reflection and resources based on the caller

@@ -26,11 +26,13 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StringTable;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -61,6 +63,10 @@ public interface ContextAccess {
         return getContext().getVM();
     }
 
+    default ThreadsAccess getThreadAccess() {
+        return getContext().getThreadAccess();
+    }
+
     default InterpreterToVM getInterpreterToVM() {
         return getContext().getInterpreterToVM();
     }
@@ -79,5 +85,9 @@ public interface ContextAccess {
 
     default JavaVersion getJavaVersion() {
         return getContext().getJavaVersion();
+    }
+
+    default NativeAccess getNativeAccess() {
+        return getContext().getNativeAccess();
     }
 }

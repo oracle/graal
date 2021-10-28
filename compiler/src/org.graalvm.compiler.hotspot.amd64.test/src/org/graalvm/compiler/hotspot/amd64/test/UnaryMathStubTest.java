@@ -55,7 +55,7 @@ public class UnaryMathStubTest extends GraalCompilerTest {
         return ret;
     }
 
-    private static final double[] inputs = {0.0D, Math.PI / 2, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
+    private static final double[] inputs = {0.0D, Math.PI / 2, Math.PI, -1.0D, 0x4.0p8, 0x2.71p12, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
     private final String stub;
 
     public UnaryMathStubTest(String stub) {

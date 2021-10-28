@@ -50,7 +50,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetVersionProperties;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeRuntime;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethods;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethod;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleReservedOopMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsBasicDumpEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsDumpChannelOpen;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsPrintGraphEnabled;
@@ -67,7 +68,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 
 /**
@@ -102,12 +102,14 @@ final class TruffleToLibGraalCalls {
                     long debugContextHandle,
                     long compilationHandle,
                     byte[] options,
-                    TruffleMetaAccessProvider inlining,
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
-    @TruffleToLibGraal(InstallTruffleCallBoundaryMethods)
-    static native void installTruffleCallBoundaryMethods(long isolateThreadId, long handle, CompilableTruffleAST compilable);
+    @TruffleToLibGraal(InstallTruffleCallBoundaryMethod)
+    static native void installTruffleCallBoundaryMethod(long isolateThreadId, long handle, long methodHandle);
+
+    @TruffleToLibGraal(InstallTruffleReservedOopMethod)
+    static native void installTruffleReservedOopMethod(long isolateThreadId, long handle, long methodHandle);
 
     @TruffleToLibGraal(PendingTransferToInterpreterOffset)
     static native int pendingTransferToInterpreterOffset(long isolateThreadId, long handle, CompilableTruffleAST compilable);

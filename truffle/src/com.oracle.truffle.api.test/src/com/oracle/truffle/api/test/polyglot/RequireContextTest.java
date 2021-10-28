@@ -40,20 +40,22 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Paths;
+import java.util.function.Consumer;
+
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import java.nio.file.Paths;
-import java.util.function.Consumer;
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class RequireContextTest extends AbstractPolyglotTest {
 
@@ -65,10 +67,10 @@ public class RequireContextTest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContext() {
         setupEnv(Context.create());
-        assertFails(() -> ProxyLanguage.getCurrentContext(), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> LanguageContext.get(null), AssertionError.class);
         context.enter();
         try {
-            assertEquals(languageEnv, ProxyLanguage.getCurrentContext().getEnv());
+            assertEquals(languageEnv, LanguageContext.get(null).getEnv());
         } finally {
             context.leave();
         }
@@ -80,7 +82,7 @@ public class RequireContextTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+                return RootNode.createConstantNode(true).getCallTarget();
             }
         });
         assertFails(() -> instrumentEnv.getTruffleFile("file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
@@ -109,9 +111,7 @@ public class RequireContextTest extends AbstractPolyglotTest {
 
         @Override
         public void accept(IllegalStateException ise) {
-            if (!"There is no current context available.".equals(ise.getMessage())) {
-                throw new AssertionError("Expected  'There is no current context available.' message but was " + ise.getMessage(), ise);
-            }
+            assertEquals("There is no current context available.", ise.getMessage());
         }
     }
 

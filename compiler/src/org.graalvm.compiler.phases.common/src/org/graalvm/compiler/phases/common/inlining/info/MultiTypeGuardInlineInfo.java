@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -342,7 +343,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, false, stampProvider, constantReflection);
 
-        calleeEntryNode.setNext(invoke.asNode());
+        calleeEntryNode.setNext(invoke.asFixedNode());
 
         return inline(invoke, methodAt(0), inlineableElementAt(0), false, reason);
     }
@@ -374,7 +375,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
             keyProbabilities[i] /= totalProbability;
         }
 
-        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors, constantReflection));
+        TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keySuccessors, constantReflection, SwitchProbabilityData.profiled(keyProbabilities)));
         FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
         pred.setNext(typeSwitch);
         return false;
@@ -384,7 +385,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
                     PhiNode exceptionObjectPhi, boolean useForInlining) {
         Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
         AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
-        calleeEntryNode.setNext(duplicatedInvoke.asNode());
+        calleeEntryNode.setNext(duplicatedInvoke.asFixedNode());
 
         EndNode endNode = graph.add(new EndNode());
         duplicatedInvoke.setNext(endNode);
@@ -464,7 +465,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
         createDispatchOnTypeBeforeInvoke(graph, successors, true, stampProvider, constantReflection);
 
-        invocationEntry.setNext(invoke.asNode());
+        invocationEntry.setNext(invoke.asFixedNode());
         ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
         PiNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
         invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);

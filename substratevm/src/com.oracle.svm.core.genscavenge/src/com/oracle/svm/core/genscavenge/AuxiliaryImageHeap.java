@@ -46,9 +46,6 @@ public interface AuxiliaryImageHeap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean containsObject(Pointer address);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObjectSlow(Pointer address);
-
     boolean walkObjects(ObjectVisitor visitor);
 
     boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);

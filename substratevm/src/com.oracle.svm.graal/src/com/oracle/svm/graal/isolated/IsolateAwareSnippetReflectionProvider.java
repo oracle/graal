@@ -28,7 +28,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -43,8 +42,7 @@ final class IsolateAwareSnippetReflectionProvider implements SnippetReflectionPr
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        @SuppressWarnings("unchecked")
-        T object = (T) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
+        T object = SubstrateObjectConstant.asObject(type, constant);
         VMError.guarantee(!SubstrateOptions.shouldCompileInIsolates() || ImageHeapObjects.isInImageHeap(object));
         return object;
     }

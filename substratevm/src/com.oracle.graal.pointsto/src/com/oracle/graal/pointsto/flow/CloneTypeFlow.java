@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -58,7 +58,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
         this.input = input;
     }
 
-    public CloneTypeFlow(BigBang bb, CloneTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
+    public CloneTypeFlow(PointsToAnalysis bb, CloneTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {
         super(original, methodFlows);
         this.cloneSite = original.cloneSite;
         this.allocationContext = allocationContext;
@@ -66,7 +66,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         AnalysisContext enclosingContext = methodFlows.context();
         AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
 
@@ -74,7 +74,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public void onObservedUpdate(BigBang bb) {
+    public void onObservedUpdate(PointsToAnalysis bb) {
         /* Only a clone should be updated */
         assert this.isClone() && context != null;
 
@@ -95,7 +95,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
             /* Nothing to be cloned if the input state is not a concrete type state. */
             resultState = inputState.forNonNull(bb);
         } else {
-            resultState = inputState.typesStream()
+            resultState = inputState.typesStream(bb)
                             .filter(t -> !currentState.containsType(t))
                             .map(type -> TypeState.forClone(bb, cloneSite, type, allocationContext))
                             .reduce(TypeState.forEmpty(), (s1, s2) -> TypeState.forUnion(bb, s1, s2));
@@ -108,14 +108,14 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public void update(BigBang bb) {
+    public void update(PointsToAnalysis bb) {
 
         assert this.isClone();
 
         TypeState inputState = input.getState();
         TypeState cloneState = this.getState();
 
-        for (AnalysisType type : inputState.types()) {
+        for (AnalysisType type : inputState.types(bb)) {
             if (type.isArray()) {
                 if (bb.analysisPolicy().aliasArrayTypeFlows()) {
                     /* All arrays are aliased, no need to model the array clone operation. */
@@ -145,10 +145,10 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
                 for (AnalysisObject originalObject : inputState.objects(type)) {
                     /* Link all the field flows of the original to the clone. */
                     for (AnalysisField field : type.getInstanceFields(true)) {
-                        FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, this.method(), field, false);
+                        FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, input, source, field, false);
 
                         for (AnalysisObject cloneObject : cloneState.objects(type)) {
-                            FieldTypeFlow cloneObjectFieldFlow = cloneObject.getInstanceFieldFlow(bb, this.method(), field, true);
+                            FieldTypeFlow cloneObjectFieldFlow = cloneObject.getInstanceFieldFlow(bb, this, source, field, true);
                             originalObjectFieldFlow.addUse(bb, cloneObjectFieldFlow);
                         }
                     }
@@ -161,7 +161,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         assert this.isClone();
         /* When the input flow saturates start observing the flow of the declared type. */
         replaceObservedWith(bb, declaredType);

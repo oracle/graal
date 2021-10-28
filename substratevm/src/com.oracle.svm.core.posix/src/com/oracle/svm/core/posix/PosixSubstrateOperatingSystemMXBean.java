@@ -28,22 +28,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.jdk.management.SubstrateOperatingSystemMXBean;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Times;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
-import com.oracle.svm.core.posix.headers.linux.LinuxStat;
-import com.oracle.svm.core.util.VMError;
 import com.sun.management.UnixOperatingSystemMXBean;
 
 class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean implements UnixOperatingSystemMXBean {
@@ -83,23 +77,11 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
         int maxFileDescriptor = (int) Unistd.sysconf(Unistd._SC_OPEN_MAX());
         long count = 0;
         for (int i = 0; i <= maxFileDescriptor; i++) {
-            if (fstat(i) == 0 || CErrorNumber.getCErrorNumber() != Errno.EBADF()) {
+            if (PosixStat.isOpen(i)) {
                 count++;
             }
         }
         return count;
-    }
-
-    private static int fstat(int fd) {
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
-            return LinuxStat.fstat64(fd, stat);
-        } else if (Platform.includedIn(Platform.DARWIN.class)) {
-            DarwinStat.stat64 stat = StackValue.get(DarwinStat.stat64.class);
-            return DarwinStat.fstat64(fd, stat);
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported platform");
-        }
     }
 
     @SuppressWarnings("unchecked")

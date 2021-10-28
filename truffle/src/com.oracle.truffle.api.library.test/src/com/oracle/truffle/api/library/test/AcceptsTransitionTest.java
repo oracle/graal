@@ -142,7 +142,7 @@ public class AcceptsTransitionTest extends AbstractLibraryTest {
             if (!isMemberInvocable(member)) {
                 throw UnknownIdentifierException.create(member);
             } else if (arguments.length != 1) {
-                throw ArityException.create(1, arguments.length);
+                throw ArityException.create(1, 1, arguments.length);
             } else if (!strings.isString(arguments[0])) {
                 throw UnsupportedTypeException.create(arguments);
             }

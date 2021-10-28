@@ -28,17 +28,23 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
  * A begin node that kills a single memory location. See {@link MultiKillingBeginNode} for a version
  * with multiple killed locations.
+ *
+ * @see WithExceptionNode for more details
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
-public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill {
+public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill, Canonicalizable {
 
     public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
     protected LocationIdentity locationIdentity;
@@ -64,5 +70,26 @@ public final class KillingBeginNode extends AbstractBeginNode implements SingleM
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
+    }
+
+    @Override
+    public void prepareDelete() {
+        GraalError.guarantee(graph().isBeforeStage(StructuredGraph.StageFlag.FLOATING_READS) || !hasUsagesOfType(Memory), "Cannot delete %s with memory usages %s", this, usages().snapshot());
+        super.prepareDelete();
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (graph().isBeforeStage(StructuredGraph.StageFlag.FLOATING_READS)) {
+            if (!(predecessor() instanceof WithExceptionNode)) {
+                return new BeginNode();
+            }
+        } else {
+            // after floating read - we need to check the memory graph
+            if (tool.allUsagesAvailable() && !(predecessor() instanceof WithExceptionNode) && !hasUsagesOfType(Memory)) {
+                return new BeginNode();
+            }
+        }
+        return this;
     }
 }

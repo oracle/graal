@@ -27,23 +27,24 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.hosted.classinitialization.InitKind.BUILD_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
-import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
-import java.nio.file.Paths;
+import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -61,9 +62,6 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -80,66 +78,9 @@ public class ClassInitializationFeature implements GraalFeature {
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
 
-    public static class Options {
-
-        private static class InitializationValueTransformer implements Function<Object, Object> {
-            private final String val;
-
-            InitializationValueTransformer(String val) {
-                this.val = val;
-            }
-
-            @Override
-            public Object apply(Object o) {
-                String[] elements = o.toString().split(",");
-                if (elements.length == 0) {
-                    return SEPARATOR + val;
-                }
-                String[] results = new String[elements.length];
-                for (int i = 0; i < elements.length; i++) {
-                    results[i] = elements[i] + SEPARATOR + val;
-                }
-                return String.join(",", results);
-            }
-        }
-
-        private static class InitializationValueDelay extends InitializationValueTransformer {
-            InitializationValueDelay() {
-                super(RUN_TIME.name().toLowerCase());
-            }
-        }
-
-        private static class InitializationValueRerun extends InitializationValueTransformer {
-            InitializationValueRerun() {
-                super(RERUN.name().toLowerCase());
-            }
-        }
-
-        private static class InitializationValueEager extends InitializationValueTransformer {
-            InitializationValueEager() {
-                super(BUILD_TIME.name().toLowerCase());
-            }
-        }
-
-        @APIOption(name = "initialize-at-run-time", valueTransformer = InitializationValueDelay.class, defaultValue = "", //
-                        customHelp = "A comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during image building. An empty string is currently not supported.")//
-        @APIOption(name = "initialize-at-build-time", valueTransformer = InitializationValueEager.class, defaultValue = "", //
-                        customHelp = "A comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.")//
-        @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueDelay.class, deprecated = "Use --initialize-at-run-time.", //
-                        defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building")//
-        @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, //
-                        deprecated = "Currently there is no replacement for this option. Try using --initialize-at-run-time or use the non-API option -H:ClassInitialization directly.", //
-                        defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building") //
-        @Option(help = "A comma-separated list of classes appended with their initialization strategy (':build_time', ':rerun', or ':run_time')", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ClassInitialization = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
-
-        @Option(help = "Prints class initialization info for all classes detected by analysis.", type = OptionType.Debug)//
-        public static final HostedOptionKey<Boolean> PrintClassInitialization = new HostedOptionKey<>(false);
-    }
-
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         initializeNativeImagePackagesAtBuildTime(initializationSupport);
-        Options.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
+        ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
             for (String info : entry.getLeft().split(",")) {
                 boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
                 String origin = entry.getRight();
@@ -187,9 +128,9 @@ public class ClassInitializationFeature implements GraalFeature {
             String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
             msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
                             " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
                                             " or use the the information from the trace to find the culprit and " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<culprit>", "initialize-at-run-time") +
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time") +
                                             " to prevent its instantiation.\n");
             throw new UnsupportedFeatureException(msg);
         }
@@ -205,8 +146,8 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, EnsureClassInitializedSnippets.FOREIGN_CALLS);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(EnsureClassInitializedSnippets.FOREIGN_CALLS);
     }
 
     @Override
@@ -248,24 +189,39 @@ public class ClassInitializationFeature implements GraalFeature {
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
-            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            String path = SubstrateOptions.reportsPath();
             assert classInitializationSupport.checkDelayedInitialization();
 
             TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);
             initGraph.computeInitializerSafety();
 
-            Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
+            classInitializationSupport.setProvenSafeLate(initializeSafeDelayedClasses(initGraph));
+            if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
+                reportInitializerDependencies(universe, initGraph, path);
+                reportClassInitializationInfo(path);
+            }
 
-            if (Options.PrintClassInitialization.getValue()) {
-                reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
-                reportMethodInitializationInfo(path);
+            if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
+                reportTrackedClassInitializationTraces(path);
+            }
+
+            if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
+                                .map(Class::getTypeName)
+                                .collect(Collectors.toList());
+                if (!unspecifiedClasses.isEmpty()) {
+                    System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));
+                    UserError.abort("To fix the error either specify the initialization policy for given classes or set %s",
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses, "-"));
+                }
             }
         }
     }
 
-    private static void reportSafeTypeInitiazliation(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path, Set<AnalysisType> provenSafe) {
-        ReportUtils.report("initializer dependencies", path, "initializer_dependencies", "dot", writer -> {
-            writer.println("digraph initializer_dependencies {");
+    private static void reportInitializerDependencies(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path) {
+        ReportUtils.report("class initialization dependencies", path, "class_initialization_dependencies", "dot", writer -> {
+            writer.println("digraph class_initializer_dependencies {");
             universe.getTypes().stream()
                             .filter(ClassInitializationFeature::isRelevantForPrinting)
                             .forEach(t -> writer.println(quote(t.toClassName()) + "[fillcolor=" + (initGraph.isUnsafe(t) ? "red" : "green") + "]"));
@@ -275,23 +231,42 @@ public class ClassInitializationFeature implements GraalFeature {
                                             .forEach(t1 -> writer.println(quote(t.toClassName()) + " -> " + quote(t1.toClassName()))));
             writer.println("}");
         });
-
-        ReportUtils.report(provenSafe.size() + " classes that are considered as safe for build-time initialization", path, "safe_classes", "txt",
-                        printWriter -> provenSafe.forEach(t -> printWriter.println(t.toClassName())));
     }
 
     /**
      * Prints a file for every type of class initialization. Each file contains a list of classes
      * that belong to it.
      */
-    private void reportMethodInitializationInfo(String path) {
-        for (InitKind kind : InitKind.values()) {
-            Set<Class<?>> classes = classInitializationSupport.classesWithKind(kind);
-            ReportUtils.report(classes.size() + " classes of type " + kind, path, kind.toString().toLowerCase() + "_classes", "txt",
-                            writer -> classes.stream()
-                                            .map(Class::getTypeName)
-                                            .sorted()
-                                            .forEach(writer::println));
+    private void reportClassInitializationInfo(String path) {
+        ReportUtils.report("class initialization report", path, "class_initialization_report", "csv", writer -> {
+            writer.println("Class Name, Initialization Kind, Reason for Initialization");
+            reportKind(writer, BUILD_TIME);
+            reportKind(writer, RERUN);
+            reportKind(writer, RUN_TIME);
+        });
+    }
+
+    private void reportKind(PrintWriter writer, InitKind kind) {
+        List<Class<?>> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
+        allClasses.sort(Comparator.comparing(Class::getTypeName));
+        allClasses.forEach(clazz -> {
+            writer.print(clazz.getTypeName() + ", ");
+            writer.print(kind + ", ");
+            writer.println(classInitializationSupport.reasonForClass(clazz));
+        });
+    }
+
+    private static void reportTrackedClassInitializationTraces(String path) {
+        Map<Class<?>, StackTraceElement[]> initializedClasses = ConfigurableClassInitialization.getInitializedClasses();
+        int size = initializedClasses.size();
+        if (size > 0) {
+            ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",
+                            writer -> initializedClasses.forEach((k, v) -> {
+                                writer.println(k.getName());
+                                writer.println("---------------------------------------------");
+                                writer.println(ConfigurableClassInitialization.getTraceString(v));
+                                writer.println();
+                            }));
         }
     }
 
@@ -307,8 +282,8 @@ public class ClassInitializationFeature implements GraalFeature {
      * Initializes all classes that are considered delayed by the system. Classes specified by the
      * user will not be delayed.
      */
-    private Set<AnalysisType> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
-        Set<AnalysisType> provenSafe = new HashSet<>();
+    private Set<Class<?>> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
+        Set<Class<?>> provenSafe = new HashSet<>();
         classInitializationSupport.setConfigurationSealed(false);
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
@@ -323,7 +298,7 @@ public class ClassInitializationFeature implements GraalFeature {
                                  * exceptions.
                                  */
                                 if (!classInitializationSupport.shouldInitializeAtRuntime(c)) {
-                                    provenSafe.add(type);
+                                    provenSafe.add(c);
                                     ClassInitializationInfo initializationInfo = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON
                                                     : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
                                     ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(initializationInfo);
@@ -366,7 +341,7 @@ public class ClassInitializationFeature implements GraalFeature {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             access.registerAsCompiled(throwVerifyError);
-            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
@@ -380,11 +355,13 @@ public class ClassInitializationFeature implements GraalFeature {
          * information.
          */
         assert type.isLinked();
+        CFunctionPointer classInitializerFunction = null;
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
             access.registerAsCompiled(classInitializer);
+            classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+        return new ClassInitializationInfo(classInitializerFunction);
     }
 }

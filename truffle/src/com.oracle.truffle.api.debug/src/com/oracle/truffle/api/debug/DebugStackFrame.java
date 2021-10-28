@@ -303,6 +303,9 @@ public final class DebugStackFrame {
             node = context.getInstrumentedNode();
         } else {
             node = currentFrame.getCallNode();
+            if (node == null) {
+                return null;
+            }
             node = InstrumentableNode.findInstrumentableParent(node);
         }
         DebuggerSession session = event.getSession();

@@ -40,18 +40,26 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
+    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
+    private int nextEquivalenceClass;
     private final MemoryRegistry memoryRegistry;
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
@@ -59,21 +67,21 @@ public final class WasmContext {
     private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
     private final FdManager filesManager;
-
-    public static WasmContext getCurrent() {
-        return WasmLanguage.getCurrentContext();
-    }
+    private final WasmContextOptions contextOptions;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
+        this.equivalenceClasses = new HashMap<>();
+        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
         this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
-        filesManager = new FdManager(env);
+        this.filesManager = new FdManager(env);
+        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         instantiateBuiltinInstances();
     }
 
@@ -99,6 +107,15 @@ public final class WasmContext {
 
     public Linker linker() {
         return linker;
+    }
+
+    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            equivalenceClass = nextEquivalenceClass++;
+            equivalenceClasses.put(type, equivalenceClass);
+        }
+        return equivalenceClass;
     }
 
     @SuppressWarnings("unused")
@@ -147,12 +164,14 @@ public final class WasmContext {
     }
 
     public WasmModule readModule(byte[] data, ModuleLimits moduleLimits) {
-        return readModule(freshModuleName(), data, moduleLimits);
+        String moduleName = freshModuleName();
+        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).build();
+        return readModule(moduleName, data, moduleLimits, source);
     }
 
-    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
-        final WasmModule module = new WasmModule(moduleName, data, moduleLimits);
-        final BinaryParser reader = new BinaryParser(language, module);
+    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
+        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits, source);
+        final BinaryParser reader = new BinaryParser(module, this);
         reader.readModule();
         return module;
     }
@@ -161,9 +180,8 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        final WasmInstance instance = new WasmInstance(module);
-        final BinaryParser reader = new BinaryParser(language, module);
-        reader.readInstance(this, instance);
+        final WasmInstantiator translator = new WasmInstantiator(language);
+        final WasmInstance instance = translator.createInstance(this, module);
         this.register(instance);
         return instance;
     }
@@ -172,7 +190,7 @@ public final class WasmContext {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        final BinaryParser reader = new BinaryParser(language, instance.module());
+        final BinaryParser reader = new BinaryParser(instance.module(), this);
         reader.resetGlobalState(this, instance);
         if (reinitMemory) {
             reader.resetMemoryState(this, instance);
@@ -183,4 +201,15 @@ public final class WasmContext {
             }
         }
     }
+
+    public WasmContextOptions getContextOptions() {
+        return this.contextOptions;
+    }
+
+    private static final ContextReference<WasmContext> REFERENCE = ContextReference.create(WasmLanguage.class);
+
+    public static WasmContext get(Node node) {
+        return REFERENCE.get(node);
+    }
+
 }

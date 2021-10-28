@@ -19,7 +19,7 @@ following results:
 
 An example of how to parse a regular expression:
 
-```
+```java
 Source source = Source.newBuilder("regex", "Flavor=ECMAScript/(a|(b))c/i", "myRegex").mimeType("application/tregex").internal(true).build();
 Object regex;
 try {
@@ -70,7 +70,7 @@ the result of a `RegexObject`'s
 
 Compiled regex usage example in pseudocode:
 
-```
+```java
 regex = <matcher from previous example>
 assert(regex.pattern == "(a|(b))c")
 assert(regex.flags.ignoreCase == true)

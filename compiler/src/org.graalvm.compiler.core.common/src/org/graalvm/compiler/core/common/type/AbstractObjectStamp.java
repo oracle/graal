@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,13 +39,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class AbstractObjectStamp extends AbstractPointerStamp {
 
+    /**
+     * Note: the meaning of {@link #type} == null is unfortunately overloaded: it means
+     * "java.lang.Object" when {@link #exactType} == false; but it means {@link #isEmpty "empty"}
+     * when {@link #exactType} == true.
+     */
     private final ResolvedJavaType type;
     private final boolean exactType;
     private final boolean alwaysArray;
 
     protected AbstractObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray) {
         super(nonNull, alwaysNull);
-        this.type = type;
+
+        /*
+         * Canonicalize the non-exact java.lang.Object to null so that other places like equals do
+         * not need special handling.
+         */
+        this.type = type == null || (!exactType && type.isJavaLangObject()) ? null : type;
+
         this.exactType = exactType;
         this.alwaysArray = alwaysArray || (type != null && type.isArray());
     }
@@ -131,7 +142,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
             str.append(nonNull() ? "!" : "").//
                             append(exactType ? "#" : "").//
                             append(' ').//
-                            append(type == null ? "-" : type.toJavaName()).//
+                            append(type == null ? "java.lang.Object" : type.toJavaName()).//
                             append(forceArrayNotation ? "[]" : "").//
                             append(alwaysNull() ? " NULL" : "");
         }
@@ -349,7 +360,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         result = prime * result + super.hashCode();
         result = prime * result + (exactType ? 1231 : 1237);
         result = prime * result + (alwaysArray ? 1231 : 1237);
-        result = prime * result + ((type == null || type.isJavaLangObject()) ? 0 : type.hashCode());
+        result = prime * result + (type == null ? 0 : type.hashCode());
         return result;
     }
 
@@ -368,16 +379,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         if (alwaysArray != other.alwaysArray) {
             return false;
         }
-        // null == java.lang.Object
-        if (type == null) {
-            if (other.type != null && !other.type.isJavaLangObject()) {
-                return false;
-            }
-        } else if (other.type == null) {
-            if (type != null && !type.isJavaLangObject()) {
-                return false;
-            }
-        } else if (!type.equals(other.type)) {
+        if (!Objects.equals(type, other.type)) {
             return false;
         }
         return super.equals(other);

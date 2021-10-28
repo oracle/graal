@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,9 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.classfile.ClassfileBytecode;
 
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -428,11 +430,40 @@ public class SymbolicSnippetEncoder {
         }
     }
 
+    /**
+     * Helper class to provide more precise information about the source of an illegal object when
+     * encoding graphs.
+     */
+    private static class CheckingGraphEncoder extends GraphEncoder {
+        CheckingGraphEncoder(Architecture architecture) {
+            super(architecture);
+        }
+
+        @Override
+        protected void addObject(Object object) {
+            checkIllegalSnippetObjects(object);
+            super.addObject(object);
+        }
+    }
+
+    /**
+     * Check for Objects which should never appear in an encoded snippet.
+     */
+    private static void checkIllegalSnippetObjects(Object o) {
+        if (o instanceof HotSpotSignature || o instanceof ClassfileBytecode) {
+            throw new GraalError("Illegal object in encoded snippet: " + o);
+        }
+    }
+
     @SuppressWarnings("try")
     private boolean verifySnippetEncodeDecode(DebugContext debug, ResolvedJavaMethod method, ResolvedJavaMethod original, String originalMethodString, Object[] args, boolean trackNodeSourcePosition,
                     StructuredGraph graph) {
         // Verify the encoding and decoding process
-        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
+        GraphEncoder encoder = new CheckingGraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
+        encoder.prepare(graph);
+        encoder.finishPrepare();
+        int startOffset = encoder.encode(graph);
+        EncodedGraph encodedGraph = new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph);
 
         HotSpotProviders originalProvider = snippetReplacements.getProviders();
 
@@ -750,6 +781,7 @@ public class SymbolicSnippetEncoder {
          * convert the object or pass it through.
          */
         private Object filterSnippetObject(DebugContext debug, Object o) {
+            checkIllegalSnippetObjects(o);
             if (o instanceof HotSpotResolvedJavaMethod) {
                 return filterMethod(debug, (HotSpotResolvedJavaMethod) o);
             } else if (o instanceof HotSpotResolvedJavaField) {
@@ -771,8 +803,6 @@ public class SymbolicSnippetEncoder {
                 return filterStampPair(debug, (StampPair) o);
             } else if (o instanceof ResolvedJavaMethodBytecode) {
                 return filterBytecode(debug, (ResolvedJavaMethodBytecode) o);
-            } else if (o instanceof HotSpotSignature) {
-                throw new GraalError(o.toString());
             }
             return o;
         }
@@ -928,8 +958,7 @@ public class SymbolicSnippetEncoder {
     }
 
     private static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
-        SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.EARLIEST);
         StructuredGraph.ScheduleResult scheduleResult = graph.getLastSchedule();
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
@@ -1123,7 +1152,7 @@ public class SymbolicSnippetEncoder {
 
     private static final Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 
-    private static SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = null;
         if (isGraalClass(clazz)) {
             type = snippetTypes.get(clazz);
@@ -1134,7 +1163,7 @@ public class SymbolicSnippetEncoder {
         return type;
     }
 
-    private static SnippetResolvedJavaType createType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType createType(Class<?> clazz) {
         SnippetResolvedJavaType type;
         type = new SnippetResolvedJavaType(clazz);
         snippetTypes.put(clazz, type);

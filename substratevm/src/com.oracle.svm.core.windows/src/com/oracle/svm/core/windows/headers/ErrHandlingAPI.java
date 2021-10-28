@@ -31,7 +31,10 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
@@ -62,14 +65,26 @@ public class ErrHandlingAPI {
     }
 
     /** Contains a description of the exception. */
-    @CStruct
+    @CStruct(isIncomplete = true)
     public interface EXCEPTION_RECORD extends PointerBase {
         @CField
         int ExceptionCode();
+
+        @CField
+        VoidPointer ExceptionAddress();
+
+        @CField
+        int NumberParameters();
+
+        @CFieldAddress
+        CLongPointer ExceptionInformation();
     }
 
     @CConstant
     public static native int EXCEPTION_ACCESS_VIOLATION();
+
+    @CConstant
+    public static native int EXCEPTION_IN_PAGE_ERROR();
 
     /** Contains processor-specific register data. */
     @CStruct

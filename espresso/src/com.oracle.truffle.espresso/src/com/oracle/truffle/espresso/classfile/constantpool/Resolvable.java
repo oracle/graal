@@ -35,6 +35,7 @@ public interface Resolvable extends PoolConstant {
     interface ResolvedConstant extends PoolConstant {
         Object value();
 
+        @Override
         default void dump(ByteBuffer buf) {
             throw EspressoError.shouldNotReachHere();
         }

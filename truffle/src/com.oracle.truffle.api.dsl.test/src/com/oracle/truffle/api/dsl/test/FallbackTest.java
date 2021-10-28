@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,17 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.array;
 import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
@@ -60,6 +64,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.AOTSupportTest.TestLanguage;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback1Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback2Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback3Factory;
@@ -70,15 +75,21 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.ImplicitCastInFallbackNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.InvertedGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class FallbackTest {
+public class FallbackTest extends AbstractPolyglotTest {
 
     private static final Object UNKNOWN_OBJECT = new Object() {
     };
@@ -657,6 +668,145 @@ public class FallbackTest {
         @Fallback
         protected String f0(Object arg0) {
             return "f0";
+        }
+
+    }
+
+    @Test
+    public void testFallbackWithCached() {
+        setupEnv();
+        FallbackWithCachedNode node;
+
+        node = adoptNode(FallbackWithCachedNodeGen.create()).get();
+        Assert.assertEquals("int", node.execute(42));
+        Assert.assertEquals("long", node.execute(42L));
+
+        node = adoptNode(FallbackWithCachedNodeGen.create()).get();
+        Assert.assertEquals("long", node.execute(42L));
+        Assert.assertEquals("int", node.execute(42));
+    }
+
+    abstract static class CachedNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(@SuppressWarnings("unused") long arg0) {
+            return "long";
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "deprecation"})
+    public abstract static class FallbackWithCachedNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "int";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Cached CachedNode node,
+                        @CachedLibrary(limit = "3") InteropLibrary lib,
+                        @com.oracle.truffle.api.dsl.CachedLanguage ProxyLanguage lang,
+                        @com.oracle.truffle.api.dsl.CachedContext(ProxyLanguage.class) ProxyLanguage.LanguageContext context,
+                        @Bind("context.getEnv()") Env bind) {
+            lib.fitsInLong(arg0);
+            if (lang == null) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            if (context == null) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            if (bind == null) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+            return node.execute(arg0);
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "deprecation"})
+    public abstract static class FallbackWithCaches extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "int";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Cached CachedNode node,
+                        @CachedLibrary(limit = "3") InteropLibrary lib,
+                        @com.oracle.truffle.api.dsl.CachedLanguage TestLanguage lang,
+                        @com.oracle.truffle.api.dsl.CachedContext(TestLanguage.class) Env context,
+                        @Bind("context") Env env) {
+            lib.fitsInLong(arg0);
+            return node.execute(arg0);
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithManualDispatchError extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @ExpectError("@CachedLibrary annotations with specialized receivers are not supported in combination with @Fallback annotations. " +
+                                        "Specify the @CachedLibrary(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.")//
+                        @CachedLibrary("arg0") InteropLibrary node) {
+            return "f0";
+        }
+
+    }
+
+    /*
+     * Test for GR-33857.
+     */
+    @Test
+    public void testInvertedStaticGuard() {
+        setupEnv();
+        InvertedGuardNode node;
+
+        node = adoptNode(InvertedGuardNodeGen.create()).get();
+
+        assertEquals("f", node.execute(42L));
+        assertEquals("f", node.execute(42L));
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class InvertedGuardNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization(guards = {"dynamicGuard(arg0)", "staticGuard()"})
+        protected String s0(long arg0) {
+            return "s0";
+        }
+
+        static boolean staticGuard() {
+            return false;
+        }
+
+        static boolean dynamicGuard(long arg0) {
+            return arg0 == 42;
+        }
+
+        @Fallback
+        protected String f(Object arg0) {
+            return "f";
         }
 
     }

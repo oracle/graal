@@ -25,6 +25,8 @@
 package org.graalvm.compiler.phases.contract;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.graph.Node;
@@ -39,36 +41,42 @@ import org.graalvm.compiler.phases.VerifyPhase;
  * values for {@link NodeCycles} and {@link NodeSize} in its {@link NodeInfo} annotation.
  */
 public class VerifyNodeCosts {
+    static boolean gr30893IsResolved = false;
 
     public static void verifyNodeClass(Class<?> clazz) {
-        Class<?> nodeClass = Node.class;
-        if (nodeClass.isAssignableFrom(clazz)) {
-            if (!clazz.isAnnotationPresent(NodeInfo.class)) {
-                throw new VerifyPhase.VerificationError("%s.java extends Node.java but does not specify a NodeInfo annotation.", clazz.getName());
+        if (Node.class.isAssignableFrom(clazz)) {
+            NodeInfo nodeInfo = clazz.getAnnotation(NodeInfo.class);
+            if (nodeInfo == null) {
+                throw new VerifyPhase.VerificationError("%s extends %s but does not specify a %s annotation.",
+                                clazz.getName(), Node.class.getName(), NodeInfo.class.getName());
             }
 
+            List<String> errors = new ArrayList<>();
+
+            if (gr30893IsResolved && nodeInfo.cycles() == NodeCycles.CYCLES_UNKNOWN && nodeInfo.cyclesRationale().isEmpty()) {
+                errors.add(String.format("Requires a non-empty value for cyclesRationale since its cycles value is %s.", NodeCycles.CYCLES_UNKNOWN));
+            }
+            if (gr30893IsResolved && nodeInfo.size() == NodeSize.SIZE_UNKNOWN && nodeInfo.sizeRationale().isEmpty()) {
+                errors.add(String.format("Requires a non-empty value for sizeRationale since its size value is %s.", NodeSize.SIZE_UNKNOWN));
+            }
             if (!Modifier.isAbstract(clazz.getModifiers())) {
-                boolean cyclesSet = walkCHUntil(getType(clazz), getType(nodeClass), cur -> {
+                NodeClass<?> clazzType = NodeClass.get(clazz);
+                boolean cyclesSet = walkCHUntil(clazzType, Node.TYPE, cur -> {
                     return cur.cycles() != NodeCycles.CYCLES_UNSET;
                 });
-                boolean sizeSet = walkCHUntil(getType(clazz), getType(nodeClass), cur -> {
+                boolean sizeSet = walkCHUntil(clazzType, Node.TYPE, cur -> {
                     return cur.size() != NodeSize.SIZE_UNSET;
                 });
                 if (!cyclesSet) {
-                    throw new VerifyPhase.VerificationError("%s.java does not specify a NodeCycles value in its class hierarchy.", clazz.getName());
+                    errors.add(String.format("Does not specify a %s value in its class hierarchy.", NodeCycles.class.getSimpleName()));
                 }
                 if (!sizeSet) {
-                    throw new VerifyPhase.VerificationError("%s.java does not specify a NodeSize value in its class hierarchy.", clazz.getName());
+                    errors.add(String.format("Does not specify a %s value in its class hierarchy.", NodeSize.class.getSimpleName()));
                 }
             }
-        }
-    }
-
-    private static NodeClass<?> getType(Class<?> c) {
-        try {
-            return NodeClass.get(c);
-        } catch (Throwable t) {
-            throw new VerifyPhase.VerificationError("%s.java does not specify a TYPE field.", c.getName());
+            if (!errors.isEmpty()) {
+                throw new VerifyPhase.VerificationError("Errors for " + clazz.getName() + System.lineSeparator() + String.join(System.lineSeparator(), errors));
+            }
         }
     }
 
@@ -82,5 +90,4 @@ public class VerifyNodeCosts {
         }
         return false;
     }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,14 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends EspressoInstrumentableQuickNode {
+public abstract class QuickNode extends BaseQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
-
-    @CompilationFinal private boolean exceptionProfile;
-
-    protected final void enterExceptionProfile() {
-        if (!exceptionProfile) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptionProfile = true;
-        }
-    }
 
     protected final int top;
 
@@ -50,36 +38,26 @@ public abstract class QuickNode extends EspressoInstrumentableQuickNode {
     protected QuickNode(int top, int callerBCI) {
         this.top = top;
         this.callerBCI = callerBCI;
-        this.exceptionProfile = false;
     }
 
     @Override
     public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
 
-    public boolean removedByRedefintion() {
-        return false;
-    }
-
-    public abstract boolean producedForeignObject(Object[] refs);
-
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            enterExceptionProfile();
-            throw getBytecodesNode().getMeta().throwNullPointerException();
+            getBytecodeNode().enterImplicitExceptionProfile();
+            throw getMeta().throwNullPointerException();
         }
         return value;
     }
 
-    public final BytecodeNode getBytecodesNode() {
-        return (BytecodeNode) getParent();
-    }
-
-    public int getBCI() {
+    @Override
+    public int getBci(@SuppressWarnings("unused") Frame frame) {
         return callerBCI;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
+        return getBytecodeNode().getSourceSectionAtBCI(callerBCI);
     }
 }

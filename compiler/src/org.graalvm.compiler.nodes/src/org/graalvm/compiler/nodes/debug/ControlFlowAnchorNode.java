@@ -41,14 +41,8 @@ public final class ControlFlowAnchorNode extends FixedWithNextNode implements LI
 
     public static final NodeClass<ControlFlowAnchorNode> TYPE = NodeClass.create(ControlFlowAnchorNode.class);
 
-    private static class Unique {
-    }
-
-    protected Unique unique;
-
     public ControlFlowAnchorNode() {
         super(TYPE, StampFactory.forVoid());
-        this.unique = new Unique();
     }
 
     /**

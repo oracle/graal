@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -295,7 +295,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         if (message != null && !message.isEmpty()) {
             sb.append("' with message '").append(message);
         }
-        logger.log(Level.INFO, sb.toString());
+        logger.log(Level.INFO, sb.append("'").toString());
     }
 
     private static void logStackTrace(OptionValues engineOptions, TruffleLogger logger) {

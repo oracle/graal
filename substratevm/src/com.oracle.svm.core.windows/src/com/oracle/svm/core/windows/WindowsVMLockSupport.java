@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -37,15 +40,18 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -65,7 +71,7 @@ final class WindowsVMLockFeature implements Feature {
     private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
         @Override
         protected WindowsVMMutex createReplacement(VMMutex source) {
-            return new WindowsVMMutex();
+            return new WindowsVMMutex(source.getName());
         }
     };
 
@@ -83,7 +89,7 @@ final class WindowsVMLockFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(WindowsVMLockSupport.class, new WindowsVMLockSupport());
+        ImageSingletons.add(VMLockSupport.class, new WindowsVMLockSupport());
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
     }
@@ -107,14 +113,14 @@ final class WindowsVMLockFeature implements Feature {
             nextIndex += conditionSize;
         }
 
-        WindowsVMLockSupport lockSupport = ImageSingletons.lookup(WindowsVMLockSupport.class);
+        WindowsVMLockSupport lockSupport = WindowsVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
         lockSupport.conditions = conditions;
         lockSupport.syncStructs = new byte[nextIndex];
     }
 }
 
-public final class WindowsVMLockSupport {
+public final class WindowsVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = WindowsVMMutex[].class)//
     WindowsVMMutex[] mutexes;
@@ -132,32 +138,51 @@ public final class WindowsVMLockSupport {
     @UnknownObjectField(types = byte[].class)//
     byte[] syncStructs;
 
+    @Fold
+    public static WindowsVMLockSupport singleton() {
+        return (WindowsVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
+    }
+
     /**
      * Must be called once early during startup, before any mutex or condition is used.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     public static void initialize() {
-        for (WindowsVMMutex mutex : ImageSingletons.lookup(WindowsVMLockSupport.class).mutexes) {
+        WindowsVMLockSupport support = WindowsVMLockSupport.singleton();
+        for (WindowsVMMutex mutex : support.mutexes) {
             // critical sections on windows always support recursive locking
-            Process.InitializeCriticalSection(mutex.getStructPointer());
+            Process.NoTransitions.InitializeCriticalSection(mutex.getStructPointer());
         }
-        for (WindowsVMCondition condition : ImageSingletons.lookup(WindowsVMLockSupport.class).conditions) {
-            Process.InitializeConditionVariable(condition.getStructPointer());
+        for (WindowsVMCondition condition : support.conditions) {
+            Process.NoTransitions.InitializeConditionVariable(condition.getStructPointer());
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
     static void checkResult(int result, String functionName) {
         if (result == 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             int lastError = WinBase.GetLastError();
             Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }
+    }
+
+    @Override
+    public VMMutex[] getMutexes() {
+        return mutexes;
+    }
+
+    @Override
+    public VMCondition[] getConditions() {
+        return conditions;
     }
 }
 
@@ -166,12 +191,13 @@ final class WindowsVMMutex extends VMMutex {
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected WindowsVMMutex() {
+    protected WindowsVMMutex(String name) {
+        super(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     Process.PCRITICAL_SECTION getStructPointer() {
-        return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
+        return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
 
     @Override
@@ -186,14 +212,14 @@ final class WindowsVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void lockNoTransition() {
         assertNotOwner("Recursive locking is not supported");
-        Process.EnterCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToCurrentThread();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void lockNoTransitionUnspecifiedOwner() {
-        Process.EnterCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToUnspecified();
     }
 
@@ -201,20 +227,20 @@ final class WindowsVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlock() {
         clearCurrentThreadOwner();
-        Process.LeaveCriticalSection(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-        Process.LeaveCriticalSection(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
     public void unlockWithoutChecks() {
         clearCurrentThreadOwner();
-        Process.LeaveCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 }
 
@@ -229,7 +255,7 @@ final class WindowsVMCondition extends VMCondition {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     Process.PCONDITION_VARIABLE getStructPointer() {
-        return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(ImageSingletons.lookup(WindowsVMLockSupport.class).syncStructs).add(structOffset);
+        return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
 
     @Override
@@ -243,7 +269,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         mutex.clearCurrentThreadOwner();
-        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToCurrentThread();
     }
@@ -252,7 +278,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransitionUnspecifiedOwner() {
         mutex.clearUnspecifiedOwner();
-        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToUnspecified();
     }
@@ -289,7 +315,7 @@ final class WindowsVMCondition extends VMCondition {
         int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
 
         mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
+        final int timedwaitResult = Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
         mutex.setOwnerToCurrentThread();
 
         /* If the timed wait timed out, then I am done blocking. */
@@ -306,12 +332,12 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public void signal() {
-        Process.WakeConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeConditionVariable(getStructPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void broadcast() {
-        Process.WakeAllConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeAllConditionVariable(getStructPointer());
     }
 }

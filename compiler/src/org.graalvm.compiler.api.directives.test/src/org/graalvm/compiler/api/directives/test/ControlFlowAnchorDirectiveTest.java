@@ -187,6 +187,7 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
     public static void verifyUnswitchSnippet(int arg, boolean flag) {
         int ret = arg;
         while (GraalDirectives.injectBranchProbability(0.9999, ret < 1000)) {
+            GraalDirectives.neverStripMine();
             if (flag) {
                 ret = ret * 2 + 1;
             } else {

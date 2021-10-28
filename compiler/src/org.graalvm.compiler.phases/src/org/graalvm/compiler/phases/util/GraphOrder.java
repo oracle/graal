@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -158,9 +159,8 @@ public final class GraphOrder {
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
-            final SchedulePhase schedulePhase = new SchedulePhase(getSchedulingPolicy(graph), true);
+            SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
-            schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
@@ -213,7 +213,7 @@ public final class GraphOrder {
                             } else if (node instanceof ProxyNode) {
                                 assert false : "proxy nodes should not be in the schedule";
                             } else if (node instanceof LoopExitNode) {
-                                if (graph.hasValueProxies()) {
+                                if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
                                     for (ProxyNode proxy : ((LoopExitNode) node).proxies()) {
                                         for (Node input : proxy.inputs()) {
                                             if (input != proxy.proxyPoint()) {
@@ -314,6 +314,6 @@ public final class GraphOrder {
      * before the loop exit and are not visible in the state after the loop exit.
      */
     private static SchedulingStrategy getSchedulingPolicy(StructuredGraph graph) {
-        return graph.hasValueProxies() ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS;
+        return graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS;
     }
 }

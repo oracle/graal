@@ -26,20 +26,17 @@ package org.graalvm.compiler.nodes.spi;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * This tool can be used to query the current state (normal/virtualized/re-materialized) of values
@@ -47,25 +44,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * See also {@link Virtualizable}.
  */
-public interface VirtualizerTool {
-
-    /**
-     * Returns all available providers.
-     */
-    CoreProviders getProviders();
-
-    /**
-     * @return the {@link MetaAccessProvider} associated with the current compilation.
-     */
-    MetaAccessProvider getMetaAccess();
-
-    /**
-     * @return the {@link ConstantReflectionProvider} associated with the current compilation, which
-     *         can be used to access {@link JavaConstant}s.
-     */
-    ConstantReflectionProvider getConstantReflection();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
+public interface VirtualizerTool extends CoreProviders {
 
     /**
      * This method should be used to query the maximum size of virtualized objects before attempting
@@ -83,9 +62,10 @@ public interface VirtualizerTool {
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
      * @param locks the initial locking depths.
+     * @param sourcePosition a source position for the new node or null if none is available
      * @param ensureVirtualized true if this object needs to stay virtual
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, boolean ensureVirtualized);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, List<MonitorIdNode> locks, NodeSourcePosition sourcePosition, boolean ensureVirtualized);
 
     /**
      * Returns a VirtualObjectNode if the given value is aliased with a virtual object that is still

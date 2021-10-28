@@ -52,7 +52,7 @@ if exist %gu_post_copy_contents% (
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%root_dir%\bin\java" %GU_OPTS% -cp "%realcp%" "-DGRAAL_HOME=%root_dir%" org.graalvm.component.installer.ComponentInstaller %*
+"%root_dir%\bin\java" %GU_OPTS% -cp "%realcp%" org.graalvm.component.installer.ComponentInstaller %*
 
 if errorlevel 11 (
   echo Retrying operations on locked files...

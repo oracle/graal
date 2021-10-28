@@ -264,6 +264,19 @@ OS_DL_HANDLE os_get_RTLD_DEFAULT() {
     return RTLD_DEFAULT;
 }
 
+OS_DL_HANDLE os_get_ProcessHandle() {
+    static void *procHandle = NULL;
+    if (procHandle != NULL) {
+        return procHandle;
+    }
+#ifdef __APPLE__
+    procHandle = (void*)dlopen(NULL, RTLD_FIRST);
+#else
+    procHandle = (void*)dlopen(NULL, RTLD_LAZY);
+#endif
+    return procHandle;
+}
+
 void* os_atomic_load_ptr(void* OS_ATOMIC *ptr) {
     return atomic_load(ptr);
 }

@@ -24,10 +24,16 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.util.List;
+
+import com.oracle.svm.core.image.ImageHeapObject;
+
 interface ImageHeapChunkWriter {
     void initializeAlignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
 
-    void insertIntoAlignedChunkFirstObjectTable(int chunkPosition, long objectOffsetInChunk, long objectEndOffsetInChunk);
+    void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects);
 
     void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
+
+    void enableRememberedSetForUnalignedChunk(int chunkPosition);
 }

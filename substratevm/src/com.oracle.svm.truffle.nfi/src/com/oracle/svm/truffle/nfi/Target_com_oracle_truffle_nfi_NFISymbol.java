@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_com_oracle_truffle_nfi_NFISymbol {
 
     @Substitute
-    static Object createBound(String backend, Object nativeSymbol, Object signature) {
+    static Object createBound(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
         if (nativeSymbol instanceof ErrnoMirror) {
             return nativeSymbol;
         } else {
@@ -42,6 +42,6 @@ final class Target_com_oracle_truffle_nfi_NFISymbol {
 
     @Alias
     @SuppressWarnings("unused")
-    Target_com_oracle_truffle_nfi_NFISymbol(String backend, Object nativeSymbol, Object signature) {
+    Target_com_oracle_truffle_nfi_NFISymbol(String backend, Object nativeSymbol, Target_com_oracle_truffle_nfi_NFISignature signature) {
     }
 }

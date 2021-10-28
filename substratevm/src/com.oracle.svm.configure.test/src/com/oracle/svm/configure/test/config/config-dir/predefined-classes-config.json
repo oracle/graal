@@ -1,0 +1,15 @@
+[
+  {
+    "type": "agent-extracted",
+    "classes": [
+      {
+        "nameInfo": "previouslySeenClass",
+        "hash": "95327129d8806d2964e53ac792cbe1fc7cddb32ac70367f992755ff580225b80"
+      },
+      {
+        "nameInfo": "unseenClass",
+        "hash": "81696cdc703b9e4f17c9c43551567a638ff265233460e52504e5c7862ba1ef39"
+      }
+    ]
+  }
+]

@@ -84,7 +84,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
     }
 
     @Override
-    public JavaConstant readValue(JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider suppliedMetaAccess, JavaConstant receiver) {
         JavaConstant result = valueCache.get(receiver);
         if (result == null) {
             Object annotationFieldValue;

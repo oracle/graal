@@ -82,8 +82,8 @@ public class LLVMExceptionUnwind {
      * from which it will get extracted after the landingpad instruction (see
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
-    @CEntryPoint
-    @CEntryPointOptions(include = IncludeForLLVMOnly.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = IncludeForLLVMOnly.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);
@@ -140,11 +140,16 @@ public class LLVMExceptionUnwind {
         }
     }
 
-    public static void raiseException() {
-        _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
-        exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
-        exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
-        raiseException(exceptionStructure);
+    public static ExceptionUnwind createRaiseExceptionHandler() {
+        return new ExceptionUnwind() {
+            @Override
+            protected void customUnwindException(Pointer callerSP) {
+                _Unwind_Exception exceptionStructure = StackValue.get(_Unwind_Exception.class);
+                exceptionStructure.set_exception_class(CurrentIsolate.getCurrentThread());
+                exceptionStructure.set_exception_cleanup(WordFactory.nullPointer());
+                raiseException(exceptionStructure);
+            }
+        };
     }
 
     // Allow methods with non-standard names: Checkstyle: stop

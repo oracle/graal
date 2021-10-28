@@ -22,8 +22,14 @@
  */
 package com.oracle.truffle.espresso.vm;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
+
 import sun.misc.Unsafe;
 
 public final class UnsafeAccess {
@@ -47,11 +53,32 @@ public final class UnsafeAccess {
         return UNSAFE;
     }
 
-    public static Unsafe getIfAllowed(Meta meta) {
-        if (meta.getContext().NativeAccessAllowed) {
-            return UNSAFE;
-        } else {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
+    public static void checkAllowed(Meta meta) {
+        if (!meta.getContext().NativeAccessAllowed) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
         }
+    }
+
+    public static Unsafe getIfAllowed(Meta meta) {
+        checkAllowed(meta);
+        return UNSAFE;
+    }
+
+    public static Unsafe getIfAllowed(EspressoContext context) {
+        checkAllowed(context.getMeta());
+        return UNSAFE;
+    }
+
+    public static void initializeGuestUnsafeConstants(Meta meta) {
+        /*
+         * To obtain the unobtainable fields, we would need to have one such method per supported
+         * host java version
+         */
+        StaticObject staticStorage = meta.jdk_internal_misc_UnsafeConstants.tryInitializeAndGetStatics();
+        meta.jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0.set(staticStorage, UNSAFE.addressSize());
+        meta.jdk_internal_misc_UnsafeConstants_PAGE_SIZE.set(staticStorage, UNSAFE.pageSize());
+        meta.jdk_internal_misc_UnsafeConstants_BIG_ENDIAN.set(staticStorage, ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN);
+        meta.jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS.set(staticStorage, Target_sun_misc_Unsafe.unalignedAccess0(/*- Ignored guest Unsafe */StaticObject.NULL));
+        meta.jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE.set(staticStorage, /*- Unobtainable */0);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -137,7 +137,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
                     return;
 
                 case KEYWORD_FAILURE:
-                    stopReqAllowFailure.replace(request, new Boolean(true));
+                    stopReqAllowFailure.replace(request, true);
                     break;
 
                 default:
@@ -191,7 +191,7 @@ public final class TestExpressions implements Iterable<StopRequest> {
             final String functionName = nextToken();
             request = new StopRequest(ContinueStrategy.CONTINUE, functionName, line, true);
             stops.add(request);
-            stopReqAllowFailure.put(request, new Boolean(false));
+            stopReqAllowFailure.put(request, false);
             map = new HashMap<>();
         }
 

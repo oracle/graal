@@ -73,5 +73,4 @@ public interface CodeInfo extends UntetheredCodeInfo {
      */
     @DuplicatedInNativeCode //
     int STATE_UNREACHABLE = STATE_PARTIALLY_FREED + 1;
-
 }

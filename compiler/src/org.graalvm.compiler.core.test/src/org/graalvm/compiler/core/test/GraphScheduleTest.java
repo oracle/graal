@@ -43,8 +43,7 @@ public class GraphScheduleTest extends GraalCompilerTest {
     }
 
     protected void assertOrderedAfterSchedule(StructuredGraph graph, SchedulePhase.SchedulingStrategy strategy, Node a, Node b) {
-        SchedulePhase ibp = new SchedulePhase(strategy);
-        ibp.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, strategy);
         assertOrderedAfterLastSchedule(graph, a, b);
     }
 

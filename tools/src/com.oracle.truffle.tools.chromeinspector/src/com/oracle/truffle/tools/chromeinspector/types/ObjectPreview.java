@@ -32,6 +32,8 @@ import java.util.List;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.SUBTYPE;
+import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -43,23 +45,43 @@ final class ObjectPreview {
     private ObjectPreview() {
     }
 
-    static JSONObject create(DebugValue debugValue, String type, String subtype, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err) {
+    static JSONObject create(DebugValue debugValue, TYPE type, SUBTYPE subtype, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err) {
+        return create(debugValue, type, subtype, allowToStringSideEffects, language, err, false);
+    }
+
+    private static JSONObject create(DebugValue debugValue, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err, boolean isMapEntryKV) {
+        TypeInfo typeInfo = TypeInfo.fromValue(debugValue, null, language, err);
+        return create(debugValue, typeInfo.type, typeInfo.subtype, allowToStringSideEffects, language, err, isMapEntryKV);
+    }
+
+    private static JSONObject create(DebugValue debugValue, TYPE type, SUBTYPE subtype, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err, boolean isMapEntryKV) {
         JSONObject json = new JSONObject();
-        json.put("type", type);
-        json.put("subtype", subtype);
+        json.put("type", type.getId());
+        if (subtype != null) {
+            json.put("subtype", subtype.getId());
+        }
 
         boolean isArray = debugValue.isArray();
-        DebugValue metaObject = RemoteObject.getMetaObject(debugValue, language, err);
-        String metaType = null;
-        if (metaObject != null) {
-            metaType = RemoteObject.toMetaName(metaObject, err);
-            if (isArray) {
-                metaType += "(" + debugValue.getArray().size() + ")";
+        boolean isMap = debugValue.hasHashEntries();
+        if (isMapEntryKV) {
+            String valueStr = RemoteObject.toString(debugValue, allowToStringSideEffects, err);
+            json.putOpt("description", valueStr);
+        } else {
+            DebugValue metaObject = RemoteObject.getMetaObject(debugValue, language, err);
+            String metaType = null;
+            if (metaObject != null) {
+                metaType = RemoteObject.toMetaName(metaObject, err);
+                if (isArray) {
+                    metaType += "(" + debugValue.getArray().size() + ")";
+                } else if (isMap) {
+                    metaType += "(" + debugValue.getHashSize() + ")";
+                }
             }
+            json.putOpt("description", metaType);
         }
-        json.putOpt("description", metaType);
         boolean overflow;
         JSONArray properties = new JSONArray();
+        JSONArray entries = new JSONArray();
         if (isArray) {
             List<DebugValue> array = debugValue.getArray();
             int size = array.size();
@@ -71,6 +93,26 @@ final class ObjectPreview {
                 } catch (DebugException ex) {
                     overflow = true;
                     break;
+                }
+            }
+        } else if (isMap && !isMapEntryKV) {
+            DebugValue entriesIter = debugValue.getHashEntriesIterator();
+            overflow = false;
+            while (entriesIter.hasIteratorNextElement()) {
+                DebugValue entry = entriesIter.getIteratorNextElement();
+                JSONObject entryPreview;
+                try {
+                    entryPreview = createEntryPreview(entry, allowToStringSideEffects, language, err);
+                } catch (DebugException ex) {
+                    overflow = true;
+                    break;
+                }
+                if (entryPreview != null) {
+                    if (entries.length() == OVERFLOW_LIMIT_PROPERTIES) {
+                        overflow = true;
+                        break;
+                    }
+                    entries.put(entryPreview);
                 }
             }
         } else {
@@ -99,6 +141,9 @@ final class ObjectPreview {
         }
         json.put("overflow", overflow);
         json.put("properties", properties);
+        if (isMap && !isMapEntryKV) {
+            json.put("entries", entries);
+        }
         return json;
     }
 
@@ -111,9 +156,11 @@ final class ObjectPreview {
         JSONObject json = new JSONObject();
         json.put("name", property.getName());
         boolean isArray = property.isArray();
-        TypeInfo typeInfo = TypeInfo.fromValue(property, language, err);
-        json.put("type", typeInfo.type);
-        json.putOpt("subtype", typeInfo.subtype);
+        TypeInfo typeInfo = TypeInfo.fromValue(property, null, language, err);
+        json.put("type", typeInfo.type.getId());
+        if (typeInfo.subtype != null) {
+            json.put("subtype", typeInfo.subtype.getId());
+        }
         String value;
         if (isArray) {
             String size = "(" + property.getArray().size() + ")";
@@ -125,4 +172,18 @@ final class ObjectPreview {
         return json;
     }
 
+    private static JSONObject createEntryPreview(DebugValue entry, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err) {
+        List<DebugValue> entryArray = entry.getArray();
+        DebugValue key = entryArray.get(0);
+        DebugValue value = entryArray.get(1);
+        // Setup the object with a language-specific value
+        if (language != null) {
+            key = key.asInLanguage(language);
+            value = value.asInLanguage(language);
+        }
+        JSONObject json = new JSONObject();
+        json.put("key", create(key, allowToStringSideEffects, language, err, true));
+        json.put("value", create(value, allowToStringSideEffects, language, err, true));
+        return json;
+    }
 }

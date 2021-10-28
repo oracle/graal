@@ -32,7 +32,10 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -80,5 +83,10 @@ public final class MemoryPhiNode extends PhiNode implements SingleMemoryKill {
     @Override
     public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new MemoryPhiNode(newMerge, getLocationIdentity()));
+    }
+
+    @Override
+    public ProxyNode createProxyFor(LoopExitNode lex) {
+        return graph().addWithoutUnique(new MemoryProxyNode(this, lex, getKilledLocationIdentity()));
     }
 }

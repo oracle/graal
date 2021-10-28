@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -58,14 +58,17 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     private final LocalVariableTable localVariableTable;
     private final boolean inClassSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
-        this(original, annotated, false);
-    }
+    /**
+     * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
+     * determine {@link SubstitutionMethod} objects which correspond to annotated substitutions.
+     */
+    private final boolean isUserSubstitution;
 
-    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution) {
+    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution, boolean isUserSubstitution) {
         this.original = original;
         this.annotated = annotated;
         this.inClassSubstitution = inClassSubstitution;
+        this.isUserSubstitution = isUserSubstitution;
 
         LocalVariableTable newLocalVariableTable = null;
         if (annotated.getLocalVariableTable() != null) {
@@ -84,6 +87,10 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
             newLocalVariableTable = new LocalVariableTable(newLocals);
         }
         localVariableTable = newLocalVariableTable;
+    }
+
+    public boolean isUserSubstitution() {
+        return isUserSubstitution;
     }
 
     public ResolvedJavaMethod getOriginal() {
@@ -288,5 +295,10 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, Or
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
+    }
+
+    @Override
+    public boolean hasJavaMethod() {
+        return OriginalMethodProvider.hasJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

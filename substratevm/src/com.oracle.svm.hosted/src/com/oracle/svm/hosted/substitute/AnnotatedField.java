@@ -29,13 +29,15 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -75,8 +77,8 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider 
     }
 
     @Override
-    public JavaConstant readValue(JavaConstant receiver) {
-        return ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+    public JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+        return ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
     }
 
     @Override
@@ -86,7 +88,7 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider 
          * constant folding is not valid.
          */
         assert (injectedAnnotation instanceof Delete) || (injectedAnnotation instanceof InjectAccessors) : "Unknown annotation @" +
-                        injectedAnnotation.annotationType().getSimpleName() + ", should constant folding be permitted?";
+                        ClassUtil.getUnqualifiedName(injectedAnnotation.annotationType()) + ", should constant folding be permitted?";
         return false;
     }
 

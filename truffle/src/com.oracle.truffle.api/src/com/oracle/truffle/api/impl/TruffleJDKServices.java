@@ -75,6 +75,17 @@ final class TruffleJDKServices {
     }
 
     /**
+     * Updates Truffle module to read the {@code client}'s module. This method is a no-op if
+     * {@code client} is in the Truffle module, or the Truffle module already reads {@code client}'s
+     * module.
+     *
+     * @param client class in a module that should be added into modules read by the Truffle module.
+     */
+    static void addReads(Class<?> client) {
+        throw shouldNotReachHere();
+    }
+
+    /**
      * Gets the ordered list of loaders for {@link Service} providers.
      *
      * @param serviceClass defines service class
@@ -117,6 +128,44 @@ final class TruffleJDKServices {
      * @param clazz the class to check.
      */
     static boolean isNonTruffleClass(Class<?> clazz) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with loads and stores
+     * after the fence.
+     */
+    static void fullFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads and stores after the
+     * fence.
+     */
+    static void acquireFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with stores after the
+     * fence.
+     */
+    static void releaseFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads after the fence.
+     */
+    static void loadLoadFence() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Ensures that stores before the fence will not be reordered with stores after the fence.
+     */
+    static void storeStoreFence() {
         throw shouldNotReachHere();
     }
 }

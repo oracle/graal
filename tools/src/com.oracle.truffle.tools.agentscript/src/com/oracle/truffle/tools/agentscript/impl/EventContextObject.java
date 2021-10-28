@@ -51,15 +51,15 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    RuntimeException wrap(Object target, int arity, InteropException ex) {
+    static RuntimeException wrap(Object target, int arity, InteropException ex) {
         IllegalStateException ill = new IllegalStateException("Cannot invoke " + target + " with " + arity + " arguments: " + ex.getMessage());
         ill.initCause(ex);
-        return context.createError(ill);
+        return ill;
     }
 
-    RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
+    static RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
         if (interopLib.isException(ex)) {
-            throw context.createError(ex);
+            throw ex;
         }
         throw ex;
     }
@@ -88,7 +88,7 @@ final class EventContextObject extends AbstractContextObject {
     @ExportMessage
     static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if ("returnNow".equals(member)) {
-            throw AgentExecutionNode.returnNow(obj.context, args);
+            throw InsightHookNode.returnNow(args);
         }
         if ("returnValue".equals(member)) {
             if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
@@ -106,7 +106,7 @@ final class EventContextObject extends AbstractContextObject {
     @CompilerDirectives.TruffleBoundary
     private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
         if (args.length == 0) {
-            throw ArityException.create(1, 0);
+            throw ArityException.create(0, 0, args.length);
         }
         final NodeLibrary lib = NodeLibrary.getUncached();
         final InteropLibrary iop = InteropLibrary.getUncached();
@@ -117,8 +117,8 @@ final class EventContextObject extends AbstractContextObject {
         }
         Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
-            if (n == null) {
-                // skip top most record about the instrument
+            if (n == null || n.getRootNode() == null || n.getRootNode().isInternal()) {
+                // skip top most record of the instrument and any internal frames
                 return null;
             }
             LocationObject location = new LocationObject(n);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.util.Arrays;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
@@ -47,8 +48,10 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
 
     private static final String[] DEFAULT_OPTIONS = {
                     "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
-                    "engine.CompilationThreshold", "10", //
+                    "engine.SingleTierCompilationThreshold", "10", //
+                    "engine.LastTierCompilationThreshold", "10", //
                     "engine.FirstTierCompilationThreshold", "5", //
+                    "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
                     "engine.CompileImmediately", Boolean.FALSE.toString()
     };
 

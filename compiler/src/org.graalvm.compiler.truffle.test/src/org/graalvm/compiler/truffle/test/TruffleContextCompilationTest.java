@@ -53,30 +53,34 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
     public void testInnerContextsDeoptimize() {
         setupContext();
         getContext().initialize(LANGUAGE);
-        Env env = Language.getCurrentContext();
+        Env env = Language.REFERENCE.get(null);
 
         TruffleContext context = env.newContextBuilder().build();
-        OptimizedCallTarget target = assertCompiling(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object prev = context.enter(this);
-                try {
-                    // barrier ensures that the deopt does not move up or downwards
-                    barrier();
-                    Object arg = frame.getArguments()[0];
-                    if (arg != FIRST_RUN) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
+        try {
+            OptimizedCallTarget target = assertCompiling(new RootNode(null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object prev = context.enter(this);
+                    try {
+                        // barrier ensures that the deopt does not move up or downwards
+                        barrier();
+                        Object arg = frame.getArguments()[0];
+                        if (arg != FIRST_RUN) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                        }
+                        barrier();
+                    } finally {
+                        context.leave(this, prev);
                     }
-                    barrier();
-                } finally {
-                    context.leave(this, prev);
+                    return null;
                 }
-                return null;
-            }
-        });
-        assertTrue(target.isValid());
-        target.call(new Object());
-        assertFalse(target.isValid());
+            });
+            assertTrue(target.isValid());
+            target.call(new Object());
+            assertFalse(target.isValid());
+        } finally {
+            context.close();
+        }
     }
 
     private OptimizedCallTarget assertCompiling(RootNode node) {
@@ -95,14 +99,7 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
             return env;
         }
 
-        public static Env getCurrentContext() {
-            return getCurrentContext(Language.class);
-        }
-
-        public static TruffleLanguage<?> get() {
-            return getCurrentLanguage(Language.class);
-        }
-
+        private static final ContextReference<Env> REFERENCE = ContextReference.create(Language.class);
     }
 
 }

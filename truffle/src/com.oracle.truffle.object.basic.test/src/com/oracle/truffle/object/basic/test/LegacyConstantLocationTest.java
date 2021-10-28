@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -83,8 +84,8 @@ public class LegacyConstantLocationTest {
         try {
             property.set(object, newValue, shapeWithConstant);
             Assert.fail();
-        } catch (FinalLocationException | IncompatibleLocationException e) {
-            Assert.assertTrue(e instanceof FinalLocationException);
+        } catch (IncompatibleLocationException | FinalLocationException e) {
+            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
         }
 
         Assert.assertSame(value, object.get("constant"));
@@ -119,7 +120,7 @@ public class LegacyConstantLocationTest {
             property.set(object2, newValue, rootShape, shapeWithConstant);
             Assert.fail();
         } catch (IncompatibleLocationException e) {
-            // Expected
+            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
         }
         Assert.assertSame(rootShape, object2.getShape());
         Assert.assertEquals(false, object2.containsKey("constant"));

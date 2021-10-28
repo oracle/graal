@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,4 +89,20 @@ public class JsTests extends RegexTestBase {
         test("\\0", "u", "\u0000", 0, true, 0, 1);
     }
 
+    @Test
+    public void gr29379() {
+        test("(?=^)|(?=$)", "", "", 0, true, 0, 0);
+        test("(?=^)|(?=$)(?=^)|(?=$)", "", "", 0, true, 0, 0);
+    }
+
+    @Test
+    public void gr29388() {
+        test(".+(?=bar)|.+", "", "foobar", 0, true, 0, 3);
+    }
+
+    @Test
+    public void gr28905() {
+        test("\\B", "y", "abc", 0, false);
+        test("(?<=[a-z])[A-Z]", "y", "aA", 0, false);
+    }
 }

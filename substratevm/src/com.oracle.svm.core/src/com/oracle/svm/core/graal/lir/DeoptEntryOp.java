@@ -63,14 +63,18 @@ public final class DeoptEntryOp extends LIRInstruction {
             int entryOffset = CodeInfoEncoder.getEntryOffset(infopoint);
             if (entryOffset >= 0) {
                 if (entryOffset == crb.asm.position()) {
+                    /* Found prior info point at pc; increment pc to ensure uniqueness. */
                     crb.asm.ensureUniquePC();
                     break;
                 }
             }
         }
         /* Register this location as a deopt infopoint. */
-        compilation.addInfopoint(new DeoptEntryInfopoint(crb.asm.position(), state.debugInfo()));
-        /* Add NOP so that the next infopoint (e.g., an invoke) gets a unique PC. */
+        int position = crb.asm.position();
+        compilation.addInfopoint(new DeoptEntryInfopoint(position, state.debugInfo()));
+        /* Need to register exception edge, if present. */
+        crb.recordExceptionHandlers(position, state);
+        /* Add NOP so that the next info point (e.g., an invoke) gets a unique PC. */
         crb.asm.ensureUniquePC();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,11 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public final class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
+public final class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable, DeoptimizingNode.DeoptAfter {
 
     public static final NodeClass<LoadExceptionObjectNode> TYPE = NodeClass.create(LoadExceptionObjectNode.class);
 
@@ -42,4 +43,8 @@ public final class LoadExceptionObjectNode extends AbstractStateSplit implements
         super(TYPE, stamp);
     }
 
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
 }

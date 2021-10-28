@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,7 +58,7 @@ public class TestCallback implements TruffleObject {
             Object ret = function.call(args);
             return ret;
         } else {
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
     }
 

@@ -72,7 +72,7 @@ public class InstrumentationCompilerTest extends PartialEvaluationTest {
     private void setup(String enabledInstrument) {
         setupContext(Context.newBuilder().option(enabledInstrument, "true"));
         getContext().initialize(ProxyLanguage.ID);
-        this.language = ProxyLanguage.getCurrentLanguage();
+        this.language = ProxyLanguage.get(null);
     }
 
     private void testEquals(InstrumentationCompilerTestBaseNode expected, InstrumentationCompilerTestBaseNode baseNode, int expectedInstrumentation) {

@@ -26,8 +26,11 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,13 +48,13 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
+    protected final List<String> nativeLinkerOptions = new ArrayList<>();
     protected final List<Path> inputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
     protected Path tempDirectory;
     protected Path outputFile;
-    protected AbstractBootImage.NativeImageKind outputKind;
 
     @Override
     public List<Path> getInputFiles() {
@@ -66,14 +69,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addInputFile(int index, Path filename) {
         inputFilenames.add(index, filename);
-    }
-
-    public AbstractBootImage.NativeImageKind getOutputKind() {
-        return outputKind;
-    }
-
-    public void setOutputKind(AbstractBootImage.NativeImageKind k) {
-        outputKind = k;
     }
 
     @Override
@@ -171,7 +166,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         cmd.addAll(getLibrariesCommand());
-        cmd.addAll(Options.NativeLinkerOption.getValue().values());
+
+        cmd.addAll(getNativeLinkerOptions());
+
         return cmd;
     }
 
@@ -190,5 +187,15 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addAdditionalPreOption(String option) {
         additionalPreOptions.add(option);
+    }
+
+    @Override
+    public void addNativeLinkerOption(String option) {
+        nativeLinkerOptions.add(option);
+    }
+
+    protected List<String> getNativeLinkerOptions() {
+        return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values())
+                        .flatMap(Collection::stream).collect(Collectors.toList());
     }
 }

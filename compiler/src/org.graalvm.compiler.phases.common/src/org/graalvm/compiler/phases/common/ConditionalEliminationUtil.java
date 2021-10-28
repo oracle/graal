@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
@@ -199,7 +200,7 @@ public class ConditionalEliminationUtil {
      * node via canonicalization).
      */
     public static Stamp getOtherSafeStamp(ValueNode x) {
-        if (x.isConstant() || x.graph().isAfterFixedReadPhase()) {
+        if (x.isConstant() || x.graph().isAfterStage(StageFlag.FIXED_READS)) {
             return x.stamp(NodeView.DEFAULT);
         }
         return x.stamp(NodeView.DEFAULT).unrestricted();

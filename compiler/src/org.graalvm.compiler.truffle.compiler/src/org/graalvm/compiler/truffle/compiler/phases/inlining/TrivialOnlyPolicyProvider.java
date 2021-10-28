@@ -40,6 +40,6 @@ public class TrivialOnlyPolicyProvider extends InliningPolicyProvider {
 
     @Override
     public InliningPolicy get(OptionValues options, CoreProviders providers) {
-        return new TrivialOnlyInliningPolicy();
+        return new TrivialOnlyInliningPolicy(options);
     }
 }

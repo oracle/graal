@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,13 +43,13 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.LinkedNodeStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -86,6 +86,7 @@ import org.graalvm.compiler.nodes.spi.ArrayLengthProvider.FindLengthMode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -270,7 +271,7 @@ public class GraphUtil {
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
             OptionValues options = node.getOptions();
-            boolean verifyGraalGraphEdges = Graph.Options.VerifyGraalGraphEdges.getValue(options);
+            boolean verifyGraalGraphEdges = node.graph().verifyGraphEdges;
             boolean verifyKillCFGUnusedNodes = GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options);
             if (verifyGraalGraphEdges) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
@@ -345,33 +346,44 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
-        assert checkKill(node, mayKillGuard);
-        node.markDeleted();
-        outer: for (Node in : node.inputs()) {
-            if (in.isAlive()) {
-                in.removeUsage(node);
-                if (in.hasNoUsages()) {
-                    node.maybeNotifyZeroUsages(in);
-                }
-                if (isFloatingNode(in)) {
+        LinkedNodeStack stack = null;
+        Node cur = node;
+        do {
+            assert checkKill(cur, mayKillGuard);
+            cur.markDeleted();
+            outer: for (Node in : cur.inputs()) {
+                if (in.isAlive()) {
+                    in.removeUsage(cur);
                     if (in.hasNoUsages()) {
-                        if (in instanceof GuardNode) {
-                            // Guard nodes are only killed if their anchor dies.
-                        } else {
-                            killWithUnusedFloatingInputs(in);
-                        }
-                    } else if (in instanceof PhiNode) {
-                        for (Node use : in.usages()) {
-                            if (use != in) {
+                        cur.maybeNotifyZeroUsages(in);
+                    }
+                    if (isFloatingNode(in)) {
+                        if (in.hasNoUsages()) {
+                            if (in instanceof GuardNode) {
+                                // Guard nodes are only killed if their anchor dies.
                                 continue outer;
                             }
+                        } else if (in instanceof PhiNode) {
+                            if (!((PhiNode) in).isDegenerated()) {
+                                continue outer;
+                            }
+                            in.replaceAtUsages(null);
+                        } else {
+                            continue outer;
                         }
-                        in.replaceAtUsages(null);
-                        killWithUnusedFloatingInputs(in);
+                        if (stack == null) {
+                            stack = new LinkedNodeStack();
+                        }
+                        stack.push(in);
                     }
                 }
             }
-        }
+            if (stack == null || stack.isEmpty()) {
+                break;
+            } else {
+                cur = stack.pop();
+            }
+        } while (true);
     }
 
     /**
@@ -524,7 +536,7 @@ public class GraphUtil {
         for (PhiNode phi : begin.phis().snapshot()) {
             GraphUtil.checkRedundantPhi(phi);
         }
-        for (LoopExitNode exit : begin.loopExits()) {
+        for (LoopExitNode exit : begin.loopExits().snapshot()) {
             for (ProxyNode vpn : exit.proxies().snapshot()) {
                 GraphUtil.checkRedundantProxy(vpn);
             }
@@ -1035,6 +1047,15 @@ public class GraphUtil {
                 return null;
             }
         }
+
+        @Override
+        public boolean supportsRounding() {
+            if (getLowerer() != null) {
+                return getLowerer().supportsRounding();
+            } else {
+                return false;
+            }
+        }
     }
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
@@ -1138,7 +1159,7 @@ public class GraphUtil {
         }
         /* Perform the replacement. */
         VirtualArrayNode newVirtualArray = virtualArrayProvider.apply(newComponentType, newLengthInt);
-        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), source.getNodeSourcePosition(), false);
         tool.replaceWithVirtual(newVirtualArray);
     }
 
@@ -1204,7 +1225,7 @@ public class GraphUtil {
      * {@code null} is returned.
      *
      * Note that the diamond representation is not canonical and will be undone by the next
-     * application of {@link LoopEndNode#simplify(SimplifierTool)}.
+     * application of {@link AbstractMergeNode#simplify(SimplifierTool)} to the merge.
      */
     public static LoopEndNode tryToTransformToEmptyLoopDiamond(IfNode ifNode, LoopBeginNode loopBegin) {
         if (ifNode.trueSuccessor().next() instanceof AbstractEndNode && ifNode.falseSuccessor().next() instanceof AbstractEndNode) {

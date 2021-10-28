@@ -58,7 +58,7 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
     private int nextId;
 
     @Override
-    public void dump(DebugContext debug, Object object, String format, Object... arguments) {
+    public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
         OptionValues options = debug.getOptions();
         if (object instanceof BciBlockMapping && DebugOptions.PrintGraph.getValue(options) != PrintGraphTarget.Disable) {
             try {

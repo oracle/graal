@@ -27,14 +27,14 @@ package com.oracle.svm.jvmtiagentbase;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import java.util.Arrays;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
@@ -68,20 +68,27 @@ public abstract class JNIHandleSet {
         }
     }
 
+    /** {@link #findClassOptional}, but the class must exist. If not found, the VM terminates. */
+    public JNIObjectHandle findClass(JNIEnvironment env, String className) {
+        JNIObjectHandle h = findClassOptional(env, className);
+        guarantee(h.notEqual(nullHandle()));
+        return h;
+    }
+
     /**
      * Returns a local handle to a Java class object.
-     *
-     * The class must exist. If not found, the VM terminates.
      *
      * @param env JNI environment of the thread running the JVMTI callback.
      * @param className The VM type signature of the class.
      * @return Local JNI handle representing the class object.
      */
-    public JNIObjectHandle findClass(JNIEnvironment env, String className) {
+    public JNIObjectHandle findClassOptional(JNIEnvironment env, String className) {
         assert !destroyed;
         try (CTypeConversion.CCharPointerHolder name = Support.toCString(className)) {
             JNIObjectHandle h = Support.jniFunctions().getFindClass().invoke(env, name.get());
-            guarantee(h.notEqual(nullHandle()));
+            if (Support.clearException(env)) {
+                return nullHandle();
+            }
             return h;
         }
     }
@@ -137,11 +144,13 @@ public abstract class JNIHandleSet {
     public JNIMethodId getMethodIdOptional(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
         assert !destroyed;
         try (CTypeConversion.CCharPointerHolder cname = Support.toCString(name); CTypeConversion.CCharPointerHolder csignature = Support.toCString(signature)) {
-            if (isStatic) {
-                return Support.jniFunctions().getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get());
-            } else {
-                return Support.jniFunctions().getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
+            JNIMethodId id = isStatic
+                            ? Support.jniFunctions().getGetStaticMethodID().invoke(env, clazz, cname.get(), csignature.get())
+                            : Support.jniFunctions().getGetMethodID().invoke(env, clazz, cname.get(), csignature.get());
+            if (Support.clearException(env)) {
+                id = WordFactory.nullPointer();
             }
+            return id;
         }
     }
 
@@ -155,11 +164,13 @@ public abstract class JNIHandleSet {
     public JNIFieldId getFieldIdOptional(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, boolean isStatic) {
         assert !destroyed;
         try (CTypeConversion.CCharPointerHolder cname = Support.toCString(name); CTypeConversion.CCharPointerHolder csignature = Support.toCString(signature)) {
-            if (isStatic) {
-                return Support.jniFunctions().getGetStaticFieldID().invoke(env, clazz, cname.get(), csignature.get());
-            } else {
-                return Support.jniFunctions().getGetFieldID().invoke(env, clazz, cname.get(), csignature.get());
+            JNIFieldId id = isStatic
+                            ? Support.jniFunctions().getGetStaticFieldID().invoke(env, clazz, cname.get(), csignature.get())
+                            : Support.jniFunctions().getGetFieldID().invoke(env, clazz, cname.get(), csignature.get());
+            if (Support.clearException(env)) {
+                id = WordFactory.nullPointer();
             }
+            return id;
         }
     }
 
@@ -180,7 +191,7 @@ public abstract class JNIHandleSet {
         globalRefsLock.lock();
         try {
             if (globalRefCount == globalRefs.length) {
-                globalRefs = Arrays.copyOf(globalRefs, globalRefs.length * 2);
+                globalRefs = copyOf(globalRefs, globalRefs.length * 2);
             }
             globalRefs[globalRefCount] = global;
             globalRefCount++;
@@ -188,6 +199,18 @@ public abstract class JNIHandleSet {
             globalRefsLock.unlock();
         }
         return global;
+    }
+
+    /**
+     * This is an inlined version of {@link java.util.Arrays#copyOf} to work around issues with Word
+     * arrays (GR-32808).
+     *
+     * FIXME: replace with {@link java.util.Arrays#copyOf} once GR-32808 is fixed.
+     */
+    private static JNIObjectHandle[] copyOf(JNIObjectHandle[] original, int newLength) {
+        JNIObjectHandle[] copy = new JNIObjectHandle[newLength];
+        System.arraycopy(original, 0, copy, 0, Math.min(original.length, newLength));
+        return copy;
     }
 
     /**

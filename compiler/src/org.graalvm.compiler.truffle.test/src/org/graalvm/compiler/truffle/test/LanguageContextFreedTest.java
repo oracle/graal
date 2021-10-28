@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,11 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
@@ -61,7 +57,7 @@ public class LanguageContextFreedTest {
             return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).//
             option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
             option("engine.MultiTier", Boolean.FALSE.toString()).//
-            option("engine.CompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
             option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
         });
     }
@@ -72,7 +68,7 @@ public class LanguageContextFreedTest {
             Engine engine = Engine.newBuilder().allowExperimentalOptions(true).//
             option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
             option("engine.MultiTier", Boolean.FALSE.toString()).//
-            option("engine.CompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
             option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
             return Context.newBuilder().engine(engine).allowAllAccess(true).build();
         });
@@ -102,7 +98,7 @@ public class LanguageContextFreedTest {
         ContextLocalValue threadLocal;
         ctx.enter();
         try {
-            sourceContext = Base.getContext(sourceLanguage);
+            sourceContext = Base.getAccessContext(sourceLanguage);
             contextLocal = sourceContext.language.contextLocal.get();
             threadLocal = sourceContext.language.threadLocal.get();
         } finally {
@@ -152,43 +148,34 @@ public class LanguageContextFreedTest {
             return new LanguageContext(this);
         }
 
+        protected abstract ContextReference<LanguageContext> getContextReference0();
+
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            String id = request.getSource().getCharacters().toString();
-            TruffleRuntime runtime = Truffle.getRuntime();
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(this) {
-                @CompilationFinal ContextReference<LanguageContext> ref;
+            OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(this) {
 
                 @SuppressWarnings("unchecked")
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (ref == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        ref = lookupContextReference(getAccessLanguage(id));
-                    }
-                    ref.get().currentTarget = (OptimizedCallTarget) getCallTarget();
+                    getContextReference0().get(this).currentTarget = (OptimizedCallTarget) getCallTarget();
                     return true;
                 }
-            });
-            getContext(request.getSource().getLanguage()).currentTarget = target;
+            }.getCallTarget();
+            getContextReference0().get(null).currentTarget = target;
 
-            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
             return target;
         }
 
-        private static Class<? extends Base> getAccessLanguage(String id) {
+        private static LanguageContext getAccessContext(String id) {
             switch (id) {
                 case Shared.ID:
-                    return Shared.class;
+                    return Shared.REFERENCE.get(null);
                 case Exclusive.ID:
-                    return Exclusive.class;
+                    return Exclusive.REFERENCE.get(null);
                 default:
                     throw new IllegalArgumentException(id);
             }
-        }
-
-        static LanguageContext getContext(String id) {
-            return getCurrentContext(getAccessLanguage(id));
         }
 
     }
@@ -198,12 +185,26 @@ public class LanguageContextFreedTest {
 
         static final String ID = "LanguageContextFreedTestExclusive";
 
+        @Override
+        protected ContextReference<LanguageContext> getContextReference0() {
+            return REFERENCE;
+        }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(Exclusive.class);
+
     }
 
     @Registration(id = Shared.ID, name = Shared.ID, contextPolicy = ContextPolicy.SHARED)
     public static class Shared extends Base {
 
         static final String ID = "LanguageContextFreedTestShared";
+
+        @Override
+        protected ContextReference<LanguageContext> getContextReference0() {
+            return REFERENCE;
+        }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(Shared.class);
 
     }
 

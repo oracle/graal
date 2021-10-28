@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,14 +51,14 @@
 #if defined(ENABLE_ISOLATED_NAMESPACE)
 
 static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfName, jint mode) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
     void *handle = NULL;
 
     // Double-checked locking on the NFI context instance.
-    Lmid_t namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
+    Lmid_t namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->LibFFIContext, ctx->LibFFIContext_isolatedNamespaceId);
     if (namespace_id == 0) {
-        (*env)->MonitorEnter(env, ctx->NFIContext);
-        namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
+        (*env)->MonitorEnter(env, ctx->LibFFIContext);
+        namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->LibFFIContext, ctx->LibFFIContext_isolatedNamespaceId);
         if (namespace_id == 0) {
             handle = dlmopen(LM_ID_NEWLM, utfName, mode);
             if (handle != NULL) {
@@ -68,11 +68,11 @@ static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfN
                     const char *error = dlerror();
                     (*env)->ThrowNew(env, internal_error, error);
                 } else {
-                    (*env)->SetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId, (jlong) namespace_id); 
+                    (*env)->SetLongField(env, ctx->LibFFIContext, ctx->LibFFIContext_isolatedNamespaceId, (jlong) namespace_id);
                 }
             }
         }
-        (*env)->MonitorExit(env, ctx->NFIContext);
+        (*env)->MonitorExit(env, ctx->LibFFIContext);
     }
 
     if (namespace_id != 0 && handle == NULL) {
@@ -85,9 +85,9 @@ static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfN
 
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
     void *handle = NULL;
 
 #if defined(ENABLE_ISOLATED_NAMESPACE)
@@ -95,7 +95,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
         handle = loadLibraryInNamespace(env, context, utfName, flags & ~ISOLATED_NAMESPACE);
     } else {
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
-    handle = dlopen(utfName, flags);    
+    handle = dlopen(utfName, flags);
 #if defined(ENABLE_ISOLATED_NAMESPACE)
     }
 #endif // defined(ENABLE_ISOLATED_NAMESPACE)
@@ -106,15 +106,15 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(
     }
 
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) handle;
+    return (jlong)(intptr_t)handle;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
-    dlclose((void*) handle);
+JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {
+    dlclose((void*)(intptr_t)handle);
 }
 
 static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     void *ret;
 
@@ -129,14 +129,14 @@ static jlong lookup(JNIEnv *env, jlong context, void *handle, jstring name) {
         }
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) check_intrinsify(ctx, ret);
+    return (jlong)(intptr_t)check_intrinsify(ctx, ret);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
     if (library == 0) {
         return lookup(env, context, RTLD_DEFAULT, name);
     } else {
-        return lookup(env, context, (void *) library, name);
+        return lookup(env, context, (void *)(intptr_t)library, name);
     }
 }
 

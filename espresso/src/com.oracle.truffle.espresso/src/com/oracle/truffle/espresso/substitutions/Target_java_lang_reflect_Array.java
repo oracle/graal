@@ -63,24 +63,31 @@ public final class Target_java_lang_reflect_Array {
      * @exception NegativeArraySizeException if the specified {@code length} is negative
      */
     @Substitution
-    public static Object newArray(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject newArray(@JavaType(Class.class) StaticObject componentType, int length, @Inject Meta meta) {
+        if (CompilerDirectives.isPartialEvaluationConstant(componentType)) {
+            // PE-through.
+            return newArrayImpl(componentType, length, meta);
+        }
+        return newArrayBoundary(componentType, length, meta);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    static StaticObject newArrayBoundary(@JavaType(Class.class) StaticObject componentType, int length, @Inject Meta meta) {
+        return newArrayImpl(componentType, length, meta);
+    }
+
+    static StaticObject newArrayImpl(@JavaType(Class.class) StaticObject componentType, int length, @Inject Meta meta) {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-
         if (component.isPrimitive()) {
             byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length, meta);
         }
-
-        // NegativeArraySizeException is thrown in getInterpreterToVM().newArray
-        // if (length < 0) {
-        // throw meta.throwEx(meta.NegativeArraySizeException);
-        // }
         return InterpreterToVM.newReferenceArray(component, length);
     }
 
@@ -107,14 +114,15 @@ public final class Target_java_lang_reflect_Array {
      * @exception NegativeArraySizeException if any of the components in the specified
      *                {@code dimensions} argument is negative.
      */
+    @TruffleBoundary
     @Substitution
-    public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject multiNewArray(@JavaType(Class.class) StaticObject componentType, @JavaType(int[].class) StaticObject dimensionsArray, @Inject Meta meta) {
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         final int[] dimensions = dimensionsArray.unwrap();
         int finalDimensions = dimensions.length;
@@ -122,11 +130,11 @@ public final class Target_java_lang_reflect_Array {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
         if (dimensions.length == 1) {
@@ -137,20 +145,30 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static boolean getBoolean(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+    public static boolean getBoolean(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        // `getBoolean` should only access boolean arrays
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != meta._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
-            return Array.getBoolean(array.unwrap(), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+            return Array.getByte(array.unwrap(), index) != 0;
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
     }
 
     @Substitution
-    public static byte getByte(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static byte getByte(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getByte(array.unwrap(), index);
@@ -161,8 +179,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static char getChar(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static char getChar(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getChar(array.unwrap(), index);
@@ -173,8 +191,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static short getShort(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static short getShort(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getShort(array.unwrap(), index);
@@ -185,8 +203,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static int getInt(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static int getInt(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getInt(array.unwrap(), index);
@@ -197,8 +215,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static float getFloat(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static float getFloat(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getFloat(array.unwrap(), index);
@@ -209,8 +227,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static double getDouble(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static double getDouble(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getDouble(array.unwrap(), index);
@@ -221,8 +239,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static long getLong(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static long getLong(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             return Array.getLong(array.unwrap(), index);
@@ -240,11 +258,11 @@ public final class Target_java_lang_reflect_Array {
         }
         if (e instanceof ArrayIndexOutOfBoundsException) {
             profiler.profile(3);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
         if (e instanceof IllegalArgumentException) {
             profiler.profile(4);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
         }
         throw EspressoError.shouldNotReachHere(e);
     }
@@ -262,25 +280,35 @@ public final class Target_java_lang_reflect_Array {
         }
         if (!(array.isArray())) {
             profiler.profile(1);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
     @Substitution
-    public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+    public static void setBoolean(@JavaType(Object.class) StaticObject array, int index, boolean value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        // host `setByte` can write in all primitive arrays beside boolean array
+        // `setBoolean` should only access boolean arrays
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != meta._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
-            Array.setBoolean(array.unwrap(), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+            Array.setByte(array.unwrap(), index, value ? (byte) 1 : (byte) 0);
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
     }
 
     @Substitution
-    public static void setByte(@Host(Object.class) StaticObject array, int index, byte value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setByte(@JavaType(Object.class) StaticObject array, int index, byte value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setByte(array.unwrap(), index, value);
@@ -291,8 +319,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setChar(@Host(Object.class) StaticObject array, int index, char value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setChar(@JavaType(Object.class) StaticObject array, int index, char value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setChar(array.unwrap(), index, value);
@@ -303,8 +331,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setShort(@Host(Object.class) StaticObject array, int index, short value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setShort(@JavaType(Object.class) StaticObject array, int index, short value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setShort(array.unwrap(), index, value);
@@ -315,8 +343,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setInt(@Host(Object.class) StaticObject array, int index, int value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setInt(@JavaType(Object.class) StaticObject array, int index, int value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setInt(array.unwrap(), index, value);
@@ -327,8 +355,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setFloat(@Host(Object.class) StaticObject array, int index, float value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setFloat(@JavaType(Object.class) StaticObject array, int index, float value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setFloat(array.unwrap(), index, value);
@@ -339,8 +367,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setDouble(@Host(Object.class) StaticObject array, int index, double value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setDouble(@JavaType(Object.class) StaticObject array, int index, double value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setDouble(array.unwrap(), index, value);
@@ -351,8 +379,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setLong(@Host(Object.class) StaticObject array, int index, long value, @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public static void setLong(@JavaType(Object.class) StaticObject array, int index, long value, @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
             Array.setLong(array.unwrap(), index, value);
@@ -378,7 +406,7 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static void set(@Host(Object.class) StaticObject array, int index, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void set(@JavaType(Object.class) StaticObject array, int index, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
@@ -402,7 +430,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -420,7 +448,7 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static @Host(Object.class) StaticObject get(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject get(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
@@ -443,7 +471,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 

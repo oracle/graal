@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,10 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.runtime.IDGenerater;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
@@ -51,22 +54,22 @@ public final class LLVMGlobal extends LLVMSymbol {
     @CompilationFinal private boolean interopTypeCached;
     @CompilationFinal private LLVMInteropType interopType;
 
-    public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int index, int id, boolean exported) {
+    public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int index, BitcodeID id, boolean exported, boolean externalWeak) {
         if (index < 0) {
             throw new AssertionError("Invalid index for LLVM global: " + index);
         }
-        if (id < 0) {
+        if (id == null) {
             throw new AssertionError("Invalid index for LLVM global: " + id);
         }
-        return new LLVMGlobal(name, type, sourceSymbol, readOnly, index, id, exported);
+        return new LLVMGlobal(name, type, sourceSymbol, readOnly, index, id, exported, externalWeak);
     }
 
     public static LLVMGlobal createUnavailable(String name) {
-        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, -1, -1, false);
+        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, LLVMSymbol.INVALID_INDEX, IDGenerater.INVALID_ID, false, false);
     }
 
-    private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, int moduleId, boolean exported) {
-        super(name, moduleId, globalIndex, exported);
+    private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, BitcodeID id, boolean exported, boolean externalWeak) {
+        super(name, id, globalIndex, exported, externalWeak);
         this.name = name;
         this.type = type;
         this.sourceSymbol = sourceSymbol;
@@ -126,5 +129,15 @@ public final class LLVMGlobal extends LLVMSymbol {
     @Override
     public LLVMGlobal asGlobalVariable() {
         return this;
+    }
+
+    @Override
+    public boolean isElemPtrExpression() {
+        return false;
+    }
+
+    @Override
+    public LLVMElemPtrSymbol asElemPtrExpression() {
+        throw new IllegalStateException("Global " + name + " is not a GetElementPointer symbol.");
     }
 }

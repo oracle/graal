@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -91,6 +93,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
@@ -157,7 +160,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         ResolvedJavaMethod rootMethod = graph.method();
         if (rootMethod != null) {
             result.setMethods(rootMethod, graph.getMethods());
-            result.setFields(graph.getFields());
         }
 
         result.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -369,7 +371,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = gen.getSpecialRegister(SpecialRegister.ThreadPointer);
             threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
-            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
+            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Safepoint.getThreadLocalSafepointRequestedOffset()));
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
             if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
                 safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
@@ -564,7 +566,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     }
 
     private LLVMValueRef emitCall(Invoke invoke, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
-        boolean nativeABI = ((SubstrateCallingConventionType) callTarget.callType()).nativeABI;
+        boolean nativeABI = ((SubstrateCallingConventionType) callTarget.callType()).nativeABI();
         if (!SubstrateBackend.hasJavaFrameAnchor(callTarget)) {
             assert SubstrateBackend.getNewThreadStatus(callTarget) == VMThreads.StatusSupport.STATUS_ILLEGAL;
             return emitCallInstruction(invoke, nativeABI, callee, patchpointId, args);
@@ -624,7 +626,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     private LLVMTypeRef getUnknownCallReturnType(LoweredCallTargetNode callTarget) {
         LLVMTypeRef retType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
-        if (!((SubstrateCallingConventionType) callTarget.callType()).nativeABI && LLVMOptions.ReturnSpecialRegs.getValue()) {
+        if (!((SubstrateCallingConventionType) callTarget.callType()).nativeABI() && LLVMOptions.ReturnSpecialRegs.getValue()) {
             boolean voidReturnType = LLVMIRBuilder.isVoidType(retType);
             LLVMTypeRef[] returnTypes = new LLVMTypeRef[SpecialRegister.count() + (voidReturnType ? 0 : 1)];
             for (SpecialRegister reg : SpecialRegister.registers()) {
@@ -652,7 +654,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         }
 
         LLVMValueRef retrieveExceptionFunction = gen.getFunction(LLVMExceptionUnwind.getRetrieveExceptionMethod(gen.getMetaAccess()));
-        LLVMValueRef[] arguments = gen.getCallArguments(new LLVMValueRef[0], SubstrateCallingConventionType.JavaCall, null);
+        LLVMValueRef[] arguments = gen.getCallArguments(new LLVMValueRef[0], SubstrateCallingConventionKind.Java.toType(true), null);
         LLVMValueRef exception = gen.buildStatepointCall(retrieveExceptionFunction, false, LLVMGenerator.nextPatchpointId.getAndIncrement(), arguments);
         setResult(node, exception);
     }
@@ -759,8 +761,14 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (operand instanceof LLVMValueWrapper) {
             llvmOperand = (LLVMValueWrapper) operand;
         } else if (operand instanceof ConstantValue) {
-            /* This only happens when emitting null object constants */
-            llvmOperand = new LLVMVariable(builder.constantNull(((LLVMKind) operand.getPlatformKind()).get()));
+            /* This only happens when emitting null or illegal object constants */
+            PlatformKind kind = operand.getPlatformKind();
+            if (kind instanceof LLVMKind) {
+                llvmOperand = new LLVMVariable(builder.constantNull(((LLVMKind) kind).get()));
+            } else {
+                assert kind == ValueKind.Illegal.getPlatformKind();
+                llvmOperand = new LLVMVariable(builder.getUndef());
+            }
         } else if (operand instanceof LLVMAddressValue) {
             LLVMAddressValue addressValue = (LLVMAddressValue) operand;
             Value wrappedBase = addressValue.getBase();

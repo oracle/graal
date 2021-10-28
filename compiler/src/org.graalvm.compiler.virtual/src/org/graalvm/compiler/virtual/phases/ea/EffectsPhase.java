@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
+import org.graalvm.compiler.phases.common.util.LoopUtility;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -81,6 +82,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
     @SuppressWarnings("try")
     public boolean runAnalysis(StructuredGraph graph, CoreProvidersT context) {
+        LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
         assert unscheduled || strategy != null;
         boolean changed = false;
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
@@ -93,7 +95,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                     schedule = null;
                     cfg = ControlFlowGraph.compute(graph, true, true, false, false);
                 } else {
-                    new SchedulePhase(strategy).apply(graph, false);
+                    new SchedulePhase(strategy).apply(graph, context, false);
                     schedule = graph.getLastSchedule();
                     cfg = schedule.getCFG();
                 }
@@ -113,7 +115,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
 
                             new DeadCodeEliminationPhase(Required).apply(graph);
                         }
-
+                        LoopUtility.removeObsoleteProxies(graph, context, canonicalizer);
                         postIteration(graph, context, listener.getNodes());
                     }
 

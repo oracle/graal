@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -38,6 +39,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -64,7 +67,8 @@ public class LayoutEncoding {
     private static final int PRIMITIVE_VALUE = NEUTRAL_VALUE + 1;
     private static final int INTERFACE_VALUE = PRIMITIVE_VALUE + 1;
     private static final int ABSTRACT_VALUE = INTERFACE_VALUE + 1;
-    private static final int LAST_SPECIAL_VALUE = ABSTRACT_VALUE;
+    private static final int STORED_CONTINUATION_VALUE = ABSTRACT_VALUE + 1;
+    private static final int LAST_SPECIAL_VALUE = STORED_CONTINUATION_VALUE;
 
     private static final int ARRAY_INDEX_SHIFT_SHIFT = 0;
     private static final int ARRAY_INDEX_SHIFT_MASK = 0xff;
@@ -87,6 +91,10 @@ public class LayoutEncoding {
         return ABSTRACT_VALUE;
     }
 
+    public static int forStoredContinuation() {
+        return STORED_CONTINUATION_VALUE;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void guaranteeEncoding(ResolvedJavaType type, boolean condition, String description) {
         if (!condition) {
@@ -103,6 +111,7 @@ public class LayoutEncoding {
         guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
         int encoding = size;
         guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
+        guaranteeEncoding(type, !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
         guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
         guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
         guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
@@ -147,6 +156,11 @@ public class LayoutEncoding {
         return WordFactory.unsigned(encoding);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isStoredContinuation(int encoding) {
+        return encoding == STORED_CONTINUATION_VALUE;
+    }
+
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArray(int encoding) {
@@ -163,10 +177,15 @@ public class LayoutEncoding {
         return encoding < (ARRAY_TAG_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getArrayBaseOffsetAsInt(int encoding) {
+        return (encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK;
+    }
+
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayBaseOffset(int encoding) {
-        return WordFactory.unsigned((encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK);
+        return WordFactory.unsigned(getArrayBaseOffsetAsInt(encoding));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -174,6 +193,7 @@ public class LayoutEncoding {
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getArrayIndexScale(int encoding) {
         return 1 << getArrayIndexShift(encoding);
     }
@@ -189,10 +209,19 @@ public class LayoutEncoding {
         return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
+        return getSizeFromObjectInline(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getSizeFromObjectInline(Object obj) {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
+        } else if (isStoredContinuation(encoding)) {
+            return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
             return getInstanceSize(encoding);
         }
@@ -200,11 +229,16 @@ public class LayoutEncoding {
 
     /** Returns the end of the Object when the call started, e.g., for logging. */
     public static Pointer getObjectEnd(Object obj) {
+        return getObjectEndInline(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    public static Pointer getObjectEndInline(Object obj) {
         // TODO: This assumes that the object starts at obj.
         // - In other universes obj could point to the hub in the middle of,
         // for example, a butterfly object.
         final Pointer objStart = Word.objectToUntrackedPointer(obj);
-        final UnsignedWord objSize = getSizeFromObject(obj);
+        final UnsignedWord objSize = getSizeFromObjectInline(obj);
         return objStart.add(objSize);
     }
 

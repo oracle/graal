@@ -37,6 +37,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.util.UserError;
@@ -64,11 +66,14 @@ public class ScalaFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeScalaEnumerations(access);
         RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol");
+        RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol$");
+        /* Initialized through an invokedynamic in `scala.Option` */
+        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
-        if (hosted && analysis) {
+    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             plugins.appendNodePlugin(new ScalaAnalysisPlugin());
         }
     }

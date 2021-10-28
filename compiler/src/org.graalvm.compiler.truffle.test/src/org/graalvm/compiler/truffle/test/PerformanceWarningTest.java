@@ -32,6 +32,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -59,7 +62,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
-    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
+    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.hasNextTier();
 
     private ByteArrayOutputStream outContent;
 
@@ -127,13 +130,35 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         // Compile and capture output to logger's stream.
         boolean seenException = false;
         try {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-            DebugContext debug = new Builder(runtime.getGraalOptions(OptionValues.class)).build();
+            OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+            DebugContext debug = new Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId, null, null);
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, compilationId,
+                                new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                                    private TruffleInliningData inlining = new TruffleInlining();
+
+                                    @Override
+                                    public boolean isCancelled() {
+                                        return false;
+                                    }
+
+                                    @Override
+                                    public boolean isLastTier() {
+                                        return true;
+                                    }
+
+                                    @Override
+                                    public TruffleInliningData inliningData() {
+                                        return inlining;
+                                    }
+
+                                    @Override
+                                    public boolean hasNextTier() {
+                                        return false;
+                                    }
+                                }), null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {
@@ -418,13 +443,12 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
 
         public TrivialCallsInnerNode() {
             super(null);
-            final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(new RootNode(null) {
+            this.callNode = (OptimizedDirectCallNode) GraalTruffleRuntime.getRuntime().createDirectCallNode(new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
                 }
-            }));
+            }.getCallTarget());
         }
 
         @Override

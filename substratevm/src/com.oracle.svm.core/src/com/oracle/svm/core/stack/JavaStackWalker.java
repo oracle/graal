@@ -82,6 +82,7 @@ public final class JavaStackWalker {
         walk.setStartSP(startSP);
         walk.setStartIP(startIP);
         walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
+        walk.setEndSP(WordFactory.nullPointer());
         if (startIP.isNonNull()) {
             // Storing the untethered object in a data structures requires that the caller and all
             // places that use that value are uninterruptible as well.
@@ -95,10 +96,16 @@ public final class JavaStackWalker {
      * See {@link #initWalk(JavaStackWalk, Pointer, CodePointer)}, except that the instruction
      * pointer will be read from the stack later on.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP) {
-        initWalk(walk, startSP, WordFactory.nullPointer());
+        initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
         assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP) {
+        initWalk(walk, startSP);
+        walk.setEndSP(endSP);
     }
 
     /**
@@ -127,6 +134,7 @@ public final class JavaStackWalker {
         walk.setStartSP(sp);
         walk.setStartIP(ip);
         walk.setAnchor(anchor);
+        walk.setEndSP(WordFactory.nullPointer());
         // Storing the untethered object in a data structures requires that the caller and all
         // places that use that value are uninterruptible as well.
         walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));

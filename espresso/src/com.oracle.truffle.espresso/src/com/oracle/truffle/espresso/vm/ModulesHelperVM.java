@@ -25,16 +25,12 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
-import com.oracle.truffle.espresso.jni.NativeEnv;
-import com.oracle.truffle.espresso.jni.Pointer;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
 /**
@@ -44,28 +40,28 @@ public final class ModulesHelperVM {
     private ModulesHelperVM() {
     }
 
-    private static ModuleTable.ModuleEntry getModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject module, Meta meta) {
-        return (ModuleTable.ModuleEntry) module.getHiddenField(meta.HIDDEN_MODULE_ENTRY);
+    private static ModuleTable.ModuleEntry getModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject module, Meta meta) {
+        return (ModuleTable.ModuleEntry) meta.HIDDEN_MODULE_ENTRY.getHiddenObject(module);
     }
 
     private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
         return fromModuleEntry.registry().packages().lookup(nameSymbol);
     }
 
-    static ModuleTable.ModuleEntry extractToModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject toModule, Meta meta,
+    public static ModuleTable.ModuleEntry extractToModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject toModule, Meta meta,
                     SubstitutionProfiler profiler) {
         ModuleTable.ModuleEntry toModuleEntry = null;
         if (!StaticObject.isNull(toModule)) {
             toModuleEntry = getModuleEntry(toModule, meta);
             if (toModuleEntry == null) {
                 profiler.profile(8);
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
             }
         }
         return toModuleEntry;
     }
 
-    static ModuleTable.ModuleEntry extractFromModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject fromModule, Meta meta,
+    public static ModuleTable.ModuleEntry extractFromModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject fromModule, Meta meta,
                     SubstitutionProfiler profiler) {
         if (StaticObject.isNull(fromModule)) {
             profiler.profile(9);
@@ -74,13 +70,12 @@ public final class ModulesHelperVM {
         ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(fromModule, meta);
         if (fromModuleEntry == null) {
             profiler.profile(10);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
         }
         return fromModuleEntry;
     }
 
-    static PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
-        String pkg = NativeEnv.interopPointerToString(pkgName);
+    public static PackageTable.PackageEntry extractPackageEntry(String pkg, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
         PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
         if (nameSymbol != null) {
@@ -88,27 +83,22 @@ public final class ModulesHelperVM {
         }
         if (packageEntry == null) {
             profiler.profile(11);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " cannot be found in ", fromModuleEntry.getNameAsString()));
         }
         if (packageEntry.module() != fromModuleEntry) {
             profiler.profile(12);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             cat("package ", pkg, " found in ", packageEntry.module().getNameAsString(), ", not in ", fromModuleEntry.getNameAsString()));
         }
         return packageEntry;
     }
 
-    static void addModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject fromModule,
-                    @Pointer TruffleObject pkgName,
-                    @Host(typeName = "Ljava/lang/Module") StaticObject toModule,
+    public static void addModuleExports(@JavaType(internalName = "Ljava/lang/Module") StaticObject fromModule,
+                    String pkgName,
+                    @JavaType(internalName = "Ljava/lang/Module") StaticObject toModule,
                     Meta meta,
-                    InteropLibrary unchached,
                     SubstitutionProfiler profiler) {
-        if (unchached.isNull(pkgName)) {
-            profiler.profile(0);
-            throw meta.throwNullPointerException();
-        }
         ModuleTable.ModuleEntry fromModuleEntry = extractFromModuleEntry(fromModule, meta, profiler);
         if (!fromModuleEntry.isNamed() || fromModuleEntry.isOpen()) {
             // All packages in unnamed and open modules are exported by default.
@@ -118,6 +108,15 @@ public final class ModulesHelperVM {
         PackageTable.PackageEntry packageEntry = extractPackageEntry(pkgName, fromModuleEntry, meta, profiler);
         if (fromModuleEntry != toModuleEntry) {
             packageEntry.addExports(toModuleEntry);
+        }
+    }
+
+    public static void addModuleExportsToAllUnnamed(@JavaType(internalName = "Ljava/lang/Module") StaticObject from, String pkgName, SubstitutionProfiler profiler,
+                    Meta meta) {
+        ModuleTable.ModuleEntry fromModuleEntry = ModulesHelperVM.extractFromModuleEntry(from, meta, profiler);
+        if (fromModuleEntry.isNamed()) { // No-op for unnamed module.
+            PackageTable.PackageEntry packageEntry = ModulesHelperVM.extractPackageEntry(pkgName, fromModuleEntry, meta, profiler);
+            packageEntry.setExportedAllUnnamed();
         }
     }
 

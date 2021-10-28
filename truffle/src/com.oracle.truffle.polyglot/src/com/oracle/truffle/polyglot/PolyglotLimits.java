@@ -51,10 +51,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -64,7 +61,6 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 
 /**
  * Limits objects that backs the {@link ResourceLimits} API object.
@@ -100,45 +96,17 @@ final class PolyglotLimits {
         final EngineLimits limits;
         final EventContext eventContext;
         final PolyglotEngineImpl engine;
-        final FrameSlot readContext;
-        final ConditionProfile needsLookup = ConditionProfile.create();
-        final FrameDescriptor descriptor;
         @CompilationFinal private boolean seenInnerContext;
 
         StatementIncrementNode(EventContext context, EngineLimits limits) {
             this.limits = limits;
             this.eventContext = context;
             this.engine = limits.engine;
-            if (!engine.singleThreadPerContext.isValid() || !engine.singleContext.isValid()) {
-                descriptor = context.getInstrumentedNode().getRootNode().getFrameDescriptor();
-                readContext = descriptor.findOrAddFrameSlot(CACHED_CONTEXT, FrameSlotKind.Object);
-            } else {
-                readContext = null;
-                descriptor = null;
-            }
         }
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            PolyglotContextImpl currentContext;
-            if (readContext == null || frame.getFrameDescriptor() != descriptor) {
-                currentContext = getLimitContext();
-            } else {
-                try {
-                    Object readValue = frame.getObject(readContext);
-                    if (needsLookup.profile(readValue == descriptor.getDefaultValue())) {
-                        currentContext = getLimitContext();
-                        frame.setObject(readContext, currentContext);
-                    } else {
-                        currentContext = (PolyglotContextImpl) readValue;
-                    }
-                } catch (FrameSlotTypeException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    currentContext = getLimitContext();
-                    frame.setObject(readContext, currentContext);
-                }
-            }
-
+            PolyglotContextImpl currentContext = getLimitContext();
             long count;
             if (engine.singleThreadPerContext.isValid()) {
                 count = --currentContext.statementCounter;
@@ -152,7 +120,7 @@ final class PolyglotLimits {
         }
 
         private PolyglotContextImpl getLimitContext() {
-            PolyglotContextImpl context = PolyglotContextImpl.currentEntered(engine);
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(engine);
             if (engine.noInnerContexts.isValid() || context.parent == null) {
                 // fast path for no inner contexts
                 return context;
@@ -184,17 +152,12 @@ final class PolyglotLimits {
                 }
             }
             if (limitReached) {
-                String message = String.format("Statement count limit of %s exceeded. Statements executed %s.",
-                                limit, actualCount);
-                boolean invalidated = context.invalidate(true, message);
-                if (invalidated) {
-                    context.close(context.creatorApi, true);
-                    RuntimeException e = limits.notifyEvent(context);
-                    if (e != null) {
-                        throw e;
-                    }
-                    throw context.createCancelException(eventContext.getInstrumentedNode());
+                context.cancel(true, String.format("Statement count limit of %s exceeded. Statements executed %s.", limit, actualCount));
+                RuntimeException e = limits.notifyEvent(context);
+                if (e != null) {
+                    throw e;
                 }
+                TruffleSafepoint.pollHere(eventContext.getInstrumentedNode());
             }
 
         }
@@ -266,9 +229,9 @@ final class PolyglotLimits {
                             @Override
                             public boolean test(com.oracle.truffle.api.source.Source s) {
                                 try {
-                                    return statementLimitSourcePredicate.test(engine.getImpl().getOrCreatePolyglotSource(s));
+                                    return statementLimitSourcePredicate.test(PolyglotImpl.getOrCreatePolyglotSource(engine.getImpl(), s));
                                 } catch (Throwable e) {
-                                    throw PolyglotImpl.hostToGuestException(context, e);
+                                    throw context.engine.host.toHostException(context.getHostContextImpl(), e);
                                 }
                             }
                         });
@@ -297,10 +260,11 @@ final class PolyglotLimits {
             if (onEvent == null) {
                 return null;
             }
+            ResourceLimitEvent event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api);
             try {
-                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.creatorApi));
+                onEvent.accept(event);
             } catch (Throwable t) {
-                return PolyglotImpl.hostToGuestException(context, t);
+                throw context.engine.host.toHostException(context.getHostContextImpl(), t);
             }
             return null;
         }

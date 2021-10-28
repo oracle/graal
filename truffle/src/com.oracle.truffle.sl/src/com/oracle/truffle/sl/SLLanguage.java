@@ -59,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -220,10 +221,16 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
+    @Override
+    protected boolean patchContext(SLContext context, Env newEnv) {
+        context.patchContext(newEnv);
+        return true;
+    }
+
     public RootCallTarget getOrCreateUndefinedFunction(String name) {
         RootCallTarget target = undefinedFunctions.get(name);
         if (target == null) {
-            target = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(this, name));
+            target = new SLUndefinedFunctionRootNode(this, name).getCallTarget();
             RootCallTarget other = undefinedFunctions.putIfAbsent(name, target);
             if (other != null) {
                 target = other;
@@ -268,8 +275,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * Register the builtin function in the builtin registry. Call targets for builtins may be
          * reused across multiple contexts.
          */
-        RootCallTarget newTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        RootCallTarget oldTarget = builtinTargets.put(factory, newTarget);
+        RootCallTarget newTarget = rootNode.getCallTarget();
+        RootCallTarget oldTarget = builtinTargets.putIfAbsent(factory, newTarget);
         if (oldTarget != null) {
             return oldTarget;
         }
@@ -332,7 +339,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
              */
             evalMain = new SLEvalRootNode(this, null, functions);
         }
-        return Truffle.getRuntime().createCallTarget(evalMain);
+        return evalMain.getCallTarget();
     }
 
     /**
@@ -402,8 +409,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return object;
     }
 
-    public static SLContext getCurrentContext() {
-        return getCurrentContext(SLLanguage.class);
+    private static final LanguageReference<SLLanguage> REFERENCE = LanguageReference.create(SLLanguage.class);
+
+    public static SLLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     private static final List<NodeFactory<? extends SLBuiltinNode>> EXTERNAL_BUILTINS = Collections.synchronizedList(new ArrayList<>());
@@ -412,4 +421,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         EXTERNAL_BUILTINS.add(builtin);
     }
 
+    @Override
+    protected void exitContext(SLContext context, ExitMode exitMode, int exitCode) {
+        /*
+         * Runs shutdown hooks during explicit exit triggered by TruffleContext#closeExit(Node, int)
+         * or natural exit triggered during natural context close.
+         */
+        context.runShutdownHooks();
+    }
 }

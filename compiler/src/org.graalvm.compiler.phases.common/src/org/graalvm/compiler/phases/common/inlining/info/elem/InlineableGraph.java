@@ -224,7 +224,7 @@ public class InlineableGraph implements Inlineable {
 
     @Override
     public double getProbability(Invoke invoke) {
-        return probabilites.applyAsDouble(invoke.asNode());
+        return probabilites.applyAsDouble(invoke.asFixedNode());
     }
 
     public StructuredGraph getGraph() {

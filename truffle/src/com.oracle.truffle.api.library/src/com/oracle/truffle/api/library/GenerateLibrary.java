@@ -46,6 +46,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 
 /**
@@ -87,6 +88,10 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
  * exports can be specified explicitly, it can be used to provide a default implementation for
  * receiver types of third parties or the JDK. For example the Truffle interop library has default
  * exports for most {@link Number} types, {@link String} and {@link Boolean} type.
+ * <p>
+ * In order to enable AOT generation for a a library annotate the class with {@link GenerateAOT} and
+ * enable exports to be used for AOT by setting {@link ExportLibrary#useForAOT()} to
+ * <code>true</code>.
  *
  * @see DefaultExport to specify default exports.
  * @see Abstract to make messages abstract if they have a default implemetnation

@@ -66,7 +66,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -83,6 +82,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class HostExceptionTest {
     private Context context;
@@ -117,7 +117,7 @@ public class HostExceptionTest {
                     default:
                         throw new IllegalArgumentException();
                 }
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new CatcherObject(Truffle.getRuntime().createCallTarget(rootNode))));
+                return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
             }
         });
         context.initialize(ProxyLanguage.ID);
@@ -510,7 +510,7 @@ public class HostExceptionTest {
         @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
         CatcherRootNode() {
-            super(ProxyLanguage.getCurrentLanguage());
+            super(ProxyLanguage.get(null));
         }
 
         @TruffleBoundary
@@ -547,7 +547,7 @@ public class HostExceptionTest {
         assertTrue(env.isHostObject(ex));
         assertNotNull("Unexpected exception: " + ex, expectedException);
         assertThat(env.asHostObject(ex), instanceOf(expectedException));
-        assertThat(ProxyLanguage.getCurrentContext().getEnv().asHostException(ex), instanceOf(expectedException));
+        assertThat(LanguageContext.get(null).getEnv().asHostException(ex), instanceOf(expectedException));
         try {
             assertTrue(InteropLibrary.getUncached().isMetaInstance(env.asHostSymbol(Throwable.class), ex));
         } catch (UnsupportedMessageException e) {
@@ -563,7 +563,7 @@ public class HostExceptionTest {
         @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
         RunnerRootNode() {
-            super(ProxyLanguage.getCurrentLanguage());
+            super(ProxyLanguage.get(null));
         }
 
         @TruffleBoundary
@@ -594,7 +594,7 @@ public class HostExceptionTest {
         @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
         RethrowerRootNode() {
-            super(ProxyLanguage.getCurrentLanguage());
+            super(ProxyLanguage.get(null));
         }
 
         @TruffleBoundary

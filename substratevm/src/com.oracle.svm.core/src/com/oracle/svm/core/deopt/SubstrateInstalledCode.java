@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.deopt;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache;
@@ -98,6 +100,12 @@ public interface SubstrateInstalledCode {
     void invalidateWithoutDeoptimization();
 
     SubstrateSpeculationLog getSpeculationLog();
+
+    /**
+     * Sets the identifier of the compilation that resulted in this code, which can be used to
+     * provide additional information in {@link #getName()}.
+     */
+    void setCompilationId(CompilationIdentifier id);
 
     /**
      * Provides access to a {@link SubstrateInstalledCode}.

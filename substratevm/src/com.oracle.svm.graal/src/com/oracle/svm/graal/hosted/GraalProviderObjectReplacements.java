@@ -45,10 +45,10 @@ public class GraalProviderObjectReplacements {
     private final ConstantFieldProvider constantFieldProvider;
     private final ConstantReflectionProvider constantReflection;
 
-    GraalProviderObjectReplacements(AnalysisMetaAccess aMetaAccess) {
-        this.metaAccess = new SubstrateMetaAccess();
+    GraalProviderObjectReplacements(AnalysisMetaAccess aMetaAccess, SubstrateMetaAccess metaAccess) {
+        this.metaAccess = metaAccess;
         this.constantFieldProvider = new SubstrateConstantFieldProvider(aMetaAccess);
-        this.constantReflection = new SubstrateConstantReflectionProvider(metaAccess);
+        this.constantReflection = new SubstrateConstantReflectionProvider(this.metaAccess);
     }
 
     protected GraalProviderObjectReplacements(SubstrateMetaAccess metaAccess, ConstantFieldProvider constantFieldProvider, ConstantReflectionProvider constantReflection) {

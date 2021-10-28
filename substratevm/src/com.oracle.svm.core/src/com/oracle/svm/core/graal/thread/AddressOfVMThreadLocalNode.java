@@ -42,7 +42,7 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class AddressOfVMThreadLocalNode extends FloatingNode implements Lowerable {
+public class AddressOfVMThreadLocalNode extends FloatingNode implements VMThreadLocalAccess, Lowerable {
     public static final NodeClass<AddressOfVMThreadLocalNode> TYPE = NodeClass.create(AddressOfVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;

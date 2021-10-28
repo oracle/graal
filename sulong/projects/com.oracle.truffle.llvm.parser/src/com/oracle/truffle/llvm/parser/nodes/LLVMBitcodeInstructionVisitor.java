@@ -29,14 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Objects;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
@@ -66,11 +58,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchange
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgNoaliasScopeDeclInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FreezeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -120,6 +114,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAssume;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -134,6 +129,15 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Objects;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -419,6 +423,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        if (call.getOperandBundle() != null && !(result instanceof LLVMAssume)) {
+            throw new LLVMParserException("Unsupported operand bundle on call of " + target.toString());
+        }
+
         SourceInstrumentationStrategy intent = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -570,6 +578,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     @Override
+    public void visit(DbgNoaliasScopeDeclInstruction inst) {
+        // ignore
+    }
+
+    @Override
     public void visit(DebugTrapInstruction inst) {
         addStatement(CommonNodeFactory.createDebugTrap(), inst, SourceInstrumentationStrategy.FORCED);
     }
@@ -602,6 +615,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        if (call.getOperandBundle() != null && !(result instanceof LLVMAssume)) {
+            throw new LLVMParserException("Unsupported operand bundle on call of " + target.toString());
+        }
+
         SourceInstrumentationStrategy intent = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
@@ -634,6 +651,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
         final SymbolImpl target = call.getCallTarget();
+
+        if (call.getOperandBundle() != null) {
+            throw new LLVMParserException("Unsupported operand bundle on invoke of " + target.toString());
+        }
+
         if (targetType instanceof StructureType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion, frame);
@@ -683,6 +705,10 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(VoidInvokeInstruction call) {
         final SymbolImpl target = call.getCallTarget();
+
+        if (call.getOperandBundle() != null) {
+            throw new LLVMParserException("Unsupported operand bundle on invoke of " + target.toString());
+        }
 
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
@@ -794,31 +820,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
         final LLVMExpressionNode baseAddress = resolveOptimized(extract.getAggregate());
         final Type baseType = extract.getAggregate().getType();
-        final int targetIndex = extract.getIndex();
+        final Collection<Long> targetIndices = extract.getIndices();
         final Type resultType = extract.getType();
 
-        LLVMExpressionNode targetAddress = baseAddress;
-
-        final AggregateType aggregateType = (AggregateType) baseType;
-
-        LLVMExpressionNode result;
-        try {
-            long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
-
-            final Type targetType = aggregateType.getElementType(targetIndex);
-            if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-                offset = Type.addUnsignedExact(offset, Type.getPadding(offset, targetType, dataLayout));
-            }
-
-            if (offset != 0) {
-                final LLVMExpressionNode oneLiteralNode = CommonNodeFactory.createLiteral(1, PrimitiveType.I32);
-                targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
-            }
-
-            result = nodeFactory.createExtractValue(resultType, targetAddress);
-        } catch (TypeOverflowException e) {
-            result = Type.handleOverflowExpression(e);
-        }
+        LLVMExpressionNode targetAddress = CommonNodeFactory.getTargetAddress(baseAddress, baseType, targetIndices, nodeFactory, dataLayout);
+        LLVMExpressionNode result = nodeFactory.createExtractValue(resultType, targetAddress);
         createFrameWrite(result, extract);
     }
 
@@ -999,6 +1005,12 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(FenceInstruction fence) {
         addStatement(nodeFactory.createFence(), fence);
+    }
+
+    @Override
+    public void visit(FreezeInstruction freeze) {
+        LLVMExpressionNode fromNode = resolveOptimized(freeze.getValue());
+        createFrameWrite(fromNode, freeze);
     }
 
     @Override

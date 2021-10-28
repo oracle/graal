@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,16 +51,14 @@ class AsmImmediateOperand implements AsmOperand {
 
     public String getLabel() {
         if (!isLabel()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("not a label!");
+            throw CompilerDirectives.shouldNotReachHere("not a label!");
         }
         return val;
     }
 
     public long getValue() {
         if (isLabel()) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("is a label!");
+            throw CompilerDirectives.shouldNotReachHere("is a label!");
         }
         return ival;
     }

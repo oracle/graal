@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,13 @@
 //JaCoCo Exclude
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -100,11 +98,6 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (elementType.isConstant()) {
-            if (GeneratePIC.getValue(tool.getOptions())) {
-                // Can't fold for AOT, because the resulting NewArrayNode will be missing its
-                // ResolveConstantNode for the array class.
-                return this;
-            }
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(elementType.asConstant());
             if (type != null && !throwsIllegalArgumentException(type) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type.getArrayClass())) {
                 return createNewArrayNode(type);

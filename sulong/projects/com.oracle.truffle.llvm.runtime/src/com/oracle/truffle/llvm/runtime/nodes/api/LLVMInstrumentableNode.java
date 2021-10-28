@@ -32,20 +32,21 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -141,7 +142,8 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @ExportMessage
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @CachedLibrary("this") NodeLibrary self) {
+        LLVMContext ctx = LLVMContext.get(self);
         if (isLLDebugEnabled(ctx)) {
             return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
         } else {
@@ -156,12 +158,19 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     @ExportMessage
     public Object getRootInstance(Frame frame,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                    @Cached LLVMPointerDataEscapeNode dataEscapeNode) throws UnsupportedMessageException {
+                    @CachedLibrary("this") NodeLibrary self,
+                    @Cached LLVMPointerDataEscapeNode dataEscapeNode,
+                    @Cached BranchProfile exception) throws UnsupportedMessageException {
         if (hasRootInstance(frame)) {
-            LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction());
-            return dataEscapeNode.executeWithTarget(pointer);
+            LLVMContext ctx = LLVMContext.get(self);
+            try {
+                LLVMPointer pointer = ctx.getSymbol(((LLVMFunctionStartNode) this.getRootNode()).getRootFunction(), exception);
+                return dataEscapeNode.executeWithTarget(pointer);
+            } catch (LLVMIllegalSymbolIndexException ex) {
+                // fallthrough
+            }
         }
+        exception.enter();
         throw UnsupportedMessageException.create();
     }
 }

@@ -32,11 +32,20 @@ SUNWprivate_1.1 {
                 getJavaVM;
                 mokapotAttachThread;
                 mokapotGetRTLD_DEFAULT;
+                mokapotGetProcessHandle;
                 getPackageAt;
 
                 # Espresso management native API
                 initializeManagementContext;
                 disposeManagementContext;
+                
+                # Espresso jvmti native API
+                initializeJvmtiContext;
+                disposeJvmtiContext;
+                
+                # Structs initialization
+                initializeStructs;
+                lookupMemberOffset;
 
                 # JNI
                 JNI_CreateJavaVM;
@@ -290,6 +299,31 @@ SUNWprivate_1.1 {
                 JVM_MoreStackWalk;
                 JVM_SetBootLoaderUnnamedModule;
                 JVM_WaitForReferencePendingList;
+                
+                # JDK 16
+                JVM_DefineArchivedModules;
+                JVM_GetExtendedNPEMessage;
+                JVM_GetPermittedSubclasses;
+                JVM_GetProperties;
+                JVM_GetRandomSeedForDumping;
+                JVM_GetRecordComponents;
+                JVM_IsCDSDumpingEnabled;
+                JVM_IsDumpingClassList;
+                JVM_IsHiddenClass;
+                JVM_IsRecord;
+                JVM_IsSharingEnabled;
+                JVM_IsUseContainerSupport;
+                JVM_LogLambdaFormInvoker;
+                JVM_LookupDefineClass;
+                JVM_LookupLambdaProxyClassFromArchive;
+                JVM_PhantomReferenceRefersTo;
+                JVM_ReferenceClear;
+                JVM_ReferenceRefersTo;
+                JVM_RegisterLambdaProxyClassForArchiving;
+
+                # JDK 17
+                JVM_DumpClassListToFile;
+                JVM_DumpDynamicArchive;
 
                 # miscellaneous functions
                 jio_fprintf;

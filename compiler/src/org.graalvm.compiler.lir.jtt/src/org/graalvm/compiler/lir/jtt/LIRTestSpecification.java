@@ -26,14 +26,23 @@ package org.graalvm.compiler.lir.jtt;
 
 import java.util.HashMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.Value;
 
 public abstract class LIRTestSpecification {
     private Value result;
     private final HashMap<String, Value> output = new HashMap<>();
+
+    /**
+     * Contains a mapping from LIR values to the LIRTestNode input graph nodes the values originated
+     * from. Such a mapping can be useful if the specification needs to correlate LIR values with
+     * graph nodes, but the correlation is not directly possible.
+     */
+    protected EconomicMap<Value, ValueNode> valueMap = EconomicMap.create();
 
     public void generate(LIRGeneratorTool gen) {
         defaultHandler(gen);
@@ -96,5 +105,17 @@ public abstract class LIRTestSpecification {
 
     public Value getResult() {
         return result;
+    }
+
+    /**
+     * Add a value to node mapping. That is, {@code node} -> LIR generation -> {@code value}. The
+     * LIRTestSpecification might use such a mapping during verification to correlate LIR values
+     * with the nodes they originated from.
+     *
+     * @param value The LIR value result
+     * @param node The original graph node
+     */
+    public void addGeneratedValue(Value value, ValueNode node) {
+        this.valueMap.put(value, node);
     }
 }

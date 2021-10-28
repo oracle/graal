@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,10 @@
 package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
-import com.oracle.truffle.llvm.tests.Platform;
 import java.util.Set;
 import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class TypedExportTest extends InteropTestBase {
@@ -244,7 +242,6 @@ public class TypedExportTest extends InteropTestBase {
 
     @Test
     public void testAliasedPointer() {
-        Assume.assumeFalse("Skipping AArch64 failing test", Platform.isAArch64());
         Value nested = allocNested.execute();
         try {
             Value pointArray = nested.getMember("pointArray");

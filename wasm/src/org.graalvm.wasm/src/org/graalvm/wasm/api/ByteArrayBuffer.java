@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,14 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 public class ByteArrayBuffer implements TruffleObject {
@@ -97,22 +97,19 @@ public class ByteArrayBuffer implements TruffleObject {
 
     @SuppressWarnings({"unused"})
     @ExportMessage
-    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+    public Object readArrayElement(long index,
+                    @Cached BranchProfile errorBranch) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            transferToInterpreter();
+            errorBranch.enter();
             throw InvalidArrayIndexException.create(index);
         }
         return data[offset + (int) index];
     }
 
-    @TruffleBoundary
-    private static UnsupportedMessageException unsupported() {
-        return UnsupportedMessageException.create();
-    }
-
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
-        throw unsupported();
+    @TruffleBoundary
+    final void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

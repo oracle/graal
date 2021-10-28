@@ -30,12 +30,14 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -45,7 +47,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -184,60 +185,39 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      * need to use the original to name the owning type to ensure that names found in method param
      * and return types resolve correctly.
      */
-    protected static ResolvedJavaType getJavaType(HostedType hostedType, boolean wantOriginal) {
-        ResolvedJavaType javaType;
+    protected static ResolvedJavaType getDeclaringClass(HostedType hostedType, boolean wantOriginal) {
+        // unwrap to the underlying class eihter the original or target class
         if (wantOriginal) {
-            /* Check for wholesale replacement of the original class. */
-            javaType = hostedType.getWrapped().getWrappedWithoutResolve();
-            ResolvedJavaType originalType = getOriginal(javaType);
-            return (originalType != null ? originalType : javaType);
+            return getOriginal(hostedType);
         }
+        // we want any substituted target if there is one. directly unwrapping will
+        // do what we want.
         return hostedType.getWrapped().getWrapped();
     }
 
-    protected static ResolvedJavaType getJavaType(HostedMethod hostedMethod, boolean wantOriginal) {
+    protected static ResolvedJavaType getDeclaringClass(HostedMethod hostedMethod, boolean wantOriginal) {
         if (wantOriginal) {
-            /* Check for wholesale replacement of the original class. */
-            HostedType hostedType = hostedMethod.getDeclaringClass();
-            ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
-            ResolvedJavaType originalType = getOriginal(javaType);
-            if (originalType != null) {
-                return originalType;
-            }
-            /* Check for replacement of the original method only. */
-            ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
-            if (javaMethod instanceof SubstitutionMethod) {
-                return ((SubstitutionMethod) javaMethod).getOriginal().getDeclaringClass();
-            } else if (javaMethod instanceof CustomSubstitutionMethod) {
-                return ((CustomSubstitutionMethod) javaMethod).getOriginal().getDeclaringClass();
-            }
-            return hostedType.getWrapped().getWrapped();
+            return getOriginal(hostedMethod.getDeclaringClass());
         }
+        // we want a substituted target if there is one. if there is a substitution at the end of
+        // the method chain fetch the annotated target class
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        if (javaMethod instanceof SubstitutionMethod) {
+            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
+            return substitutionMethod.getAnnotated().getDeclaringClass();
+        }
         return javaMethod.getDeclaringClass();
     }
 
-    protected static ResolvedJavaType getJavaType(HostedField hostedField, boolean wantOriginal) {
-        if (wantOriginal) {
-            /* Check for wholesale replacement of the original class. */
-            HostedType hostedType = hostedField.getDeclaringClass();
-            ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
-            ResolvedJavaType originalType = getOriginal(javaType);
-            if (originalType != null) {
-                return originalType;
-            }
-            /* Check for replacement of the original field only. */
-            ResolvedJavaField javaField = hostedField.wrapped.wrapped;
-            if (javaField instanceof SubstitutionField) {
-                return ((SubstitutionField) javaField).getOriginal().getDeclaringClass();
-            }
-            return hostedType.getWrapped().getWrapped();
-        }
-        ResolvedJavaField javaField = hostedField.wrapped.wrapped;
-        return javaField.getDeclaringClass();
+    @SuppressWarnings("unused")
+    protected static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
+        /* for now fields are always reported as belonging to the original class */
+        return getOriginal(hostedField.getDeclaringClass());
     }
 
-    private static ResolvedJavaType getOriginal(ResolvedJavaType javaType) {
+    private static ResolvedJavaType getOriginal(HostedType hostedType) {
+        /* partially unwrap then traverse through substitutions to the original */
+        ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
@@ -247,7 +227,24 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         } else if (javaType instanceof InjectedFieldsType) {
             return ((InjectedFieldsType) javaType).getOriginal();
         }
-        return null;
+        return javaType;
+    }
+
+    private static int getOriginalModifiers(HostedMethod hostedMethod) {
+        ResolvedJavaMethod targetMethod = hostedMethod.getWrapped().getWrapped();
+        if (targetMethod instanceof SubstitutionMethod) {
+            targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
+        } else if (targetMethod instanceof CustomSubstitutionMethod) {
+            targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
+        }
+        return targetMethod.getModifiers();
+    }
+
+    private static String toJavaName(JavaType javaType) {
+        if (javaType instanceof HostedType) {
+            return getDeclaringClass((HostedType) javaType, true).toJavaName();
+        }
+        return javaType.toJavaName();
     }
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
@@ -257,7 +254,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedType hostedType) {
-            ResolvedJavaType javaType = getJavaType(hostedType, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedType, false);
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
@@ -269,7 +266,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedMethod hostedMethod) {
-            ResolvedJavaType javaType = getJavaType(hostedMethod, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedMethod, false);
             HostedType hostedType = hostedMethod.getDeclaringClass();
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
@@ -282,7 +279,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedField hostedField) {
-            ResolvedJavaType javaType = getJavaType(hostedField, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedField, false);
             HostedType hostedType = hostedField.getDeclaringClass();
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
@@ -338,7 +335,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public String toJavaName(@SuppressWarnings("hiding") HostedType hostedType) {
-            return getJavaType(hostedType, true).toJavaName();
+            return getDeclaringClass(hostedType, true).toJavaName();
         }
 
         @Override
@@ -378,7 +375,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName, valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -430,15 +427,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private class NativeImageDebugHeaderFieldInfo implements DebugFieldInfo {
         private final String name;
-        private final String ownerType;
         private final String valueType;
         private final int offset;
         private final int size;
         private final int modifiers;
 
-        NativeImageDebugHeaderFieldInfo(String name, String ownerType, String valueType, int offset, int size) {
+        NativeImageDebugHeaderFieldInfo(String name, String valueType, int offset, int size) {
             this.name = name;
-            this.ownerType = ownerType;
             this.valueType = valueType;
             this.offset = offset;
             this.size = size;
@@ -448,11 +443,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String name() {
             return name;
-        }
-
-        @Override
-        public String ownerType() {
-            return ownerType;
         }
 
         @Override
@@ -564,7 +554,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
              * lookup relative to the doubly unwrapped HostedType.
              */
             if (superClass != null) {
-                return getJavaType(superClass, true).toJavaName();
+                return getDeclaringClass(superClass, true).toJavaName();
             }
             return null;
         }
@@ -600,11 +590,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String ownerType() {
-                return typeName();
-            }
-
-            @Override
             public String valueType() {
                 HostedType valueType = field.getType();
                 return toJavaName(valueType);
@@ -634,7 +619,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
             @Override
             public int modifiers() {
-                return field.getModifiers();
+                ResolvedJavaField targetField = field.wrapped.wrapped;
+                if (targetField instanceof SubstitutionField) {
+                    targetField = ((SubstitutionField) targetField).getOriginal();
+                }
+                return targetField.getModifiers();
             }
 
             private boolean isStatic() {
@@ -658,7 +647,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             public String name() {
                 String name = hostedMethod.format("%n");
                 if ("<init>".equals(name)) {
-                    name = getJavaType(hostedMethod, true).toJavaName();
+                    name = getDeclaringClass(hostedMethod, true).toJavaName();
                     if (name.indexOf('.') >= 0) {
                         name = name.substring(name.lastIndexOf('.') + 1);
                     }
@@ -670,20 +659,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
-            public String ownerType() {
-                return typeName();
-            }
-
-            @Override
             public String valueType() {
                 return hostedMethod.getSignature().getReturnType(null).toJavaName();
             }
 
             @Override
             public List<String> paramTypes() {
-                LinkedList<String> paramTypes = new LinkedList<>();
                 Signature signature = hostedMethod.getSignature();
-                for (int i = 0; i < signature.getParameterCount(false); i++) {
+                int parameterCount = signature.getParameterCount(false);
+                List<String> paramTypes = new ArrayList<>(parameterCount);
+                for (int i = 0; i < parameterCount; i++) {
                     paramTypes.add(signature.getParameterType(i, null).toJavaName());
                 }
                 return paramTypes;
@@ -692,17 +677,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             @Override
             public List<String> paramNames() {
                 /* Can only provide blank names for now. */
-                LinkedList<String> paramNames = new LinkedList<>();
                 Signature signature = hostedMethod.getSignature();
-                for (int i = 0; i < signature.getParameterCount(false); i++) {
+                int parameterCount = signature.getParameterCount(false);
+                List<String> paramNames = new ArrayList<>(parameterCount);
+                for (int i = 0; i < parameterCount; i++) {
                     paramNames.add("");
                 }
                 return paramNames;
             }
 
             @Override
+            public String symbolNameForMethod() {
+                return NativeImage.localSymbolNameForMethod(hostedMethod);
+            }
+
+            @Override
+            public boolean isDeoptTarget() {
+                return hostedMethod.isDeoptTarget();
+            }
+
+            @Override
             public int modifiers() {
-                return hostedMethod.getModifiers();
+                return getOriginalModifiers(hostedMethod);
             }
         }
     }
@@ -737,7 +733,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         void addField(String name, String valueType, int offset, @SuppressWarnings("hiding") int size) {
-            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, typeName(), valueType, offset, size);
+            NativeImageDebugHeaderFieldInfo fieldinfo = new NativeImageDebugHeaderFieldInfo(name, valueType, offset, size);
             fieldInfos.add(fieldinfo);
         }
 
@@ -858,12 +854,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String className() {
-            return getJavaType(hostedMethod, true).toJavaName();
+        public ResolvedJavaType ownerType() {
+            return getDeclaringClass(hostedMethod, true);
         }
 
         @Override
-        public String methodName() {
+        public String name() {
             ResolvedJavaMethod targetMethod = hostedMethod.getWrapped().getWrapped();
             if (targetMethod instanceof SubstitutionMethod) {
                 targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
@@ -872,7 +868,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             String name = targetMethod.getName();
             if (name.equals("<init>")) {
-                name = getJavaType(hostedMethod, true).toJavaName();
+                name = getDeclaringClass(hostedMethod, true).toJavaName();
                 if (name.indexOf('.') >= 0) {
                     name = name.substring(name.lastIndexOf('.') + 1);
                 }
@@ -885,16 +881,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String symbolNameForMethod() {
-            return NativeBootImage.localSymbolNameForMethod(hostedMethod);
+            return NativeImage.localSymbolNameForMethod(hostedMethod);
         }
 
         @Override
-        public String paramSignature() {
-            return hostedMethod.format("%P");
-        }
-
-        @Override
-        public String returnTypeName() {
+        public String valueType() {
             return hostedMethod.format("%R");
         }
 
@@ -958,25 +949,55 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public boolean isDeoptTarget() {
-            return methodName().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+            return hostedMethod.isDeoptTarget();
         }
 
         @Override
-        public int getModifiers() {
-            return hostedMethod.getModifiers();
+        public List<String> paramTypes() {
+            Signature signature = hostedMethod.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramTypes = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                JavaType parameterType = signature.getParameterType(i, null);
+                paramTypes.add(toJavaName(parameterType));
+            }
+            return paramTypes;
+        }
+
+        @Override
+        public List<String> paramNames() {
+            /* Can only provide blank names for now. */
+            Signature signature = hostedMethod.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramNames = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                paramNames.add("");
+            }
+            return paramNames;
+        }
+
+        @Override
+        public int modifiers() {
+            return getOriginalModifiers(hostedMethod);
         }
     }
 
     private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
-        if (!SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue()) {
-            return true;
+        NodeSourcePosition sourcePosition = sourceMapping.getSourcePosition();
+        /* Don't report line info for zero length ranges. */
+        if (sourceMapping.getStartOffset() == sourceMapping.getEndOffset()) {
+            return false;
         }
-        return sourceMapping.getSourcePosition().getCaller() == null;
+        /* Don't report inline line info unless the user has configured it. */
+        if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue() && sourcePosition.getCaller() != null) {
+            return false;
+        }
+        return true;
     }
 
     /**
-     * Implementation of the DebugLineInfo API interface that allows line number info to be passed
-     * to an ObjectFile when generation of debug info is enabled.
+     * Implementation of the DebugLineInfo API interface that allows line number info (and more) to
+     * be passed to an ObjectFile when generation of debug info is enabled.
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
@@ -985,15 +1006,32 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private final int hi;
         private Path cachePath;
         private Path fullFilePath;
+        private DebugLineInfo callersLineInfo;
 
         NativeImageDebugLineInfo(SourceMapping sourceMapping) {
-            NodeSourcePosition position = sourceMapping.getSourcePosition();
-            int posbci = position.getBCI();
-            this.bci = (posbci >= 0 ? posbci : 0);
+            this(sourceMapping.getSourcePosition(), sourceMapping.getStartOffset(), sourceMapping.getEndOffset());
+        }
+
+        NativeImageDebugLineInfo(DebugLineInfo lineInfo, NodeSourcePosition position) {
+            this(position, lineInfo.addressLo(), lineInfo.addressHi());
+        }
+
+        NativeImageDebugLineInfo(NodeSourcePosition position, int lo, int hi) {
+            this.bci = position.getBCI();
             this.method = position.getMethod();
-            this.lo = sourceMapping.getStartOffset();
-            this.hi = sourceMapping.getEndOffset();
+            this.lo = lo;
+            this.hi = hi;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
+            NodeSourcePosition callerPosition = position.getCaller();
+            /* Skip substitutions with bytecode index -1 */
+            while (callerPosition != null && callerPosition.isSubstitution() && callerPosition.getBCI() == -1) {
+                callerPosition = callerPosition.getCaller();
+            }
+            if (callerPosition != null) {
+                callersLineInfo = new NativeImageDebugLineInfo(this, callerPosition);
+            } else {
+                callersLineInfo = null;
+            }
             computeFullFilePath();
         }
 
@@ -1022,12 +1060,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String className() {
-            return method.format("%H");
+        public ResolvedJavaType ownerType() {
+            if (method instanceof HostedMethod) {
+                return getDeclaringClass((HostedMethod) method, true);
+            }
+            return method.getDeclaringClass();
         }
 
         @Override
-        public String methodName() {
+        public String name() {
             ResolvedJavaMethod targetMethod = method;
             while (targetMethod instanceof WrappedJavaMethod) {
                 targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
@@ -1040,7 +1081,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             String name = targetMethod.getName();
             if (name.equals("<init>")) {
                 if (method instanceof HostedMethod) {
-                    name = getJavaType((HostedMethod) method, true).toJavaName();
+                    name = getDeclaringClass((HostedMethod) method, true).toJavaName();
                     if (name.indexOf('.') >= 0) {
                         name = name.substring(name.lastIndexOf('.') + 1);
                     }
@@ -1058,8 +1099,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public String valueType() {
+            return method.format("%R");
+        }
+
+        @Override
         public String symbolNameForMethod() {
-            return NativeBootImage.localSymbolNameForMethod(method);
+            return NativeImage.localSymbolNameForMethod(method);
+        }
+
+        @Override
+        public boolean isDeoptTarget() {
+            if (method instanceof HostedMethod) {
+                return ((HostedMethod) method).isDeoptTarget();
+            }
+            return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
         }
 
         @Override
@@ -1075,29 +1129,58 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int line() {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
-            if (lineNumberTable != null) {
+            if (lineNumberTable != null && bci >= 0) {
                 return lineNumberTable.getLineNumber(bci);
             }
             return -1;
         }
 
+        @Override
+        public List<String> paramTypes() {
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramTypes = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                JavaType parameterType = signature.getParameterType(i, null);
+                paramTypes.add(toJavaName(parameterType));
+            }
+            return paramTypes;
+        }
+
+        @Override
+        public List<String> paramNames() {
+            /* Can only provide blank names for now. */
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            List<String> paramNames = new ArrayList<>(parameterCount);
+            for (int i = 0; i < parameterCount; i++) {
+                paramNames.add("");
+            }
+            return paramNames;
+        }
+
+        @Override
+        public int modifiers() {
+            return method.getModifiers();
+        }
+
+        @Override
+        public DebugLineInfo getCaller() {
+            return callersLineInfo;
+        }
+
         @SuppressWarnings("try")
         private void computeFullFilePath() {
-            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            ResolvedJavaType declaringClass;
+            // if we have a HostedMethod then deal with substitutions
+            if (method instanceof HostedMethod) {
+                declaringClass = getDeclaringClass((HostedMethod) method, false);
+            } else {
+                declaringClass = method.getDeclaringClass();
+            }
             Class<?> clazz = null;
             if (declaringClass instanceof OriginalClassProvider) {
                 clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
-            }
-            /*
-             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so for consistency we need to do the path
-             * lookup relative to the doubly unwrapped HostedType or singly unwrapped AnalysisType.
-             */
-            if (declaringClass instanceof HostedType) {
-                declaringClass = ((HostedType) declaringClass).getWrapped();
-            }
-            if (declaringClass instanceof AnalysisType) {
-                declaringClass = ((AnalysisType) declaringClass).getWrapped();
             }
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {

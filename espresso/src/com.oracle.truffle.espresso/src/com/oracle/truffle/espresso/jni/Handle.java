@@ -22,15 +22,14 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import static java.lang.annotation.ElementType.TYPE_USE;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Marker for parameters and return types to hint the primitive is a handle.
@@ -50,8 +49,8 @@ import java.lang.annotation.Target;
  * </pre>
  * </p>
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE_USE})
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.TYPE_USE)
 public @interface Handle {
     /**
      * Class of the object referenced by the handle. Expected types are {@link Field},

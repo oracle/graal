@@ -2,6 +2,21 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 22.0.0
+
+* Added new `ASCII` encoding that callers can use when compiling a regex to limit the range of code point matches to [0x00, 0x7f].
+* Updated Unicode data (case-folding, character properties) to version 14 of the Unicode standard.
+
+## Version 21.3.0
+
+* Support for case-insensitive matching in Ruby regular expressions.
+* Added Regexp option IgnoreAtomicGroups for treating atomic groups as ordinary groups.
+* Compiled regular expressions export the `isBacktracking` boolean member, which can be used to determine if the regexp can backtrack and potentially lead to exponential runtime.
+
+## Version 21.2.0
+
+* Added support for the `hasIndices` (`d`) flag in ECMAScript regular expressions.
+
 ## Version 20.2.0
 
 * Introduced on-the-fly decoding for UTF-16 strings.

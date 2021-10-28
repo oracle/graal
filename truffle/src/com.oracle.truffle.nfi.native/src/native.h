@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,9 @@
 #ifndef __TRUFFLE_NATIVE_H
 #define __TRUFFLE_NATIVE_H
 
-#include "com_oracle_truffle_nfi_impl_NativeAllocation.h"
-#include "com_oracle_truffle_nfi_impl_NFIContext.h"
-#include "com_oracle_truffle_nfi_impl_ClosureNativePointer.h"
-#include "com_oracle_truffle_nfi_impl_NativeString.h"
+#include "com_oracle_truffle_nfi_backend_libffi_NativeAllocation.h"
+#include "com_oracle_truffle_nfi_backend_libffi_LibFFIContext.h"
+#include "com_oracle_truffle_nfi_backend_libffi_ClosureNativePointer.h"
+#include "com_oracle_truffle_nfi_backend_libffi_NativeString.h"
 
 #endif

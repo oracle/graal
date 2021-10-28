@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.filereader;
+
+import java.nio.charset.Charset;
 
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -123,5 +125,10 @@ public class ObjectFileReader {
         for (int writeIdx = 0; writeIdx < length; writeIdx++) {
             compressedData[writeIdx] = getByte();
         }
+    }
+
+    public String getString(int start, int end, Charset charset) {
+        byte[] array = byteSequence.subSequence(start, end).toByteArray();
+        return new String(array, charset);
     }
 }

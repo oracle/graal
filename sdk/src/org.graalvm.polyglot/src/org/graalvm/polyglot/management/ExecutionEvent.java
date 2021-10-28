@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,8 @@ import java.util.List;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import static org.graalvm.polyglot.management.Management.IMPL;
+
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 
 /**
  * An execution event object passed to an execution listener consumer. Execution event instances
@@ -57,10 +58,12 @@ import static org.graalvm.polyglot.management.Management.IMPL;
  */
 public final class ExecutionEvent {
 
-    private final Object impl;
+    final AbstractManagementDispatch dispatch;
+    final Object receiver;
 
-    ExecutionEvent(Object impl) {
-        this.impl = impl;
+    ExecutionEvent(AbstractManagementDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
     }
 
     /**
@@ -70,7 +73,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public SourceSection getLocation() {
-        return IMPL.getExecutionEventLocation(impl);
+        return dispatch.getExecutionEventLocation(receiver);
     }
 
     /**
@@ -81,7 +84,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public String getRootName() {
-        return IMPL.getExecutionEventRootName(impl);
+        return dispatch.getExecutionEventRootName(receiver);
     }
 
     /**
@@ -97,7 +100,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public List<Value> getInputValues() {
-        return IMPL.getExecutionEventInputValues(impl);
+        return dispatch.getExecutionEventInputValues(receiver);
     }
 
     /**
@@ -111,7 +114,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public Value getReturnValue() {
-        return IMPL.getExecutionEventReturnValue(impl);
+        return dispatch.getExecutionEventReturnValue(receiver);
     }
 
     /**
@@ -125,7 +128,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public PolyglotException getException() {
-        return IMPL.getExecutionEventException(impl);
+        return dispatch.getExecutionEventException(receiver);
     }
 
     /**
@@ -136,7 +139,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isExpression() {
-        return IMPL.isExecutionEventExpression(impl);
+        return dispatch.isExecutionEventExpression(receiver);
     }
 
     /**
@@ -147,7 +150,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isStatement() {
-        return IMPL.isExecutionEventStatement(impl);
+        return dispatch.isExecutionEventStatement(receiver);
     }
 
     /**
@@ -158,7 +161,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public boolean isRoot() {
-        return IMPL.isExecutionEventRoot(impl);
+        return dispatch.isExecutionEventRoot(receiver);
     }
 
     /**

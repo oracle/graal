@@ -32,12 +32,14 @@ import java.lang.annotation.Target;
 /**
  * In a {@link Substitute substituted} type, keep the original definition of this method. The
  * default behavior is that all non-substituted methods are implicitly treated as {@link Delete
- * deleted}.
+ * deleted}. Unless this annotation is applied to the {@link Substitute substituted} type itself,
+ * then the original definition of all methods and fields in the target type are kept by default.
  * <p>
  * The element can also be annotated with {@link TargetElement} to specify additional properties.
  * See {@link TargetClass} for an overview of the annotation system.
+ * </p>
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.TYPE})
 public @interface KeepOriginal {
 }

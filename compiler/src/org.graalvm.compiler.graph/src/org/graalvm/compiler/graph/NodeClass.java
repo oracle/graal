@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,9 +60,10 @@ import org.graalvm.compiler.graph.Node.Input;
 import org.graalvm.compiler.graph.Node.OptionalInput;
 import org.graalvm.compiler.graph.Node.Successor;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.graph.spi.BinaryCommutativeMarker;
+import org.graalvm.compiler.graph.spi.CanonicalizableMarker;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
+import org.graalvm.compiler.graph.spi.SimplifiableMarker;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -159,21 +160,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private static final CounterKey ITERABLE_NODE_TYPES = DebugContext.counter("IterableNodeTypes");
 
-    /**
-     * Determines if this node type implements {@link Canonicalizable}.
-     */
     private final boolean isCanonicalizable;
-
-    /**
-     * Determines if this node type implements {@link BinaryCommutative}.
-     */
     private final boolean isCommutative;
-
-    /**
-     * Determines if this node type implements {@link Simplifiable}.
-     */
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
+    private final boolean isNodeWithIdentity;
 
     private final int leafId;
 
@@ -188,13 +179,10 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.superNodeClass = superNodeClass;
         assert NODE_CLASS.isAssignableFrom(clazz);
 
-        this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
-        this.isCommutative = BinaryCommutative.class.isAssignableFrom(clazz);
-        if (Canonicalizable.Unary.class.isAssignableFrom(clazz) || Canonicalizable.Binary.class.isAssignableFrom(clazz)) {
-            assert Canonicalizable.Unary.class.isAssignableFrom(clazz) ^ Canonicalizable.Binary.class.isAssignableFrom(clazz) : clazz + " should implement either Unary or Binary, not both";
-        }
-
-        this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
+        this.isCanonicalizable = CanonicalizableMarker.class.isAssignableFrom(clazz);
+        this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
+        this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
+        this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -234,6 +222,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         try (DebugCloseable t1 = Init_AllowedUsages.start(debug)) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
+            GraalError.guarantee(!allowedUsageTypes.contains(InputType.Memory) || MemoryKillMarker.class.isAssignableFrom(clazz),
+                            "Node of type %s with allowedUsageType of memory must inherit from MemoryKill", clazz);
         }
 
         if (presetIterableIds != null) {
@@ -392,21 +382,21 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     /**
-     * Determines if this node type implements {@link Canonicalizable}.
+     * Determines if this node type is {@link CanonicalizableMarker canonicalizable}.
      */
     public boolean isCanonicalizable() {
         return isCanonicalizable;
     }
 
     /**
-     * Determines if this node type implements {@link BinaryCommutative}.
+     * Determines if this node type is {@link BinaryCommutativeMarker commutative}.
      */
     public boolean isCommutative() {
         return isCommutative;
     }
 
     /**
-     * Determines if this node type implements {@link Simplifiable}.
+     * Determines if this node type is {@link SimplifiableMarker simplifiable}.
      */
     public boolean isSimplifiable() {
         return isSimplifiable;
@@ -515,6 +505,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else {
                         inputType = optionalInputAnnotation.value();
                     }
+                    GraalError.guarantee(inputType != InputType.Memory || MemoryKillMarker.class.isAssignableFrom(type) || NodeInputList.class.isAssignableFrom(type),
+                                    "field type of input annotated with Memory must inherit from MemoryKill: %s", field);
                     inputs.add(new InputInfo(offset, field.getName(), type, field.getDeclaringClass(), inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
                 } else if (successorAnnotation != null) {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
@@ -672,6 +664,16 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public boolean dataEquals(Node a, Node b) {
         assert a.getClass() == b.getClass();
+        if (a == b) {
+            return true;
+        } else if (isNodeWithIdentity) {
+            /*
+             * The node class is manually marked by the user as having identity. Two such nodes are
+             * never "value equal" regardless of their data fields.
+             */
+            return false;
+        }
+
         for (int i = 0; i < data.getCount(); ++i) {
             Class<?> type = data.getType(i);
             if (type.isPrimitive()) {
@@ -1252,14 +1254,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void applySuccessors(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.successorIteration);
+        applyEdges(node, consumer, this.successorIteration, successors);
     }
 
     public void applyInputs(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.inputsIteration);
+        applyEdges(node, consumer, this.inputsIteration, inputs);
     }
 
-    private static void applyEdges(Node node, EdgeVisitor consumer, long mask) {
+    private static void applyEdges(Node node, EdgeVisitor consumer, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
@@ -1268,13 +1271,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 if (curNode != null) {
                     Node newNode = consumer.apply(node, curNode);
                     if (newNode != curNode) {
-                        Edges.putNodeUnsafe(node, offset, newNode);
+                        edges.putNodeUnsafeChecked(node, offset, newNode, index);
                     }
                 }
             } else {
                 applyHelper(node, consumer, offset);
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
     }
 
@@ -1353,22 +1357,41 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
     }
 
+    /**
+     * Finds the first {@link Input} or {@link OptionalInput} in {@code node} whose value
+     * {@code == key} and replaces it with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.inputsIteration);
+        assert node.getNodeClass() == this;
+        return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
     }
 
+    /**
+     * Finds the first {@link Successor} in {@code node} whose value is {@code key} and replaces it
+     * with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.successorIteration);
+        assert node.getNodeClass() == this;
+        return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
     }
 
-    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask) {
+    private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
                 Object curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode == key) {
-                    Edges.putNodeUnsafe(node, offset, replacement);
+                    edges.putNodeUnsafeChecked(node, offset, replacement, index);
                     return true;
                 }
             } else {
@@ -1378,11 +1401,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 }
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
         return false;
     }
 
-    public void registerAtInputsAsUsage(Node node) {
+    void registerAtInputsAsUsage(Node node) {
         long myMask = this.inputsIteration;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);

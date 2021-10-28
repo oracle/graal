@@ -24,14 +24,12 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -76,9 +74,6 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
         if (object.isConstant()) {
             assert object.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
             JavaConstant c = (JavaConstant) object.asConstant();
-            if (ImmutableCode.getValue(tool.getOptions())) {
-                return this;
-            }
 
             int identityHashCode;
             if (c.isNull()) {

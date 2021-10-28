@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,10 +44,12 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -59,25 +61,30 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
+import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
-import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -99,12 +106,12 @@ public class UniverseBuilder {
     private final AnalysisMetaAccess aMetaAccess;
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
-    private StaticAnalysisResultsBuilder staticAnalysisResultsBuilder;
+    private AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder;
     private final UnsupportedFeatures unsupportedFeatures;
     private TypeCheckBuilder typeCheckBuilder;
 
     public UniverseBuilder(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                    StaticAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
+                    AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
         this.aUniverse = aUniverse;
         this.aMetaAccess = aMetaAccess;
         this.hUniverse = hUniverse;
@@ -147,9 +154,6 @@ public class UniverseBuilder {
                 makeMethod(aMethod);
             }
 
-            BigBang bb = staticAnalysisResultsBuilder.getBigBang();
-            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
-
             Collection<HostedType> allTypes = hUniverse.types.values();
             HostedType objectType = hUniverse.objectType();
             HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
@@ -159,7 +163,9 @@ public class UniverseBuilder {
             typeCheckBuilder.calculateIDs();
 
             collectDeclaredMethods();
-            collectMonitorFieldInfo(bb);
+            collectMonitorFieldInfo(staticAnalysisResultsBuilder.getBigBang());
+
+            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
             layoutInstanceFields();
             layoutStaticFields();
@@ -285,7 +291,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
+        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
         assert !hUniverse.methods.containsKey(aMethod);
         hUniverse.methods.put(aMethod, sMethod);
 
@@ -345,7 +351,7 @@ public class UniverseBuilder {
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
         hUniverse.methods.entrySet().parallelStream()
-                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeResults(entry.getKey()));
+                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(entry.getKey()));
 
         staticAnalysisResultsBuilder = null;
     }
@@ -361,8 +367,22 @@ public class UniverseBuilder {
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class,
+                    FunctionPointerHolder.class,
                     FillerObject.class));
+
+    static {
+        try {
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateMethodAccessorJDK11"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateConstructorAccessorJDK11"));
+            } else {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateMethodAccessorJDK8"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateConstructorAccessorJDK8"));
+            }
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -615,7 +635,8 @@ public class UniverseBuilder {
          * 1) Process java.lang.Object first because the methods defined there (equals, hashCode,
          * toString, clone) are in every vtable. We must not have filler slots before these methods.
          */
-        assignImplementations(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
+        HostedInstanceClass objectClass = hUniverse.getObjectClass();
+        assignImplementations(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
 
         /*
          * 2) Process interfaces. Interface methods have higher constraints on vtable slots because
@@ -647,12 +668,28 @@ public class UniverseBuilder {
          * 3) Process all implementation classes, starting with java.lang.Object and going
          * depth-first down the tree.
          */
-        buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
+        buildVTable(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
+
+        /*
+         * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
+         * stub that reports a fatal error.
+         */
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         for (HostedType type : hUniverse.getTypes()) {
+            if (type.isArray()) {
+                type.vtable = objectClass.vtable;
+            }
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
                 type.vtable = new HostedMethod[0];
+            }
+
+            HostedMethod[] vtableArray = type.vtable;
+            for (int i = 0; i < vtableArray.length; i++) {
+                if (vtableArray[i] == null) {
+                    vtableArray[i] = invalidVTableEntryHandler;
+                }
             }
         }
 
@@ -660,7 +697,7 @@ public class UniverseBuilder {
             /* Check that all vtable entries are the correctly resolved methods. */
             for (HostedType type : hUniverse.getTypes()) {
                 for (HostedMethod m : type.vtable) {
-                    assert m == null || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
+                    assert m == null || m.equals(invalidVTableEntryHandler) || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
                 }
             }
         }
@@ -685,7 +722,7 @@ public class UniverseBuilder {
         clazz.vtable = vtableArray;
 
         for (HostedType subClass : clazz.subTypes) {
-            if (!subClass.isInterface()) {
+            if (!subClass.isInterface() && !subClass.isArray()) {
                 buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
             }
         }
@@ -693,7 +730,7 @@ public class UniverseBuilder {
 
     private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
-            /* We only need to look at methods that the static analysis registred as invoked. */
+            /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
                 /*
                  * Methods with 1 implementations do not need a vtable because invokes can be done
@@ -737,7 +774,9 @@ public class UniverseBuilder {
         }
 
         for (HostedType subtype : type.subTypes) {
-            assignImplementations(subtype, method, slot, vtablesMap);
+            if (!subtype.isArray()) {
+                assignImplementations(subtype, method, slot, vtablesMap);
+            }
         }
     }
 
@@ -815,7 +854,9 @@ public class UniverseBuilder {
     private void collectUsedSlots(HostedType type, BitSet usedSlots, Map<HostedType, BitSet> usedSlotsMap) {
         usedSlots.or(usedSlotsMap.get(type));
         for (HostedType sub : type.subTypes) {
-            collectUsedSlots(sub, usedSlots, usedSlotsMap);
+            if (!sub.isArray()) {
+                collectUsedSlots(sub, usedSlots, usedSlotsMap);
+            }
         }
     }
 
@@ -824,7 +865,9 @@ public class UniverseBuilder {
 
         usedSlotsMap.get(type).set(resultSlot);
         for (HostedType sub : type.subTypes) {
-            markSlotAsUsed(resultSlot, sub, vtablesMap, usedSlotsMap);
+            if (!sub.isArray()) {
+                markSlotAsUsed(resultSlot, sub, vtablesMap, usedSlotsMap);
+            }
         }
     }
 
@@ -854,6 +897,8 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                } else if (instanceClass.getJavaClass().equals(StoredContinuation.class)) {
+                    layoutHelper = LayoutEncoding.forStoredContinuation();
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -880,14 +925,19 @@ public class UniverseBuilder {
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[idx] = MethodPointer.factory(type.vtable[idx]);
+                vtable[idx] = new MethodPointer(type.vtable[idx]);
             }
 
             // pointer maps in Dynamic Hub
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            long referenceMapIndex;
+            if (referenceMap == SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP) {
+                referenceMapIndex = ReferenceMapIndex.STORED_CONTINUATION;
+            } else {
+                referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            }
 
             DynamicHub hub = type.getHub();
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
@@ -896,6 +946,10 @@ public class UniverseBuilder {
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
+        if (type.getJavaClass().equals(StoredContinuation.class)) {
+            return SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP;
+        }
+
         HostedField[] fields = type.getInstanceFields(true);
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
@@ -936,5 +990,15 @@ public class UniverseBuilder {
                 hField.setUnmaterializedStaticConstant();
             }
         }
+    }
+}
+
+@AutomaticFeature
+final class InvalidVTableEntryFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
     }
 }

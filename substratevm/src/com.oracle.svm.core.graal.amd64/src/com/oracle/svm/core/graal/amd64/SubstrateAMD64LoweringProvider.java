@@ -42,6 +42,7 @@ import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -79,4 +80,10 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
             super.lower(n, tool);
         }
     }
+
+    @Override
+    public boolean supportsRounding() {
+        return ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.SSE4_1);
+    }
+
 }

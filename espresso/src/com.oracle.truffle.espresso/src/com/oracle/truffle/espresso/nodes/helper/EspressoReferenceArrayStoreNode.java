@@ -28,32 +28,33 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOfFactory;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class EspressoReferenceArrayStoreNode extends Node {
-    @Child TypeCheckNode typeCheck;
+public final class EspressoReferenceArrayStoreNode extends Node {
+
+    @Child InstanceOf.Dynamic instanceOfDynamic;
     @CompilationFinal boolean noOutOfBoundEx = true;
     @CompilationFinal boolean noArrayStoreEx = true;
 
-    public EspressoReferenceArrayStoreNode(EspressoContext context) {
-        this.typeCheck = TypeCheckNodeGen.create(context);
+    public EspressoReferenceArrayStoreNode() {
+        this.instanceOfDynamic = InstanceOfFactory.DynamicNodeGen.create();
     }
 
-    public void arrayStore(StaticObject value, int index, StaticObject array) {
-        assert !array.isForeignObject();
-        assert array.isArray();
-        if (index >= 0 && index < array.length()) {
-            if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
-                array.putObjectUnsafe(value, index);
-            } else {
-                enterArrayStoreEx();
-                throw Meta.throwException(typeCheck.getMeta().java_lang_ArrayStoreException);
-            }
-        } else {
+    public void arrayStore(EspressoContext context, StaticObject value, int index, StaticObject array) {
+        if (Integer.compareUnsigned(index, array.length()) >= 0) {
             enterOutOfBound();
-            throw Meta.throwException(typeCheck.getMeta().java_lang_ArrayIndexOutOfBoundsException);
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
+        if (!StaticObject.isNull(value) && !instanceOfDynamic.execute(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
+            enterArrayStoreEx();
+            Meta meta = context.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayStoreException);
+        }
+        (array.<Object[]> unwrap())[index] = value;
     }
 
     private void enterOutOfBound() {

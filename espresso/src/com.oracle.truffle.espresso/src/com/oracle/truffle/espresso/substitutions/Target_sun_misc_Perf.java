@@ -66,11 +66,11 @@ public final class Target_sun_misc_Perf {
 
     @Substitution(hasReceiver = true)
     @SuppressWarnings("unused")
-    public static @Host(ByteBuffer.class) StaticObject createLong(@Host(typeName = "Lsun/misc/Perf;") StaticObject self,
-                    @SuppressWarnings("unused") @Host(String.class) StaticObject name, int variability, int units, long value,
-                    @InjectMeta Meta meta) {
+    public static @JavaType(ByteBuffer.class) StaticObject createLong(@JavaType(internalName = "Lsun/misc/Perf;") StaticObject self,
+                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject name, int variability, int units, long value,
+                    @Inject Meta meta) {
         if (units <= 0 || units > U_Last) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         // check that the PerfData name doesn't already exist
@@ -85,7 +85,7 @@ public final class Target_sun_misc_Perf {
             case V_Variable:
                 break;
             default:
-                throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(longToBytes(value), meta));

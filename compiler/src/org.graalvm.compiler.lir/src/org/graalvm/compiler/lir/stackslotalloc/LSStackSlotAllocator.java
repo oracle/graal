@@ -274,8 +274,8 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             if (virtualSlot instanceof VirtualStackSlotRange) {
                 // No reuse of ranges (yet).
                 VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
-                location = frameMapBuilder.getFrameMap().allocateStackSlots(slotRange.getSlots());
-                StackSlotAllocatorUtil.virtualFramesize.add(debug, frameMapBuilder.getFrameMap().spillSlotRangeSize(slotRange.getSlots()));
+                location = frameMapBuilder.getFrameMap().allocateStackMemory(slotRange.getSizeInBytes(), slotRange.getAlignmentInBytes());
+                StackSlotAllocatorUtil.virtualFramesize.add(debug, slotRange.getSizeInBytes());
                 StackSlotAllocatorUtil.allocatedSlots.increment(debug);
             } else {
                 assert virtualSlot instanceof SimpleVirtualStackSlot : "Unexpected VirtualStackSlot type: " + virtualSlot;
@@ -364,7 +364,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
 
         private int log2SpillSlotSize(ValueKind<?> kind) {
             int size = frameMapBuilder.getFrameMap().spillSlotSize(kind);
-            assert CodeUtil.isPowerOf2(size);
+            assert CodeUtil.isPowerOf2(size) : "kind: " + kind + ", size: " + size;
             return CodeUtil.log2(size);
         }
 
@@ -401,9 +401,14 @@ public final class LSStackSlotAllocator extends AllocationPhase {
          * Finishes {@code interval} by adding its location to the list of free stack slots.
          */
         private void finished(StackInterval interval) {
-            StackSlot location = interval.location();
-            debug.log("finished %s (freeing %s)", interval, location);
-            freeSlot(location);
+            if (interval.getOperand() instanceof VirtualStackSlotRange) {
+                /* Memory block with a non-standard size. Cannot re-use, so no need to free. */
+                debug.log("finished %s (not freeing VirtualStackSlotRange)", interval);
+            } else {
+                StackSlot location = interval.location();
+                debug.log("finished %s (freeing %s)", interval, location);
+                freeSlot(location);
+            }
         }
 
         // ====================

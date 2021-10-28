@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,12 +38,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 
 /**
  * Tests whether parsed libraries can be executed in arbitrary order.
  */
-@RunWith(TruffleRunner.class)
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class DelayedInitTest extends InteropTestBase {
 
     @Test

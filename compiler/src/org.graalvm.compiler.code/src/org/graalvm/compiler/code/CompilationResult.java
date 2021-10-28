@@ -37,10 +37,10 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.DebugInfo;
@@ -57,7 +57,6 @@ import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.code.site.Site;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -136,7 +135,7 @@ public class CompilationResult {
 
     /**
      * Describes a table of signed offsets embedded in the code. The offsets are relative to the
-     * starting address of the table. This type of table maybe generated when translating a
+     * starting address of the table. This type of table can be generated when translating a
      * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
      * JVM instruction).
      *
@@ -144,6 +143,31 @@ public class CompilationResult {
      * inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
+
+        /**
+         * Constants denoting the format and size of each entry in a jump table.
+         */
+        public enum EntryFormat {
+            /**
+             * Each entry is a 4 byte offset. The base of the offset is platform dependent.
+             */
+            OFFSET(4),
+
+            /**
+             * Each entry is a secondary key value followed by a 4 byte offset. The base of the
+             * offset is platform dependent.
+             */
+            KEY2_OFFSET(8);
+
+            EntryFormat(int size) {
+                this.size = size;
+            }
+
+            /**
+             * Gets the size of an entry in bytes.
+             */
+            public final int size;
+        }
 
         /**
          * The low value in the key range (inclusive).
@@ -158,13 +182,16 @@ public class CompilationResult {
         /**
          * The size (in bytes) of each table entry.
          */
-        public final int entrySize;
+        public final EntryFormat entryFormat;
 
-        public JumpTable(int position, int low, int high, int entrySize) {
+        public JumpTable(int position, int low, int high, EntryFormat entryFormat) {
             super(position);
+            if (high <= low) {
+                throw new IllegalArgumentException(String.format("low (%d) is not less than high(%d)", low, high));
+            }
             this.low = low;
             this.high = high;
-            this.entrySize = entrySize;
+            this.entryFormat = entryFormat;
         }
 
         @Override
@@ -174,7 +201,7 @@ public class CompilationResult {
             }
             if (obj instanceof JumpTable) {
                 JumpTable that = (JumpTable) obj;
-                if (this.getPosition() == that.getPosition() && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
+                if (this.getPosition() == that.getPosition() && this.entryFormat == that.entryFormat && this.low == that.low && this.high == that.high) {
                     return true;
                 }
             }
@@ -238,33 +265,17 @@ public class CompilationResult {
      */
     private SpeculationLog speculationLog;
 
-    /**
-     * The list of fields that were accessed from the bytecodes.
-     */
-    private ResolvedJavaField[] fields;
-
     private int bytecodeSize;
 
     private boolean hasUnsafeAccess;
 
-    private boolean isImmutablePIC;
-
     public CompilationResult(CompilationIdentifier compilationId) {
-        this(compilationId, null, false);
+        this(compilationId, null);
     }
 
     public CompilationResult(CompilationIdentifier compilationId, String name) {
-        this(compilationId, name, false);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, boolean isImmutablePIC) {
-        this(compilationId, null, isImmutablePIC);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, String name, boolean isImmutablePIC) {
         this.compilationId = compilationId;
         this.name = name;
-        this.isImmutablePIC = isImmutablePIC;
     }
 
     public CompilationResult(String name) {
@@ -405,31 +416,6 @@ public class CompilationResult {
         return speculationLog;
     }
 
-    /**
-     * Sets the fields that were referenced from the bytecodes that were used as input to the
-     * compilation.
-     *
-     * @param accessedFields the collected set of fields accessed during compilation
-     */
-    public void setFields(EconomicSet<ResolvedJavaField> accessedFields) {
-        if (accessedFields != null) {
-            fields = accessedFields.toArray(new ResolvedJavaField[accessedFields.size()]);
-        }
-    }
-
-    /**
-     * Gets the fields that were referenced from bytecodes that were used as input to the
-     * compilation.
-     *
-     * The caller must not modify the contents of the returned array.
-     *
-     * @return {@code null} if the compilation did not record fields dependencies otherwise the
-     *         fields that were accessed from bytecodes were used as input to the compilation.
-     */
-    public ResolvedJavaField[] getFields() {
-        return fields;
-    }
-
     public void setBytecodeSize(int bytecodeSize) {
         checkOpen();
         this.bytecodeSize = bytecodeSize;
@@ -472,10 +458,6 @@ public class CompilationResult {
     public void setMaxInterpreterFrameSize(int maxInterpreterFrameSize) {
         checkOpen();
         this.maxInterpreterFrameSize = maxInterpreterFrameSize;
-    }
-
-    public boolean isImmutablePIC() {
-        return this.isImmutablePIC;
     }
 
     /**
@@ -857,11 +839,11 @@ public class CompilationResult {
     /**
      * Closes this compilation result to future updates.
      */
-    public void close() {
+    public void close(OptionValues options) {
         if (closed) {
             throw new IllegalStateException("Cannot re-close compilation result " + this);
         }
-        dataSection.close();
+        dataSection.close(options);
         closed = true;
     }
 

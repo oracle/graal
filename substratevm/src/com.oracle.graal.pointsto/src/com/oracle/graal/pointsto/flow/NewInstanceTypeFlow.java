@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -69,7 +69,7 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
         this.allocationSite = allocationLabel;
     }
 
-    protected NewInstanceTypeFlow(BigBang bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
+    protected NewInstanceTypeFlow(PointsToAnalysis bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
         super(bb, original, methodFlows, original.cloneSourceState(bb, methodFlows));
 
         this.type = original.type;
@@ -77,12 +77,12 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new NewInstanceTypeFlow(bb, this, methodFlows);
     }
 
     /** Create the type state for a clone. */
-    protected TypeState cloneSourceState(BigBang bb, MethodFlowsGraph methodFlows) {
+    protected TypeState cloneSourceState(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         assert !this.isClone();
 
         AnalysisContext allocatorContext = methodFlows.context();
@@ -107,7 +107,7 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
     }
 
-    private AnalysisObject createHeapObject(BigBang bb, AnalysisContext objContext) {
+    private AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisContext objContext) {
         assert !this.isClone();
 
         if (heapObjectsCache == null) {

@@ -89,6 +89,10 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
             context.exportSymbol("env", context.asGuestValue(context));
         }
 
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
     }
 
     private static class TestStatement extends Statement {

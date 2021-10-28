@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -49,29 +50,43 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
+/**
+ * NFI provides a native isolated namespace on Linux (via dlmopen); one per NFI context.
+ *
+ * This test ensures that the same library can be loaded twice: in the global namespace and in the
+ * isolated namespace; and that the libraries are effectively isolated.
+ */
 public class IsolatedNamespaceTest extends NFITest {
 
-    private static Object isolatedTestLibrary; // test library is loaded 'again' in the
-                                               // isolated namespace
+    private static Object globalLibrary;
+    private static Object isolatedLibrary;
+
+    @Test
+    public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
+        // get_and_set mutates some static state.
+        Object globalGetAndSet = lookupAndBind(globalLibrary, "get_and_set", "(sint32) : sint32");
+        Object isolatedGetAndSet = lookupAndBind(isolatedLibrary, "get_and_set", "(sint32) : sint32");
+        UNCACHED_INTEROP.execute(globalGetAndSet, 123);
+        UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
+        Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(globalGetAndSet, 321));
+        Assert.assertEquals(456, (int) UNCACHED_INTEROP.execute(isolatedGetAndSet, 654));
+    }
 
     @BeforeClass
-    public static void loadIsolatedTestLibrary() {
+    public static void loadIsolatedLibraries() {
+        // The library is loaded in the global namespace.
+        globalLibrary = loadLibrary("load '" + System.getProperty("native.isolation.test.lib") + "'");
         try {
-            isolatedTestLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.test.lib") + "'");
+            // And loaded again in the isolated namespace.
+            isolatedLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.isolation.test.lib") + "'");
         } catch (IllegalArgumentException iea) {
             Assume.assumeNoException("Cannot load test library in isolated namespace", iea);
         }
     }
 
-    @Test
-    public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        // getAndSet mutates some static state, this test ensures that the static state is
-        // effectively isolated.
-        Object getAndSet = lookupAndBind(testLibrary, "getAndSet", "(sint32) : sint32");
-        Object isolatedGetAndSet = lookupAndBind(isolatedTestLibrary, "getAndSet", "(sint32) : sint32");
-        UNCACHED_INTEROP.execute(getAndSet, 123);
-        UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
-        Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(getAndSet, 321));
-        Assert.assertEquals(456, (int) UNCACHED_INTEROP.execute(isolatedGetAndSet, 654));
+    @AfterClass
+    public static void releaseLibraries() {
+        globalLibrary = null;
+        isolatedLibrary = null;
     }
 }

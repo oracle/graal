@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * Wraps host Reference(s).
  */
 public interface EspressoReference<T> {
-    @Host(Reference/* <T> */.class)
+    @JavaType(Reference/* <T> */.class)
     StaticObject getGuestReference();
 
     T get();
@@ -48,8 +48,8 @@ final class EspressoWeakReference extends WeakReference<StaticObject> implements
 
     private final StaticObject guestReference;
 
-    EspressoWeakReference(@Host(WeakReference.class) StaticObject guestReference,
-                    @Host(ObjectKlass.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
+    EspressoWeakReference(@JavaType(WeakReference.class) StaticObject guestReference,
+                    @JavaType(ObjectKlass.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
         super(referent, queue);
         this.guestReference = guestReference;
     }
@@ -64,8 +64,8 @@ final class EspressoSoftReference extends SoftReference<StaticObject> implements
 
     private final StaticObject guestReference;
 
-    EspressoSoftReference(@Host(SoftReference.class) StaticObject guestReference,
-                    @Host(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
+    EspressoSoftReference(@JavaType(SoftReference.class) StaticObject guestReference,
+                    @JavaType(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
         super(referent, queue);
         this.guestReference = guestReference;
     }
@@ -80,8 +80,8 @@ final class EspressoPhantomReference extends PhantomReference<StaticObject> impl
 
     private final StaticObject guestReference;
 
-    EspressoPhantomReference(@Host(PhantomReference.class) StaticObject guestReference,
-                    @Host(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
+    EspressoPhantomReference(@JavaType(PhantomReference.class) StaticObject guestReference,
+                    @JavaType(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
         super(referent, queue);
         this.guestReference = guestReference;
     }
@@ -100,8 +100,8 @@ final class EspressoFinalReference extends PublicFinalReference<StaticObject> im
 
     private final StaticObject guestReference;
 
-    EspressoFinalReference(@Host(typeName = "Ljava/lang/ref/FinalReference;") StaticObject guestReference,
-                    @Host(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
+    EspressoFinalReference(@JavaType(internalName = "Ljava/lang/ref/FinalReference;") StaticObject guestReference,
+                    @JavaType(Object.class) StaticObject referent, ReferenceQueue<StaticObject> queue) {
         super(referent, queue);
         this.guestReference = guestReference;
     }

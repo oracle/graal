@@ -1,0 +1,13 @@
+> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid-heap.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
+>[0] javac -cp $CP HeapQuery.java
+#> export TMP_DIR=/tmp
+> rm -rf /tmp/ruby*hprof*
+> truffleruby --polyglot --heap.dump=$TMP_DIR/ruby.hprof --insight=agent-ruby-dump.js hello-world.rb
+dumping state of Ruby memory when executing Welcome#welcome
+Hello World!
+# check one frame was captured
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachClass((c) => c.name.startsWith("frame:") && print(c.name))'
+frame:Welcome#welcome
+# check the h and w variable in the frame
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachObject((frame) => print(frame.self["@h"].toString() + " " + frame.w.toString() + "!"), "frame:Welcome#welcome")'
+Hello World!

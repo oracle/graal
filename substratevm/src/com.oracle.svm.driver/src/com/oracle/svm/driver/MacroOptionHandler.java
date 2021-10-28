@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 
@@ -39,8 +38,11 @@ import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    private final HashSet<MacroOption> addedCheck;
+
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
+        addedCheck = new HashSet<>();
     }
 
     @Override
@@ -48,7 +50,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
+            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, addedCheck, null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
@@ -80,18 +82,15 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         BuildConfiguration config = nativeImage.config;
         if (!config.useJavaModules()) {
             enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
-        } else {
-            enabledOption.forEachPropertyValue(config, "ImageIncludeBuiltinModules", entry -> nativeImage.addImageIncludeBuiltinModules(entry), ",");
         }
 
-        if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
-            Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
-            if (Files.isDirectory(builderJarsDirectory)) {
-                NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
-            }
-        }
+        enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
 
-        if (!enabledOption.forEachPropertyValue(config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
+        boolean explicitImageModulePath = enabledOption.forEachPropertyValue(
+                        config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        boolean explicitImageClasspath = enabledOption.forEachPropertyValue(
+                        config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        if (!explicitImageModulePath && !explicitImageClasspath) {
             NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }
 
@@ -108,6 +107,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String imageClass = enabledOption.getProperty(config, "ImageClass");
         if (imageClass != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + imageClass);
+        }
+
+        String imageModule = enabledOption.getProperty(config, "ImageModule");
+        if (imageModule != null) {
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + imageModule);
         }
 
         enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);

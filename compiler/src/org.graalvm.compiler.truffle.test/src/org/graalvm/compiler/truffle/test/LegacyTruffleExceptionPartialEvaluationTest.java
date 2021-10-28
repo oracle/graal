@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,10 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
     @Test
     public void testTruffleException() {
         NodeFactory nodeFactory = new NodeFactoryImpl();
-        assertPartialEvalEquals("constant42", createCallerChain(0, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(3, 0, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(0, 3, nodeFactory));
-        assertPartialEvalEquals("constant42", createCallerChain(4, 4, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 0, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(3, 0, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(0, 3, nodeFactory));
+        assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4, nodeFactory));
     }
 
     @SuppressWarnings("deprecation")

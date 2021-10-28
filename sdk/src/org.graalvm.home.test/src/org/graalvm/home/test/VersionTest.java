@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,6 +107,7 @@ public class VersionTest {
         assertEquals(Version.parse("snapshot").hashCode(), Version.parse("snapshot").hashCode());
         assertTrue(Version.parse("snapshot").isSnapshot());
         assertFalse(Version.parse("snapshot").isRelease());
+        assertEquals(Version.parse("snapshot"), Version.parse("dev"));
     }
 
     @Test

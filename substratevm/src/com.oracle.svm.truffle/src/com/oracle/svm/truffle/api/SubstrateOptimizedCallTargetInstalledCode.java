@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -33,11 +34,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -52,6 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode implements SubstrateInstalledCode, OptimizedAssumptionDependency {
     protected final SubstrateOptimizedCallTarget callTarget;
+    private String nameSuffix = "";
 
     protected SubstrateOptimizedCallTargetInstalledCode(SubstrateOptimizedCallTarget callTarget) {
         super(null);
@@ -98,8 +100,13 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
+    public void setCompilationId(CompilationIdentifier id) {
+        nameSuffix = " (" + id.toString(CompilationIdentifier.Verbosity.ID) + ')';
+    }
+
+    @Override
     public String getName() {
-        return callTarget.getName();
+        return callTarget.getName() + nameSuffix;
     }
 
     @Override
@@ -141,10 +148,16 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try { // Indicates to GC that the code can be freed once there are no activations left
             CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+            invalidateWithoutDeoptimization1(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
+    }
+
+    @Uninterruptible(reason = "Call interruptible code now that the CodeInfo is tethered.", calleeMustBe = false)
+    private static void invalidateWithoutDeoptimization1(CodeInfo codeInfo) {
+        CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+        RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {
@@ -158,8 +171,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         long start = callTarget.installedCode.entryPoint;
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
-            Object result = target.invoke(callTarget, args);
-            return KnownIntrinsics.convertUnknownValue(result, Object.class);
+            return target.invoke(callTarget, args);
         } else {
             return callTarget.invokeCallBoundary(args);
         }

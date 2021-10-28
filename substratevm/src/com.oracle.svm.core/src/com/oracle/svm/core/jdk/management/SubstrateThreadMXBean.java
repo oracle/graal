@@ -25,16 +25,18 @@
 package com.oracle.svm.core.jdk.management;
 
 //Checkstyle: stop
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
@@ -44,28 +46,35 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
-    /*
-     * Initial values account for the main thread (a non-daemon thread) that is running without an
-     * explicit notification at startup.
-     */
-    private final AtomicLong totalStartedThreadCount = new AtomicLong(1);
-    private final AtomicInteger peakThreadCount = new AtomicInteger(1);
-    private final AtomicInteger threadCount = new AtomicInteger(1);
+    private final AtomicLong totalStartedThreadCount = new AtomicLong(0);
+    private final AtomicInteger peakThreadCount = new AtomicInteger(0);
+    private final AtomicInteger threadCount = new AtomicInteger(0);
     private final AtomicInteger daemonThreadCount = new AtomicInteger(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateThreadMXBean() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteThreadStart(Thread thread) {
         totalStartedThreadCount.incrementAndGet();
         int curThreadCount = threadCount.incrementAndGet();
-        peakThreadCount.getAndUpdate(previousPeakThreadCount -> Integer.max(previousPeakThreadCount, curThreadCount));
+        updatePeakThreadCount(curThreadCount);
+
         if (thread.isDaemon()) {
             daemonThreadCount.incrementAndGet();
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void updatePeakThreadCount(int curThreadCount) {
+        int oldPeak;
+        do {
+            oldPeak = peakThreadCount.get();
+        } while (curThreadCount > oldPeak && !peakThreadCount.compareAndSet(oldPeak, curThreadCount));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteThreadFinish(Thread thread) {
         threadCount.decrementAndGet();
         if (thread.isDaemon()) {

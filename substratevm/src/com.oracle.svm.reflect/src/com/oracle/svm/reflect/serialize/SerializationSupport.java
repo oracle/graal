@@ -26,6 +26,10 @@
 package com.oracle.svm.reflect.serialize;
 
 import java.io.Serializable;
+// Checkstyle: stop
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
+// Checkstyle: resume
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.util.VMError;
 
 public class SerializationSupport implements SerializationRegistry {
@@ -44,11 +47,11 @@ public class SerializationSupport implements SerializationRegistry {
      * news the class specified by generateSerializationConstructor's first parameter declaringClass
      * and then calls declaringClass' first non-serializable superclass. The bytecode of the
      * generated class looks like:
-     * 
+     *
      * <pre>
      * jdk.internal.reflect.GeneratedSerializationConstructorAccessor2.newInstance(Unknown Source)
-     * [bci: 0, intrinsic: false] 
-     * 0: new #6 // declaringClass 
+     * [bci: 0, intrinsic: false]
+     * 0: new #6 // declaringClass
      * 3: dup
      * 4: aload_1
      * 5: ifnull 24
@@ -57,7 +60,7 @@ public class SerializationSupport implements SerializationRegistry {
      * 10: sipush 0
      * ...
      * </pre>
-     * 
+     *
      * The declaringClass could be an abstract class. At deserialization time,
      * SerializationConstructorAccessorImpl classes are generated for the target class and all of
      * its serializable super classes. The super classes could be abstract. So it is possible to
@@ -77,6 +80,8 @@ public class SerializationSupport implements SerializationRegistry {
         private StubForAbstractClass() {
         }
     }
+
+    private final Constructor<?> stubConstructor;
 
     private static final class SerializationLookupKey {
         private final Class<?> declaringClass;
@@ -109,8 +114,9 @@ public class SerializationSupport implements SerializationRegistry {
     private final Map<SerializationLookupKey, Object> constructorAccessors;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SerializationSupport() {
+    public SerializationSupport(Constructor<?> stubConstructor) {
         constructorAccessors = new ConcurrentHashMap<>();
+        this.stubConstructor = stubConstructor;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -120,8 +126,11 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Override
-    public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> targetConstructorClass) {
+    public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
+        Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
+
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
+
         if (constructorAccessor != null) {
             return constructorAccessor;
         } else {

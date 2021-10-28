@@ -43,6 +43,8 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.replacements.IntrinsicGraphBuilder;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
     private int bci;
@@ -54,11 +56,16 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
     @Override
     public void setStateAfter(StateSplit sideEffect) {
+        FrameState stateAfter = getFrameState(returnValue);
+        sideEffect.setStateAfter(stateAfter);
+    }
+
+    private FrameState getFrameState(ValueNode returnVal) {
         List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
         int stackSize = 0;
 
-        if (returnValue != null) {
-            values.add(returnValue);
+        if (returnVal != null) {
+            values.add(returnVal);
             stackSize++;
             if (method.getSignature().getReturnKind().needsTwoSlots()) {
                 values.add(null);
@@ -67,8 +74,13 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
         }
 
         FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, false, false, null, null));
-        sideEffect.setStateAfter(stateAfter);
         bci++;
+        return stateAfter;
+    }
+
+    @Override
+    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode retVal) {
+        return getFrameState(retVal);
     }
 
     @Override

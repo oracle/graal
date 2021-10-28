@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,8 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Objects;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
 
 /**
@@ -130,24 +131,25 @@ import org.graalvm.polyglot.io.ByteSequence;
  */
 public final class Source {
 
-    private static volatile AbstractSourceImpl IMPL;
+    private static volatile AbstractPolyglotImpl IMPL;
 
-    static AbstractSourceImpl getImpl() {
+    static AbstractPolyglotImpl getImpl() {
         if (IMPL == null) {
             synchronized (Engine.class) {
                 if (IMPL == null) {
-                    IMPL = Engine.getImpl().getSourceImpl();
-                    SourceSection.IMPL = Engine.getImpl().getSourceSectionImpl();
+                    IMPL = Engine.getImpl();
                 }
             }
         }
         return IMPL;
     }
 
-    final Object impl;
+    final AbstractSourceDispatch dispatch;
+    final Object receiver;
 
-    Source(Object impl) {
-        this.impl = impl;
+    Source(AbstractSourceDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
     }
 
     /**
@@ -157,7 +159,7 @@ public final class Source {
      * @since 19.0
      */
     public String getLanguage() {
-        return getImpl().getLanguage(impl);
+        return dispatch.getLanguage(receiver);
     }
 
     /**
@@ -170,7 +172,7 @@ public final class Source {
      * @since 19.0
      */
     public String getName() {
-        return getImpl().getName(impl);
+        return dispatch.getName(receiver);
     }
 
     /**
@@ -182,7 +184,7 @@ public final class Source {
      * @since 19.0
      */
     public String getPath() {
-        return getImpl().getPath(impl);
+        return dispatch.getPath(receiver);
     }
 
     /**
@@ -192,7 +194,7 @@ public final class Source {
      * @since 19.0
      */
     public URL getURL() {
-        return getImpl().getURL(impl);
+        return dispatch.getURL(receiver);
     }
 
     /**
@@ -206,7 +208,7 @@ public final class Source {
      * @since 19.0
      */
     public URI getURI() {
-        return getImpl().getURI(impl);
+        return dispatch.getURI(receiver);
     }
 
     /**
@@ -221,7 +223,7 @@ public final class Source {
      * @since 19.0
      */
     public boolean isInteractive() {
-        return getImpl().isInteractive(impl);
+        return dispatch.isInteractive(receiver);
     }
 
     /**
@@ -240,7 +242,7 @@ public final class Source {
      * @since 19.0
      */
     public boolean isInternal() {
-        return getImpl().isInternal(impl);
+        return dispatch.isInternal(receiver);
     }
 
     /**
@@ -252,7 +254,7 @@ public final class Source {
      * @since 19.0
      */
     public Reader getReader() {
-        return getImpl().getReader(impl);
+        return dispatch.getReader(receiver);
     }
 
     /**
@@ -263,7 +265,7 @@ public final class Source {
      */
     @Deprecated
     public InputStream getInputStream() {
-        return getImpl().getInputStream(impl);
+        return dispatch.getInputStream(receiver);
     }
 
     /**
@@ -272,7 +274,7 @@ public final class Source {
      * @since 19.0
      */
     public int getLength() {
-        return getImpl().getLength(impl);
+        return dispatch.getLength(receiver);
     }
 
     /**
@@ -283,7 +285,7 @@ public final class Source {
      * @since 19.0
      */
     public CharSequence getCharacters() {
-        return getImpl().getCharacters(impl);
+        return dispatch.getCharacters(receiver);
     }
 
     /**
@@ -307,7 +309,7 @@ public final class Source {
      * @since 19.0
      */
     public String getMimeType() {
-        return getImpl().getMimeType(impl);
+        return dispatch.getMimeType(receiver);
     }
 
     /**
@@ -320,7 +322,7 @@ public final class Source {
      * @since 19.0
      */
     public CharSequence getCharacters(int lineNumber) {
-        return getImpl().getCharacters(impl, lineNumber);
+        return dispatch.getCharacters(receiver, lineNumber);
     }
 
     /**
@@ -332,7 +334,7 @@ public final class Source {
      * @since 19.0
      */
     public ByteSequence getBytes() {
-        return getImpl().getBytes(impl);
+        return dispatch.getBytes(receiver);
     }
 
     /**
@@ -355,7 +357,7 @@ public final class Source {
      * @since 19.0
      */
     public boolean hasCharacters() {
-        return getImpl().hasCharacters(impl);
+        return dispatch.hasCharacters(receiver);
     }
 
     /**
@@ -369,7 +371,7 @@ public final class Source {
      * @since 19.0
      */
     public boolean hasBytes() {
-        return getImpl().hasBytes(impl);
+        return dispatch.hasBytes(receiver);
     }
 
     /**
@@ -382,7 +384,7 @@ public final class Source {
      * @since 19.0
      */
     public int getLineCount() {
-        return getImpl().getLineCount(impl);
+        return dispatch.getLineCount(receiver);
     }
 
     /**
@@ -395,7 +397,7 @@ public final class Source {
      * @since 19.0
      */
     public int getLineNumber(int offset) throws IllegalArgumentException {
-        return getImpl().getLineNumber(impl, offset);
+        return dispatch.getLineNumber(receiver, offset);
     }
 
     /**
@@ -408,7 +410,7 @@ public final class Source {
      * @since 19.0
      */
     public int getColumnNumber(int offset) throws IllegalArgumentException {
-        return getImpl().getColumnNumber(impl, offset);
+        return dispatch.getColumnNumber(receiver, offset);
     }
 
     /**
@@ -420,7 +422,7 @@ public final class Source {
      * @since 19.0
      */
     public int getLineStartOffset(int lineNumber) throws IllegalArgumentException {
-        return getImpl().getLineStartOffset(impl, lineNumber);
+        return dispatch.getLineStartOffset(receiver, lineNumber);
     }
 
     /**
@@ -433,7 +435,7 @@ public final class Source {
      * @since 19.0
      */
     public int getLineLength(int lineNumber) throws IllegalArgumentException {
-        return getImpl().getLineLength(impl, lineNumber);
+        return dispatch.getLineLength(receiver, lineNumber);
     }
 
     /**
@@ -443,7 +445,7 @@ public final class Source {
      */
     @Override
     public String toString() {
-        return getImpl().toString(impl);
+        return dispatch.toString(receiver);
     }
 
     /**
@@ -453,7 +455,7 @@ public final class Source {
      */
     @Override
     public int hashCode() {
-        return getImpl().hashCode(impl);
+        return dispatch.hashCode(receiver);
     }
 
     /**
@@ -465,11 +467,11 @@ public final class Source {
     public boolean equals(Object obj) {
         Object otherImpl;
         if (obj instanceof Source) {
-            otherImpl = ((Source) obj).impl;
+            otherImpl = ((Source) obj).receiver;
         } else {
             return false;
         }
-        return getImpl().equals(impl, otherImpl);
+        return dispatch.equals(receiver, otherImpl);
     }
 
     /**
@@ -677,7 +679,7 @@ public final class Source {
         return new IllegalArgumentException(String.format("Invalid MIME type '%s' provided. A MIME type consists of a type and a subtype separated by '/'.", mimeType));
     }
 
-    private static final Source EMPTY = new Source(null);
+    private static final Source EMPTY = new Source(null, null);
 
     /**
      * Represents a builder to build {@link Source} objects.

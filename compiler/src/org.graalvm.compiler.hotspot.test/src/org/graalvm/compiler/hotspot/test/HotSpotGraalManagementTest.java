@@ -202,7 +202,7 @@ public class HotSpotGraalManagementTest {
                 Object defaultValue;
                 if (optionKey instanceof NestedBooleanOptionKey) {
                     NestedBooleanOptionKey nbok = (NestedBooleanOptionKey) optionKey;
-                    defaultValue = nbok.getMasterOption().getValue(runtime.getOptions());
+                    defaultValue = nbok.getParentOption().getValue(runtime.getOptions());
                 } else {
                     defaultValue = optionKey.getDefaultValue();
                 }

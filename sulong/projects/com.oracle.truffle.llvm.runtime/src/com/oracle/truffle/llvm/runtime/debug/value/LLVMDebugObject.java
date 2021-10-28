@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.debug.value;
 import java.math.BigInteger;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -621,7 +620,6 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
                         return value.readUnknown(offset, size);
                 }
             } catch (IllegalStateException e) {
-                CompilerDirectives.transferToInterpreter();
                 return e.getMessage();
             }
         }

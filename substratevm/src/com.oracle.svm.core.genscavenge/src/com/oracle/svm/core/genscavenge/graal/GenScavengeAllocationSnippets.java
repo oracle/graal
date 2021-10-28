@@ -46,7 +46,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.genscavenge.HeapPolicy;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
@@ -66,9 +66,9 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};
 
-    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
-        SubstrateAllocationSnippets.registerForeignCalls(providers, foreignCalls);
-        foreignCalls.register(providers, FOREIGN_CALLS);
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        SubstrateAllocationSnippets.registerForeignCalls(foreignCalls);
+        foreignCalls.register(FOREIGN_CALLS);
     }
 
     public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
@@ -116,7 +116,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
     @Override
     protected boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
-        return !isArray || size.belowThan(HeapPolicy.getLargeArrayThreshold());
+        return !isArray || size.belowThan(HeapParameters.getLargeArrayThreshold());
     }
 
     @Override

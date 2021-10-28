@@ -245,13 +245,6 @@ public interface TruffleCompilerRuntime {
     TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
 
     /**
-     * Gets a plan for inlining in terms of a Truffle AST call graph.
-     *
-     * @return the requested plan or {@code null} a plan cannot be created in the calling context
-     */
-    TruffleMetaAccessProvider createInliningPlan();
-
-    /**
      * Gets the {@link CompilableTruffleAST} represented by {@code constant}.
      *
      * @return {@code null} if {@code constant} does not represent a {@link CompilableTruffleAST} or

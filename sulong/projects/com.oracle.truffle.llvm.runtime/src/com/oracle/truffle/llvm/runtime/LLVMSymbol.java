@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,8 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
@@ -39,21 +40,20 @@ public abstract class LLVMSymbol {
     public static final LLVMSymbol[] EMPTY = new LLVMSymbol[0];
 
     private final String name;
-    private final int moduleId;
+    private final BitcodeID bitcodeID;
     private final int symbolIndex;
     private final boolean exported;
+    private final boolean externalWeak;
 
     // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
     public static final int INVALID_INDEX = -1;
 
-    // ID for non-parsed symbols, such as alias, function symbol for inline assembly.
-    public static final int INVALID_ID = -1;
-
-    public LLVMSymbol(String name, int bitcodeID, int symbolIndex, boolean exported) {
+    public LLVMSymbol(String name, BitcodeID bitcodeID, int symbolIndex, boolean exported, boolean externalWeak) {
         this.name = name;
-        this.moduleId = bitcodeID;
+        this.bitcodeID = bitcodeID;
         this.symbolIndex = symbolIndex;
         this.exported = exported;
+        this.externalWeak = externalWeak;
     }
 
     public final String getName() {
@@ -69,37 +69,81 @@ public abstract class LLVMSymbol {
         return exported;
     }
 
+    public final boolean isExternalWeak() {
+        return externalWeak;
+    }
+
     /**
      * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
      * not created from parsing or that are alias have the value of -1.
-     *
-     * @param illegalOK if symbols created not from bitcode files can be retrieved.
      */
-    public final int getSymbolIndex(boolean illegalOK) {
-        if (symbolIndex >= 0 || illegalOK) {
+    public final int getSymbolIndexIllegalOk() {
+        return symbolIndex;
+    }
+
+    /**
+     * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
+     * not created from parsing or that are alias throw an {@link LLVMIllegalSymbolIndexException}.
+     *
+     * @param exception a {@link BranchProfile} for the exception case
+     */
+    public final int getSymbolIndex(BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        if (symbolIndex >= 0) {
             return symbolIndex;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMIllegalSymbolIndexException("Invalid function index: " + symbolIndex);
+        exception.enter();
+        throw new LLVMIllegalSymbolIndexException("invalid symbol index");
+    }
+
+    /**
+     * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
+     * not created from parsing or that are alias throw an {@link LLVMIllegalSymbolIndexException}.
+     *
+     * This function does not profile the exception case, and can not be used from compiled code.
+     */
+    public final int getSymbolIndexUncached() throws LLVMIllegalSymbolIndexException {
+        CompilerAsserts.neverPartOfCompilation();
+        return getSymbolIndex(BranchProfile.getUncached());
     }
 
     /**
      * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
      * unqiue per bitcode file. Symbols that are not created from parsing or that are alias have the
-     * value of -1.
-     *
-     * @param illegalOK if symbols created not from bitcode files can be retrieved.
+     * value of null.
      */
-    public final int getBitcodeID(boolean illegalOK) {
-        if (moduleId >= 0 || illegalOK) {
-            return moduleId;
+    public final BitcodeID getBitcodeIDIllegalOk() {
+        return bitcodeID;
+    }
+
+    /**
+     * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
+     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * {@link LLVMIllegalSymbolIndexException}.
+     *
+     * @param exception a {@link BranchProfile} for the exception case
+     */
+    public final BitcodeID getBitcodeID(BranchProfile exception) throws LLVMIllegalSymbolIndexException {
+        if (bitcodeID != null) {
+            return bitcodeID;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + moduleId);
+        exception.enter();
+        throw new LLVMIllegalSymbolIndexException("invalid bitcode ID");
+    }
+
+    /**
+     * Get the unique module ID for the symbol. The ID is assigned during parsing. The module ID is
+     * unqiue per bitcode file. Symbols that are not created from parsing or that are alias throw an
+     * {@link LLVMIllegalSymbolIndexException}.
+     *
+     * This function does not profile the exception case, and can not be used from compiled code.
+     */
+    public final BitcodeID getBitcodeIDUncached() throws LLVMIllegalSymbolIndexException {
+        CompilerAsserts.neverPartOfCompilation();
+        return getBitcodeID(BranchProfile.getUncached());
     }
 
     public final boolean hasValidIndexAndID() {
-        return symbolIndex >= 0 && moduleId >= 0;
+        return symbolIndex >= 0 && bitcodeID != null;
     }
 
     public abstract boolean isGlobalVariable();
@@ -108,7 +152,11 @@ public abstract class LLVMSymbol {
 
     public abstract boolean isAlias();
 
+    public abstract boolean isElemPtrExpression();
+
     public abstract LLVMFunction asFunction();
 
     public abstract LLVMGlobal asGlobalVariable();
+
+    public abstract LLVMElemPtrSymbol asElemPtrExpression();
 }

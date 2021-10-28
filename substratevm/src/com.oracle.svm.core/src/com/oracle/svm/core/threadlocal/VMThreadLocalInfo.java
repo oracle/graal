@@ -36,7 +36,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -73,8 +72,9 @@ public class VMThreadLocalInfo {
     public final JavaKind storageKind;
     public final Class<?> valueClass;
     public final int maxOffset;
+    public final boolean allowFloatingReads;
+    public final String name;
 
-    @UnknownObjectField(types = {String.class}) public String name;
     @UnknownPrimitiveField public int offset;
     @UnknownPrimitiveField public int sizeInBytes;
 
@@ -83,6 +83,8 @@ public class VMThreadLocalInfo {
         this.threadLocalClass = threadLocal.getClass();
         this.locationIdentity = threadLocal.getLocationIdentity();
         this.maxOffset = threadLocal.getMaxOffset();
+        this.allowFloatingReads = threadLocal.getAllowFloatingReads();
+        this.name = threadLocal.getName();
 
         if (threadLocalClass == FastThreadLocalBytes.class) {
             sizeSupplier = ((FastThreadLocalBytes<?>) threadLocal).getSizeSupplier();

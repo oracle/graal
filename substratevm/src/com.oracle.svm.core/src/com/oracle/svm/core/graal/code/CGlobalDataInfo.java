@@ -42,6 +42,8 @@ public final class CGlobalDataInfo {
     private final CGlobalDataImpl<?> data;
     private final boolean isSymbolReference;
 
+    private boolean isGlobalSymbol;
+    private boolean isHiddenSymbol;
     private int offset = -1;
 
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
@@ -69,6 +71,23 @@ public final class CGlobalDataInfo {
     public int getOffset() {
         VMError.guarantee(offset >= 0, "Offset has not been initialized");
         return offset;
+    }
+
+    public void makeGlobalSymbol() {
+        VMError.guarantee(!isSymbolReference && data.symbolName != null, "Cannot change the local/global status of a symbol reference");
+        isGlobalSymbol = true;
+    }
+
+    public boolean isGlobalSymbol() {
+        return isGlobalSymbol;
+    }
+
+    public void makeHiddenSymbol() {
+        isHiddenSymbol = true;
+    }
+
+    public boolean isHiddenSymbol() {
+        return isHiddenSymbol;
     }
 
     public boolean isSymbolReference() {

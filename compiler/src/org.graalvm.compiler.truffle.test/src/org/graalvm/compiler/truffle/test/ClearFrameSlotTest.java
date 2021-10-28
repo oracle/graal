@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,6 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.FrameState;
@@ -50,7 +49,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -284,7 +282,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             setupContext(Context.newBuilder().option("engine.ForceFrameLivenessAnalysis", "true"));
         }
         RootNode rootNode = rootProvider.get();
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         StructuredGraph graph = null;
         try {
             callTarget.call(args);
@@ -292,7 +290,7 @@ public class ClearFrameSlotTest extends PartialEvaluationTest {
             Assert.assertTrue(executionFails);
             return;
         }
-        graph = partialEval((OptimizedCallTarget) callTarget, args, CompilationIdentifier.INVALID_COMPILATION_ID);
+        graph = partialEval((OptimizedCallTarget) callTarget, args, getCompilationId(callTarget));
         graphChecker.accept(graph);
         new PartialEscapePhase(true, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, getDefaultHighTierContext());
         graphChecker.accept(graph);

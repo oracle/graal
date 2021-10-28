@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -71,8 +71,8 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         this(object, offset, accessKind, locationIdentity, false);
     }
 
-    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceAnyLocation) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceAnyLocation);
+    public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation);
     }
 
     /**
@@ -104,7 +104,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, false);
+        this(c, object, offset, accessKind, locationIdentity, false);
+    }
+
+    protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
+        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation);
     }
 
     @Override
@@ -169,19 +173,19 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced()) {
+        if (!isLocationForced()) {
             ValueNode targetObject = object();
             if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
                 ConstantNode objectConstant = (ConstantNode) targetObject;
                 ResolvedJavaType type = StampTool.typeOrNull(objectConstant);
-                if (type != null && type.isArray()) {
-                    JavaConstant arrayConstant = objectConstant.asJavaConstant();
-                    if (arrayConstant != null) {
+                if (type != null) {
+                    JavaConstant javaConstant = objectConstant.asJavaConstant();
+                    if (javaConstant != null) {
                         int stableDimension = objectConstant.getStableDimension();
-                        if (stableDimension > 0) {
+                        if (locationIdentity.isImmutable() || (type.isArray() && stableDimension > 0)) {
                             NodeView view = NodeView.from(tool);
                             long constantOffset = offset().asJavaConstant().asLong();
-                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), arrayConstant, constantOffset);
+                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), javaConstant, constantOffset);
                             boolean isDefaultStable = objectConstant.isDefaultStable();
                             if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                                 /*
@@ -195,7 +199,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                                  * accesses for building the AST during PE, and should not enforce
                                  * ordering on language side accesses.
                                  */
-                                return ConstantNode.forConstant(stamp(view), constant, stableDimension - 1, isDefaultStable, tool.getMetaAccess());
+                                return ConstantNode.forConstant(stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, tool.getMetaAccess());
                             }
                         }
                     }

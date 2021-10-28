@@ -105,10 +105,10 @@ public final class DeoptimizationFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, DeoptimizationRuntime.DEOPTIMIZE);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(DeoptimizationRuntime.DEOPTIMIZE);
         if (DeoptTester.enabled()) {
-            foreignCalls.register(providers, DeoptTester.DEOPTTEST);
+            foreignCalls.register(DeoptTester.DEOPTTEST);
         }
     }
 
@@ -126,6 +126,6 @@ public final class DeoptimizationFeature implements GraalFeature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
         config.registerAsImmutable(ImageSingletons.lookup(DeoptimizationSupport.class));
         HostedMetaAccess metaAccess = config.getMetaAccess();
-        DeoptimizationSupport.setDeoptStubPointer(MethodPointer.factory(metaAccess.lookupJavaMethod(deoptStubMethod)));
+        DeoptimizationSupport.setDeoptStubPointer(new MethodPointer(metaAccess.lookupJavaMethod(deoptStubMethod)));
     }
 }

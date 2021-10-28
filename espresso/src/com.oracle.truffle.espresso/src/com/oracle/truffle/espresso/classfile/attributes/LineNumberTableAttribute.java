@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import java.util.AbstractList;
+import java.util.List;
+
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
@@ -36,39 +39,45 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
     public static final Symbol<Name> NAME = Name.LineNumberTable;
 
-    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, Entry.EMPTY_ARRAY);
+    // Use an empty char array rather than null to throw IooB exceptions, rather than NPE.
+    public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0]);
 
-    private final Entry[] entries;
+    private final char[] bciToLineEntries;
 
     private int lastLine = -1;
 
     private int firstLine = -1;
 
-    public LineNumberTableAttribute(Symbol<Name> name, Entry[] entries) {
+    public LineNumberTableAttribute(Symbol<Name> name, char[] entries) {
         super(name, null);
-        this.entries = entries;
+        assert entries.length % 2 == 0;
+        this.bciToLineEntries = entries;
     }
 
-    public Entry[] getEntries() {
-        return entries;
+    public List<Entry> getEntries() {
+        return new ListWrapper();
+    }
+
+    private int length() {
+        return bciToLineEntries.length >> 1;
     }
 
     /**
      * Gets a source line number for bytecode index {@code atBci}.
      */
     public int getLineNumber(int atBci) {
-        for (int i = 0; i < entries.length - 1; i++) {
-            if (entries[i].bci <= atBci && atBci < entries[i + 1].bci) {
-                return entries[i].lineNumber;
+        for (int i = 0; i < length() - 1; i++) {
+            if (bciAt(i) <= atBci && atBci < bciAt(i + 1)) {
+                return lineAt(i);
             }
         }
-        return entries[entries.length - 1].lineNumber;
+        return lineAt(length() - 1);
     }
 
     public long getBCI(int line) {
-        for (Entry entry : entries) {
-            if (entry.getLineNumber() == line) {
-                return entry.getBCI();
+        for (int i = 0; i < length(); i++) {
+            if (lineAt(i) == line) {
+                return bciAt(i);
             }
         }
         return -1;
@@ -79,8 +88,8 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             return lastLine;
         }
         int max = -1;
-        for (Entry entry : entries) {
-            max = Math.max(max, entry.getLineNumber());
+        for (int i = 0; i < length(); i++) {
+            max = Math.max(max, lineAt(i));
         }
         return max;
     }
@@ -90,25 +99,31 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
             return firstLine;
         }
         int min = Integer.MAX_VALUE;
-        for (Entry entry : entries) {
-            min = Math.min(min, entry.getLineNumber());
+        for (int i = 0; i < length(); i++) {
+            min = Math.min(min, lineAt(i));
         }
         return min;
     }
 
     public int getNextLine(int line) {
         int next = Integer.MAX_VALUE;
-        for (Entry entry : entries) {
-            if (entry.getLineNumber() > line) {
-                next = Math.min(next, entry.getLineNumber());
+        for (int i = 0; i < length(); i++) {
+            if (lineAt(i) > line) {
+                next = Math.min(next, lineAt(i));
             }
         }
         return next;
     }
 
-    public static final class Entry implements EntryRef {
+    private int bciAt(int i) {
+        return bciToLineEntries[i * 2];
+    }
 
-        public static final Entry[] EMPTY_ARRAY = new Entry[0];
+    private int lineAt(int i) {
+        return bciToLineEntries[i * 2 + 1];
+    }
+
+    public static final class Entry implements EntryRef {
 
         private final int bci;
         private final int lineNumber;
@@ -132,6 +147,21 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
 
         public int getLineNumber() {
             return lineNumber;
+        }
+    }
+
+    private class ListWrapper extends AbstractList<Entry> {
+        @Override
+        public Entry get(int index) {
+            if (index >= 0 && index < size()) {
+                return new Entry(bciAt(index), lineAt(index));
+            }
+            throw new IndexOutOfBoundsException("index " + index + " out of bounds for list of size " + length() + ".");
+        }
+
+        @Override
+        public int size() {
+            return length();
         }
     }
 }

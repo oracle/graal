@@ -49,7 +49,7 @@ public class MapperBCI extends Node {
     private final boolean wasSorted;
 
     public MapperBCI(LineNumberTableAttribute lineNumberTable) {
-        this.length = lineNumberTable.getEntries().length;
+        this.length = lineNumberTable.getEntries().size();
         this.bcis = new int[length];
         int i = 0;
         int prev = 0;

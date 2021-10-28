@@ -29,8 +29,8 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import static org.graalvm.compiler.nodes.util.ConstantReflectionUtil.loadIntArrayConstant;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public class ProfileBooleanNode extends MacroStateSplitNode implements Simplifiable {
+public class ProfileBooleanNode extends MacroNode implements Simplifiable {
     public static final NodeClass<ProfileBooleanNode> TYPE = NodeClass.create(ProfileBooleanNode.class);
     private final ConstantReflectionProvider constantProvider;
 

@@ -1,0 +1,14 @@
+[
+  {
+  "name":"java.util.HashMap"
+  },
+  {
+  "name":"java.lang.String"
+  },
+  {
+  "name":"java.lang.Number"
+  },
+  {
+  "name":"java.lang.Integer"
+  }
+]

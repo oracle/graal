@@ -268,7 +268,7 @@ final class DebugConfigImpl implements DebugConfig {
                 if (!firstSeen.containsKey(o)) {
                     firstSeen.put(o, o);
                     if (DebugOptions.DumpOnError.getValue(options) || DebugOptions.Dump.getValue(options) != null) {
-                        debug.dump(DebugContext.BASIC_LEVEL, o, "Exception: %s", e);
+                        debug.forceDump(o, "Exception: %s", e);
                     }
                     debug.log("Context obj %s", o);
                 }

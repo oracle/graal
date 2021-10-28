@@ -269,6 +269,18 @@ define OPT_RULES
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wall -Wextra -Werror -Wno-unused-command-line-argument $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
+%.f.dir/$(1)_OUT.bc: %.f.dir/ref.out %.f.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
+%.f90.dir/$(1)_OUT.bc:%.f90.dir/ref.out %.f90.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
+%.f03.dir/$(1)_OUT.bc: %.f03.dir/ref.out %.f03.dir/$(1).bc
+	$(QUIETLY) cp $$< $$@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$$(word 2,$$^) $$@
+
 endef
 
 $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
@@ -313,6 +325,18 @@ $(eval $(call TOOLCHAIN_OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
 $(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
 $(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
+# no link
+$(eval $(call TOOLCHAIN_OPT_RULES,plain_nolink,-c))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0_nolink,-c -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1_nolink,-c -O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2_nolink,-c -O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3_nolink,-c -O3))
+# shared
+$(eval $(call TOOLCHAIN_OPT_RULES,plain_shared,-shared -fPIC))
+$(eval $(call TOOLCHAIN_OPT_RULES,O0_shared,-shared -fPIC -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1_shared,-shared -fPIC -O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2_shared,-shared -fPIC -O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3_shared,-shared -fPIC -O3))
 
 # allow linking ll tests with C sources
 

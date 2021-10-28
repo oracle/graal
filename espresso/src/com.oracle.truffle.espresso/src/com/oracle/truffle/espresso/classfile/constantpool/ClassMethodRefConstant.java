@@ -23,9 +23,7 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -174,7 +172,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Meta meta = context.getMeta();
             if (holderKlass.isInterface()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, meta.toGuestString(getName(pool)));
             }
 
             Symbol<Name> name = getName(pool);
@@ -182,15 +180,10 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
             if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
-                context.getLogger().log(Level.WARNING,
-                                EspressoOptions.INCEPTION_NAME + " Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, method, meta);
 
             if (!method.isPolySignatureIntrinsic()) {
                 method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());

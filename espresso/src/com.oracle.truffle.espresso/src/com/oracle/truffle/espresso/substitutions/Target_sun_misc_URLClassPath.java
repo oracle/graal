@@ -35,7 +35,7 @@ public final class Target_sun_misc_URLClassPath {
      */
     @SuppressWarnings("unused")
     @Substitution
-    public static @Host(URL[].class) StaticObject getLookupCacheURLs(@Host(ClassLoader.class) StaticObject classLoader) {
+    public static @JavaType(URL[].class) StaticObject getLookupCacheURLs(@JavaType(ClassLoader.class) StaticObject classLoader) {
         return StaticObject.NULL;
     }
 }

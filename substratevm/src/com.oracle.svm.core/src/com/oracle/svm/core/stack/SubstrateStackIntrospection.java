@@ -219,7 +219,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
         if (result.getJavaKind() != JavaKind.Object) {
             throw new IllegalArgumentException("can only access Object local variables for now: " + result.getJavaKind());
         }
-        return KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(Object.class, result), Object.class);
+        return SubstrateObjectConstant.asObject(Object.class, result);
     }
 
     private JavaConstant getLocalConstant(int index) {
@@ -362,10 +362,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
             JavaConstant con = getLocalConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 result.append("\n    local ").append(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    result.append(" ").append(name);
-                }
                 if (con.getJavaKind() == JavaKind.Object) {
                     if (isVirtual(i)) {
                         result.append("  [virtual object]");

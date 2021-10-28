@@ -44,7 +44,9 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.assertionsEnabled;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -55,7 +57,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -84,6 +85,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption5Fact
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenNoAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullLiteralNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.ProfileNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -101,6 +103,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -327,12 +331,12 @@ public class CachedTest {
     }
 
     private static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        CallTarget target = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return CompilerDirectives.inCompiledCode();
             }
-        });
+        }.getCallTarget();
         return (boolean) target.call();
     }
 
@@ -846,7 +850,7 @@ public class CachedTest {
         Node child = new ValueNode();
         root.execute(child);
         root.adoptChildren();
-        Assert.assertFalse(hasParent(root, child));
+        assertFalse(hasParent(root, child));
     }
 
     @Test
@@ -854,7 +858,7 @@ public class CachedTest {
         ChildrenNoAdoption2 root = createNode(ChildrenNoAdoption2Factory.getInstance(), false);
         Node[] children = new Node[]{new ValueNode()};
         root.execute(children);
-        Assert.assertFalse(hasParent(root, children[0]));
+        assertFalse(hasParent(root, children[0]));
     }
 
     @Test
@@ -862,7 +866,7 @@ public class CachedTest {
         ChildrenNoAdoption3 root = createNode(ChildrenNoAdoption3Factory.getInstance(), false);
         Node child = new ValueNode();
         root.execute(child);
-        Assert.assertFalse(hasParent(root, child));
+        assertFalse(hasParent(root, child));
     }
 
     @Test
@@ -870,7 +874,7 @@ public class CachedTest {
         ChildrenNoAdoption4 root = createNode(ChildrenNoAdoption4Factory.getInstance(), false);
         Node child = new ValueNode();
         root.execute(child);
-        Assert.assertFalse(hasParent(root, child));
+        assertFalse(hasParent(root, child));
     }
 
     @Test
@@ -878,7 +882,7 @@ public class CachedTest {
         ChildrenNoAdoption5 root = createNode(ChildrenNoAdoption5Factory.getInstance(), false);
         Node child = new ValueNode();
         root.execute(child);
-        Assert.assertFalse(hasParent(root, child));
+        assertFalse(hasParent(root, child));
     }
 
     @Test
@@ -886,7 +890,7 @@ public class CachedTest {
         ChildrenNoAdoption6 root = createNode(ChildrenNoAdoption6Factory.getInstance(), false);
         ConstantValueNode child = new ConstantValueNode();
         root.execute(child);
-        Assert.assertFalse(hasParent(root, child));
+        assertFalse(hasParent(root, child));
     }
 
     @GenerateUncached
@@ -908,6 +912,31 @@ public class CachedTest {
     public void testNullLiteral() {
         assertNull(NullLiteralNodeGen.create().execute(""));
         assertNull(NullLiteralNodeGen.getUncached().execute(""));
+    }
+
+    @GenerateUncached
+    abstract static class ProfileNode extends Node {
+        abstract Object execute(Object value);
+
+        @Specialization
+        static ConditionProfile do1(String value, //
+                        @Cached ConditionProfile conditionProfile) {
+            return conditionProfile;
+        }
+
+        @Specialization
+        static LoopConditionProfile do1(int value, //
+                        @Cached LoopConditionProfile loopProfile) {
+            return loopProfile;
+        }
+    }
+
+    @Test
+    public void testConditionProfileLoopConditionProfile() {
+        final Object conditionProfile = ProfileNodeGen.getUncached().execute("");
+        assertTrue(conditionProfile instanceof ConditionProfile);
+        assertFalse(conditionProfile instanceof LoopConditionProfile);
+        assertTrue(ProfileNodeGen.getUncached().execute(0) instanceof LoopConditionProfile);
     }
 
     private static boolean hasParent(Node parent, Node node) {

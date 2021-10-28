@@ -44,7 +44,6 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -88,8 +87,10 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     public static LanguageContext getContext() {
-        return getCurrentContext(MultiThreadedLanguage.class);
+        return CONTEXT_REF.get(null);
     }
+
+    private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(MultiThreadedLanguage.class);
 
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
@@ -129,7 +130,7 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object result = run();
@@ -150,7 +151,7 @@ public class MultiThreadedLanguage extends TruffleLanguage<LanguageContext> {
                 }
                 return "null result";
             }
-        });
+        }.getCallTarget();
     }
 
     @Override

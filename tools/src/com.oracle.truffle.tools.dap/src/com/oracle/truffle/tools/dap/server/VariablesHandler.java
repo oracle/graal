@@ -28,6 +28,7 @@ import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.dap.types.SetVariableArguments;
 import com.oracle.truffle.tools.dap.types.Variable;
 import com.oracle.truffle.tools.dap.types.VariablesArguments;
@@ -95,6 +96,7 @@ public final class VariablesHandler {
         StackFramesHandler.ScopeWrapper scopeWrapper = info.getById(StackFramesHandler.ScopeWrapper.class, id);
         DebugStackFrame frame;
         boolean updateReturnValue = false;
+        LanguageInfo language = null;
         if (scopeWrapper != null) {
             frame = scopeWrapper.getFrame();
             value = scopeWrapper.getScope().getDeclaredValue(name);
@@ -102,6 +104,7 @@ public final class VariablesHandler {
                 if ("Return value".equals(name)) {
                     value = scopeWrapper.getReturnValue();
                     updateReturnValue = true;
+                    language = frame.getLanguage();
                 }
             }
         } else {
@@ -122,22 +125,22 @@ public final class VariablesHandler {
                 }
             }
         }
-        if (value != null && value.isWritable()) {
+        if (value != null && (updateReturnValue || value.isWritable())) {
             DebugValue newValue = getDebugValue(frame, args.getValue());
-            if (newValue != null && newValue.isReadable()) {
-                value.set(newValue);
-                if (updateReturnValue) {
-                    info.getSuspendedEvent().setReturnValue(value);
+            if (newValue == null || !newValue.isReadable()) {
+                Object newValueObject = getValue(args.getValue());
+                if (newValueObject != null) {
+                    newValue = value.getSession().createPrimitiveValue(newValueObject, language);
                 }
-                return createVariable(info, value, "");
             }
-            Object newValueObject = getValue(args.getValue());
-            if (newValueObject != null) {
-                value.set(newValueObject);
+            if (newValue != null && newValue.isReadable()) {
                 if (updateReturnValue) {
-                    info.getSuspendedEvent().setReturnValue(value);
+                    info.getSuspendedEvent().setReturnValue(newValue);
+                } else {
+                    value.set(newValue);
+                    newValue = value;
                 }
-                return createVariable(info, value, "");
+                return createVariable(info, newValue, "");
             }
         }
         return null;

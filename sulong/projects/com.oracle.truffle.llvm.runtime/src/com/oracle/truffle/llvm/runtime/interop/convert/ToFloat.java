@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -40,6 +42,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
+@GenerateUncached
 public abstract class ToFloat extends ForeignToLLVM {
 
     @Specialization
@@ -83,11 +86,13 @@ public abstract class ToFloat extends ForeignToLLVM {
     }
 
     @Specialization
-    protected float fromString(String value) {
-        return getSingleStringCharacter(value);
+    protected float fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception);
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
+    @GenerateAOT.Exclude
     protected float fromForeign(Object obj,
                     @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -109,7 +114,7 @@ public abstract class ToFloat extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value);
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asFloat(value);

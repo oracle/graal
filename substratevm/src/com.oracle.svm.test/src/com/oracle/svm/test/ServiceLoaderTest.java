@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
 import org.junit.Test;
 
+// Checkstyle: allow Class.getSimpleName
+
 public class ServiceLoaderTest {
 
     public static class TestFeature implements Feature {

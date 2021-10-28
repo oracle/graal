@@ -22,23 +22,20 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import java.util.Iterator;
-
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 
-// Remove in GR-26337
-@SuppressWarnings("deprecation")
 public final class CallFrame {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
@@ -51,15 +48,15 @@ public final class CallFrame {
     private final long codeIndex;
     private final long threadId;
     private final Frame frame;
+    private final Node currentNode;
     private final RootNode rootNode;
-    private final TruffleInstrument.Env env;
     private final DebugStackFrame debugStackFrame;
     private final DebugScope debugScope;
-    private final Class<? extends TruffleLanguage<?>> languageClass;
-    private com.oracle.truffle.api.Scope scope;
+    private final JDWPContext context;
+    private Object scope;
 
-    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, RootNode rootNode,
-                    TruffleInstrument.Env env, DebugStackFrame debugStackFrame, Class<? extends TruffleLanguage<?>> languageClass) {
+    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
+                    DebugStackFrame debugStackFrame, JDWPContext context) {
         this.threadId = threadId;
         this.typeTag = typeTag;
         this.classId = classId;
@@ -67,11 +64,11 @@ public final class CallFrame {
         this.methodId = methodId;
         this.codeIndex = method != null && method.isObsolete() ? -1 : codeIndex;
         this.frame = frame;
+        this.currentNode = currentNode;
         this.rootNode = rootNode;
-        this.env = env;
         this.debugStackFrame = debugStackFrame;
         this.debugScope = debugStackFrame != null ? debugStackFrame.getScope() : null;
-        this.languageClass = languageClass;
+        this.context = context;
     }
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
@@ -114,29 +111,29 @@ public final class CallFrame {
     }
 
     public Object getThisValue() {
-        com.oracle.truffle.api.Scope theScope = getScope();
+        Object theScope = getScope();
         try {
-            return theScope != null ? INTEROP.readMember(theScope.getVariables(), "this") : null;
+            return theScope != null ? INTEROP.readMember(theScope, "this") : null;
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            JDWPLogger.log("Unable to read 'this' value from method: %s", JDWPLogger.LogLevel.ALL, getMethod());
+            JDWP.LOGGER.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
             return INVALID_VALUE;
         }
     }
 
     public Object getVariable(String identifier) throws InteropException {
-        com.oracle.truffle.api.Scope theScope = getScope();
-        return theScope != null ? INTEROP.readMember(theScope.getVariables(), identifier) : null;
+        Object theScope = getScope();
+        return theScope != null ? INTEROP.readMember(theScope, identifier) : null;
     }
 
     public void setVariable(Object value, String identifier) {
-        com.oracle.truffle.api.Scope theScope = getScope();
+        Object theScope = getScope();
         if (theScope == null) {
             return;
         }
         try {
-            INTEROP.writeMember(theScope.getVariables(), identifier, value);
+            INTEROP.writeMember(theScope, identifier, value);
         } catch (Exception e) {
-            JDWPLogger.log("Unable to write member %s from variables", JDWPLogger.LogLevel.ALL, identifier);
+            JDWP.LOGGER.warning(() -> "Unable to write member " + identifier + " from variables");
         }
     }
 
@@ -144,17 +141,26 @@ public final class CallFrame {
         return debugStackFrame;
     }
 
-    private com.oracle.truffle.api.Scope getScope() {
+    private Object getScope() {
         if (scope != null) {
             return scope;
         }
-        Iterator<com.oracle.truffle.api.Scope> it = env.findLocalScopes(rootNode, getFrame()).iterator();
-        scope = it.hasNext() ? it.next() : null;
+        // look for instrumentable node that should have scope
+        Node node = InstrumentableNode.findInstrumentableParent(currentNode);
+        if (NodeLibrary.getUncached().hasScope(node, frame)) {
+            try {
+                scope = NodeLibrary.getUncached().getScope(node, frame, true);
+            } catch (UnsupportedMessageException e) {
+                JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
+            }
+        } else {
+            JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
+        }
         return scope;
     }
 
     public DebugValue asDebugValue(Object returnValue) {
         assert debugScope != null;
-        return debugScope.convertRawValue(languageClass, returnValue);
+        return debugScope.convertRawValue(context.getLanguageClass(), returnValue);
     }
 }

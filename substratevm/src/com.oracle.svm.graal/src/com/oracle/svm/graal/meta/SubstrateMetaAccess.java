@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.convertUnknownValue;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Executable;
@@ -152,7 +151,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
 
     @Override
     public Speculation decodeSpeculation(JavaConstant constant, SpeculationLog speculationLog) {
-        return new SubstrateSpeculation((SpeculationReason) convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class));
+        return new SubstrateSpeculation((SpeculationReason) SubstrateObjectConstant.asObject(constant));
     }
 
     @Override

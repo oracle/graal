@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,7 +57,6 @@ import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 /**
  * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
  *
- * @see InitializeScopeNode
  * @see InitializeSymbolsNode
  * @see InitializeModuleNode
  * @see InitializeExternalNode

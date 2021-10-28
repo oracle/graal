@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,14 +159,8 @@ public final class TruffleLogger {
         return loggerCache.getOrCreateLogger(id, loggerName);
     }
 
-    static LoggerCache createLoggerCache(Object loggerCache, Map<String, Level> logLevels) {
-        LoggerCache cache = new LoggerCache(loggerCache);
-        if (!logLevels.isEmpty()) {
-            Object vmObject = LanguageAccessor.engineAccess().getLoggerOwner(loggerCache);
-            assert vmObject != null;
-            cache.addLogLevelsForContext(vmObject, logLevels);
-        }
-        return cache;
+    LoggerCache getLoggerCache() {
+        return this.loggerCache;
     }
 
     /**
@@ -478,7 +472,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, null, null, (Object) null);
+        doLog(level, message, null, null, (Object[]) null);
     }
 
     /**
@@ -496,7 +490,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, null, null, (Object) null);
+        doLog(level, messageSupplier, null, null, null);
     }
 
     /**
@@ -588,7 +582,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, sourceClass, sourceMethod, (Object) null);
+        doLog(level, message, sourceClass, sourceMethod, (Object[]) null);
     }
 
     /**
@@ -608,7 +602,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, sourceClass, sourceMethod, (Object) null);
+        doLog(level, messageSupplier, sourceClass, sourceMethod, null);
     }
 
     /**
@@ -787,16 +781,6 @@ public final class TruffleLogger {
                     final Supplier<String> messageSupplier,
                     final String className,
                     final String methodName,
-                    final Object param) {
-        doLog(level, messageSupplier.get(), className, methodName, new Object[]{param});
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private void doLog(
-                    final Level level,
-                    final Supplier<String> messageSupplier,
-                    final String className,
-                    final String methodName,
                     final Throwable thrown) {
         doLog(level, messageSupplier.get(), className, methodName, thrown);
     }
@@ -964,7 +948,7 @@ public final class TruffleLogger {
         private Map<String, Level> effectiveLevels;
         private volatile Set<String> knownIds;
 
-        private LoggerCache(Object loggerCacheSpi) {
+        LoggerCache(Object loggerCacheSpi) {
             Objects.requireNonNull(loggerCacheSpi);
             this.loggerCache = loggerCacheSpi;
             this.polyglotRootLogger = new TruffleLogger(this);
@@ -975,14 +959,14 @@ public final class TruffleLogger {
             this.effectiveLevels = Collections.emptyMap();
         }
 
-        synchronized void addLogLevelsForContext(final Object spi, final Map<String, Level> addedLevels) {
-            activeContexts.add(new ContextWeakReference(spi, contextsRefQueue, addedLevels));
+        synchronized void addLogLevelsForVMObject(final Object vmObject, final Map<String, Level> addedLevels) {
+            activeContexts.add(new ContextWeakReference(vmObject, contextsRefQueue, addedLevels));
             final Set<String> toRemove = collectRemovedLevels();
             reconfigure(addedLevels, toRemove);
         }
 
-        synchronized void removeLogLevelsForContext(final Object context) {
-            Set<String> toRemove = removeContext(context);
+        synchronized void removeLogLevelsForVMObject(final Object vmObject) {
+            Set<String> toRemove = removeContext(vmObject);
             reconfigure(Collections.emptyMap(), toRemove);
         }
 
@@ -1080,7 +1064,7 @@ public final class TruffleLogger {
             return result;
         }
 
-        private Object getSPI() {
+        Object getSPI() {
             return this.loggerCache;
         }
 

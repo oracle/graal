@@ -76,6 +76,12 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         public Env getEnv() {
             return env;
         }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(ProxyLanguage.class);
+
+        public static LanguageContext get(Node node) {
+            return REFERENCE.get(node);
+        }
     }
 
     private static volatile ProxyLanguage delegate = new ProxyLanguage();
@@ -97,23 +103,21 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         this.onCreate = onCreate;
     }
 
-    public static LanguageContext getCurrentContext() {
-        return getCurrentContext(ProxyLanguage.class);
-    }
+    private static final LanguageReference<ProxyLanguage> REFERENCE = LanguageReference.create(ProxyLanguage.class);
 
-    public static LanguageContext getCurrentLanguageContext(Class<? extends ProxyLanguage> languageClass) {
-        return getCurrentContext(languageClass);
-    }
-
-    public static ProxyLanguage getCurrentLanguage() {
-        return getCurrentLanguage(ProxyLanguage.class);
+    public static ProxyLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     @Override
     protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         if (wrapper) {
             delegate.languageInstance = this;
-            return delegate.createContext(env);
+            LanguageContext c = delegate.createContext(env);
+            if (delegate.onCreate != null) {
+                delegate.onCreate.accept(c);
+            }
+            return c;
         } else {
             LanguageContext c = new LanguageContext(env);
             if (onCreate != null) {
@@ -172,6 +176,15 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             delegate.finalizeContext(context);
         } else {
             super.finalizeContext(context);
+        }
+    }
+
+    @Override
+    protected void exitContext(LanguageContext context, ExitMode exitMode, int exitCode) {
+        if (wrapper) {
+            delegate.exitContext(context, exitMode, exitCode);
+        } else {
+            super.exitContext(context, exitMode, exitCode);
         }
     }
 

@@ -28,7 +28,7 @@ import java.lang.reflect.MalformedParametersException;
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;

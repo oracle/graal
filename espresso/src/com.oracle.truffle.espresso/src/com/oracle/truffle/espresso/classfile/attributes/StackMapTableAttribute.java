@@ -23,43 +23,17 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
-import com.oracle.truffle.espresso.classfile.StackMapFrame;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.runtime.Attribute;
-
-import java.io.PrintStream;
 
 public class StackMapTableAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Symbol.Name.StackMapTable;
 
-    public StackMapFrame[] getEntries() {
-        return entries;
-    }
+    public static final StackMapTableAttribute EMPTY = new StackMapTableAttribute(NAME, null);
 
-    private final StackMapFrame[] entries;
-    private boolean truncated = false;
-
-    public StackMapTableAttribute(Symbol<Symbol.Name> name, StackMapFrame[] entries) {
-        super(name, null);
-        this.entries = entries;
-    }
-
-    public void print(Klass klass, PrintStream out) {
-        out.println("    StackMapTable {");
-        for (StackMapFrame sme : entries) {
-            sme.print(klass, out);
-        }
-        out.println("    }");
-    }
-
-    public boolean isTruncated() {
-        return truncated;
-    }
-
-    public void setTruncated() {
-        this.truncated = true;
+    public StackMapTableAttribute(Symbol<Symbol.Name> name, byte[] data) {
+        super(name, data);
     }
 }

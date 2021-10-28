@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.graal.nodes.UnreachableNode.unreachable;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+import static org.graalvm.compiler.nodes.UnreachableNode.unreachable;
 
 import java.util.Map;
 
@@ -37,7 +37,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
@@ -51,7 +50,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
@@ -102,14 +100,9 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
-            FrameState exceptionState = node.stateAfter();
-            assert exceptionState != null;
-
             StructuredGraph graph = node.graph();
             FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
             graph.replaceFixedWithFixed(node, readRegNode);
-
-            graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
         }
     }
 }

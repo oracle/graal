@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,12 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -115,9 +116,14 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
 
     @Override
     public void simplify(SimplifierTool tool) {
+        boolean simplifiedNegation = false;
         while (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
             setCondition(negation.getValue(), !negated);
+            simplifiedNegation = true;
+        }
+        if (simplifiedNegation) {
+            tool.addToWorkList(condition);
         }
     }
 
@@ -139,10 +145,10 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
             IfNode ifNode;
             AbstractBeginNode noDeoptSuccessor;
             if (negated) {
-                ifNode = graph().add(new IfNode(condition, deopt, currentNext, 0));
+                ifNode = graph().add(new IfNode(condition, deopt, currentNext, BranchProbabilityNode.NEVER_TAKEN_PROFILE));
                 noDeoptSuccessor = ifNode.falseSuccessor();
             } else {
-                ifNode = graph().add(new IfNode(condition, currentNext, deopt, 1));
+                ifNode = graph().add(new IfNode(condition, currentNext, deopt, BranchProbabilityNode.ALWAYS_TAKEN_PROFILE));
                 noDeoptSuccessor = ifNode.trueSuccessor();
             }
             noDeoptSuccessor.setNodeSourcePosition(getNoDeoptSuccessorPosition());

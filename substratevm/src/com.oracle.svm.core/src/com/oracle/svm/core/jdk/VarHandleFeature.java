@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 //Checkstyle: allow reflection
 
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -103,7 +102,7 @@ public class VarHandleFeature implements Feature {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The JDK 11 class VarHandleObjects got renamed to VarHandleReferences. */
-    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPEC > 11 ? "References" : "Objects";
+    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPEC <= 11 ? "Objects" : "References";
 
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
@@ -239,7 +238,7 @@ class VarHandleFieldStaticBasePrimitiveAccessor {
 
     @SuppressWarnings("unused")
     static void set(Object varHandle, Object value) {
-        throw unimplemented("Setting fields through VarHandles not supported");
+        assert value == StaticFieldsSupport.getStaticPrimitiveFields();
     }
 }
 
@@ -250,7 +249,7 @@ class VarHandleFieldStaticBaseObjectAccessor {
 
     @SuppressWarnings("unused")
     static void set(Object varHandle, Object value) {
-        throw unimplemented("Setting fields through VarHandles not supported");
+        assert value == StaticFieldsSupport.getStaticObjectFields();
     }
 }
 
@@ -490,7 +489,7 @@ final class Target_java_lang_invoke_VarHandle {
      * collects details about the MemberName, which are method handle internals that must not be
      * reachable.
      */
-    @TargetElement(onlyWith = JDK14OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @Substitute
     @Override
     public String toString() {

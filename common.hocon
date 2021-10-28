@@ -32,20 +32,18 @@ oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
-oraclejdk16 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk16} }}
+oraclejdk17 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk17} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 labsjdk-ce-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
 labsjdk-ee-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
-labsjdk-ce-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16} }}
-labsjdk-ee-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16} }}
-labsjdk-ce-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16Debug} }}
-labsjdk-ee-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16Debug} }}
+labsjdk-ce-17 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17} }}
+labsjdk-ee-17 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17} }}
+labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
+labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
-  catch_files : [
-    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
-  ]
+  catch_files : ${catch_files}
 }
 
 linux : ${common} ${deps.linux}
@@ -120,21 +118,17 @@ svm-common: ${mx} {
 
 svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
   packages: {
-    make: ">=3.83"
-    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
-    binutils: ">=2.30"
+    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+    binutils: ">=2.34"
     ruby: ">=2.1.0"
-    valgrind: ">=3.9.0"
   }
   timelimit: "55:00"
 }
 
 svm-common-linux-aarch64: ${svm-common} ${linux-aarch64} {
   packages: {
-    make: ">=3.83"
-    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
     ruby: ">=2.1.0"
-    valgrind: ">=3.9.0"
   }
   timelimit: "55:00"
 }
@@ -170,6 +164,10 @@ svm-common-windows-oraclejdk8: ${svm-common} ${windows-amd64} ${devkits.windows-
 }
 
 svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11} {
+  timelimit: "45:00"
+}
+
+svm-common-windows-jdk17: ${svm-common} ${windows-amd64} ${devkits.windows-jdk17} {
   timelimit: "45:00"
 }
 

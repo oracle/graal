@@ -226,4 +226,38 @@ public class InstallFromGdsTest extends CommandTestBase {
         userInput.append("y\n");
         checkLicenseRecorded("joker@acme.org");
     }
+
+    /**
+     * Checks e-mail is not asked for again after rejection.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testEmailRejectedJustOnce() throws Exception {
+        textParams.add("llvm-toolchain");
+        textParams.add("native-image");
+        userInput.append("y\n");
+        userInput.append("\n");
+
+        class FB extends FeedbackAdapter {
+            int emailPrompts;
+
+            @Override
+            public void output(String bundleKey, Object... params) {
+                super.outputPart(bundleKey, params);
+                if ("PROMPT_EmailAddressEntry".equals(bundleKey)) {
+                    emailPrompts++;
+                }
+            }
+
+        }
+        FB fb = new FB();
+        delegateFeedback(fb);
+
+        installAndCheckLicenseNotRecorded();
+        checkPropertyExists(null);
+
+        assertEquals(1, fb.emailPrompts);
+    }
+
 }

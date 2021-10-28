@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertNotEquals;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -40,7 +39,7 @@ public class FlushEngineQueueTest {
     @Test
     public void testTargetsDequeuedOnClose() {
 
-        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "true").option("engine.CompilationThreshold", "3").build();
+        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "true").option("engine.SingleTierCompilationThreshold", "3").build();
         context.enter();
 
         OptimizedCallTarget[] targets = new OptimizedCallTarget[300];
@@ -78,7 +77,7 @@ public class FlushEngineQueueTest {
     }
 
     private static OptimizedCallTarget createConstantCallTarget(int i) {
-        return (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
+        return (OptimizedCallTarget) new RootNode(null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -94,7 +93,7 @@ public class FlushEngineQueueTest {
             public String toString() {
                 return getName();
             }
-        });
+        }.getCallTarget();
     }
 
 }

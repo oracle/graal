@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.CompilerThreadFactory;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -74,6 +75,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -89,7 +93,6 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -108,11 +111,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Checks that all classes in *graal*.jar and *jvmci*.jar entries on the boot class path comply with
- * global invariants such as using {@link Object#equals(Object)} to compare certain types instead of
- * identity comparisons.
+ * Checks that all Graal classes comply with global invariants such as using
+ * {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
  */
-@AddExports("jdk.internal.vm.ci/*=jdk.aot")
 public class CheckGraalInvariants extends GraalCompilerTest {
 
     /**
@@ -145,7 +146,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             if (classpathEntry.endsWith(".jar")) {
                 String name = new File(classpathEntry).getName();
-                return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
+                return name.contains("graal") || name.contains("jdk.internal.vm.compiler");
             }
             return false;
         }
@@ -162,7 +163,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             String javaClassPath = System.getProperty("java.class.path");
             if (javaClassPath != null) {
                 for (String path : javaClassPath.split(File.pathSeparator)) {
-                    if (path.contains("libgraal") && !path.contains("processor")) {
+                    if (path.contains("libgraal") && !path.contains("processor") && !path.contains("management")) {
                         classpath += File.pathSeparator + path;
                     }
                 }
@@ -345,7 +346,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
 
         verifiers.add(new VerifyDebugUsage());
-        verifiers.add(new VerifyCallerSensitiveMethods());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyBailoutUsage());
@@ -534,7 +534,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     private static void checkOptionFieldUsages(List<String> errors, Map<ResolvedJavaField, Set<ResolvedJavaMethod>> optionFieldUsages) {
         for (Map.Entry<ResolvedJavaField, Set<ResolvedJavaMethod>> e : optionFieldUsages.entrySet()) {
             if (e.getValue().isEmpty()) {
-                errors.add("No uses found for " + e.getKey().format("%H.%n"));
+                if (e.getKey().format("%H.%n").equals(GraalOptions.VerifyPhases.getDescriptor().getLocation())) {
+                    // Special case: This option may only have downstream uses
+                } else {
+                    errors.add("No uses found for " + e.getKey().format("%H.%n"));
+                }
             }
         }
     }
@@ -583,6 +587,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 throw new AssertionError(String.format("Node subclass %s requires %s annotation", c.getName(), NodeClass.class.getSimpleName()));
             }
             VerifyNodeCosts.verifyNodeClass(c);
+            // Any concrete class which implements MemoryKill must actually implement either
+            // SingleMemoryKill or MultiMemoryKill.
+            assert !MemoryKill.class.isAssignableFrom(c) || Modifier.isAbstract(c.getModifiers()) || SingleMemoryKill.class.isAssignableFrom(c) || MultiMemoryKill.class.isAssignableFrom(c) : c +
+                            " must inherit from either SingleMemoryKill or MultiMemoryKill";
         }
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             verifier.verifyClass(c, metaAccess);

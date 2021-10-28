@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -192,4 +193,9 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      */
     default void closeSnippetRegistration() {
     }
+
+    /**
+     * Gets the JavaKind corresponding to word values.
+     */
+    JavaKind getWordKind();
 }

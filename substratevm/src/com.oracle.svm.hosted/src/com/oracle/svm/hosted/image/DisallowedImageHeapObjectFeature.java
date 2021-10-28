@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.io.File;
 import java.lang.management.PlatformManagedObject;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +47,7 @@ import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
@@ -80,10 +81,10 @@ public class DisallowedImageHeapObjectFeature implements Feature {
              * We do not check for the temp directory name and the user name because they have a too
              * high chance of being short or generic terms that appear in valid strings.
              */
-            disallowedSubstrings = new String[]{
+            disallowedSubstrings = getDisallowedSubstrings(
                             System.getProperty("user.home"),
                             System.getProperty("user.dir"),
-                            System.getProperty("java.home")};
+                            System.getProperty("java.home"));
 
             /* We cannot check all byte[] encodings of strings, but we want to check common ones. */
             Set<Charset> encodings = new HashSet<>(Arrays.asList(
@@ -92,13 +93,22 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                             Charset.forName(System.getProperty("sun.jnu.encoding"))));
 
             disallowedByteSubstrings = new IdentityHashMap<>();
-            for (int i = 0; i < disallowedSubstrings.length; i++) {
-                String s = disallowedSubstrings[i];
+            for (String s : disallowedSubstrings) {
                 for (Charset encoding : encodings) {
                     disallowedByteSubstrings.put(s.getBytes(encoding), encoding);
                 }
             }
         }
+    }
+
+    private static String[] getDisallowedSubstrings(String... substrings) {
+        return Arrays.stream(substrings).filter(s -> {
+            /*
+             * To avoid false positives when detecting user directories in the image heap, we
+             * disallow substrings only if they have at least two name-separator characters.
+             */
+            return s.indexOf(File.separatorChar, s.indexOf(File.separatorChar) + 1) != -1;
+        }).toArray(String[]::new);
     }
 
     private Object replacer(Object original) {
@@ -160,7 +170,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         throw new UnsupportedFeatureException(msg + " " + classInitialization.objectInstantiationTraceMessage(obj, initializerAction) + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image runtime by using the option " +
-                        SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
+                        SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<class-name>", "initialize-at-run-time") + ". " +
                         "Or you can write your own initialization methods and call them explicitly from your main entry point.");
     }
 

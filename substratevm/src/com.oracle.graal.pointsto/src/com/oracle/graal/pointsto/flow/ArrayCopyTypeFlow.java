@@ -25,9 +25,8 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -36,10 +35,10 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * Models the flow transfer of an {@link ArrayCopy} node which intrinsifies calls to
- * System.arraycopy(). This flow registers itself as an observer for both the source and the
- * destination. When either the source or the destination elements change the element flows from
- * source are passed to destination.
+ * Models the flow transfer of an {@link org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode}
+ * node which intrinsifies calls to System.arraycopy(). This flow registers itself as an observer
+ * for both the source and the destination. When either the source or the destination elements
+ * change the element flows from source are passed to destination.
  */
 public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
@@ -52,14 +51,14 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
         this.dstArrayFlow = dstArrayFlow;
     }
 
-    public ArrayCopyTypeFlow(BigBang bb, ArrayCopyTypeFlow original, MethodFlowsGraph methodFlows) {
+    public ArrayCopyTypeFlow(PointsToAnalysis bb, ArrayCopyTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.srcArrayFlow = methodFlows.lookupCloneOf(bb, original.srcArrayFlow);
         this.dstArrayFlow = methodFlows.lookupCloneOf(bb, original.dstArrayFlow);
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new ArrayCopyTypeFlow(bb, this, methodFlows);
     }
 
@@ -67,7 +66,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
     private TypeState lastDst;
 
     @Override
-    public void onObservedUpdate(BigBang bb) {
+    public void onObservedUpdate(PointsToAnalysis bb) {
         assert this.isClone();
         if (bb.analysisPolicy().aliasArrayTypeFlows()) {
             /* All arrays are aliased, no need to model the array copy operation. */
@@ -126,7 +125,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
         lastDst = dstArrayState;
     }
 
-    private static void processStates(BigBang bb, TypeState srcArrayState, TypeState dstArrayState) {
+    private static void processStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
         /*
          * The source and destination array can have reference types which, although must be
          * compatible, can be different.

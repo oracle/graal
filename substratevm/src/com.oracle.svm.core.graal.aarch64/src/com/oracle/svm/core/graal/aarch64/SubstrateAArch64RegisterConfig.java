@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
+import static jdk.vm.ci.aarch64.AArch64.r18;
 import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r2;
 import static jdk.vm.ci.aarch64.AArch64.r20;
@@ -50,19 +51,29 @@ import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v10;
+import static jdk.vm.ci.aarch64.AArch64.v11;
+import static jdk.vm.ci.aarch64.AArch64.v12;
+import static jdk.vm.ci.aarch64.AArch64.v13;
+import static jdk.vm.ci.aarch64.AArch64.v14;
+import static jdk.vm.ci.aarch64.AArch64.v15;
 import static jdk.vm.ci.aarch64.AArch64.v2;
 import static jdk.vm.ci.aarch64.AArch64.v3;
 import static jdk.vm.ci.aarch64.AArch64.v4;
 import static jdk.vm.ci.aarch64.AArch64.v5;
 import static jdk.vm.ci.aarch64.AArch64.v6;
 import static jdk.vm.ci.aarch64.AArch64.v7;
+import static jdk.vm.ci.aarch64.AArch64.v8;
+import static jdk.vm.ci.aarch64.AArch64.v9;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
@@ -90,34 +101,52 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
-    private final RegisterArray xmmParameterRegs;
+    private final RegisterArray simdParameterRegs;
     private final RegisterArray allocatableRegs;
     private final RegisterArray calleeSaveRegisters;
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
-    private final RegisterArray javaGeneralParameterRegisters;
+    private final boolean preserveFramePointer;
+    public static final Register fp = r29;
 
-    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
+    public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
+        this.preserveFramePointer = preserveFramePointer;
 
         // This is the Linux 64-bit ABI for parameters.
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
-        xmmParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
-
-        javaGeneralParameterRegisters = new RegisterArray(r1, r2, r3, r4, r5, r6, r7, r0);
+        simdParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
 
         nativeParamsStackOffset = 0;
 
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
-        regs.remove(ReservedRegisters.singleton().getFrameRegister());
+        regs.remove(ReservedRegisters.singleton().getFrameRegister()); // sp
         regs.remove(zr);
+        // Scratch registers.
         regs.remove(r8);
         regs.remove(r9);
-        regs.remove(r29);
+        if (preserveFramePointer) {
+            regs.remove(fp); // r29
+        }
+        /*
+         * R31 is not a "real" register - depending on the instruction, this encoding is either zr
+         * or sp.
+         */
         regs.remove(r31);
+        /*
+         * If enabled, the heapBaseRegister and threadRegister are r27 and r28, respectively. See
+         * AArch64ReservedRegisters and ReservedRegisters for more information.
+         */
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
+        /*
+         * Darwin specifies that r18 is a platform-reserved register:
+         * https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms
+         */
+        if (OS.getCurrent() == OS.DARWIN) {
+            regs.remove(r18);
+        }
         allocatableRegs = new RegisterArray(regs);
 
         switch (config) {
@@ -126,7 +155,8 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             case NATIVE_TO_JAVA:
-                calleeSaveRegisters = new RegisterArray(r19, r20, r21, r22, r23, r24, r25, r26, r27, r28);
+                calleeSaveRegisters = new RegisterArray(r19, r20, r21, r22, r23, r24, r25, r26, r27, r28,
+                                v8, v9, v10, v11, v12, v13, v14, v15);
                 break;
 
             default:
@@ -184,70 +214,65 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
-        switch (kind) {
-            case Boolean:
-            case Byte:
-            case Short:
-            case Char:
-            case Int:
-            case Long:
-            case Object:
-                return (type.nativeABI ? generalParameterRegs : javaGeneralParameterRegisters);
-            case Float:
-            case Double:
-                return xmmParameterRegs;
-            default:
-                throw VMError.shouldNotReachHere();
-        }
+        throw VMError.unimplemented();
+    }
+
+    public boolean shouldPreserveFramePointer() {
+        return preserveFramePointer;
     }
 
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
-        boolean isEntryPoint = type.nativeABI && !type.outgoing;
+        boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
 
         int currentGeneral = 0;
-        int currentXMM = 0;
+        int currentSIMD = 0;
 
         /*
          * We have to reserve a slot between return address and outgoing parameters for the deopt
          * frame handle. Exception: calls to native methods.
          */
-        int currentStackOffset = (type.nativeABI ? nativeParamsStackOffset : target.wordSize);
+        int currentStackOffset = (type.nativeABI() ? nativeParamsStackOffset : target.wordSize);
 
         JavaKind[] kinds = new JavaKind[locations.length];
         for (int i = 0; i < parameterTypes.length; i++) {
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
-            switch (kind) {
-                case Byte:
-                case Boolean:
-                case Short:
-                case Char:
-                case Int:
-                case Long:
-                case Object:
-                    if (currentGeneral < generalParameterRegs.size()) {
-                        Register register = generalParameterRegs.get(currentGeneral++);
-                        locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
-                    }
-                    break;
-                case Float:
-                case Double:
-                    if (currentXMM < xmmParameterRegs.size()) {
-                        Register register = xmmParameterRegs.get(currentXMM++);
-                        locations[i] = register.asValue(valueKindFactory.getValueKind(kind));
-                    }
-                    break;
-                default:
-                    throw shouldNotReachHere();
-            }
+            Register register = null;
+            if (type.kind == SubstrateCallingConventionKind.ForwardReturnValue) {
+                VMError.guarantee(i == 0, "Method with calling convention ForwardReturnValue cannot have more than one parameter");
+                register = getReturnRegister(kind);
+            } else {
+                switch (kind) {
+                    case Byte:
+                    case Boolean:
+                    case Short:
+                    case Char:
+                    case Int:
+                    case Long:
+                    case Object:
+                        if (currentGeneral < generalParameterRegs.size()) {
+                            register = generalParameterRegs.get(currentGeneral++);
+                        }
+                        break;
+                    case Float:
+                    case Double:
+                        if (currentSIMD < simdParameterRegs.size()) {
+                            register = simdParameterRegs.get(currentSIMD++);
+                        }
+                        break;
+                    default:
+                        throw shouldNotReachHere();
+                }
 
-            if (locations[i] == null) {
+            }
+            if (register != null) {
+                locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
+            } else {
                 ValueKind<?> valueKind = valueKindFactory.getValueKind(kind.getStackKind());
                 locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
                 currentStackOffset += Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);

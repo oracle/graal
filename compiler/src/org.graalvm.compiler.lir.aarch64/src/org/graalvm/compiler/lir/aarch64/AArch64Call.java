@@ -25,13 +25,11 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.vm.ci.aarch64.AArch64.r8;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -42,6 +40,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.InvokeTarget;
@@ -127,7 +126,7 @@ public class AArch64Call {
         }
     }
 
-    public abstract static class ForeignCallOp extends CallOp implements LabelHoldingOp {
+    public abstract static class ForeignCallOp extends CallOp implements LabelHoldingOp, ZapRegistersAfterInstruction {
         protected final ForeignCallLinkage callTarget;
         protected final Label label;
 
@@ -179,9 +178,9 @@ public class AArch64Call {
 
         @Override
         protected void emitCall(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            // We can use any scratch register we want, since we know that they have been saved
-            // before calling.
-            directCall(crb, masm, callTarget, r8, state, label);
+            try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
+                directCall(crb, masm, callTarget, scratch.getRegister(), state, label);
+            }
         }
     }
 
@@ -208,19 +207,15 @@ public class AArch64Call {
     public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
         int before = masm.position();
         if (scratch != null) {
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                masm.bl(0);
-            } else {
-                /*
-                 * Offset might not fit into a 28-bit immediate, generate an indirect call with a
-                 * 64-bit immediate address which is fixed up by HotSpot.
-                 */
-                masm.movNativeAddress(scratch, 0L, true);
-                masm.blr(scratch);
-            }
+            /*
+             * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
+             * immediate address which is fixed up by HotSpot.
+             */
+            masm.movNativeAddress(scratch, 0L, true);
+            masm.blr(scratch);
         } else {
-            // Address is fixed up by HotSpot.
-            masm.bl(0);
+            // Address is fixed up by the runtime.
+            masm.bl();
         }
         if (label != null) {
             // We need this label to be the return address.
@@ -244,12 +239,8 @@ public class AArch64Call {
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                masm.jmp();
-            } else {
-                masm.movNativeAddress(scratch.getRegister(), 0L);
-                masm.jmp(scratch.getRegister());
-            }
+            masm.movNativeAddress(scratch.getRegister(), 0L);
+            masm.jmp(scratch.getRegister());
             int after = masm.position();
             crb.recordDirectCall(before, after, callTarget, null);
             masm.ensureUniquePC();

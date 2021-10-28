@@ -718,7 +718,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);
 
             SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
-            schedule.apply(graph);
+            schedule.apply(graph, getDefaultLowTierContext());
             return graph.getLastSchedule();
         } catch (Throwable e) {
             throw debug.handle(e);

@@ -26,19 +26,20 @@ package com.oracle.svm.core.meta;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
 
-    static JavaConstant readFieldValue(ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
+    static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
         if (javaField instanceof ReadableJavaField) {
-            return ((ReadableJavaField) javaField).readValue(javaConstant);
+            return ((ReadableJavaField) javaField).readValue(metaAccess, javaConstant);
         } else {
             return originalConstantReflection.readFieldValue(javaField, javaConstant);
         }
     }
 
-    JavaConstant readValue(JavaConstant receiver);
+    JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver);
 
     boolean allowConstantFolding();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,20 @@ package org.graalvm.compiler.core.test;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -56,7 +63,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
         // unbox here dominates box below
         int i = (Integer) o;
         S = o;
-        // box again with optimized box
+        // re-use unbox
         return i;
     }
 
@@ -70,23 +77,27 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
 
     @Test
     public void testStructure() {
-        parseOptimizeCheck("boxStructural1", 2, 0);
-        parseOptimizeCheck("boxStructural2", 1, 0);
-        parseOptimizeCheck("boxStructural3", 0, 1);
+        // can re-use one dominating box node
+        parseOptimizeCheck("boxStructural1", 1);
+        // can do nothing, the unbox input is a parameter which might not be from valueOf
+        // path
+        parseOptimizeCheck("boxStructural2", 1);
+        // can remove second box
+        parseOptimizeCheck("boxStructural3", 1);
     }
 
-    private void parseOptimizeCheck(String boxSnippet, int nrOptimizedAfter, int nrBoxAfter) {
-        StructuredGraph g = parseEager(getResolvedJavaMethod(boxSnippet), AllowAssumptions.NO);
-        createCanonicalizerPhase().apply(g, getDefaultHighTierContext());
+    private void parseOptimizeCheck(String boxSnippet, int nrBoxAfter) {
+        StructuredGraph g = parseEager(getResolvedJavaMethod(boxSnippet), AllowAssumptions.NO, getInitialOptions());
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
         new BoxNodeOptimizationPhase().apply(g, getDefaultHighTierContext());
         Assert.assertTrue(GraphOrder.assertNonCyclicGraph(g));
-        Assert.assertEquals("expected number optimized box nodes", nrOptimizedAfter, g.getNodes().filter(BoxNode.OptimizedAllocatingBoxNode.class).count());
-        Assert.assertEquals("expected number of regular box nodes", nrBoxAfter + nrOptimizedAfter, g.getNodes().filter(BoxNode.class).count());
+        Assert.assertEquals("expected number of regular box nodes", nrBoxAfter, g.getNodes().filter(BoxNode.class).count());
     }
 
     public static Integer intBoxOptimized(Object o) {
-        int i = (Integer) o;
-        S = o;
+        Integer trusted = GraalDirectives.trustedBox((Integer) GraalDirectives.guardingNonNull(o));
+        int i = trusted;
+        S = trusted;
         // box again, reuse if existing
         return i;
     }
@@ -104,8 +115,9 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     }
 
     public static Long longBoxOptimized(Object o) {
-        long i = (Long) o;
-        S = o;
+        Long trusted = GraalDirectives.trustedBox((Long) GraalDirectives.guardingNonNull(o));
+        long i = trusted;
+        S = trusted;
         // box again, reuse if existing
         return i;
     }
@@ -123,8 +135,9 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     }
 
     public static Short shortBoxOptimized(Object o) {
-        short i = (Short) o;
-        S = o;
+        Short trusted = GraalDirectives.trustedBox((Short) GraalDirectives.guardingNonNull(o));
+        short i = trusted;
+        S = trusted;
         // box again, reuse if existing
         return i;
     }
@@ -142,8 +155,9 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
     }
 
     public static Character charBoxOptimized(Object o) {
-        char i = (char) o;
-        S = o;
+        Character trusted = GraalDirectives.trustedBox((Character) GraalDirectives.guardingNonNull(o));
+        char i = trusted;
+        S = trusted;
         // box again, reuse if existing
         return i;
     }
@@ -165,6 +179,12 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
         Object produceBox(int i);
     }
 
+    private InstalledCode compileWithBoxOptimizationPhase(String snippet) {
+        StructuredGraph g = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, getInitialOptions());
+        InstalledCode i = getCode(getResolvedJavaMethod(snippet), g);
+        return i;
+    }
+
     public void testType(String typePrefix, int lowBound, int highBound, BoxProducer producer, long cacheLow, long cacheHigh) throws InvalidInstalledCodeException {
         final int listLength = Math.abs(lowBound) + highBound;
         ArrayList<Object> integersInterpreter = new ArrayList<>();
@@ -174,8 +194,7 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
             integersInterpreter.add(boxed);
         }
 
-        InstalledCode codeReuseExistingBox = getCode(getResolvedJavaMethod(typePrefix + "BoxOptimized"),
-                        new OptionValues(getInitialOptions(), BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, true));
+        InstalledCode codeReuseExistingBox = compileWithBoxOptimizationPhase(typePrefix + "BoxOptimized");
         ArrayList<Object> integersReuse = new ArrayList<>();
         for (int i = -listLength; i < listLength; i++) {
             Object boxed = integersInterpreter.get(i + listLength);
@@ -185,19 +204,9 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
 
         resetCache();
 
-        ArrayList<Object> integersNoReuse = new ArrayList<>();
-        InstalledCode codeNoReuse = getCode(getResolvedJavaMethod(typePrefix + "BoxOptimized"),
-                        new OptionValues(getInitialOptions(), BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, false));
-        for (int i = -listLength; i < listLength; i++) {
-            Object boxed = integersInterpreter.get(i + listLength);
-            // cache values in range, re-use if out of range
-            integersNoReuse.add(codeNoReuse.executeVarargs(boxed));
-        }
-
         for (int i = 0; i < integersInterpreter.size(); i++) {
             Object interpreterObject = integersInterpreter.get(i);
             Object objectReuse = integersReuse.get(i);
-            Object objectNoReuse = integersNoReuse.get(i);
             long originalVal;
             if (interpreterObject instanceof Character) {
                 originalVal = ((Character) interpreterObject);
@@ -208,14 +217,186 @@ public class OptimizedBoxNodeTest extends GraalCompilerTest {
             if (originalVal >= cacheLow && originalVal <= cacheHigh) {
                 // in cache, all must be the same objects
                 Assert.assertTrue("val=" + originalVal + " optimized version must remain cached object identities", interpreterObject == objectReuse);
-                Assert.assertTrue("val=" + originalVal + " unoptimized version must remain cached object identities", interpreterObject == objectNoReuse);
             } else {
-                Assert.assertTrue("val=" + originalVal + " out of cache, unoptimized version must not reuse the argument from the call and thus be different than the interpreter object",
-                                interpreterObject != objectNoReuse);
                 Assert.assertTrue("val=" + originalVal + " out of cache, optimized version must re-use the argument from the call and thus be the same as the interpreter object",
                                 interpreterObject == objectReuse);
             }
         }
+    }
 
+    static int snippetConstantCompare(int a) {
+        int res = a;
+        for (int i = -200; i < 200; i++) {
+            if (a(i) == b(i + 1)) {
+                GraalDirectives.sideEffect(1);
+                res = i;
+            }
+            GraalDirectives.sideEffect(123);
+        }
+        GraalDirectives.sideEffect(2);
+        return res;
+    }
+
+    static Integer a(int i) {
+        GraalDirectives.sideEffect(3);
+        return Integer.valueOf(i);
+    }
+
+    static Integer b(int i) {
+        GraalDirectives.sideEffect(4);
+        return Integer.valueOf(i);
+    }
+
+    @Test
+    public void testCompare() throws InvalidInstalledCodeException {
+        final OptionValues testOptions = new OptionValues(getInitialOptions(), DefaultLoopPolicies.Options.FullUnrollMaxNodes, 10000, DefaultLoopPolicies.Options.ExactFullUnrollMaxNodes, 10000);
+        StructuredGraph g = parseEager(getResolvedJavaMethod("snippetConstantCompare"), AllowAssumptions.NO, testOptions);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(g, getDefaultHighTierContext());
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        Assert.assertEquals("All ifs must be removed", 0, g.getNodes(IfNode.TYPE).count());
+        int[] res = new int[200 * 2];
+        int[] resCompiled = new int[200 * 2];
+        for (int i = -200; i < 200; i++) {
+            res[i + 200] = snippetConstantCompare(i);
+        }
+        InstalledCode code = getCode(getResolvedJavaMethod("snippetConstantCompare"), testOptions);
+        for (int i = -200; i < 200; i++) {
+            resCompiled[i + 200] = (int) code.executeVarargs(i);
+        }
+        Assert.assertArrayEquals(res, resCompiled);
+    }
+
+    static int testPEASnippet() {
+        if (Integer.valueOf(1024) == Integer.valueOf(1024)) {
+            return 0;
+        }
+        return 1;
+    }
+
+    @Test
+    @Ignore
+    public void testPEA() {
+        test("testPEASnippet");
+    }
+
+    static Integer testNonBoxInput(Integer integer) {
+        int i = integer;
+        return Integer.valueOf(i);
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testBoxCanon() throws InvalidInstalledCodeException {
+        final Integer nonCacheZero = new Integer(0);
+
+        final Integer resultInterpreter = testNonBoxInput(nonCacheZero);
+
+        InstalledCode codeNoReuse = getCode(getResolvedJavaMethod("testNonBoxInput"), getInitialOptions());
+
+        final Integer resultGraal = (Integer) codeNoReuse.executeVarargs(nonCacheZero);
+
+        if (nonCacheZero == resultInterpreter) {
+            Assert.assertEquals("Objects must be the same", nonCacheZero, resultGraal);
+        } else {
+            if (nonCacheZero == resultGraal) {
+                Assert.fail("Objects must not be the same ctor=" + System.identityHashCode(nonCacheZero) + " boxResult=" + System.identityHashCode(resultGraal));
+            }
+        }
+    }
+
+    public static long maxIntCacheValue() {
+        int intCacheMaxValue = -1;
+        while (Integer.valueOf(intCacheMaxValue + 1) == Integer.valueOf(intCacheMaxValue + 1)) {
+            intCacheMaxValue += 1;
+            if (intCacheMaxValue < 0) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return -2;
+            }
+        }
+        return intCacheMaxValue;
+    }
+
+    public static long minIntCacheValue() {
+        int intCacheMinValue = 0;
+        while (Integer.valueOf(intCacheMinValue - 1) == Integer.valueOf(intCacheMinValue - 1)) {
+            intCacheMinValue -= 1;
+            if (intCacheMinValue > 0) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return 1;
+            }
+        }
+        return intCacheMinValue;
+    }
+
+    public static long maxLongCacheValue() {
+        long longCacheMaxValue = -1;
+        while (Long.valueOf(longCacheMaxValue + 1) == Long.valueOf(longCacheMaxValue + 1)) {
+            longCacheMaxValue += 1;
+            if (longCacheMaxValue == Integer.MAX_VALUE) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return -2;
+            }
+        }
+        return longCacheMaxValue;
+    }
+
+    public static long minLongCacheValue() {
+        long longCacheMinValue = 0;
+        while (Long.valueOf(longCacheMinValue - 1) == Long.valueOf(longCacheMinValue - 1)) {
+            longCacheMinValue -= 1;
+            if (longCacheMinValue == Integer.MIN_VALUE) {
+                // Mitigate timeout by terminating here with incorrect answer.
+                return 1;
+            }
+        }
+        return longCacheMinValue;
+    }
+
+    /**
+     * A variation on {@link #minLongCacheValue()} where the loop exit is a conditional in the body
+     * of the loop.
+     */
+    public static long minLongCacheValue2() {
+        long longCacheMinValue = 0;
+        while (true) {
+            if (Long.valueOf(longCacheMinValue - 1) != Long.valueOf(longCacheMinValue - 1)) {
+                return longCacheMinValue;
+            }
+            longCacheMinValue -= 1;
+        }
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testIntCacheMaxProbing() {
+        test("maxIntCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testIntCacheMinProbing() {
+        test("minIntCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testLongCacheMaxProbing() {
+        test("maxLongCacheValue");
+    }
+
+    /**
+     * Tests {@link BoxNodeIdentityPhase}.
+     */
+    @Test
+    public void testLongCacheMinProbing() {
+        test("minLongCacheValue");
+        test("minLongCacheValue2");
     }
 }

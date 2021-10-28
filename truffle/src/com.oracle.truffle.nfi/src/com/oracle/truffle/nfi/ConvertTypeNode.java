@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -48,6 +49,7 @@ import com.oracle.truffle.nfi.ConvertTypeNodeFactory.ConvertFromNativeNodeGen;
 import com.oracle.truffle.nfi.ConvertTypeNodeFactory.ConvertToNativeNodeGen;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
+@GenerateAOT
 abstract class ConvertTypeNode extends Node {
 
     abstract Object execute(NFIType type, Object value);
@@ -92,9 +94,9 @@ abstract class ConvertTypeNode extends Node {
     @GenerateUncached
     abstract static class ConvertToNativeNode extends ConvertTypeImplNode {
 
-        @Specialization(limit = "3")
+        @Specialization
         Object doConvert(TypeCachedState typeState, NFIType type, Object value,
-                        @CachedLibrary("typeState") NFITypeLibrary library) {
+                        @CachedLibrary(limit = "3") NFITypeLibrary library) {
             return library.convertToNative(typeState, type, value);
         }
     }
@@ -102,9 +104,9 @@ abstract class ConvertTypeNode extends Node {
     @GenerateUncached
     abstract static class ConvertFromNativeNode extends ConvertTypeImplNode {
 
-        @Specialization(limit = "3")
+        @Specialization
         Object doConvert(TypeCachedState typeState, NFIType type, Object value,
-                        @CachedLibrary("typeState") NFITypeLibrary library) {
+                        @CachedLibrary(limit = "3") NFITypeLibrary library) {
             return library.convertFromNative(typeState, type, value);
         }
     }

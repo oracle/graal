@@ -27,23 +27,25 @@ package com.oracle.graal.pointsto.reports;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.function.Consumer;
 
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.WRITE;
-import static java.nio.file.StandardOpenOption.APPEND;
-
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import java.io.OutputStream;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -73,12 +75,30 @@ public class ReportUtils {
      * @param extension the extension of the report
      * @param reporter a consumer that writes to a PrintWriter
      */
-    public static void report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+    public static String report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+        String fileName = timeStampedFileName(name, extension);
+        Path reportDir = Paths.get(path);
+        reportImpl(description, reportDir, fileName, reporter);
+        return fileName;
+    }
+
+    public static String timeStampedFileName(String name, String extension) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String timeStamp = LocalDateTime.now().format(formatter);
-        Path reportDir = Paths.get(path);
-        String fileName = name + "_" + timeStamp + "." + extension;
-        reportImpl(description, reportDir, fileName, reporter);
+        String fileName = name + "_" + timeStamp;
+        return extension.isEmpty() ? fileName : fileName + "." + extension;
+    }
+
+    public static File reportFile(String path, String name, String extension) {
+        try {
+            String fileName = ReportUtils.timeStampedFileName(name, extension);
+            Path reportDir = Files.createDirectories(Paths.get(path));
+            Path filePath = reportDir.resolve(fileName);
+            Files.deleteIfExists(filePath);
+            return Files.createFile(filePath).toFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -107,13 +127,24 @@ public class ReportUtils {
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
-                    System.out.println("Printing " + description + " to " + file.toAbsolutePath());
+                    System.out.println("# Printing " + description + " to: " + file);
                     reporter.accept(writer);
                 }
             }
 
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
+
+    /** Returns a path relative to the current working directory if possible. */
+    public static Path getCWDRelativePath(Path path) {
+        Path cwd = Paths.get("").toAbsolutePath();
+        try {
+            return cwd.relativize(path);
+        } catch (IllegalArgumentException e) {
+            /* Relativization failed (e.g., the `path` is not absolute or is on another drive). */
+            return path;
         }
     }
 
@@ -148,13 +179,71 @@ public class ReportUtils {
         try {
             Path reportDir = Files.createDirectories(folder);
             Path file = reportDir.resolve(fileName);
-            try (OutputStream fos = Files.newOutputStream(file, CREATE, WRITE, append ? APPEND : TRUNCATE_EXISTING)) {
-                System.out.println("Printing " + description + " to " + file.toAbsolutePath());
+            try (OutputStream fos = Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
+                            append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING)) {
+                System.out.println("# Printing " + description + " to: " + file);
                 reporter.accept(fos);
                 fos.flush();
             }
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
+        }
+    }
+
+    public static String parsingContext(AnalysisMethod method) {
+        return parsingContext(method, 0, "   ");
+    }
+
+    public static String parsingContext(AnalysisMethod method, String indent) {
+        return parsingContext(method, 0, indent);
+    }
+
+    public static String parsingContext(BytecodePosition context) {
+        return parsingContext((AnalysisMethod) context.getMethod(), context.getBCI(), "   ");
+    }
+
+    public static String parsingContext(AnalysisMethod method, int bci, String indent) {
+        StringBuilder msg = new StringBuilder();
+        if (method.getTypeFlow().getParsingContext().length > 0) {
+            /* Include target method first. */
+            msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
+            /* Then add the parsing context. */
+            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
+                msg.append(String.format("%n%sat %s", indent, e));
+            }
+            msg.append(String.format("%n"));
+        } else {
+            msg.append(String.format(" <no parsing context available> %n"));
+        }
+        return msg.toString();
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type) {
+        return typePropagationTrace(bb, flow, type, "   ");
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent) {
+        if (bb.trackTypeFlowInputs()) {
+            StringBuilder msg = new StringBuilder(String.format("Propagation trace through type flows for type %s: %n", type.toJavaName()));
+            followInput(flow, type, indent, new HashSet<>(), msg);
+            return msg.toString();
+        } else {
+            return String.format("To print the propagation trace through type flows for type %s set the -H:+TrackInputFlows option. %n", type.toJavaName());
+        }
+    }
+
+    private static void followInput(TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
+        seen.add(flow);
+        if (flow instanceof AllInstantiatedTypeFlow) {
+            msg.append(String.format("AllInstantiated(%s)%n", flow.getDeclaredType().toJavaName(true)));
+        } else {
+            msg.append(String.format("%sat %s: %s%n", indent, flow.formatSource(), flow.format(false, false)));
+            for (TypeFlow<?> input : flow.getInputs()) {
+                if (!seen.contains(input) && input.getState().containsType(type)) {
+                    followInput(input, type, indent, seen, msg);
+                    break;
+                }
+            }
         }
     }
 }

@@ -80,7 +80,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
         graph.start().setNext(returnNode);
 
         for (SchedulingStrategy s : Strategies) {
-            new SchedulePhase(s).apply(graph);
+            SchedulePhase.runWithoutContextOptimizations(graph, s);
         }
 
         this.createCanonicalizerPhase().apply(graph, context);

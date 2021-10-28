@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ import java.util.List;
 public final class DarwinLinker extends Driver {
 
     public static final String LD = "/usr/bin/ld";
+    public static final String LD_NAME = "ld";
 
     private DarwinLinker() {
         super(LD, false);

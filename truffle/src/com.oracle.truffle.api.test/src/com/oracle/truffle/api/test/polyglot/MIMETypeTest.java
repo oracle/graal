@@ -57,24 +57,14 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings("deprecation")
 public class MIMETypeTest {
 
     private static final String TEXT_MIMETYPE = "text/test-js";
     private static final String APPLICATION_MIMETYPE = "application/test-js";
-
-    static {
-        Registration reg = MIMETypeTest.class.getAnnotation(Registration.class);
-        if (reg != null) {
-            // use the mimetype to make the IDE happy about suppress warnings deprecation.
-            reg.mimeType();
-        }
-    }
 
     // default configuration
     @Registration(id = "MimeTypeLanguage1", name = "")
@@ -172,7 +162,7 @@ public class MIMETypeTest {
     public static class MIMETypeLanguage5 extends ProxyLanguage {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -224,7 +214,7 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -251,7 +241,7 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -278,27 +268,8 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
-    }
-
-    @Registration(id = "MimeTypeLanguageLegacy1", name = "", mimeType = TEXT_MIMETYPE)
-    public static class MIMETypeLanguageLegacy1 extends ProxyLanguage {
-    }
-
-    @Test
-    public void testMIMETypeLanguageLegacy1() {
-        Engine engine = Engine.create();
-        Language language = engine.getLanguages().get("MimeTypeLanguageLegacy1");
-        assertTrue(language.getMimeTypes().size() == 1);
-        assertTrue(language.getMimeTypes().contains(TEXT_MIMETYPE));
-        assertEquals(TEXT_MIMETYPE, language.getDefaultMimeType());
-        engine.close();
-    }
-
-    @ExpectError("The defaultMimeType is not contained in the list of supported characterMimeTypes or byteMimeTypes. Add the specified default MIME type to character or byte MIME types to resolve this.")
-    @Registration(id = "MimeTypeLanguageLegacy2", name = "", defaultMimeType = TEXT_MIMETYPE, mimeType = TEXT_MIMETYPE)
-    public static class MIMETypeLanguageLegacy2 extends ProxyLanguage {
     }
 
     // default configuration

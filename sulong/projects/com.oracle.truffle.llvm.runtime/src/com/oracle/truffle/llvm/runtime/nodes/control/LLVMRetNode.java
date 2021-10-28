@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -246,6 +246,16 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
             memMove.executeWithTarget(retStructAddress, retResult, getStructSize());
             return retStructAddress;
         }
+    }
+
+    @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
+    public abstract static class LLVMArrayRetNode extends LLVMRetNode {
+
+        @Specialization
+        protected Object doOp(LLVMPointer retResult) {
+            return retResult;
+        }
+
     }
 
     public abstract static class LLVMVoidReturnNode extends LLVMRetNode {

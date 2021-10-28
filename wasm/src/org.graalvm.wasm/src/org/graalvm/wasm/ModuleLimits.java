@@ -87,7 +87,7 @@ public final class ModuleLimits {
         return Integer.compareUnsigned(a, b) < 0 ? a : b;
     }
 
-    static ModuleLimits DEFAULTS = new ModuleLimits(
+    static final ModuleLimits DEFAULTS = new ModuleLimits(
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
@@ -149,6 +149,14 @@ public final class ModuleLimits {
 
     public void checkLocalCount(int count) {
         assertUnsignedIntLessOrEqual(count, localCountLimit, Failure.TOO_MANY_LOCALS);
+    }
+
+    public void checkTableInstanceSize(int size) {
+        assertUnsignedIntLessOrEqual(size, tableInstanceSizeLimit, Failure.TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED);
+    }
+
+    public void checkMemoryInstanceSize(int size) {
+        assertUnsignedIntLessOrEqual(size, memoryInstanceSizeLimit, Failure.MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED);
     }
 
     public int tableInstanceSizeLimit() {

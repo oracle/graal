@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.Assumption;
@@ -346,8 +347,8 @@ public final class FrameDescriptor implements Cloneable {
         return frameSlot.descriptor == this;
     }
 
+    @TruffleBoundary
     private boolean checkFrameSlotOwnership(FrameSlot frameSlot) {
-        CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (lock) {
             return checkFrameSlotOwnershipUnsafe(frameSlot);
         }

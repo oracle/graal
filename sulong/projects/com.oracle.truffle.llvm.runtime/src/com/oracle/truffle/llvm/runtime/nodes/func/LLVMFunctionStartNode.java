@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -138,5 +140,13 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
             properties.put("sourceLocation", sourceLocation);
         }
         return properties;
+    }
+
+    @Override
+    protected ExecutionSignature prepareForAOT() {
+        super.prepareForAOT();
+        AOTSupport.prepareForAOT(this);
+        // TODO: use the FunctionDefinition to prepare the right signature
+        return ExecutionSignature.GENERIC;
     }
 }

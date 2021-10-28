@@ -7,7 +7,10 @@ Usage: native-image [options] class [imagename] [options]
            (to build an image for a class)
    or  native-image [options] -jar jarfile [imagename] [options]
            (to build an image for a jar file)
+
 where options include:
+
+    @argument files       one or more argument files containing options
     -cp <class search path of directories and zip/jar files>
     -classpath <class search path of directories and zip/jar files>
     --class-path <class search path of directories and zip/jar files>

@@ -26,6 +26,8 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -92,6 +94,10 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
         return null;
+    }
+
+    @Override
+    public void setCompilationId(CompilationIdentifier id) {
     }
 
     @Override

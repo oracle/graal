@@ -1,0 +1,127 @@
+// plain x82 machine without settings for the JVM
+x82.base : {
+  capabilities: [linux, x82, no_frequency_scaling]
+  environment : {
+    MACHINE_NAME : "x82"
+  }
+}
+
+x82-avx2.base : ${x82.base} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-avx2"
+  }
+}
+
+x82-avx2.tmpfs10g-base : ${x82-avx2.base} {
+  capabilities: ${x82-avx2.base.capabilities} [tmpfs10g]
+}
+
+x82-avx2.default : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x82, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-avx2"
+    JVM         : "server"
+    MACHINE_NAME: "x82"
+  }
+}
+
+x82-avx2.default-libgraal : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x82, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG           : ${jvm-config.default}"-libgraal-avx2"
+    JVM                  : "server"
+    MACHINE_NAME         : "x82"
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
+    MX_ENV_PATH          : ${libgraal_env}
+  }
+}
+
+x82-avx2.tmpfs10g : ${x82-avx2.default} {
+  capabilities: ${x82-avx2.default.capabilities} [tmpfs10g]
+}
+
+x82-avx2.tmpfs10g-libgraal : ${x82-avx2.default-libgraal} {
+  capabilities: ${x82-avx2.default.capabilities} [tmpfs10g]
+}
+
+x82-avx3.base : ${x82.base} {
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-avx3"
+  }
+}
+
+x82-avx3.tmpfs10g-base : ${x82-avx3.base} {
+  capabilities: ${x82-avx3.base.capabilities} [tmpfs10g]
+}
+
+x82-avx3.default : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x82, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}"-avx3"
+    JVM         : "server"
+    MACHINE_NAME: "x82"
+  }
+}
+
+x82-avx3.default-libgraal : ${linux-amd64} {
+  capabilities: ${linux-amd64.capabilities} [x82, no_frequency_scaling]
+  environment : {
+    JVM_CONFIG           : ${jvm-config.default}"-libgraal-avx3"
+    JVM                  : "server"
+    MACHINE_NAME         : "x82"
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
+    MX_ENV_PATH          : ${libgraal_env}
+  }
+}
+
+x82-avx3.tmpfs10g : ${x82-avx3.default} {
+  capabilities: ${x82-avx3.default.capabilities} [tmpfs10g]
+}
+
+x82-avx3.tmpfs10g-libgraal : ${x82-avx3.default-libgraal} {
+  capabilities: ${x82-avx3.default.capabilities} [tmpfs10g]
+}
+
+builds += [
+  # LibGraal with AVX3
+  #  main benchmark suites
+  ${x82-avx3.tmpfs10g-libgraal} ${bench-dacapo-hwloc}                  ${labsjdk11} { targets: [bench], name: "bench-compiler-dacapo-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.tmpfs10g-libgraal} ${bench-dacapo-timing-hwloc}           ${labsjdk11} { targets: [bench], name: "bench-compiler-dacapo-timing-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc}            ${labsjdk11} { targets: [bench], name: "bench-compiler-scala-dacapo-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.tmpfs10g-libgraal} ${bench-scala-dacapo-timing-hwloc}     ${labsjdk11} { targets: [bench], name: "bench-compiler-scala-dacapo-timing-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-renaissance-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-specjvm2008-Single-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-specjvm2008-Single-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-specjbb2005-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-specjbb2005-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-specjbb2015-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-specjbb2015-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-renaissance-0-10-0-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-0-10-0-libgraal-11-linux-x82-avx3" }
+
+  #  secondary benchmark suites
+  ${x82-avx3.default-libgraal} ${bench-awfy-hwloc}                     ${labsjdk11} { targets: [bench], name: "bench-compiler-awfy-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-renaissance-legacy-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-legacy-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-specjvm2008-OneVM-hwloc}        ${labsjdk11} { targets: [bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-micros-graal-whitebox-hwloc}    ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-micros-graal-dist-hwloc}        ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-misc-graal-dist-hwloc}          ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-misc-graal-dist-libgraal-11-linux-x82-avx3" }
+  ${x82-avx3.default-libgraal} ${bench-shootout-graal-dist-hwloc}      ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-shootout-graal-dist-libgraal-11-linux-x82-avx3" }
+
+  # LibGraal with AVX2
+  #  main benchmark suites
+  ${x82-avx2.tmpfs10g-libgraal} ${bench-dacapo-hwloc}                  ${labsjdk11} { targets: [bench], name: "bench-compiler-dacapo-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.tmpfs10g-libgraal} ${bench-dacapo-timing-hwloc}           ${labsjdk11} { targets: [bench], name: "bench-compiler-dacapo-timing-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.tmpfs10g-libgraal} ${bench-scala-dacapo-hwloc}            ${labsjdk11} { targets: [bench], name: "bench-compiler-scala-dacapo-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.tmpfs10g-libgraal} ${bench-scala-dacapo-timing-hwloc}     ${labsjdk11} { targets: [bench], name: "bench-compiler-scala-dacapo-timing-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-renaissance-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-specjvm2008-Single-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-specjvm2008-Single-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-specjbb2005-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-specjbb2005-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-specjbb2015-hwloc}              ${labsjdk11} { targets: [bench], name: "bench-compiler-specjbb2015-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-renaissance-0-10-0-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-0-10-0-libgraal-11-linux-x82-avx2" }
+
+  #  secondary benchmark suites
+  ${x82-avx2.default-libgraal} ${bench-awfy-hwloc}                     ${labsjdk11} { targets: [bench], name: "bench-compiler-awfy-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-renaissance-legacy-hwloc}       ${labsjdk11} { targets: [bench], name: "bench-compiler-renaissance-legacy-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-specjvm2008-OneVM-hwloc}        ${labsjdk11} { targets: [bench], name: "bench-compiler-specjvm2008-OneVM-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-micros-graal-whitebox-hwloc}    ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-micros-graal-whitebox-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-micros-graal-dist-hwloc}        ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-micros-graal-dist-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-misc-graal-dist-hwloc}          ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-misc-graal-dist-libgraal-11-linux-x82-avx2" }
+  ${x82-avx2.default-libgraal} ${bench-shootout-graal-dist-hwloc}      ${labsjdk11} { targets: [bench], name: "bench-compiler-jmh-shootout-graal-dist-libgraal-11-linux-x82-avx2" }
+]

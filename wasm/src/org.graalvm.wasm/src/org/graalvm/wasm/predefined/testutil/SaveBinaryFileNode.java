@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
@@ -61,8 +62,8 @@ import java.nio.file.Path;
 public class SaveBinaryFileNode extends WasmBuiltinRootNode {
     private final Path temporaryDirectory;
 
-    SaveBinaryFileNode(WasmLanguage language, Path temporaryDirectory) {
-        super(language, null);
+    SaveBinaryFileNode(WasmLanguage language, WasmInstance instance, Path temporaryDirectory) {
+        super(language, instance);
         this.temporaryDirectory = temporaryDirectory;
     }
 
@@ -82,7 +83,7 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private void saveFile(int filenamePtr, int dataPtr, int size) {
-        final WasmContext context = contextReference().get();
+        final WasmContext context = getContext();
         Assert.assertIntLessOrEqual(context.memories().count(), 1, "Currently, dumping works with only 1 memory.", Failure.UNSPECIFIED_MALFORMED);
         final WasmMemory memory = context.memories().memory(0);
 

@@ -40,6 +40,7 @@ import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.Verifier;
 
 /**
  *
@@ -113,19 +114,31 @@ public class AvailableCommand extends ListInstalledCommand {
         }
         Set<Version> seen = new HashSet<>();
         Collection<ComponentInfo> filtered = new ArrayList<>();
-        Version.Match compatibleFilter = getRegistry().getGraalVersion().match(Version.Match.Type.COMPATIBLE);
 
+        Verifier vrf = new Verifier(feedback, input.getLocalRegistry(), input.getRegistry());
+        vrf.setCollectErrors(true);
+        vrf.setSilent(true);
+        vrf.ignoreExisting(true);
+        if (showUpdates) {
+            vrf.setVersionMatch(getRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE));
+        } else {
+            vrf.setVersionMatch(getRegistry().getGraalVersion().match(Version.Match.Type.SATISFIES_COMPATIBLE));
+        }
         if (defaultFilter) {
             List<ComponentInfo> sorted = new ArrayList<>(infos);
             Collections.sort(sorted, ComponentInfo.versionComparator().reversed());
             for (ComponentInfo ci : sorted) {
                 // for non-core components, only display those compatible with the current release.
-                if (!showUpdates && !compatibleFilter.test(ci.getVersion())) {
+                if (vrf.validateRequirements(ci).hasErrors()) {
                     continue;
                 }
-                if (CommonConstants.GRAALVM_CORE_PREFIX.equals(ci.getId()) && !showCore) {
-                    // filter out graalvm core by default
-                    continue;
+                if (CommonConstants.GRAALVM_CORE_PREFIX.equals(ci.getId())) {
+                    if (!showCore ||
+                                    // graalvm core does not depend on anything:
+                                    !vrf.getVersionMatch().test(ci.getVersion())) {
+                        // filter out graalvm core by default
+                        continue;
+                    }
                 }
                 // select just the most recent version
                 filtered.add(ci);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,21 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ARITHMETIC;
+import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.ADDSUBTRACT;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.LOGICAL;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -48,10 +51,10 @@ public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported
     NEG,
     NOT,
-    ADD(ARITHMETIC),
-    ADDS(ARITHMETIC),
-    SUB(ARITHMETIC),
-    SUBS(ARITHMETIC),
+    ADD(ADDSUBTRACT),
+    ADDS(ADDSUBTRACT),
+    SUB(ADDSUBTRACT),
+    SUBS(ADDSUBTRACT),
     MUL,
     MULVS,
     MNEG,
@@ -63,6 +66,7 @@ public enum AArch64ArithmeticOp {
     MADD,
     MSUB,
     FMADD,
+    FMSUB,
     SMADDL,
     SMSUBL,
     REM,
@@ -72,14 +76,14 @@ public enum AArch64ArithmeticOp {
     ANDS(LOGICAL),
     OR(LOGICAL),
     XOR(LOGICAL),
+    TST(LOGICAL),
     BIC,
     ORN,
     EON,
-    SHL(SHIFT),
-    LSHR(SHIFT),
-    ASHR(SHIFT),
+    LSL(SHIFT),
+    LSR(SHIFT),
+    ASR(SHIFT),
     ROR(SHIFT),
-    RORV(SHIFT),
     ABS,
     FADD,
     FSUB,
@@ -90,9 +94,10 @@ public enum AArch64ArithmeticOp {
     FRINTM,
     FRINTN,
     FRINTP,
+    FRINTZ,
     FMAX,
     FMIN,
-    SQRT;
+    FSQRT;
 
     /**
      * Specifies what constants can be used directly without having to be loaded into a register
@@ -101,7 +106,7 @@ public enum AArch64ArithmeticOp {
     public enum ARMv8ConstantCategory {
         NONE,
         LOGICAL,
-        ARITHMETIC,
+        ADDSUBTRACT,
         SHIFT
     }
 
@@ -127,6 +132,16 @@ public enum AArch64ArithmeticOp {
             this.opcode = opcode;
             this.result = result;
             this.x = x;
+            assert checkParameters(result, x);
+        }
+
+        private static boolean checkParameters(AllocatableValue result, AllocatableValue input) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int srcSize = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert dstSize == 32 || dstSize == 64;
+            // input must have at least as many meaningful bits as the dst
+            assert dstSize <= srcSize;
+            return true;
         }
 
         @Override
@@ -145,8 +160,8 @@ public enum AArch64ArithmeticOp {
                     masm.not(size, dst, src);
                     break;
                 case ABS:
-                    masm.cmp(size, src, 0);
-                    masm.csneg(size, dst, src, ConditionFlag.LT);
+                    masm.compare(size, src, 0);
+                    masm.csneg(size, dst, src, src, ConditionFlag.GE);
                     break;
                 case FABS:
                     masm.fabs(size, dst, src);
@@ -160,7 +175,10 @@ public enum AArch64ArithmeticOp {
                 case FRINTP:
                     masm.frintp(size, dst, src);
                     break;
-                case SQRT:
+                case FRINTZ:
+                    masm.frintz(size, dst, src);
+                    break;
+                case FSQRT:
                     masm.fsqrt(size, dst, src);
                     break;
                 default:
@@ -183,6 +201,40 @@ public enum AArch64ArithmeticOp {
             this.result = result;
             this.a = a;
             this.b = b;
+            assert checkParameters(op, result, a, b);
+        }
+
+        private static boolean checkParameters(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, JavaConstant b) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int srcSize = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            long immediate = b.asLong();
+            switch (op) {
+                case ADD:
+                case SUB:
+                case ADDS:
+                case SUBS:
+                    assert AArch64MacroAssembler.isAddSubtractImmediate(immediate, true);
+                    break;
+                case AND:
+                case ANDS:
+                case OR:
+                case XOR:
+                case TST:
+                    assert AArch64MacroAssembler.isLogicalImmediate(dstSize, immediate);
+                    break;
+            }
+            assert dstSize == 32 || dstSize == 64;
+            if (op == AND || op == ANDS) {
+                /*
+                 * Either the input must have at least as many meaningful bits as the dst or the
+                 * immediate is smaller than the src.
+                 */
+                assert dstSize <= srcSize || (NumUtil.getNbitNumberLong(srcSize) & immediate) == immediate;
+            } else {
+                // input must have at least as many meaningful bits as the dst
+                assert dstSize <= srcSize;
+            }
+            return true;
         }
 
         @Override
@@ -191,55 +243,57 @@ public enum AArch64ArithmeticOp {
             Register dst = asRegister(result);
             Register src = asRegister(a);
             int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            long immediate = b.asLong();
             switch (op) {
                 case ADD:
                     // Don't use asInt() here, since we can't use asInt on a long variable, even
                     // if the constant easily fits as an int.
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
-                    masm.add(size, dst, src, (int) b.asLong());
+                    masm.add(size, dst, src, NumUtil.safeToInt(immediate));
                     break;
                 case SUB:
                     // Don't use asInt() here, since we can't use asInt on a long variable, even
                     // if the constant easily fits as an int.
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
-                    masm.sub(size, dst, src, (int) b.asLong());
+                    masm.sub(size, dst, src, NumUtil.safeToInt(immediate));
                     break;
                 case ADDS:
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
-                    masm.adds(size, dst, src, (int) b.asLong());
+                    masm.adds(size, dst, src, NumUtil.safeToInt(immediate));
                     break;
                 case SUBS:
-                    assert AArch64MacroAssembler.isArithmeticImmediate(b.asLong());
-                    masm.subs(size, dst, src, (int) b.asLong());
+                    masm.subs(size, dst, src, NumUtil.safeToInt(immediate));
                     break;
                 case AND:
                     // XXX Should this be handled somewhere else?
-                    if (size == 32 && b.asLong() == 0xFFFF_FFFFL) {
+                    long mask = NumUtil.getNbitNumberLong(size);
+                    if ((immediate & mask) == mask) {
                         masm.mov(size, dst, src);
                     } else {
-                        masm.and(size, dst, src, b.asLong());
+                        masm.and(size, dst, src, immediate);
                     }
                     break;
                 case ANDS:
-                    masm.ands(size, dst, src, b.asLong());
+                    masm.ands(size, dst, src, immediate);
                     break;
                 case OR:
-                    masm.or(size, dst, src, b.asLong());
+                    masm.orr(size, dst, src, immediate);
                     break;
                 case XOR:
-                    masm.eor(size, dst, src, b.asLong());
+                    masm.eor(size, dst, src, immediate);
                     break;
-                case SHL:
-                    masm.shl(size, dst, src, b.asLong());
+                case TST:
+                    assert dst.equals(zr);
+                    masm.tst(size, src, immediate);
                     break;
-                case LSHR:
-                    masm.lshr(size, dst, src, b.asLong());
+                case LSL:
+                    masm.lsl(size, dst, src, immediate);
                     break;
-                case ASHR:
-                    masm.ashr(size, dst, src, b.asLong());
+                case LSR:
+                    masm.lsr(size, dst, src, immediate);
+                    break;
+                case ASR:
+                    masm.asr(size, dst, src, immediate);
                     break;
                 case ROR:
-                    masm.ror(size, dst, src, (int) b.asLong());
+                    masm.ror(size, dst, src, immediate);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere("op=" + op.name());
@@ -261,6 +315,44 @@ public enum AArch64ArithmeticOp {
             this.result = result;
             this.a = a;
             this.b = b;
+            assert checkParameters(op, result, a, b);
+        }
+
+        private static boolean checkParameters(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = b.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (op) {
+                case SMNEGL:
+                case SMULL:
+                    assert dstSize == 64 && src1Size == 32 && src2Size == 32;
+                    break;
+                case FADD:
+                case FSUB:
+                case FMUL:
+                case FDIV:
+                case FMAX:
+                case FMIN:
+                    assert dstSize == 32 || dstSize == 64;
+                    // inputs must be same size as output
+                    assert dstSize == src1Size && dstSize == src2Size;
+                    break;
+                case LSL:
+                case LSR:
+                case ASR:
+                case ROR:
+                    assert dstSize == 32 || dstSize == 64;
+                    // src1 must have at least as many meaningful bits as the dst
+                    // src2's size doesn't matter, as it will be clamped
+                    assert dstSize <= src1Size;
+                    break;
+                default:
+                    assert dstSize == 32 || dstSize == 64;
+                    // inputs must have at least as many meaningful bits as the dst
+                    assert dstSize <= src1Size && dstSize <= src2Size;
+                    break;
+            }
+            return true;
         }
 
         @Override
@@ -268,97 +360,107 @@ public enum AArch64ArithmeticOp {
             Register dst = asRegister(result);
             Register src1 = asRegister(a);
             Register src2 = asRegister(b);
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             switch (op) {
                 case ADD:
-                    masm.add(size, dst, src1, src2);
+                    masm.add(dstSize, dst, src1, src2);
                     break;
                 case ADDS:
-                    masm.adds(size, dst, src1, src2);
+                    masm.adds(dstSize, dst, src1, src2);
                     break;
                 case SUB:
-                    masm.sub(size, dst, src1, src2);
+                    masm.sub(dstSize, dst, src1, src2);
                     break;
                 case SUBS:
-                    masm.subs(size, dst, src1, src2);
+                    masm.subs(dstSize, dst, src1, src2);
                     break;
                 case MUL:
-                    masm.mul(size, dst, src1, src2);
+                    masm.mul(dstSize, dst, src1, src2);
                     break;
                 case UMULH:
-                    masm.umulh(size, dst, src1, src2);
+                    masm.umulh(dstSize, dst, src1, src2);
                     break;
                 case SMULH:
-                    masm.smulh(size, dst, src1, src2);
+                    masm.smulh(dstSize, dst, src1, src2);
                     break;
                 case MNEG:
-                    masm.mneg(size, dst, src1, src2);
+                    masm.mneg(dstSize, dst, src1, src2);
                     break;
                 case SMULL:
-                    masm.smull(size, dst, src1, src2);
+                    masm.smull(dst, src1, src2);
                     break;
                 case SMNEGL:
-                    masm.smnegl(size, dst, src1, src2);
+                    masm.smnegl(dst, src1, src2);
                     break;
                 case DIV:
-                    masm.sdiv(size, dst, src1, src2);
+                    masm.sdiv(dstSize, dst, src1, src2);
                     break;
                 case UDIV:
-                    masm.udiv(size, dst, src1, src2);
+                    masm.udiv(dstSize, dst, src1, src2);
                     break;
                 case AND:
-                    masm.and(size, dst, src1, src2);
+                    masm.and(dstSize, dst, src1, src2);
                     break;
                 case ANDS:
-                    masm.ands(size, dst, src1, src2);
+                    masm.ands(dstSize, dst, src1, src2);
                     break;
                 case OR:
-                    masm.or(size, dst, src1, src2);
+                    masm.orr(dstSize, dst, src1, src2);
                     break;
                 case XOR:
-                    masm.eor(size, dst, src1, src2);
+                    masm.eor(dstSize, dst, src1, src2);
                     break;
                 case BIC:
-                    masm.bic(size, dst, src1, src2);
+                    masm.bic(dstSize, dst, src1, src2);
+                    break;
+                case TST:
+                    assert dst.equals(zr);
+                    masm.tst(dstSize, src1, src2);
                     break;
                 case ORN:
-                    masm.orn(size, dst, src1, src2);
+                    masm.orn(dstSize, dst, src1, src2);
                     break;
                 case EON:
-                    masm.eon(size, dst, src1, src2);
+                    masm.eon(dstSize, dst, src1, src2);
                     break;
-                case SHL:
-                    masm.shl(size, dst, src1, src2);
+                case LSL:
+                    masm.lsl(dstSize, dst, src1, src2);
                     break;
-                case LSHR:
-                    masm.lshr(size, dst, src1, src2);
+                case LSR:
+                    masm.lsr(dstSize, dst, src1, src2);
                     break;
-                case ASHR:
-                    masm.ashr(size, dst, src1, src2);
+                case ASR:
+                    masm.asr(dstSize, dst, src1, src2);
                     break;
-                case RORV:
-                    masm.rorv(size, dst, src1, src2);
+                case ROR:
+                    masm.ror(dstSize, dst, src1, src2);
                     break;
                 case FADD:
-                    masm.fadd(size, dst, src1, src2);
+                    masm.fadd(dstSize, dst, src1, src2);
                     break;
                 case FSUB:
-                    masm.fsub(size, dst, src1, src2);
+                    masm.fsub(dstSize, dst, src1, src2);
                     break;
                 case FMUL:
-                    masm.fmul(size, dst, src1, src2);
+                    masm.fmul(dstSize, dst, src1, src2);
                     break;
                 case FDIV:
-                    masm.fdiv(size, dst, src1, src2);
+                    masm.fdiv(dstSize, dst, src1, src2);
                     break;
                 case FMAX:
-                    masm.fmax(size, dst, src1, src2);
+                    masm.fmax(dstSize, dst, src1, src2);
                     break;
                 case FMIN:
-                    masm.fmin(size, dst, src1, src2);
+                    masm.fmin(dstSize, dst, src1, src2);
+                    break;
+                case REM:
+                    emitRem(masm, dstSize, dst, src1, src2);
+                    break;
+                case UREM:
+                    emitURem(masm, dstSize, dst, src1, src2);
                     break;
                 case MULVS:
-                    masm.mulvs(size, dst, src1, src2);
+                    emitMulvs(masm, dstSize, dst, src1, src2);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere("op=" + op.name());
@@ -366,43 +468,73 @@ public enum AArch64ArithmeticOp {
         }
     }
 
-    /**
-     * Class used for instructions that have to reuse one of their arguments. This only applies to
-     * the remainder instructions at the moment, since we have to compute n % d using rem = n -
-     * TruncatingDivision(n, d) * d
-     *
-     * TODO (das) Replace the remainder nodes in the LIR.
-     */
-    public static class BinaryCompositeOp extends AArch64LIRInstruction {
-        private static final LIRInstructionClass<BinaryCompositeOp> TYPE = LIRInstructionClass.create(BinaryCompositeOp.class);
-        @Opcode private final AArch64ArithmeticOp op;
-        @Def({REG}) protected AllocatableValue result;
-        @Alive({REG}) protected AllocatableValue a;
-        @Alive({REG}) protected AllocatableValue b;
-
-        public BinaryCompositeOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
-            super(TYPE);
-            this.op = op;
-            this.result = result;
-            this.a = a;
-            this.b = b;
+    private static void emitRem(AArch64MacroAssembler masm, int size, Register dst, Register n, Register d) {
+        // There is no irem or similar instruction. Instead we use the relation:
+        // n % d = n - Floor(n / d) * d if nd >= 0
+        // n % d = n - Ceil(n / d) * d else
+        // Which is equivalent to n - TruncatingDivision(n, d) * d
+        try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
+            Register scratchReg = scratch.getRegister();
+            masm.sdiv(size, scratchReg, n, d);
+            masm.msub(size, dst, scratchReg, d, n);
         }
+    }
 
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            Register dst = asRegister(result);
-            Register src1 = asRegister(a);
-            Register src2 = asRegister(b);
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            switch (op) {
-                case REM:
-                    masm.rem(size, dst, src1, src2);
+    private static void emitURem(AArch64MacroAssembler masm, int size, Register dst, Register n, Register d) {
+        // There is no irem or similar instruction. Instead we use the relation:
+        // n % d = n - Floor(n / d) * d
+        // Which is equivalent to n - TruncatingDivision(n, d) * d
+        try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
+            Register scratchReg = scratch.getRegister();
+            masm.udiv(size, scratchReg, n, d);
+            masm.msub(size, dst, scratchReg, d, n);
+        }
+    }
+
+    /**
+     * Sets overflow flag according to result of x * y.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stack-pointer.
+     * @param x general purpose register. May not be null or stackpointer.
+     * @param y general purpose register. May not be null or stackpointer.
+     */
+    private static void emitMulvs(AArch64MacroAssembler masm, int size, Register dst, Register x, Register y) {
+        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister();
+                        AArch64MacroAssembler.ScratchRegister sc2 = masm.getScratchRegister()) {
+            switch (size) {
+                case 64: {
+                    // Be careful with registers: it's possible that x, y, and dst are the same
+                    // register.
+                    Register temp1 = sc1.getRegister();
+                    Register temp2 = sc2.getRegister();
+                    masm.mul(64, temp1, x, y);     // Result bits 0..63
+                    masm.smulh(64, temp2, x, y);  // Result bits 64..127
+                    // Top is pure sign ext
+                    masm.subs(64, zr, temp2, temp1, AArch64Assembler.ShiftType.ASR, 63);
+                    // Copy all 64 bits of the result into dst
+                    masm.mov(64, dst, temp1);
+                    masm.mov(temp1, 0x80000000);
+                    // Develop 0 (EQ), or 0x80000000 (NE)
+                    masm.csel(32, temp1, temp1, zr, ConditionFlag.NE);
+                    masm.compare(32, temp1, 1);
+                    // 0x80000000 - 1 => VS
                     break;
-                case UREM:
-                    masm.urem(size, dst, src1, src2);
+                }
+                case 32: {
+                    Register temp1 = sc1.getRegister();
+                    masm.smaddl(temp1, x, y, zr);
+                    // Copy the low 32 bits of the result into dst
+                    masm.mov(32, dst, temp1);
+                    masm.subs(64, zr, temp1, temp1, AArch64Assembler.ExtendType.SXTW, 0);
+                    // NE => overflow
+                    masm.mov(temp1, 0x80000000);
+                    // Develop 0 (EQ), or 0x80000000 (NE)
+                    masm.csel(32, temp1, temp1, zr, ConditionFlag.NE);
+                    masm.compare(32, temp1, 1);
+                    // 0x80000000 - 1 => VS
                     break;
-                default:
-                    throw GraalError.shouldNotReachHere();
+                }
             }
         }
     }
@@ -429,6 +561,16 @@ public enum AArch64ArithmeticOp {
             this.src2 = src2;
             this.shiftType = shiftType;
             this.shiftAmt = shiftAmt;
+            assert checkParameters(result, src1, src2);
+        }
+
+        private static boolean checkParameters(AllocatableValue result, AllocatableValue src1, AllocatableValue src2) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert dstSize == 32 || dstSize == 64;
+            assert dstSize == src1Size && dstSize == src2Size;
+            return true;
         }
 
         @Override
@@ -445,7 +587,7 @@ public enum AArch64ArithmeticOp {
                     masm.and(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case OR:
-                    masm.or(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    masm.orr(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case XOR:
                     masm.eor(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
@@ -488,6 +630,37 @@ public enum AArch64ArithmeticOp {
             this.src2 = src2;
             this.extendType = extendType;
             this.shiftAmt = shiftAmt;
+            assert checkParameters(op, result, src1, src2, extendType, shiftAmt);
+        }
+
+        private static boolean checkParameters(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AArch64Assembler.ExtendType extendType, int shiftAmt) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert op == ADD || op == SUB;
+            assert shiftAmt >= 0 && shiftAmt <= 4;
+            assert dstSize == 32 || dstSize == 64;
+            assert dstSize <= src1Size;
+            switch (extendType) {
+                case UXTB:
+                case SXTB:
+                    assert src2Size >= 8;
+                    break;
+                case UXTH:
+                case SXTH:
+                    assert src2Size >= 16;
+                    break;
+                case UXTW:
+                case SXTW:
+                    assert src2Size >= 32;
+                    break;
+                case UXTX:
+                case SXTX:
+                    assert dstSize == 64;
+                    assert src2Size == 64;
+                    break;
+            }
+            return true;
         }
 
         @Override
@@ -525,28 +698,61 @@ public enum AArch64ArithmeticOp {
             this.src1 = src1;
             this.src2 = src2;
             this.src3 = src3;
+            assert checkParameters(op, result, src1, src2, src3);
+        }
+
+        private static boolean checkParameters(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AllocatableValue src3) {
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src3Size = src3.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (op) {
+                case SMADDL:
+                case SMSUBL:
+                    assert dstSize == 64 && src3Size == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    break;
+                case MADD:
+                case MSUB:
+                    assert dstSize == 64 || dstSize == 32;
+                    assert dstSize <= src1Size && dstSize <= src2Size && dstSize <= src3Size;
+                    break;
+                case FMADD:
+                    assert dstSize == 64 || dstSize == 32;
+                    assert dstSize == src1Size && dstSize == src2Size && dstSize == src3Size;
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+            return true;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert src1.getPlatformKind() == src2.getPlatformKind();
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src3Size = src3.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             switch (op) {
                 case MADD:
-                    masm.madd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.madd(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case MSUB:
-                    masm.msub(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.msub(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case FMADD:
-                    masm.fmadd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.fmadd(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMADDL:
-                    assert size == 64;
-                    masm.smaddl(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    assert dstSize == 64 && src3Size == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smaddl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMSUBL:
-                    assert size == 64;
-                    masm.smsubl(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    assert dstSize == 64 && src3Size == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smsubl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
@@ -554,4 +760,316 @@ public enum AArch64ArithmeticOp {
         }
     }
 
+    public static class ASIMDUnaryOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDUnaryOp> TYPE = LIRInstructionClass.create(ASIMDUnaryOp.class);
+
+        @Opcode private final AArch64ArithmeticOp opcode;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue x;
+
+        public ASIMDUnaryOp(AArch64ArithmeticOp opcode, AllocatableValue result, AllocatableValue x) {
+            super(TYPE);
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src = asRegister(x);
+
+            switch (opcode) {
+                case NOT:
+                    masm.neon.notVV(size, dst, src);
+                    break;
+                case NEG:
+                    masm.neon.negVV(size, eSize, dst, src);
+                    break;
+                case FNEG:
+                    masm.neon.fnegVV(size, eSize, dst, src);
+                    break;
+                case ABS:
+                    masm.neon.absVV(size, eSize, dst, src);
+                    break;
+                case FABS:
+                    masm.neon.fabsVV(size, eSize, dst, src);
+                    break;
+                case FSQRT:
+                    masm.neon.fsqrtVV(size, eSize, dst, src);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + opcode.name());
+            }
+        }
+
+    }
+
+    public static AArch64LIRInstruction generateASIMDBinaryInstruction(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+        switch (op) {
+            case ASR:
+            case LSR:
+                return new ASIMDBinaryTwoStepOp(op, result, a, b);
+        }
+        return new ASIMDBinaryOp(op, result, a, b);
+    }
+
+    /**
+     * For ASIMD, some arithmetic operations require generating two instructions and eagerly use the
+     * result register. In this case, the input registers must be marked as ALIVE to guarantee they
+     * are not reused for the result reg.
+     */
+    public static class ASIMDBinaryTwoStepOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDBinaryTwoStepOp> TYPE = LIRInstructionClass.create(ASIMDBinaryTwoStepOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def({REG}) protected AllocatableValue result;
+        /*
+         * Note currently it is only necessary to keep the first register alive. However, this may
+         * change if more instructions are added here.
+         */
+        @Alive({REG}) protected AllocatableValue a;
+        @Use({REG}) protected AllocatableValue b;
+
+        ASIMDBinaryTwoStepOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src1 = asRegister(a);
+            Register src2 = asRegister(b);
+            switch (op) {
+                case LSR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.ushlVVV(size, eSize, dst, src1, dst);
+                    break;
+                case ASR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.sshlVVV(size, eSize, dst, src1, dst);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
+
+            }
+        }
+    }
+
+    public static class ASIMDBinaryOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDBinaryOp> TYPE = LIRInstructionClass.create(ASIMDBinaryOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue a;
+        @Use({REG}) protected AllocatableValue b;
+
+        ASIMDBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src1 = asRegister(a);
+            Register src2 = asRegister(b);
+            switch (op) {
+                case AND:
+                    masm.neon.andVVV(size, dst, src1, src2);
+                    break;
+                case OR:
+                    masm.neon.orrVVV(size, dst, src1, src2);
+                    break;
+                case BIC:
+                    masm.neon.bicVVV(size, dst, src1, src2);
+                    break;
+                case ORN:
+                    masm.neon.ornVVV(size, dst, src1, src2);
+                    break;
+                case XOR:
+                    masm.neon.eorVVV(size, dst, src1, src2);
+                    break;
+                case ADD:
+                    masm.neon.addVVV(size, eSize, dst, src1, src2);
+                    break;
+                case SUB:
+                    masm.neon.subVVV(size, eSize, dst, src1, src2);
+                    break;
+                case LSL:
+                    masm.neon.ushlVVV(size, eSize, dst, src1, src2);
+                    break;
+                case MUL:
+                    masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    break;
+                case TST:
+                    masm.neon.cmtstVVV(size, eSize, dst, src1, src2);
+                    break;
+                case MNEG:
+                    /* First perform multiply. */
+                    masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    /* Next negate value. */
+                    masm.neon.negVV(size, eSize, dst, dst);
+                    break;
+                case FADD:
+                    masm.neon.faddVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FSUB:
+                    masm.neon.fsubVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FMUL:
+                    masm.neon.fmulVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FDIV:
+                    masm.neon.fdivVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FMAX:
+                    masm.neon.fmaxVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FMIN:
+                    masm.neon.fminVVV(size, eSize, dst, src1, src2);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
+            }
+        }
+    }
+
+    public static class ASIMDBinaryConstOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDBinaryConstOp> TYPE = LIRInstructionClass.create(ASIMDBinaryConstOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue a;
+        private final JavaConstant b;
+
+        public ASIMDBinaryConstOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, JavaConstant b) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src = asRegister(a);
+
+            long immValue = b.asLong();
+            int clampedShift = AArch64MacroAssembler.clampShiftAmt(eSize == ElementSize.DoubleWord ? 64 : 32, immValue);
+            switch (op) {
+                case OR:
+                    masm.neon.moveVV(size, dst, src);
+                    masm.neon.orrVI(size, eSize, dst, immValue);
+                    break;
+                case BIC:
+                    masm.neon.moveVV(size, dst, src);
+                    masm.neon.bicVI(size, eSize, dst, immValue);
+                    break;
+                case LSL:
+                    masm.neon.shlVVI(size, eSize, dst, src, clampedShift);
+                    break;
+                case LSR:
+                    masm.neon.ushrVVI(size, eSize, dst, src, clampedShift);
+                    break;
+                case ASR:
+                    masm.neon.sshrVVI(size, eSize, dst, src, clampedShift);
+                    break;
+
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
+            }
+        }
+
+    }
+
+    public static class ASIMDMultiplyAddSubOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDMultiplyAddSubOp> TYPE = LIRInstructionClass.create(ASIMDMultiplyAddSubOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def(REG) protected AllocatableValue result;
+        /*
+         * a & b cannot be assigned the same reg as the result reg, as c is moved into the result
+         * reg before a & b are used.
+         */
+        @Alive(REG) protected AllocatableValue a;
+        @Alive(REG) protected AllocatableValue b;
+        @Use(REG) protected AllocatableValue c;
+
+        /**
+         * Computes <code>result = c +/- a * b</code>.
+         */
+        public ASIMDMultiplyAddSubOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b, AllocatableValue c) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+            this.c = c;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src1 = asRegister(a);
+            Register src2 = asRegister(b);
+
+            /*
+             * for ASIMD fused instructions, the addition/subtraction is performed directly on the
+             * dst register.
+             */
+            masm.neon.moveVV(size, dst, asRegister(c));
+            switch (op) {
+                case MADD:
+                    masm.neon.mlaVVV(size, eSize, dst, src1, src2);
+                    break;
+                case MSUB:
+                    masm.neon.mlsVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FMADD:
+                    masm.neon.fmlaVVV(size, eSize, dst, src1, src2);
+                    break;
+                case FMSUB:
+                    masm.neon.fmlsVVV(size, eSize, dst, src1, src2);
+                    break;
+                case SMADDL:
+                    masm.neon.smlalVVV(eSize, dst, src1, src2);
+                    break;
+                case SMSUBL:
+                    masm.neon.smlslVVV(eSize, dst, src1, src2);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+    }
 }

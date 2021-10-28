@@ -125,8 +125,8 @@ public final class DFAGenerator implements JsonConvertible {
 
     private short nextID = 1;
     private final DFAStateNodeBuilder lookupDummyState;
-    private final Counter transitionIDCounter = new Counter.ThresholdCounter(Integer.MAX_VALUE, "too many transitions");
-    private final Counter cgPartialTransitionIDCounter = new Counter.ThresholdCounter(Integer.MAX_VALUE, "too many partial transitions");
+    private final Counter transitionIDCounter = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxDFATransitions, "too many transitions");
+    private final Counter cgPartialTransitionIDCounter = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxDFACGPartialTransitions, "too many partial transitions");
     private int maxNumberOfNfaStates = 1;
     private boolean hasAmbiguousStates = false;
     private boolean doSimpleCG = false;

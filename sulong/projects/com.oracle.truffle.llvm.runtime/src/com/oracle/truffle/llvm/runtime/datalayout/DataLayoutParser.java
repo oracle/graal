@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
 final class DataLayoutParser {
 
     static final class DataTypeSpecification {
@@ -43,8 +45,12 @@ final class DataLayoutParser {
         private final DataLayoutType type;
         private final int[] values;
 
-        private DataTypeSpecification(DataLayoutType type, int size, int abiAlignment, int preferredAlignment) {
+        private DataTypeSpecification(DataLayoutType type, int size, int abiAlignment, int preferredAlignment) throws UnsupportedDataTypeSpecificationException {
             assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            if (type == DataLayoutType.POINTER && !(size == 64 && abiAlignment == 64 && preferredAlignment == 64)) {
+                throw new UnsupportedDataTypeSpecificationException(String.format(
+                                "Only 64-bit size/alignment/preferred supported for pointers: %d, %d, %d", size, abiAlignment, preferredAlignment));
+            }
             this.type = type;
             this.values = new int[]{size, abiAlignment, preferredAlignment};
         }
@@ -115,7 +121,7 @@ final class DataLayoutParser {
 
     /**
      * Parses the LLVM data layout string.
-     * 
+     *
      * @see <a href="https://llvm.org/docs/LangRef.html#data-layout">Data Layout</a>
      * @param layout The data layout string
      * @param specs list to collect data type specifications
@@ -171,16 +177,8 @@ final class DataLayoutParser {
             }
         }
         if (!isPointerTypeFound) {
-            // Add a pointer datatype with size = largest integer size
-            int largestIntegerTypeSize = -1;
-            for (DataTypeSpecification spec : specs) {
-                if (spec.type == DataLayoutType.INTEGER && spec.getSize() > largestIntegerTypeSize) {
-                    largestIntegerTypeSize = spec.getSize();
-                }
-            }
-            if (largestIntegerTypeSize > 0) {
-                specs.add(new DataTypeSpecification(DataLayoutType.POINTER, largestIntegerTypeSize, largestIntegerTypeSize, largestIntegerTypeSize));
-            }
+            // Use the default pointer type spec
+            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, 64, 64, 64));
         }
     }
 
@@ -197,6 +195,11 @@ final class DataLayoutParser {
             return new DataTypeSpecification(type, size, abiAlignment, preferredAlignment);
         } else if (type == DataLayoutType.POINTER) {
             assert components.length >= 2;
+            int addrSpace = components[0].isEmpty() ? 0 : convertToInt(components, 0);
+            if (addrSpace != 0) {
+                // Ignore a pointer type spec with the address space other than 0
+                return null;
+            }
             int size = convertToInt(components, 1);
             int abiAlignment = convertToInt(components, 2, size);
             int preferredAlignment = convertToInt(components, 3, abiAlignment);
@@ -240,5 +243,15 @@ final class DataLayoutParser {
         } else {
             return null;
         }
+    }
+
+    public static final class UnsupportedDataTypeSpecificationException extends LLVMParserException {
+
+        private static final long serialVersionUID = 1L;
+
+        UnsupportedDataTypeSpecificationException(String message) {
+            super(message);
+        }
+
     }
 }

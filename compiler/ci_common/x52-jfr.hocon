@@ -7,21 +7,4 @@ bench-profiling-renaissance:        ${default-heap} ${bench-renaissance-hwloc}  
 bench-profiling-renaissance-legacy: ${default-heap} ${bench-renaissance-legacy-hwloc} ${ProfilingCommon} ${jfr-bench-notifications}
 
 builds += [
-  // JDK8
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-awfy}                ${oraclejdk8} { name: "bench-profiling-compiler-awfy-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-dacapo}              ${oraclejdk8} { name: "bench-profiling-compiler-dacapo-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-scala-dacapo}        ${oraclejdk8} { name: "bench-profiling-compiler-scala-dacapo-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-renaissance}         ${oraclejdk8} { name: "bench-profiling-compiler-renaissance-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-renaissance-legacy}  ${oraclejdk8} { name: "bench-profiling-compiler-renaissance-legacy-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-specjvm2008-Single}  ${oraclejdk8} { name: "bench-profiling-compiler-specjvm2008-Single-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-specjbb2015}         ${oraclejdk8} { name: "bench-profiling-compiler-specjbb2015-linux-x52" }
-
-  // JDK11
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-awfy}                ${labsjdk11} { name: "bench-profiling-compiler-awfy-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-dacapo}              ${labsjdk11} { name: "bench-profiling-compiler-dacapo-11-linux-x52" }
-  ${x52.tmpfs10g-libgraal} ${bench-profiling-scala-dacapo}        ${labsjdk11} { name: "bench-profiling-compiler-scala-dacapo-11-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-renaissance}         ${labsjdk11} { name: "bench-profiling-compiler-renaissance-11-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-renaissance-legacy}  ${labsjdk11} { name: "bench-profiling-compiler-renaissance-legacy-11-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-specjvm2008-Single}  ${labsjdk11} { name: "bench-profiling-compiler-specjvm2008-Single-11-linux-x52" }
-  ${x52.default-libgraal}  ${bench-profiling-specjbb2015}         ${labsjdk11} { name: "bench-profiling-compiler-specjbb2015-11-linux-x52" }
 ]

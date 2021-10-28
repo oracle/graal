@@ -78,6 +78,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <p>
  * After a node generates code for AOT preparation {@link AOTSupport#prepareForAOT(RootNode)} may be
  * used to prepare a root node in {@link RootNode#prepareForAOT}.
+ * <p>
+ * This annotation can also be used for classes annotated with Truffle library declarations and
+ * exports. The same rules, as described here, for specializations declared in exported libraries
+ * apply. Multiple AOT exports may be specified for each library, but there must be at least one,
+ * otherwise an {@link IllegalStateException} is thrown at runtime when AOT is prepared.
  *
  * <p>
  * See also the <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md">usage

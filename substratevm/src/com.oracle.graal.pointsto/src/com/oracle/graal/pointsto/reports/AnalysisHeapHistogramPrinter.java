@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.reports;
 import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.positionComparator;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -36,6 +35,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -44,23 +44,24 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
-        ReportUtils.report("analysis heap histogram", path + File.separatorChar + "reports", "analysis_heap_histogram_" + reportName, "txt",
-                        writer -> AnalysisHeapHistogramPrinter.doPrint(writer, bigbang));
+    public static void print(BigBang bb, String reportsPath, String reportName) {
+        ReportUtils.report("analysis heap histogram", reportsPath, "analysis_heap_histogram_" + reportName, "txt",
+                        writer -> AnalysisHeapHistogramPrinter.doPrint(writer, bb));
     }
 
-    private static void doPrint(PrintWriter out, BigBang bigbang) {
-        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bigbang.getOptions())) {
-            String types = Arrays.stream(bigbang.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
+    private static void doPrint(PrintWriter out, BigBang bb) {
+        if (!PointstoOptions.ExhaustiveHeapScan.getValue(bb.getOptions())) {
+            String types = Arrays.stream(bb.skippedHeapTypes()).map(t -> t.toJavaName()).collect(Collectors.joining(", "));
             System.out.println("Exhaustive heap scanning is disabled. The analysis heap histogram will not contain all instances of types: " + types);
             System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
         }
-        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bigbang);
+        Map<AnalysisType, Integer> histogram = new HashMap<>();
+        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb, histogram);
         printer.scanBootImageHeapRoots(fieldComparator, positionComparator);
-        printer.printHistogram(out);
+        printHistogram(out, histogram);
     }
 
-    private void printHistogram(PrintWriter out) {
+    private static void printHistogram(PrintWriter out, Map<AnalysisType, Integer> histogram) {
         out.println("Heap histogram");
         out.format("%8s %s %n", "Count", "Class");
 
@@ -68,36 +69,45 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
                         .forEach(entry -> out.format("%8d %8s %n", entry.getValue(), entry.getKey().toJavaName()));
     }
 
-    private final Map<AnalysisType, Integer> histogram = new HashMap<>();
-
-    private AnalysisHeapHistogramPrinter(BigBang bigbang) {
-        super(bigbang, new ReusableSet());
+    private AnalysisHeapHistogramPrinter(BigBang bb, Map<AnalysisType, Integer> histogram) {
+        super(bb, null, new ReusableSet(), new ScanningObserver(bb, histogram));
     }
 
-    @Override
-    protected void forScannedConstant(JavaConstant scannedValue, ScanReason reason) {
-        AnalysisType type = constantType(bb, scannedValue);
-        int count = histogram.getOrDefault(type, 0);
-        histogram.put(type, count + 1);
-    }
+    private static final class ScanningObserver implements ObjectScanningObserver {
 
-    @Override
-    public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
-    }
+        private final BigBang bb;
+        private final Map<AnalysisType, Integer> histogram;
 
-    @Override
-    public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
-    }
+        private ScanningObserver(BigBang bb, Map<AnalysisType, Integer> histogram) {
+            this.bb = bb;
+            this.histogram = histogram;
+        }
 
-    @Override
-    public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
-    }
+        @Override
+        public void forScannedConstant(JavaConstant scannedValue, ScanReason reason) {
+            AnalysisType type = constantType(bb, scannedValue);
+            int count = histogram.getOrDefault(type, 0);
+            histogram.put(type, count + 1);
+        }
 
-    @Override
-    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
-    }
+        @Override
+        public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        }
 
-    @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        @Override
+        public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+        }
+
+        @Override
+        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        }
+
+        @Override
+        public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
+        }
+
+        @Override
+        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        }
     }
 }

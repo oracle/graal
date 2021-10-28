@@ -64,7 +64,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -584,7 +583,7 @@ public class AllocationReporterTest {
         context.eval(source);
         context.enter();
         try {
-            AllocationReporter reporter = AllocationReporterLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
+            AllocationReporter reporter = AllocationReporterLanguage.getContext().getEnv().lookup(AllocationReporter.class);
             AtomicInteger listenerCalls = new AtomicInteger(0);
             AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
             assertEquals(0, listenerCalls.get());
@@ -626,7 +625,7 @@ public class AllocationReporterTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final com.oracle.truffle.api.source.Source code = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Node.Child private AllocNode alloc = parse(code.getCharacters().toString());
 
@@ -635,7 +634,7 @@ public class AllocationReporterTest {
                     return alloc.execute(frame);
                 }
 
-            });
+            }.getCallTarget();
         }
 
         private static AllocNode parse(String code) {
@@ -741,7 +740,7 @@ public class AllocationReporterTest {
             }
 
             AllocNode toNode() {
-                AllocationReporter reporter = getCurrentContext().getEnv().lookup(AllocationReporter.class);
+                AllocationReporter reporter = getContext().getEnv().lookup(AllocationReporter.class);
                 if (children == null) {
                     return new AllocNode(oldValue, newValue, reporter);
                 } else {
@@ -871,8 +870,15 @@ public class AllocationReporterTest {
 
         }
 
-        public static LanguageContext getCurrentContext() {
-            return getCurrentContext(AllocationReporterLanguage.class);
+        private static final LanguageReference<AllocationReporterLanguage> REFERENCE = LanguageReference.create(AllocationReporterLanguage.class);
+        private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(AllocationReporterLanguage.class);
+
+        public static ProxyLanguage get(Node node) {
+            return REFERENCE.get(node);
+        }
+
+        public static LanguageContext getContext() {
+            return CONTEXT_REF.get(null);
         }
     }
 

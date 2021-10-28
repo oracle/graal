@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.typestore;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -55,7 +55,7 @@ public class SplitFieldTypeStore extends FieldTypeStore {
     }
 
     @Override
-    public void init(BigBang bb) {
+    public void init(PointsToAnalysis bb) {
         /*
          * For split field stores we link the write flows to the read flows, such that all the
          * stores in the write partition can be loaded from the read partition. Done lazily because

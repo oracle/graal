@@ -28,18 +28,17 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.XOptions;
 
 /**
  * Garbage collection-specific options that are supported by all garbage collectors.
  */
 public class SubstrateGCOptions {
-    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
 
@@ -52,12 +51,16 @@ public class SubstrateGCOptions {
     @Option(help = "Ignore calls to System.gc()", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
+
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                XOptions.getXms().setValue(newValue);
+                HeapSizeVerifier.verifyMinHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
@@ -67,7 +70,8 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmx().setValue(newValue);
+                HeapSizeVerifier.verifyMaxHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
@@ -77,8 +81,12 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                XOptions.getXmn().setValue(newValue);
+                HeapSizeVerifier.verifyMaxNewSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
+
+    @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy).", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L);
 }

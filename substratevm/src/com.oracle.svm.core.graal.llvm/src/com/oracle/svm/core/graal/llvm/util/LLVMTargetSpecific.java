@@ -158,7 +158,12 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 
             @Override
             public List<String> getLLCAdditionalOptions() {
-                return Collections.singletonList("-no-x86-call-frame-opt");
+                List<String> list = new ArrayList<>();
+                list.add("-no-x86-call-frame-opt");
+                if (Platform.includedIn(Platform.IOS.class)) {
+                    list.add("-mtriple=x86_64-ios");
+                }
+                return list;
             }
         });
     }

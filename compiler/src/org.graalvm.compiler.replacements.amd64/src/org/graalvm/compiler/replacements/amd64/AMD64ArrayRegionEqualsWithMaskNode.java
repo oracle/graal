@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -40,15 +41,19 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode implements Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
+public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode implements Canonicalizable, Lowerable, MemoryAccess, DeoptimizingNode.DeoptBefore {
 
     public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
 
@@ -179,5 +184,56 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
 
     public static boolean regionEquals(byte[] value, int fromIndex1, byte[] value2, int fromIndex2, byte[] mask, int length, JavaKind kind1, JavaKind kind2, JavaKind kindMask) {
         return regionEquals(value, fromIndex1, value2, fromIndex2, mask, length, JavaKind.Byte, kind1, kind2, kindMask);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (!(sameKinds() && kind1.isNumericInteger())) {
+            return this;
+        }
+
+        if (length.isJavaConstant()) {
+            int len = length.asJavaConstant().asInt();
+            if (canFoldReads(tool, array1, fromIndex1, len) && canFoldReads(tool, array2, fromIndex2, len) && canFoldReads(tool, arrayMask, ConstantNode.forInt(0), len)) {
+                return constantFold(tool, array1.asJavaConstant(), fromIndex1.asJavaConstant().asInt(), array2.asJavaConstant(), fromIndex2.asJavaConstant().asInt(), arrayMask.asJavaConstant(), len);
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * Return {@code true} if the array and the starting index are constants and we can perform
+     * {@code len} in-bounds constant reads starting at {@code fromIndex}. Return {@code false} if
+     * not everything constant or if we would try to read out of bounds.
+     */
+    private static boolean canFoldReads(CanonicalizerTool tool, ValueNode array, ValueNode fromIndex, int len) {
+        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1 && fromIndex.isJavaConstant()) {
+            ConstantReflectionProvider c = tool.getConstantReflection();
+            Integer arrayLength = c.readArrayLength(array.asJavaConstant());
+            int index = fromIndex.asJavaConstant().asInt();
+            return arrayLength != null && index >= 0 && index + len <= arrayLength;
+        }
+        return false;
+    }
+
+    /**
+     * Constant fold this node. The caller must ensure that {@link #sameKinds()} holds and the
+     * arrays have some integer element type.
+     */
+    private static ConstantNode constantFold(CanonicalizerTool tool, JavaConstant arr1, int start1, JavaConstant arr2, int start2, JavaConstant mask, int len) {
+        ConstantReflectionProvider c = tool.getConstantReflection();
+
+        for (int i = 0; i < len; i++) {
+            JavaConstant e1 = c.readArrayElement(arr1, start1 + i);
+            JavaConstant e2 = c.readArrayElement(arr2, start2 + i);
+            JavaConstant m = c.readArrayElement(mask, i);
+            // As the arrays have identical kinds, we can compare long values because the sign or
+            // zero extension behavior will be identical for all three arrays' elements.
+            if ((e1.asLong() | m.asLong()) != e2.asLong()) {
+                return ConstantNode.forBoolean(false);
+            }
+        }
+        return ConstantNode.forBoolean(true);
     }
 }

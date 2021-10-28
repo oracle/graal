@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -86,9 +85,15 @@ public abstract class LIRTest extends JTTTest {
         @Override
         public void generate(NodeLIRBuilderTool gen) {
             LIRTestSpecification ops = getLIROperations();
-            Stream<Value> v = values().stream().map(node -> gen.operand(node));
+            Value[] generatedValues = new Value[values().size()];
+            int index = 0;
+            for (ValueNode node : values()) {
+                Value value = gen.operand(node);
+                generatedValues[index++] = value;
+                ops.addGeneratedValue(value, node);
+            }
 
-            ops.generate(gen.getLIRGeneratorTool(), v.toArray(size -> new Value[size]));
+            ops.generate(gen.getLIRGeneratorTool(), generatedValues);
             Value result = ops.getResult();
             if (result != null) {
                 gen.setResult(this, result);
@@ -177,6 +182,15 @@ public abstract class LIRTest extends JTTTest {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
             LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3});
+            addNode(b, returnKind, node);
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode arg0, ValueNode arg1, ValueNode arg2, ValueNode arg3,
+                        ValueNode arg4) {
+            JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+            LIRTestNode node = new LIRTestNode(getSnippetReflection(), returnKind, spec, new ValueNode[]{arg0, arg1, arg2, arg3, arg4});
             addNode(b, returnKind, node);
             return true;
         }

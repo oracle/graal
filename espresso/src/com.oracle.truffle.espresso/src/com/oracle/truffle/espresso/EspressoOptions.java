@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -54,7 +57,7 @@ public final class EspressoOptions {
                         @Override
                         public List<Path> apply(String paths) {
                             try {
-                                return Collections.unmodifiableList(Utils.parsePaths(paths));
+                                return Collections.unmodifiableList(parsePaths(paths));
                             } catch (InvalidPathException e) {
                                 throw new IllegalArgumentException(e);
                             }
@@ -66,7 +69,7 @@ public final class EspressoOptions {
                         @Override
                         public List<String> apply(String strings) {
                             try {
-                                return Collections.unmodifiableList(Utils.parseStrings(strings));
+                                return Collections.unmodifiableList(splitByFileSeparator(strings));
                             } catch (InvalidPathException e) {
                                 throw new IllegalArgumentException(e);
                             }
@@ -157,6 +160,18 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    public static List<Path> parsePaths(String paths) {
+        List<Path> list = new ArrayList<>();
+        for (String path : splitByFileSeparator(paths)) {
+            list.add(Paths.get(path));
+        }
+        return list;
+    }
+
+    private static List<String> splitByFileSeparator(String strings) {
+        return new ArrayList<>(Arrays.asList(strings.split(File.pathSeparator)));
+    }
+
     public enum SpecCompliancyMode {
         STRICT,
         HOTSPOT
@@ -216,35 +231,14 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> StringSharing = new OptionKey<>(true);
 
-    public enum LivenessAnalysisMode {
-        DISABLED,
-        ENABLED, // Also apply liveness analysis in interpreter
-        COMPILED // Only apply liveness analysis in compiled code.
-    }
-
-    private static final OptionType<LivenessAnalysisMode> LIVENESS_ANALYSIS_MODE_OPTION_TYPE = new OptionType<>("LivenessAnalysisMode",
-                    new Function<String, LivenessAnalysisMode>() {
-                        @Override
-                        public LivenessAnalysisMode apply(String s) {
-                            try {
-                                return LivenessAnalysisMode.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("--java.LivenessAnalysis: Mode can be 'DISABLED', 'ENABLED' or 'COMPILED'.");
-                            }
-                        }
-                    });
-
-    @Option(help = "Controls the static liveness analysis of bytecodes. Liveness analysis nulls out local variables during bytecode execution if it is detected they are stale." +
-                    "Options values are:" +
-                    "\t- Disabled: disables liveness analysis." +
-                    "\t- Enabled: performs full liveness analysis, nulling out non-live local variables even in interpreter." +
-                    "\t- Compiled: performs liveness analysis, and nulls out local variables only in compiled code.", //
+    @Option(help = "Controls static liveness analysis of bytecodes, allowing to clear local variables during execution if they become stale.\\n" + //
+                    "Liveness analysis, if enabled, only affects compiled code.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.DISABLED, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
+    public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
-    @Option(help = "Load native libraries on a per-context, isolated linking namespace; by default enabled on the JVM, disabled on SVM.", //
+    @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> UseTruffleNFIIsolatedNamespace = new OptionKey<>(!RUNNING_ON_SVM);
+    public static final OptionKey<Boolean> CHA = new OptionKey<>(false);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
@@ -262,7 +256,6 @@ public final class EspressoOptions {
                             String transport = null;
                             String host = null;
                             String port = null;
-                            String logLevel = null;
                             boolean server = false;
                             boolean suspend = true;
 
@@ -299,6 +292,9 @@ public final class EspressoOptions {
                                         port = inputPort;
                                         break;
                                     case "transport":
+                                        if (!"dt_socket".equals(value)) {
+                                            throw new IllegalArgumentException("Invalid transport " + value + ". Espresso only supports dt_socket currently.");
+                                        }
                                         transport = value;
                                         break;
                                     case "server":
@@ -307,14 +303,11 @@ public final class EspressoOptions {
                                     case "suspend":
                                         suspend = yesOrNo(key, value);
                                         break;
-                                    case "logLevel":
-                                        logLevel = value;
-                                        break;
                                     default:
                                         throw new IllegalArgumentException("Invalid JDWP option: " + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
                                 }
                             }
-                            return new JDWPOptions(transport, host, port, server, suspend, logLevel);
+                            return new JDWPOptions(transport, host, port, server, suspend);
                         }
                     });
 
@@ -347,7 +340,11 @@ public final class EspressoOptions {
 
     @Option(help = "Enable polyglot support in Espresso.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> Polyglot = new OptionKey<>(true);
+    public static final OptionKey<Boolean> Polyglot = new OptionKey<>(false);
+
+    @Option(help = "Enable hotspot extension API.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
@@ -423,5 +420,36 @@ public final class EspressoOptions {
                     category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<String> JavaAgent = new OptionKey<>("");
 
-    public static final String INCEPTION_NAME = System.getProperty("espresso.inception.name", "#");
+    @Option(help = "Used internally to keep track of the command line arguments given to the vm in order to support VM.getRuntimeArguments().\\n" +
+                    "Setting this option is the responsibility of the context creator if such support is required.\\n" +
+                    "Usage:\\n" +
+                    "For each argument [arg<i>] passed to the context (excluding the main class args):\\n" +
+                    "    builder.option(java.VMArguments.<i>, [arg<i>]);", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+    public static final OptionKey<OptionMap<String>> VMArguments = OptionKey.mapOf(String.class);
+
+    @Option(help = "Native backend used by Espresso, if not specified, Espresso will pick one depending on the environment.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<String> NativeBackend = new OptionKey<>("");
+
+    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> EnableSignals = new OptionKey<>(false);
+
+    @Option(help = "Enables java agents. Support is currently very limited.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+
+    @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
+
+    // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
+    public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
+    public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+
+    private static boolean booleanProperty(String name, boolean defaultValue) {
+        String value = System.getProperty(name);
+        return value == null ? defaultValue : value.equalsIgnoreCase("true");
+    }
 }

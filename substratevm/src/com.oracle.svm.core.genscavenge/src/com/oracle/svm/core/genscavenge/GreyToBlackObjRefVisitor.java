@@ -32,6 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -60,20 +61,8 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
-    public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed, null);
-    }
-
-    @Override
-    @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(Pointer objRef, boolean compressed, Object holderObject) {
+    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
-    }
-
-    @Override
-    @AlwaysInline("GC performance")
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed) {
-        return visitObjectReferenceInline(objRef, innerOffset, compressed, null);
     }
 
     @Override
@@ -100,7 +89,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         // This is the most expensive check as it accesses the heap fairly randomly, which results
         // in a lot of cache misses.
         UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
-        if (GCImpl.getGCImpl().isCompleteCollection() || !ObjectHeaderImpl.hasRememberedSet(header)) {
+        if (GCImpl.getGCImpl().isCompleteCollection() || !RememberedSet.get().hasRememberedSet(header)) {
 
             if (ObjectHeaderImpl.isForwardedHeader(header)) {
                 counters.noteForwardedReferent();
@@ -108,14 +97,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 Object obj = ObjectHeaderImpl.getForwardedObject(p, header);
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
-                HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, obj);
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
                 return true;
             }
 
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
             assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
-            Object copy = HeapImpl.getHeapImpl().promoteObject(obj, header);
+            Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
@@ -127,7 +116,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
             // The reference will not be updated if a whole chunk is promoted. However, we still
             // might have to dirty the card.
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(holderObject, copy);
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
         }
         return true;
     }

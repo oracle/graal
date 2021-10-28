@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ public final class FrameUtil {
         try {
             return frame.getObject(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -75,7 +75,7 @@ public final class FrameUtil {
         try {
             return frame.getByte(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -92,7 +92,7 @@ public final class FrameUtil {
         try {
             return frame.getBoolean(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -109,7 +109,7 @@ public final class FrameUtil {
         try {
             return frame.getInt(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -126,7 +126,7 @@ public final class FrameUtil {
         try {
             return frame.getLong(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -143,7 +143,7 @@ public final class FrameUtil {
         try {
             return frame.getDouble(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -160,7 +160,11 @@ public final class FrameUtil {
         try {
             return frame.getFloat(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
+    }
+
+    private static IllegalStateException unexpectedFrameSlotTypeException() {
+        throw new IllegalStateException();
     }
 }

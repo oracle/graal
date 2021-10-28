@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ public abstract class AbstractProcessor {
     }
 
     static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
+        System.err.println("Warning: " + warning);
     }
 
     @SuppressWarnings("unchecked")
@@ -51,5 +52,12 @@ public abstract class AbstractProcessor {
         if (collection.size() != size) {
             throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
         }
+    }
+
+    static byte[] asBinary(Object obj) {
+        if (obj instanceof byte[]) {
+            return (byte[]) obj;
+        }
+        return Base64.getDecoder().decode((String) obj);
     }
 }

@@ -129,7 +129,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
                 return PolySigIntrinsics.InvokeBasic;
             }
         }
-        if (declaringKlass.lookupPolysignatureDeclaredMethod(name) != null) {
+        if (declaringKlass.lookupPolysignatureDeclaredMethod(name, Klass.LookupMode.INSTANCE_ONLY) != null) {
             return PolySigIntrinsics.InvokeGeneric;
         }
         return PolySigIntrinsics.None;

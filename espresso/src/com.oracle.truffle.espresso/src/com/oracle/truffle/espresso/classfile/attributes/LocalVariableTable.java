@@ -38,7 +38,8 @@ import com.oracle.truffle.espresso.runtime.Attribute;
  */
 public final class LocalVariableTable extends Attribute implements LocalVariableTableRef {
 
-    public static final LocalVariableTable EMPTY = new LocalVariableTable(Name.LocalVariableTable, Local.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(Name.LocalVariableTable, Local.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY_LVTT = new LocalVariableTable(Name.LocalVariableTypeTable, Local.EMPTY_ARRAY);
 
     @CompilationFinal(dimensions = 1) //
     private final Local[] locals;

@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.graph.Node;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -51,12 +51,12 @@ public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     public ProxyTypeFlow(BytecodePosition source, TypeFlow<?> input) {
         super(source, null);
-        assert input instanceof AllInstantiatedTypeFlow || input instanceof UnknownTypeFlow;
+        assert input instanceof AllInstantiatedTypeFlow;
         this.input = input;
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 
@@ -65,12 +65,12 @@ public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         throw AnalysisError.shouldNotReachHere();
     }
 
     @Override
-    public void update(BigBang bb) {
+    public void update(PointsToAnalysis bb) {
         throw AnalysisError.shouldNotReachHere();
     }
 

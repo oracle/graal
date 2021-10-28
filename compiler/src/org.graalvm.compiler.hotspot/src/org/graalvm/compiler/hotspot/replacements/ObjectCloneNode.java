@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -74,7 +75,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
 
     @Override
     @SuppressWarnings("try")
-    protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
+    public StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
         ResolvedJavaType type = StampTool.typeOrNull(getObject());
 
         if (type != null) {
@@ -95,7 +96,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
 
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
-                    return lowerReplacement((StructuredGraph) snippetGraph.copy(getDebug()), tool);
+                    return MacroInvokable.lowerReplacement(graph(), (StructuredGraph) snippetGraph.copy(getDebug()), tool);
                 }
                 assert false : "unhandled array type " + type.getComponentType().getJavaKind();
             } else {
@@ -115,7 +116,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                         newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
                     }
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
-                    return lowerReplacement(newGraph, tool);
+                    return MacroInvokable.lowerReplacement(graph(), newGraph, tool);
                 }
             }
         }

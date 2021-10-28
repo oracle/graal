@@ -38,7 +38,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)
-class AMD64FrameAccessFeature implements Feature {
+class AArch64FrameAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(FrameAccess.class, new AArch64FrameAccess());

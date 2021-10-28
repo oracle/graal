@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.3//EN" "http://www.puppycrawl.com/dtds/configuration_1_3.dtd">
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
 
 <!--
     This configuration file was written by the eclipse-cs plugin configuration editor
@@ -11,11 +11,7 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
-    <module name="AvoidStarImport">
-      <property name="allowClassImports" value="false"/>
-      <property name="allowStaticMemberImports" value="false"/>
-    </module>
-    <property name="tabWidth" value="4"/>
+    <module name="AvoidStarImport"/>
     <module name="JavadocStyle">
       <property name="checkHtml" value="false"/>
     </module>
@@ -32,9 +28,6 @@
     </module>
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
-    <module name="LineLength">
-      <property name="max" value="250"/>
-    </module>
     <module name="MethodParamPad"/>
     <module name="NoWhitespaceAfter">
       <property name="tokens" value="ARRAY_INIT,BNOT,DEC,DOT,INC,LNOT,UNARY_MINUS,UNARY_PLUS"/>
@@ -43,13 +36,11 @@
       <property name="tokens" value="SEMI,POST_DEC,POST_INC"/>
     </module>
     <module name="NoWhitespaceBefore">
-      <property name="tokens" value="DOT"/>
       <property name="allowLineBreaks" value="true"/>
+      <property name="tokens" value="DOT"/>
     </module>
     <module name="ParenPad"/>
-    <module name="TypecastParenPad">
-      <property name="tokens" value="RPAREN,TYPECAST"/>
-    </module>
+    <module name="TypecastParenPad"/>
     <module name="WhitespaceAfter"/>
     <module name="WhitespaceAround">
       <property name="tokens" value="ASSIGN,BAND,BAND_ASSIGN,BOR,BOR_ASSIGN,BSR,BSR_ASSIGN,BXOR,BXOR_ASSIGN,COLON,DIV,DIV_ASSIGN,EQUAL,GE,GT,LAND,LE,LITERAL_ASSERT,LITERAL_CATCH,LITERAL_DO,LITERAL_ELSE,LITERAL_FINALLY,LITERAL_FOR,LITERAL_IF,LITERAL_RETURN,LITERAL_SYNCHRONIZED,LITERAL_TRY,LITERAL_WHILE,LOR,LT,MINUS,MINUS_ASSIGN,MOD,MOD_ASSIGN,NOT_EQUAL,PLUS,PLUS_ASSIGN,QUESTION,SL,SLIST,SL_ASSIGN,SR,SR_ASSIGN,STAR,STAR_ASSIGN,LITERAL_ASSERT,TYPE_EXTENSION_AND"/>
@@ -120,7 +111,6 @@
       <metadata name="net.sf.eclipsecs.core.comment" value="Illegal trailing whitespace(s) at the end of the line."/>
       <property name="format" value="\s$"/>
       <property name="message" value="Illegal trailing whitespace(s) at the end of the line."/>
-      <property name="ignoreComments" value="false"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Checks for trailing spaces at the end of a line"/>
     </module>
     <module name="RegexpSinglelineJava">
@@ -221,18 +211,24 @@
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: stop"/>
       <property name="onCommentFormat" value="Checkstyle: resume"/>
-      <property name="checkFormat" value=".*"/>
     </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="@formatter:off"/>
       <property name="onCommentFormat" value="@formatter:on"/>
-      <property name="checkFormat" value=".*"/>
     </module>
     <module name="Regexp">
       <property name="format" value="^ \* Copyright \(c\) (20[0-9][0-9]), \1, Oracle"/>
-      <property name="illegalPattern" value="true"/>
       <property name="message" value="Single year shouldn't be duplicated"/>
+      <property name="illegalPattern" value="true"/>
     </module>
+    <module name="Regexp">
+      <property name="format" value="[^/](?i)master|(?i)slave|(?i)whitelist|(?i)blacklist|(?i)whitehat|(?i)blackhat|(?i)grandfather"/>
+      <message key="illegal.regexp" value="Avoid insensitive term matched by {0}." />
+      <property name="illegalPattern" value="true"/>
+    </module>
+  </module>
+  <module name="LineLength">
+    <property name="max" value="250"/>
   </module>
   <module name="RegexpHeader">
     <property name="header" value="/\*\n \* Copyright \(c\) (20[0-9][0-9], )?20[0-9][0-9], Oracle and/or its affiliates\. All rights reserved\.\n \* Copyright \(c\) (20[0-9][0-9], )?20[0-9][0-9], .*\. All rights reserved\.\n \* Intel Math Library \(LIBM\) Source Code\n \* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER\.\n \*\n \* This code is free software; you can redistribute it and/or modify it\n \* under the terms of the GNU General Public License version 2 only, as\n \* published by the Free Software Foundation\.  Oracle designates this\n \* particular file as subject to the &quot;Classpath&quot; exception as provided\n \* by Oracle in the LICENSE file that accompanied this code.\n \*\n \* This code is distributed in the hope that it will be useful, but WITHOUT\n \* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n \* FITNESS FOR A PARTICULAR PURPOSE\.  See the GNU General Public License\n \* version 2 for more details \(a copy is included in the LICENSE file that\n \* accompanied this code\)\.\n \*\n \* You should have received a copy of the GNU General Public License version\n \* 2 along with this work; if not, write to the Free Software Foundation,\n \* Inc\., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA\.\n \*\n \* Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n \* or visit www\.oracle\.com if you need additional information or have any\n \* questions\.\n \*/\n"/>
@@ -251,5 +247,9 @@
     <metadata name="net.sf.eclipsecs.core.comment" value="illegal Windows line ending"/>
     <property name="format" value="\r\n"/>
     <property name="message" value="illegal Windows line ending"/>
+  </module>
+  <module name="SuppressWithPlainTextCommentFilter">
+    <property name="offCommentFormat" value="// @formatter:off"/>
+    <property name="onCommentFormat" value="// @formatter:on"/>
   </module>
 </module>

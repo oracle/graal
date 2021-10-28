@@ -47,8 +47,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -74,6 +76,7 @@ public final class SourceSectionFilter {
      * @since 0.18
      */
     public static final SourceSectionFilter ANY = newBuilder().build();
+    private static final ConcurrentHashMap<Set<Class<?>>, TaggedNode> TAGGED_NODE_CACHE = new ConcurrentHashMap<>();
 
     private final EventFilterExpression[] expressions;
 
@@ -134,9 +137,85 @@ public final class SourceSectionFilter {
         if (!InstrumentationHandler.isInstrumentableNode(node)) {
             return false;
         }
-        Set<Class<?>> tags = getProvidedTags(node);
+        return includesImpl(node, node.getSourceSection());
+    }
+
+    /**
+     * Checks if the filter includes the given root node, i.e. do the properties of the given source
+     * section meet the conditions set by the filter without an instrumented node.
+     *
+     * @param rootNode The root node to be checked against the filter.
+     * @param nodeSourceSection The source section of the node to be checked against the filter.
+     *
+     * @return {@code true} if the filter includes the source section and node. {@code false}
+     *         otherwise.
+     * @since 21.3.0
+     *
+     */
+    public boolean includes(RootNode rootNode, SourceSection nodeSourceSection, Set<Class<?>> originalTags) {
+        Set<Class<?>> providedTags = getProvidedTags(rootNode);
+        Set<Class<?>> tags = originalTags == null ? Collections.emptySet() : originalTags;
+        TaggedNode node = TAGGED_NODE_CACHE.get(tags);
+        if (node == null) {
+            Set<Class<?>> newTags = new HashSet<>(tags); // defensively copy
+            node = TAGGED_NODE_CACHE.computeIfAbsent(newTags, TaggedNode::new);
+        }
         for (EventFilterExpression exp : expressions) {
-            if (!exp.isIncluded(tags, node, node.getSourceSection())) {
+            if (originalTags == null && isTagExpression(exp)) {
+                continue;
+            }
+            if (!exp.isIncluded(providedTags, node, nodeSourceSection)) {
+                return false;
+            }
+            if (!exp.isRootIncluded(providedTags, nodeSourceSection, rootNode, 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isTagExpression(EventFilterExpression exp) {
+        if (exp instanceof Not) {
+            return isTagExpression(((Not) exp).delegate);
+        } else {
+            return exp instanceof EventFilterExpression.TagIs;
+        }
+    }
+
+    /*
+     * Since root nodes themselves cannot be instrumented, this node is used by the {@link
+     * #includes(RootNode, SourceSection)} method as a substitute node to check the tags
+     */
+    private static final class TaggedNode extends Node implements InstrumentableNode {
+
+        private final Set<Class<?>> tags;
+
+        TaggedNode(Set<Class<?>> tags) {
+            this.tags = tags;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            // Never used since this is a dummy node
+            return null;
+        }
+
+        @Override
+        @TruffleBoundary
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return tags.contains(tag);
+        }
+    }
+
+    private boolean includesImpl(Node node, SourceSection sourceSection) {
+        Set<Class<?>> tags = node != null ? getProvidedTags(node) : Collections.emptySet();
+        for (EventFilterExpression exp : expressions) {
+            if (!exp.isIncluded(tags, node, sourceSection)) {
                 return false;
             }
         }
@@ -1507,8 +1586,7 @@ public final class SourceSectionFilter {
                 assert rootNode == null ||
                                 rootSection == null ||
                                 !rootSection.getSource().isInternal() ||
-                                rootSection.getSource().isInternal() && rootNode.isInternal() : //
-                "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
+                                rootSection.getSource().isInternal() && rootNode.isInternal() : "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
                 return rootNode == null || !rootNode.isInternal();
             }
 

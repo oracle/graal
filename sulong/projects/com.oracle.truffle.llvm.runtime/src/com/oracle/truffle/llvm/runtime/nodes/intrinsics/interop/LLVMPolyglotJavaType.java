@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotJavaType extends LLVMIntrinsic {
@@ -48,11 +45,10 @@ public abstract class LLVMPolyglotJavaType extends LLVMIntrinsic {
 
     @Specialization
     protected Object doImport(Object name,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                     @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
         String className = readString.executeWithTarget(name);
 
-        Object ret = ctx.getEnv().lookupHostSymbol(className);
+        Object ret = getContext().getEnv().lookupHostSymbol(className);
         return toLLVM.executeWithTarget(ret);
     }
 

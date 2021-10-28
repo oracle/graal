@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import static com.oracle.truffle.llvm.toolchain.launchers.common.Driver.OS;
 
 import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
 import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
+import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
 
 public final class Linker {
 
@@ -40,6 +41,8 @@ public final class Linker {
         OS os = OS.getCurrent();
         if (os == OS.DARWIN) {
             DarwinLinker.link(args);
+        } else if (os == OS.WINDOWS) {
+            WindowsLinker.link(args);
         } else {
             LinuxLinker.link(args);
         }

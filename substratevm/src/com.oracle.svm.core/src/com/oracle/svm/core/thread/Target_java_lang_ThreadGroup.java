@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.NotLoomJDK;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -37,22 +39,34 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class, disableCaching = true)//
     private int nUnstartedThreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
     private int nthreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
     private Thread[] threads;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class)//
+    /*
+     * JavaThreadsFeature.reachableThreadGroups is updated in an object replacer, during analysis,
+     * thus the recomputation may see an incomplete value. By disabling caching eventually the
+     * recomputed value will be the correct one. No additional caching is necessary since
+     * reachableThreadGroups will eventually reach a stable value during analysis and there is no
+     * risk to discover new objects in later phases.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class, disableCaching = true)//
     private int ngroups;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class, disableCaching = true)//
     private ThreadGroup[] groups;
 
     @Alias
+    @TargetElement(onlyWith = NotLoomJDK.class)//
     native void addUnstarted();
 
     @Alias
+    @TargetElement(onlyWith = NotLoomJDK.class)//
     native void add(Thread t);
 }
 

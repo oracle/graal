@@ -29,14 +29,17 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK15OrLater;
-import com.oracle.svm.core.jdk.JDK16OrLater;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -48,7 +51,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Class<?> boundCallerClass)
                     throws IllegalAccessException {
@@ -58,7 +61,7 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     private MethodHandle maybeBindCaller(Target_java_lang_invoke_MemberName method, MethodHandle mh,
                     Target_java_lang_invoke_MethodHandles_Lookup boundCaller)
                     throws IllegalAccessException {
@@ -66,7 +69,39 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
         return mh;
     }
 
-    @Alias @TargetElement(onlyWith = JDK16OrLater.class)//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-    public static int ORIGINAL = MethodHandles.Lookup.PACKAGE << 3;
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    private Class<?> lookupClass;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    private Class<?> prevLookupClass;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    private int allowedModes;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    private IllegalAccessException makeAccessException(Class<?> targetClass) {
+        String message = "access violation: " + targetClass;
+        if (this == SubstrateUtil.cast(MethodHandles.publicLookup(), Target_java_lang_invoke_MethodHandles_Lookup.class)) {
+            message += ", from public Lookup";
+        } else {
+            Object m = SubstrateUtil.cast(lookupClass, DynamicHub.class).getModule();
+            message += ", from " + lookupClass + " (" + m + ")";
+            if (prevLookupClass != null) {
+                message += ", previous lookup " +
+                                prevLookupClass.getName() + " (" + SubstrateUtil.cast(prevLookupClass, DynamicHub.class).getModule() + ")";
+            }
+        }
+        return new IllegalAccessException(message);
+    }
+
+    /** This call is a noop without the security manager. */
+    @SuppressWarnings("unused")
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    void checkSecurityManager(Class<?> refc) {
+    }
 }

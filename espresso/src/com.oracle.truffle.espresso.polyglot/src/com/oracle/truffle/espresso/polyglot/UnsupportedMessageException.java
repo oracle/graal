@@ -90,10 +90,7 @@ public final class UnsupportedMessageException extends InteropException {
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
      * guest language code to describe an object. If the guest language code fails to execute and
      * this interop exception is a valid interpretation of the error, then the error should be
-     * provided as cause. The cause can then be used by the source language as new exception cause
-     * if the {@link InteropException} is translated to a source language error. If the
-     * {@link InteropException} is discarded, then the cause will most likely get discarded by the
-     * source language as well.
+     * provided as cause.
      *
      * @param cause the guest language exception that caused the error.
      *

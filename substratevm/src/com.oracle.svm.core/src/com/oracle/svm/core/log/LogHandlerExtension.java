@@ -30,30 +30,54 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
+/**
+ * Extensions to {@link LogHandler} for supporting suppression of fatal error logging (e.g.,
+ * implementing flood control) and redirection of fatal error logging (e.g., redirect fatal error
+ * logging to a {@code hs_err_pid<NNNN>_libjvmci.log} file).
+ */
 public interface LogHandlerExtension extends LogHandler {
 
     /**
-     * This method gets called if the VM finds itself in a fatal, non-recoverable error situation.
-     * The callee receives arguments that describes the error. Based on these arguments the
-     * implementor can decide if it wants to get more specific error related information via
-     * subsequent calls to {@link #log(CCharPointer, UnsignedWord)}. This is requested by returning
-     * {@code true}. Returning {@code false} on the other hand will let the VM know that it can skip
-     * providing this information and immediately proceed with calling {@link #fatalError()} from
-     * where it is expected to never return to the VM.
-     * <p>
-     * Providing this method allows to implement flood control for fatal errors. The implementor can
-     * rely on {@link #fatalError()} getting called soon after this method is called.
+     * This method is called by the default implementation of {@link #enterFatalContext}.
+     *
+     * The implementor returns {@code true} if fatal error information should be sent to
+     * {@link #log(CCharPointer, UnsignedWord)}. Returning {@code false} specifies that no further
+     * information is to be logged and the VM must immediately call {@link #fatalError()}.
      *
      * @param callerIP the address of the call-site where the fatal error occurred
      * @param msg provides optional text that was passed to the fatal error call
      * @param ex provides optional exception object that was passed to the fatal error call
      *
-     * @return if {@code false} is returned the VM will skip providing more specific error related
-     *         information before calling {@link #fatalError()}.
+     * @return {@code false} if the VM must not log error information before calling
+     *         {@link #fatalError()}
      *
      * @since 20.3
+     * @see #enterFatalContext
      */
     default boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
         return true;
+    }
+
+    /**
+     * This method gets called if the VM finds itself in a fatal, non-recoverable error situation.
+     *
+     * The implementor returns a non-null {@link Log} object if fatal error information should be
+     * sent to the log object. Returning {@code null} specifies that no further information is to be
+     * logged and the VM must immediately call {@link #fatalError()}.
+     *
+     * @param callerIP the address of the call-site where the fatal error occurred
+     * @param msg provides optional text that was passed to the fatal error call
+     * @param ex provides optional exception object that was passed to the fatal error call
+     *
+     * @return the {@link Log} object to which fatal logging is sent or {@code null} if the VM must
+     *         not do any further logging before calling {@link #fatalError()}
+     *
+     * @since 21.3
+     */
+    default Log enterFatalContext(CodePointer callerIP, String msg, Throwable ex) {
+        if (fatalContext(callerIP, msg, ex)) {
+            return Log.log();
+        }
+        return null;
     }
 }

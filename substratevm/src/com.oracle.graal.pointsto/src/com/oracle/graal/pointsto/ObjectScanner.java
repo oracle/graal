@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,14 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -45,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -53,7 +55,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Provides functionality for scanning constant objects.
  *
- * The scanning is done in parallel. The set of visited elements is a special datastructure whose
+ * The scanning is done in parallel. The set of visited elements is a special data structure whose
  * structure can be reused over multiple scanning iterations to save CPU resources. (For details
  * {@link ReusableSet}).
  */
@@ -61,27 +63,24 @@ public abstract class ObjectScanner {
 
     protected final BigBang bb;
     private final ReusableSet scannedObjects;
-    protected final Deque<WorklistEntry> worklist;
-    /**
-     * Used to track whether all work has been completed or not.
-     */
-    private final AtomicLong workInProgressCount = new AtomicLong(0);
+    private final CompletionExecutor executor;
+    private final Deque<WorklistEntry> worklist;
+    private final ObjectScanningObserver scanningObserver;
 
-    public ObjectScanner(BigBang bigbang, ReusableSet scannedObjects) {
-        this.bb = bigbang;
-        this.worklist = new ConcurrentLinkedDeque<>();
+    public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
+        this.bb = bb;
+        this.scanningObserver = scanningObserver;
+        if (executor != null) {
+            this.executor = executor;
+            this.worklist = null;
+        } else {
+            this.executor = null;
+            this.worklist = new ConcurrentLinkedDeque<>();
+        }
         this.scannedObjects = scannedObjects;
     }
 
-    public void scanBootImageHeapRoots(CompletionExecutor executor) {
-        scanBootImageHeapRoots(executor, null, null);
-    }
-
     public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<BytecodePosition> embeddedRootComparator) {
-        scanBootImageHeapRoots(null, fieldComparator, embeddedRootComparator);
-    }
-
-    private void scanBootImageHeapRoots(CompletionExecutor exec, Comparator<AnalysisField> fieldComparator, Comparator<BytecodePosition> embeddedRootComparator) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
         Collection<AnalysisField> fields = bb.getUniverse().getFields();
@@ -91,8 +90,8 @@ public abstract class ObjectScanner {
             fields = fieldsList;
         }
         for (AnalysisField field : fields) {
-            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isInImageHeap()) {
-                execute(exec, () -> scanRootField(field));
+            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+                execute(() -> scanRootField(field));
             }
         }
 
@@ -100,29 +99,26 @@ public abstract class ObjectScanner {
         Map<JavaConstant, BytecodePosition> embeddedRoots = bb.getUniverse().getEmbeddedRoots();
         if (embeddedRootComparator != null) {
             embeddedRoots.entrySet().stream().sorted(Map.Entry.comparingByValue(embeddedRootComparator))
-                            .forEach(entry -> execute(exec, () -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
+                            .forEach(entry -> execute(() -> scanEmbeddedRoot(entry.getKey(), entry.getValue())));
         } else {
-            embeddedRoots.forEach((key, value) -> execute(exec, () -> scanEmbeddedRoot(key, value)));
+            embeddedRoots.forEach((key, value) -> execute(() -> scanEmbeddedRoot(key, value)));
         }
 
-        finish(exec);
+        finish();
     }
 
-    private void execute(CompletionExecutor exec, Runnable runnable) {
-        if (exec != null) {
-            workInProgressCount.incrementAndGet();
-            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                @Override
-                public void run(DebugContext debug) {
-                    try {
-                        runnable.run();
-                    } finally {
-                        workInProgressCount.decrementAndGet();
-                    }
-                }
-            });
+    private void execute(Runnable runnable) {
+        if (executor != null) {
+            executor.execute((ObjectScannerRunnable) debug -> runnable.run());
         } else {
             runnable.run();
+        }
+    }
+
+    private interface ObjectScannerRunnable extends DebugContextRunnable {
+        @Override
+        default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return DebugContext.disabled(null);
         }
     }
 
@@ -134,27 +130,6 @@ public abstract class ObjectScanner {
             bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
         }
     }
-
-    /*
-     * When scanning a field there are three possible cases: the field value is a relocated pointer,
-     * the field value is null or the field value is non-null. The method {@link
-     * ObjectScanner#scanField(AnalysisField, JavaConstant, Object)} will call the appropriated
-     * method during scanning.
-     */
-
-    /**
-     * Hook for relocated pointer scanned field value.
-     *
-     * For relocated pointers the value is only known at runtime after methods are relocated, which
-     * is pretty much the same as a field written at runtime: we do not have a constant value.
-     */
-    public abstract void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
-
-    /** Hook for scanned null field value. */
-    public abstract void forNullFieldValue(JavaConstant receiver, AnalysisField field);
-
-    /** Hook for scanned non-null field value. */
-    public abstract void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue);
 
     /**
      * Scans the value of a root field.
@@ -186,32 +161,20 @@ public abstract class ObjectScanner {
             }
 
             if (fieldValue.getJavaKind() == JavaKind.Object && bb.getHostVM().isRelocatedPointer(constantAsObject(bb, fieldValue))) {
-                forRelocatedPointerFieldValue(receiver, field, fieldValue);
+                scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue);
             } else if (fieldValue.isNull()) {
-                forNullFieldValue(receiver, field);
+                scanningObserver.forNullFieldValue(receiver, field);
             } else if (fieldValue.getJavaKind() == JavaKind.Object) {
                 /* Scan the field value. */
                 scanConstant(fieldValue, reason, previous);
                 /* Process the field value. */
-                forNonNullFieldValue(receiver, field, fieldValue);
+                scanningObserver.forNonNullFieldValue(receiver, field, fieldValue);
             }
 
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeature(field.format("%H.%n"), ex.getMessage(), reason, previous);
         }
     }
-
-    /*
-     * When scanning array elements there are two possible cases: the element value is either null
-     * or the field value is non-null. The method {@link ObjectScanner#scanArray(JavaConstant,
-     * Object)} will call the appropriated method during scanning.
-     */
-
-    /** Hook for scanned null element value. */
-    public abstract void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex);
-
-    /** Hook for scanned non-null element value. */
-    public abstract void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex);
 
     /**
      * Scans constant arrays, one element at the time.
@@ -231,7 +194,7 @@ public abstract class ObjectScanner {
             Object e = arrayObject[idx];
             try {
                 if (e == null) {
-                    forNullArrayElement(array, arrayType, idx);
+                    scanningObserver.forNullArrayElement(array, arrayType, idx);
                 } else {
                     Object element = bb.getUniverse().replaceObject(e);
                     JavaConstant elementConstant = bb.getSnippetReflectionProvider().forObject(element);
@@ -240,19 +203,13 @@ public abstract class ObjectScanner {
                     /* Scan the array element. */
                     scanConstant(elementConstant, reason, previous);
                     /* Process the array element. */
-                    forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
+                    scanningObserver.forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
                 }
             } catch (UnsupportedFeatureException ex) {
                 unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason, previous);
             }
         }
     }
-
-    /**
-     * Hook for scanned constant. The subclasses can provide additional processing for the scanned
-     * constants.
-     */
-    protected abstract void forScannedConstant(JavaConstant scannedValue, ScanReason reason);
 
     public final void scanConstant(JavaConstant value, ScanReason reason) {
         scanConstant(value, reason, null);
@@ -264,15 +221,20 @@ public abstract class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
+            analysisType(bb, valueObj).registerAsInHeap();
             return;
         }
         if (scannedObjects.putAndAcquire(valueObj) == null) {
             try {
-                forScannedConstant(value, reason);
+                scanningObserver.forScannedConstant(value, reason);
             } finally {
                 scannedObjects.release(valueObj);
-                workInProgressCount.incrementAndGet();
-                worklist.push(new WorklistEntry(previous, value, reason));
+                WorklistEntry worklistEntry = new WorklistEntry(previous, value, reason);
+                if (executor != null) {
+                    executor.execute((ObjectScannerRunnable) debug -> doScan(worklistEntry));
+                } else {
+                    worklist.push(worklistEntry);
+                }
             }
         }
     }
@@ -341,7 +303,7 @@ public abstract class ObjectScanner {
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */
                 for (AnalysisField field : type.getInstanceFields(true)) {
-                    if (field.getJavaKind() == JavaKind.Object && field.isInImageHeap()) {
+                    if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
                         assert !Modifier.isStatic(field.getModifiers());
                         scanField(field, entry.constant, entry);
                     }
@@ -362,49 +324,8 @@ public abstract class ObjectScanner {
      * Processing fields can issue new fields to be scanned so we always add the check for workitems
      * at the end of the worklist.
      */
-    protected void finish(CompletionExecutor exec) {
-        if (exec != null) {
-            // We add a task which checks for workitems in the worklist, we keep it adding as long
-            // there are more workitems available.
-            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                @Override
-                public void run(DebugContext ignored) {
-                    if (workInProgressCount.get() > 0) {
-                        int worklistLength = worklist.size();
-                        while (!worklist.isEmpty()) {
-                            // Put workitems into buckets to avoid overhead for scheduling
-                            int bucketSize = Integer.max(1, Integer.max(worklistLength, worklist.size()) / (2 * exec.getExecutorService().getPoolSize()));
-                            final ArrayList<WorklistEntry> items = new ArrayList<>();
-                            while (!worklist.isEmpty() && items.size() < bucketSize) {
-                                items.add(worklist.remove());
-                            }
-                            exec.execute(new CompletionExecutor.DebugContextRunnable() {
-                                @Override
-                                public void run(DebugContext ignored2) {
-                                    Iterator<WorklistEntry> it = items.iterator();
-                                    try {
-                                        while (it.hasNext()) {
-                                            try {
-                                                doScan(it.next());
-                                            } finally {
-                                                workInProgressCount.decrementAndGet();
-                                            }
-                                        }
-                                    } finally {
-                                        // Push back leftover elements (In exception case)
-                                        while (it.hasNext()) {
-                                            worklist.push(it.next());
-                                        }
-                                    }
-                                }
-                            });
-                        }
-                        // Put ourself into the queue to re-check the worklist
-                        exec.execute(this);
-                    }
-                }
-            });
-        } else {
+    protected void finish() {
+        if (executor == null) {
             while (!worklist.isEmpty()) {
                 int size = worklist.size();
                 for (int i = 0; i < size; i++) {

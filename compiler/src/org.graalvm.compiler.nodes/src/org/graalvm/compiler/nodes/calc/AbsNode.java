@@ -32,7 +32,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Abs;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
@@ -56,7 +56,7 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
         if (synonym != null) {
             return synonym;
         }
-        return new NegateNode(value);
+        return new AbsNode(value);
     }
 
     protected static ValueNode findSynonym(ValueNode forValue, NodeView view) {
@@ -64,6 +64,14 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
         ValueNode synonym = UnaryArithmeticNode.findSynonym(forValue, absOp);
         if (synonym != null) {
             return synonym;
+        }
+        if (forValue instanceof AbsNode) {
+            return forValue;
+        }
+        // abs(-x) => abs(x)
+        if (forValue instanceof NegateNode) {
+            NegateNode negate = (NegateNode) forValue;
+            return AbsNode.create(negate.getValue(), view);
         }
         return null;
     }
@@ -79,8 +87,9 @@ public final class AbsNode extends UnaryArithmeticNode<Abs> implements Arithmeti
         if (ret != this) {
             return ret;
         }
-        if (forValue instanceof AbsNode) {
-            return forValue;
+        ValueNode synonym = findSynonym(forValue, NodeView.from(tool));
+        if (synonym != null) {
+            return synonym;
         }
         return this;
     }

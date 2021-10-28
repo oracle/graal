@@ -35,21 +35,21 @@ import jdk.vm.ci.meta.SpeculationLog;
 class HotSpotTruffleRuntimeServices {
 
     /**
-     * A wrapper that holds a strong reference to a "master" speculation log that
+     * A wrapper that holds a strong reference to another speculation log that
      * {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} the failed
      * speculations list.
      */
     static class CompilationSpeculationLog extends HotSpotSpeculationLog {
-        private final HotSpotSpeculationLog masterLog;
+        private final HotSpotSpeculationLog wrappedLog;
 
-        CompilationSpeculationLog(HotSpotSpeculationLog masterLog) {
-            super(masterLog.getFailedSpeculationsAddress());
-            this.masterLog = masterLog;
+        CompilationSpeculationLog(HotSpotSpeculationLog wrappedLog) {
+            super(wrappedLog.getFailedSpeculationsAddress());
+            this.wrappedLog = wrappedLog;
         }
 
         @Override
         public String toString() {
-            return masterLog.toString();
+            return wrappedLog.toString();
         }
     }
 
@@ -57,8 +57,8 @@ class HotSpotTruffleRuntimeServices {
      * Gets a speculation log to be used for compiling {@code callTarget}.
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
-        HotSpotSpeculationLog masterLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
-        CompilationSpeculationLog compilationSpeculationLog = new CompilationSpeculationLog(masterLog);
+        HotSpotSpeculationLog wrappedLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+        CompilationSpeculationLog compilationSpeculationLog = new CompilationSpeculationLog(wrappedLog);
         compilationSpeculationLog.collectFailedSpeculations();
         return compilationSpeculationLog;
     }

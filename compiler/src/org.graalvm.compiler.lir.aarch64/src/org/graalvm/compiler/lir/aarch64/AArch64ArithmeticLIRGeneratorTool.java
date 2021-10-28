@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,18 +37,4 @@ public interface AArch64ArithmeticLIRGeneratorTool extends ArithmeticLIRGenerato
 
     Value emitCountTrailingZeros(Value value);
 
-    enum RoundingMode {
-        NEAREST(0),
-        DOWN(1),
-        UP(2),
-        TRUNCATE(3);
-
-        public final int encoding;
-
-        RoundingMode(int encoding) {
-            this.encoding = encoding;
-        }
-    }
-
-    Value emitRound(Value value, RoundingMode mode);
 }

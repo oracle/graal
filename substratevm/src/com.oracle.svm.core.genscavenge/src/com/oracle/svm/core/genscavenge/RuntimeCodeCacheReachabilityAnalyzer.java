@@ -52,7 +52,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
     }
 
     @Override
-    public boolean visitObjectReference(Pointer ptrPtrToObject, boolean compressed) {
+    public boolean visitObjectReference(Pointer ptrPtrToObject, boolean compressed, Object holderObject) {
         assert !unreachableObjects;
         Pointer ptrToObj = ReferenceAccess.singleton().readObjectAsUntrackedPointer(ptrPtrToObject, compressed);
         if (ptrToObj.isNonNull() && !isReachable(ptrToObj)) {

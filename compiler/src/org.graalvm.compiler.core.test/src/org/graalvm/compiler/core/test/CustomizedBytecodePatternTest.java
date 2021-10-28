@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.core.test;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.security.ProtectionDomain;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -63,6 +66,25 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         return loadedClass;
     }
 
+    private static final File GENERATED_CLASS_FILE_OUTPUT_DIRECTORY;
+    static {
+        String prop = System.getProperty("save.generated.classfile.dir");
+        File file = null;
+        if (prop != null) {
+            file = new File(prop);
+            ensureDirectoryExists(file);
+            assert file.exists() : file;
+        }
+        GENERATED_CLASS_FILE_OUTPUT_DIRECTORY = file;
+    }
+
+    private static File ensureDirectoryExists(File file) {
+        if (!file.exists()) {
+            file.mkdirs();
+        }
+        return file;
+    }
+
     private class CachedLoader extends ClassLoader {
 
         final String className;
@@ -77,8 +99,18 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             if (name.equals(className)) {
                 if (loaded == null) {
-                    byte[] gen = generateClass(name.replace('.', '/'));
-                    loaded = defineClass(name, gen, 0, gen.length);
+                    byte[] classfileBytes = generateClass(name.replace('.', '/'));
+                    if (GENERATED_CLASS_FILE_OUTPUT_DIRECTORY != null) {
+                        try {
+                            File classfile = new File(GENERATED_CLASS_FILE_OUTPUT_DIRECTORY, name.replace('.', File.separatorChar) + ".class");
+                            ensureDirectoryExists(classfile.getParentFile());
+                            Files.write(classfile.toPath(), classfileBytes);
+                            System.out.println("Wrote: " + classfile.getAbsolutePath());
+                        } catch (IOException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
+                    loaded = defineClass(name, classfileBytes, 0, classfileBytes.length);
                 }
                 return loaded;
             } else {

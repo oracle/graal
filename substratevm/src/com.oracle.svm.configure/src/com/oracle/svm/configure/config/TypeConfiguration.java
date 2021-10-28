@@ -31,60 +31,61 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.meta.JavaKind;
+public class TypeConfiguration implements ConfigurationBase {
+    public static TypeConfiguration copyAndSubtract(TypeConfiguration config, TypeConfiguration toSubtract) {
+        TypeConfiguration copy = new TypeConfiguration();
+        config.types.forEach((key, type) -> {
+            ConfigurationType subtractType = toSubtract.types.get(key);
+            copy.types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
+        });
+        return copy;
+    }
 
-public class TypeConfiguration implements JsonPrintable {
-    private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
 
-    public ConfigurationType get(String qualifiedJavaName) {
-        return types.get(qualifiedJavaName);
+    public TypeConfiguration() {
+    }
+
+    public ConfigurationType get(ConfigurationCondition condition, String qualifiedJavaName) {
+        return types.get(new ConditionalElement<>(condition, qualifiedJavaName));
     }
 
     public void add(ConfigurationType type) {
-        ConfigurationType previous = types.putIfAbsent(type.getQualifiedJavaName(), type);
-        UserError.guarantee(previous == null || previous == type, "Cannot replace existing type %s with %s", previous, type);
+        ConfigurationType previous = types.putIfAbsent(new ConditionalElement<>(type.getCondition(), type.getQualifiedJavaName()), type);
+        if (previous != null && previous != type) {
+            VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
+        }
     }
 
-    public ConfigurationType getOrCreateType(String qualifiedForNameString) {
-        assert qualifiedForNameString.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !qualifiedForNameString.endsWith("[]") : "Requires Class.forName syntax, for example '[Ljava.lang.String;'";
-        String s = qualifiedForNameString;
-        int n = 0;
-        while (n < s.length() && s.charAt(n) == '[') {
-            n++;
-        }
-        if (n > 0) { // transform to Java source syntax
-            StringBuilder sb = new StringBuilder(s.length() + n);
-            if (s.charAt(n) == 'L' && s.charAt(s.length() - 1) == ';') {
-                sb.append(s, n + 1, s.length() - 1); // cut off leading '[' and 'L' and trailing ';'
-            } else if (n == s.length() - 1) {
-                sb.append(JavaKind.fromPrimitiveOrVoidTypeChar(s.charAt(n)).getJavaName());
-            } else {
-                throw new IllegalArgumentException();
-            }
-            for (int i = 0; i < n; i++) {
-                sb.append("[]");
-            }
-            s = sb.toString();
-        }
-        return types.computeIfAbsent(s, ConfigurationType::new);
+    public ConfigurationType getOrCreateType(ConfigurationCondition condition, String qualifiedForNameString) {
+        return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.getCondition(), p.getElement()));
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
+        List<ConfigurationType> typesList = new ArrayList<>(this.types.values());
+        typesList.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName).thenComparing(ConfigurationType::getCondition));
+
         writer.append('[');
-        String prefix = "\n";
-        List<ConfigurationType> list = new ArrayList<>(types.values());
-        list.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName));
-        for (ConfigurationType value : list) {
-            writer.append(prefix);
-            value.printJson(writer);
-            prefix = ",\n";
+        String prefix = "";
+        for (ConfigurationType type : typesList) {
+            writer.append(prefix).newline();
+            type.printJson(writer);
+            prefix = ",";
         }
-        writer.newline().append(']').newline();
+        writer.newline().append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return types.isEmpty();
+    }
+
 }

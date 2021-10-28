@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,10 +34,12 @@ import java.util.Formatter;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.calc.ReinterpretUtils;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ReinterpretOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
 import org.graalvm.compiler.debug.GraalError;
@@ -76,6 +78,8 @@ public final class IntegerStamp extends PrimitiveStamp {
         assert upperBound <= CodeUtil.maxValue(bits) : this;
         assert (downMask & CodeUtil.mask(bits)) == downMask : this;
         assert (upMask & CodeUtil.mask(bits)) == upMask : this;
+        // Check for valid masks or the empty encoding
+        assert (downMask & ~upMask) == 0 || (upMask == 0 && downMask == CodeUtil.mask(bits)) : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput) {
@@ -131,7 +135,7 @@ public final class IntegerStamp extends PrimitiveStamp {
     private static long minValueForMasks(int bits, long downMask, long upMask) {
         if (significantBit(bits, upMask) == 0) {
             // Value is always positive. Minimum value always positive.
-            assert significantBit(bits, downMask) == 0;
+            assert significantBit(bits, downMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
             return downMask;
         } else {
             // Value can be positive or negative. Minimum value always negative.
@@ -151,6 +155,15 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp stampForMask(int bits, long downMask, long upMask) {
+        /*
+         * Determine if the new stamp created by down & upMask would be contradicting, i.e., empty
+         * by definition. This can happen for example if binary logic operations are evaluated
+         * repetitively on different branches creating values that are infeasible by definition
+         * (logic nodes on phi nodes of false evaluated predecessors).
+         */
+        if ((downMask & ~upMask) != 0L) {
+            return createEmptyStamp(bits);
+        }
         return new IntegerStamp(bits, minValueForMasks(bits, downMask, upMask), maxValueForMasks(bits, downMask, upMask), downMask, upMask);
     }
 
@@ -161,7 +174,11 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public IntegerStamp empty() {
-        return new IntegerStamp(getBits(), CodeUtil.maxValue(getBits()), CodeUtil.minValue(getBits()), CodeUtil.mask(getBits()), 0);
+        return createEmptyStamp(getBits());
+    }
+
+    private static IntegerStamp createEmptyStamp(int bits) {
+        return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
     }
 
     @Override
@@ -1296,6 +1313,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() << amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() << amount));
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asInt() << amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() << amount);
                                 case Long:
@@ -1362,9 +1385,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
@@ -1374,6 +1395,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() >> amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() >> amount));
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asInt() >> amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() >> amount);
                                 case Long:
@@ -1410,9 +1437,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
@@ -1422,6 +1447,12 @@ public final class IntegerStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant value, int amount) {
                             PrimitiveConstant c = (PrimitiveConstant) value;
                             switch (c.getJavaKind()) {
+                                case Byte:
+                                    return JavaConstant.forByte((byte) (c.asInt() >>> amount));
+                                case Char:
+                                    return JavaConstant.forChar((char) (c.asInt() >>> amount));
+                                case Short:
+                                    return JavaConstant.forShort((short) (c.asInt() >>> amount));
                                 case Int:
                                     return JavaConstant.forInt(c.asInt() >>> amount);
                                 case Long:
@@ -1461,9 +1492,7 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public int getShiftAmountMask(Stamp s) {
-                            IntegerStamp stamp = (IntegerStamp) s;
-                            assert CodeUtil.isPowerOf2(stamp.getBits());
-                            return stamp.getBits() - 1;
+                            return s.getStackKind().getBitCount() - 1;
                         }
                     },
 
@@ -1623,6 +1652,25 @@ public final class IntegerStamp extends PrimitiveStamp {
                     null,   // BinaryOp.max
 
                     null,   // BinaryOp.min
+
+                    new ReinterpretOp() {
+
+                        @Override
+                        public Constant foldConstant(Stamp resultStamp, Constant constant) {
+                            return ReinterpretUtils.foldConstant(resultStamp, constant);
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp resultStamp, Stamp input) {
+                            if (input.isEmpty()) {
+                                return resultStamp.empty();
+                            } else if (resultStamp instanceof FloatStamp && input instanceof IntegerStamp) {
+                                return ReinterpretUtils.intToFloat((IntegerStamp) input);
+                            } else {
+                                return resultStamp;
+                            }
+                        }
+                    },
 
                     new FloatConvertOp(I2F) {
 

@@ -27,24 +27,24 @@ package com.oracle.svm.core.graal.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * A node that eventually replaces itself with a {@link ConstantNode} when the actual constant value
@@ -54,15 +54,15 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class LazyConstantNode extends FloatingNode implements Canonicalizable, Lowerable {
     public static final NodeClass<LazyConstantNode> TYPE = NodeClass.create(LazyConstantNode.class);
 
-    private final Supplier<JavaConstant> constantSupplier;
+    private final Function<CoreProviders, JavaConstant> constantSupplier;
 
-    protected LazyConstantNode(Stamp stamp, Supplier<JavaConstant> constantSupplier) {
+    protected LazyConstantNode(Stamp stamp, Function<CoreProviders, JavaConstant> constantSupplier) {
         super(TYPE, stamp);
         this.constantSupplier = constantSupplier;
     }
 
-    public static ValueNode create(Stamp stamp, Supplier<JavaConstant> constantSupplier, MetaAccessProvider metaAccess) {
-        ValueNode result = findSynonym(stamp, constantSupplier, metaAccess);
+    public static ValueNode create(Stamp stamp, Function<CoreProviders, JavaConstant> constantSupplier, CoreProviders providers) {
+        ValueNode result = findSynonym(stamp, constantSupplier, providers);
         if (result != null) {
             return result;
         }
@@ -71,20 +71,20 @@ public final class LazyConstantNode extends FloatingNode implements Canonicaliza
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode result = findSynonym(stamp, constantSupplier, tool.getMetaAccess());
+        ValueNode result = findSynonym(stamp, constantSupplier, tool);
         if (result != null) {
             return result;
         }
         return this;
     }
 
-    private static ValueNode findSynonym(Stamp stamp, Supplier<JavaConstant> constantSupplier, MetaAccessProvider metaAccess) {
-        JavaConstant constant = constantSupplier.get();
+    private static ValueNode findSynonym(Stamp stamp, Function<CoreProviders, JavaConstant> constantSupplier, CoreProviders providers) {
+        JavaConstant constant = constantSupplier.apply(providers);
         if (constant == null) {
-            /* Constant constant not available yet. */
+            /* Constant not available yet. */
             return null;
         }
-        ConstantNode constantNode = ConstantNode.forConstant(constant, metaAccess);
+        ConstantNode constantNode = ConstantNode.forConstant(constant, providers.getMetaAccess());
 
         Stamp newStamp = constantNode.stamp(NodeView.DEFAULT);
         GraalError.guarantee(newStamp.join(stamp) == newStamp, "Stamp can only improve");

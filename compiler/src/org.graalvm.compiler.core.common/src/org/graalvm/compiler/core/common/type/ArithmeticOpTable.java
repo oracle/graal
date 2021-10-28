@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,8 @@ public final class ArithmeticOpTable {
     private final BinaryOp<Max> max;
     private final BinaryOp<Min> min;
 
+    private final ReinterpretOp reinterpret;
+
     private final FloatConvertOp[] floatConvert;
     private final int hash;
 
@@ -120,7 +122,7 @@ public final class ArithmeticOpTable {
     }
 
     public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null);
+                    null, null);
 
     public interface ArithmeticOpWrapper {
 
@@ -131,6 +133,8 @@ public final class ArithmeticOpTable {
         <OP> ShiftOp<OP> wrapShiftOp(ShiftOp<OP> op);
 
         <OP> IntegerConvertOp<OP> wrapIntegerConvertOp(IntegerConvertOp<OP> op);
+
+        ReinterpretOp wrapReinterpretOp(ReinterpretOp op);
 
         FloatConvertOp wrapFloatConvertOp(FloatConvertOp op);
     }
@@ -173,13 +177,16 @@ public final class ArithmeticOpTable {
         BinaryOp<Max> max = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMax());
         BinaryOp<Min> min = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMin());
 
+        ReinterpretOp reinterpret = wrapIfNonNull(wrapper::wrapReinterpretOp, inner.getReinterpret());
+
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
-        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, floatConvert);
+        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret,
+                        floatConvert);
     }
 
     protected ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
-                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min,
+                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, ReinterpretOp reinterpret,
                     FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
@@ -203,12 +210,13 @@ public final class ArithmeticOpTable {
         this.narrow = narrow;
         this.max = max;
         this.min = min;
+        this.reinterpret = reinterpret;
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         for (FloatConvertOp op : floatConvert) {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret, floatConvert);
     }
 
     @Override
@@ -371,6 +379,13 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes a reinterpret operation.
+     */
+    public ReinterpretOp getReinterpret() {
+        return reinterpret;
+    }
+
+    /**
      * Describes integer/float/double conversions.
      */
     public FloatConvertOp getFloatConvert(FloatConvert op) {
@@ -404,7 +419,8 @@ public final class ArithmeticOpTable {
                Objects.equals(signExtend, that.signExtend) &&
                Objects.equals(narrow, that.narrow) &&
                Objects.equals(max, that.max) &&
-               Objects.equals(min, that.min);
+               Objects.equals(min, that.min) &&
+               Objects.equals(reinterpret, that.reinterpret);
         // @formatter:on
     }
 
@@ -430,7 +446,8 @@ public final class ArithmeticOpTable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min) +
+        return getClass().getSimpleName() + "[" +
+                        toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -814,6 +831,17 @@ public final class ArithmeticOpTable {
             }
             return true;
         }
+    }
+
+    public abstract static class ReinterpretOp extends Op {
+
+        public ReinterpretOp() {
+            super("Reinterpret");
+        }
+
+        public abstract Constant foldConstant(Stamp resultStamp, Constant c);
+
+        public abstract Stamp foldStamp(Stamp resultStamp, Stamp input);
     }
 
     public abstract static class IntegerConvertOp<T> extends Op {

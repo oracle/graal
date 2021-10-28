@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
 import java.util.List;
@@ -44,19 +45,22 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> externalGlobals;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
+    private final TargetTriple targetTriple;
 
     LLVMParserResult(LLVMParserRuntime runtime,
                     List<FunctionSymbol> definedFunctions,
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
-                    DataLayout dataLayout) {
+                    DataLayout dataLayout,
+                    TargetTriple targetTriple) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
         this.dataLayout = dataLayout;
+        this.targetTriple = targetTriple;
         this.symbolTableSize = definedFunctions.size() + externalFunctions.size() + definedGlobals.size() + externalGlobals.size();
     }
 
@@ -91,5 +95,9 @@ public final class LLVMParserResult {
 
     public int getSymbolTableSize() {
         return symbolTableSize;
+    }
+
+    public TargetTriple getTargetTriple() {
+        return targetTriple;
     }
 }

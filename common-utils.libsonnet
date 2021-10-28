@@ -63,4 +63,15 @@
     ),
   # exported name
   composable(o) :: _composable(o),
+
+  # prefixes the given number with 'jdk'
+  prefixed_jdk(jdk_version)::
+    if jdk_version == null || std.length(std.toString(jdk_version)) == 0 then
+      null
+    else
+      "jdk" + std.toString(jdk_version),
+
+  # generate a string of hyphen-separated items from the given list, skipping null values
+  hyphenize(a_list)::
+    std.join("-", std.filterMap(function(el) el != null, function(el) std.toString(el), a_list))
 }

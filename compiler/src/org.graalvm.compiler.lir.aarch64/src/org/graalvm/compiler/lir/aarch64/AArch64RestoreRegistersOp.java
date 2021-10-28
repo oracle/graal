@@ -31,6 +31,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.Arrays;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
@@ -75,7 +76,7 @@ public class AArch64RestoreRegistersOp extends AArch64LIRInstruction implements 
     }
 
     protected void restoreRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, StackSlot input) {
-        AArch64Move.stack2reg(crb, masm, result.asValue(), input);
+        AArch64Move.stack2reg((AArch64Kind) input.getPlatformKind(), crb, masm, result, input);
     }
 
     @Override

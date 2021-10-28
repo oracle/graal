@@ -47,7 +47,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -75,10 +74,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
         instanceCount.incrementAndGet();
     }
 
-    public static LanguageContext getContext() {
-        return getCurrentContext(LanguageSPITestLanguage.class);
-    }
-
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
@@ -86,7 +81,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public Object execute(VirtualFrame frame) {
                 getContext(); // We must have the context here
@@ -103,7 +98,7 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
                 }
                 return result;
             }
-        });
+        }.getCallTarget();
     }
 
     @Override
@@ -124,7 +119,6 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
     protected void disposeContext(LanguageContext context) {
         if (context.initialized) {
             assertSame(getContext(), context);
-            assertSame(context, getContextReference().get());
 
             assertSame(context, new RootNode(this) {
                 @Override
@@ -136,5 +130,11 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
         context.disposeCalled++;
     }
+
+    public static LanguageContext getContext() {
+        return CONTEXT_REF.get(null);
+    }
+
+    private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(LanguageSPITestLanguage.class);
 
 }

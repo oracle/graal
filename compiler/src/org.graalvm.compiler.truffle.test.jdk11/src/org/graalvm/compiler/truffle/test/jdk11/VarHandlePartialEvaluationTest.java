@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -89,7 +88,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
     private void testCommon(AbstractTestNode testNode, String testName, Object... args) {
         FrameDescriptor fd = new FrameDescriptor();
         RootNode rootNode = new RootTestNode(fd, testName, testNode);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         Assert.assertEquals(42, callTarget.call(args));
         assertPartialEvalNoInvokes(callTarget, args);
     }

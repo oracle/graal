@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow.context.free;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -56,14 +56,14 @@ public class DefaultAnalysisContextPolicy extends AnalysisContextPolicy<DefaultA
      *         extended with the current receiver object
      */
     @Override
-    public DefaultAnalysisContext calleeContext(BigBang bb, AnalysisObject receiverObject, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
+    public DefaultAnalysisContext calleeContext(PointsToAnalysis bb, AnalysisObject receiverObject, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
         assert callerContext.equals(emptyContext());
         assert receiverObject.isContextInsensitiveObject();
         return callerContext;
     }
 
     @Override
-    public DefaultAnalysisContext staticCalleeContext(BigBang bb, BytecodeLocation invokeLocation, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
+    public DefaultAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodeLocation invokeLocation, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
         assert callerContext.equals(emptyContext());
         return callerContext;
     }

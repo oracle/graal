@@ -28,15 +28,14 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Context;
 
 /**
  * A simple test class verifying that a truffle-2-truffle call never results in the compilation of
@@ -48,7 +47,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
 
     private static final class Compilables {
 
-        final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
@@ -58,9 +57,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLEE_NO_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget callerNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget callerNoException = (OptimizedCallTarget) new RootNode(null) {
 
             @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeNoException);
 
@@ -74,27 +73,21 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLER_NO_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
-            private boolean called;
-
+        final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                if (!called) {
-                    called = true;
-                    throw new RuntimeException();
-                }
-                return null;
+                throw new RuntimeException();
             }
 
             @Override
             public String toString() {
                 return "CALLEE_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget callerWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget callerWithException = (OptimizedCallTarget) new RootNode(null) {
 
             @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeWithException);
 
@@ -108,7 +101,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLER_EXCEPTION";
             }
-        });
+        }.getCallTarget();
     }
 
     @Test
@@ -117,7 +110,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", "false").build());
         Compilables compilables = new Compilables();
         StructuredGraph graph = partialEval(compilables.callerNoException, new Object[0], getTruffleCompiler(compilables.calleeNoException).createCompilationIdentifier(compilables.callerNoException));
         Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
@@ -125,28 +118,32 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
 
     @Test
     @SuppressWarnings("try")
-    @Ignore
     public void testExceptionOnceCompileExceptionHandler() {
-        /*
-         * call the function at least once so the exception profile will record an exception and the
-         * partial evaluator will compile the exception handler edge
-         */
+        preventProfileCalls = true;
         try {
+            /*
+             * We disable truffle AST inlining to not inline the callee
+             */
+            setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", "false").build());
             Compilables compilables = new Compilables();
-            compilables.calleeWithException.callDirect(null, new Object());
-            Assert.fail();
-        } catch (Throwable t) {
-            Assert.assertTrue(t instanceof RuntimeException);
-        }
 
-        /*
-         * We disable truffle AST inlining to not inline the callee
-         */
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", Boolean.FALSE.toString()).build());
-        Compilables compilables = new Compilables();
-        StructuredGraph graph = partialEval(compilables.callerWithException, new Object[0],
-                        getTruffleCompiler(compilables.calleeWithException).createCompilationIdentifier(compilables.callerWithException));
-        Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
+            /*
+             * call the function at least once so the exception profile will record an exception and
+             * the partial evaluator will compile the exception handler edge
+             */
+            try {
+                compilables.callerWithException.callDirect(null, new Object());
+                Assert.fail();
+            } catch (Throwable t) {
+                Assert.assertTrue(t instanceof RuntimeException);
+            }
+
+            StructuredGraph graph = partialEval(compilables.callerWithException, new Object[0],
+                            getTruffleCompiler(compilables.callerWithException).createCompilationIdentifier(compilables.callerWithException));
+            Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
+        } finally {
+            preventProfileCalls = false;
+        }
     }
 
 }

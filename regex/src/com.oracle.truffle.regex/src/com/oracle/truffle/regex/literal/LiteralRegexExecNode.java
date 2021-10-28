@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.literal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputEndsWithNode;
@@ -117,14 +116,17 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            return fromIndex == 0 ? resultFactory.createFromStart(0) : NoMatchResult.getInstance();
+            return fromIndex == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
     public static final class EmptyEndsWith extends LiteralRegexExecNode {
 
+        private final boolean sticky;
+
         public EmptyEndsWith(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
+            this.sticky = ast.getFlags().isSticky();
         }
 
         @Override
@@ -135,7 +137,11 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
             assert fromIndex <= inputLength(input);
-            return resultFactory.createFromEnd(inputLength(input));
+            if (!sticky || fromIndex == inputLength(input)) {
+                return resultFactory.createFromEnd(inputLength(input));
+            } else {
+                return RegexResult.getNoMatchInstance();
+            }
         }
     }
 
@@ -153,7 +159,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
             assert fromIndex <= inputLength(input);
-            return inputLength(input) == 0 ? resultFactory.createFromStart(0) : NoMatchResult.getInstance();
+            return inputLength(input) == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
@@ -199,7 +205,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         protected RegexResult execute(Object input, int fromIndex) {
             int start = indexOfStringNode.execute(input, fromIndex, inputLength(input), literalContent(), maskContent());
             if (start == -1) {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
             return resultFactory.createFromStart(start);
         }
@@ -223,7 +229,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             if (fromIndex == 0 && startsWithNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromStart(0);
             } else {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
         }
     }
@@ -249,7 +255,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
         }
     }
@@ -272,7 +278,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             if (fromIndex == 0 && equalsNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromStart(0);
             } else {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
         }
     }
@@ -295,7 +301,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             if (regionMatchesNode.execute(input, fromIndex, literalContent(), 0, literal.encodedLength(), maskContent())) {
                 return resultFactory.createFromStart(fromIndex);
             } else {
-                return NoMatchResult.getInstance();
+                return RegexResult.getNoMatchInstance();
             }
         }
     }

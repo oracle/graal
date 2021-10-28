@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -46,8 +46,13 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.Acce
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+/**
+ * Read from a foreign object using standard interop messages for accessing named members or array
+ * indices.
+ */
 @GenerateUncached
 public abstract class LLVMInteropReadNode extends LLVMNode {
 
@@ -57,7 +62,39 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
 
     public abstract Object execute(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType);
 
-    @Specialization(guards = "type != null")
+    static boolean hasVirtualMethods(LLVMInteropType.Structured type) {
+        if (type instanceof LLVMInteropType.Clazz) {
+            return ((LLVMInteropType.Clazz) type).hasVirtualMethods();
+        } else {
+            return false;
+        }
+    }
+
+    @Specialization(guards = {"type == cachedType", "offset == 0", "cachedType != null", "cachedType.hasVirtualMethods()"})
+    Object doClazzCached(@SuppressWarnings("unused") LLVMInteropType.Clazz type, Object foreign, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") ForeignToLLVMType accessType,
+                    @Cached("type") @SuppressWarnings("unused") LLVMInteropType.Clazz cachedType,
+                    @Cached("cachedType.getVTable()") LLVMInteropType.VTable vTable) {
+        // return an artificially created pointer pointing to vtable and foreign object
+        LLVMInteropType.VTableObjectPair vTableObjectPair = LLVMInteropType.VTableObjectPair.create(vTable, foreign);
+        LLVMManagedPointer pointer = LLVMManagedPointer.create(vTableObjectPair);
+        return pointer;
+    }
+
+    @Specialization(guards = {"type != null", "hasVirtualMethods(type)", "offset == 0"}, replaces = "doClazzCached")
+    Object doClazz(LLVMInteropType.Clazz type, Object foreign, long offset, ForeignToLLVMType accessType,
+                    @Cached LLVMInteropAccessNode access,
+                    @Cached ReadLocationNode read) {
+        if (type.hasVirtualMethods() && offset == 0) {
+            // return an artificially created pointer pointing to vtable and foreign object
+            LLVMInteropType.VTableObjectPair vTableObjectPair = LLVMInteropType.VTableObjectPair.create(type.getVTable(), foreign);
+            LLVMManagedPointer pointer = LLVMManagedPointer.create(vTableObjectPair);
+            return pointer;
+        }
+        AccessLocation location = access.execute(type, foreign, offset);
+        return read.execute(location.identifier, location, accessType);
+    }
+
+    @Specialization(guards = {"type != null", "offset != 0 || !hasVirtualMethods(type)"})
     Object doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType,
                     @Cached LLVMInteropAccessNode access,
                     @Cached ReadLocationNode read) {
@@ -79,6 +116,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         abstract Object execute(Object identifier, AccessLocation location, ForeignToLLVMType accessType);
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         Object readMember(String name, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -97,6 +135,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = "isLocationTypeNullOrSameSize(location, accessType)", limit = "3")
+        @GenerateAOT.Exclude
         Object readArrayElementTypeMatch(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -116,6 +155,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!isLocationTypeNullOrSameSize(location, accessType)", "locationType.isI8()", "accessTypeSizeInBytes > 1"}, limit = "3")
+        @GenerateAOT.Exclude
         Object readArrayElementFromI8(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -201,7 +241,6 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
 
         @Fallback
         Object fallback(@SuppressWarnings("unused") long value, ForeignToLLVMType accessType) {
-            CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, "Unexpected access type %s", accessType);
         }
 

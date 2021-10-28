@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,27 +107,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     private static void checkMaxSize(int value) {
         if (value > MAX_ENTRIES) {
             throw new PermanentBailoutException("Number of elements in a node list too high: %d", value);
-        }
-    }
-
-    protected NodeList(Node self, Collection<? extends NodeInterface> elements) {
-        this.self = self;
-        if (elements == null || elements.isEmpty()) {
-            this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
-            this.initialSize = 0;
-        } else {
-            int newSize = elements.size();
-            checkMaxSize(newSize);
-            this.size = newSize;
-            this.initialSize = newSize;
-            this.nodes = new Node[elements.size()];
-            int i = 0;
-            for (NodeInterface n : elements) {
-                this.nodes[i] = n.asNode();
-                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
-                i++;
-            }
         }
     }
 

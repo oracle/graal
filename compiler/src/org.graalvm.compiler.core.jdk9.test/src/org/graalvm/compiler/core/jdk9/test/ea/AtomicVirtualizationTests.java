@@ -26,8 +26,8 @@ package org.graalvm.compiler.core.jdk9.test.ea;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
-import org.graalvm.compiler.core.test.ea.EATestBase;
 
+import org.graalvm.compiler.core.test.ea.EATestBase;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -336,6 +336,13 @@ public class AtomicVirtualizationTests extends EATestBase {
     }
 
     protected void testAtomicVirtualization(String snippet, JavaConstant expectedValue, int expectedAllocations) {
+        try {
+            // Ensures that all VarHandles in snippet are fully resolved.
+            // Works around outlining of methods in VarHandle resolution (JDK-8265135).
+            getMethod(snippet).invoke(null);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
         testEscapeAnalysis(snippet, expectedValue, false, expectedAllocations);
         test(snippet);
     }

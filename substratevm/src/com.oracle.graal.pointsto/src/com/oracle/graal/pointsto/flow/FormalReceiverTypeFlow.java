@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ParameterNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -45,12 +45,12 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
     }
 
     @Override
-    public FormalReceiverTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public FormalReceiverTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FormalReceiverTypeFlow(this, methodFlows);
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the receiver's
          * declared type.
@@ -58,25 +58,25 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
         return declaredTypeFilter(bb, newState).forNonNull(bb);
     }
 
+    /**
+     * The formal receiver type flow, i.e., the type flow of the 'this' parameter, is linked with
+     * the actual receiver type flow through a non-state-transfer link, i.e., a link that exists
+     * only for a proper iteration of type flow graphs. This happens because the formal receiver ,
+     * i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver that
+     * generated the context for the method clone which it belongs to. A direct link would instead
+     * transfer all the objects of compatible type from the actual receiver to the formal receiver.
+     * The formal receiver state for the non-initial parameters is updated through the
+     * FormalReceiverTypeFlow.addReceiverState method invoked directly from
+     * VirtualInvokeTypeFlow.update, SpecialInvokeTypeFlow.update or from
+     * InitialReceiverTypeFlow.update.
+     */
     @Override
-    public boolean addState(BigBang bb, TypeState add) {
-        /*
-         * The formal receiver type flow, i.e., the type flow of the 'this' parameter is linked with
-         * the actual receiver type flow through a non-state-transfer link, i.e., a link that exists
-         * only for a proper iteration of type flow graphs. This happens because the formal receiver
-         * , i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver
-         * that generated the context for the method clone which it belongs to. A direct link would
-         * instead transfer all the objects of compatible type from the actual receiver to the
-         * formal receiver. The formal receiver state for the non-initial parameters is updated
-         * through the FormalReceiverTypeFlow.addReceiverState method invoked directly from
-         * VirtualInvokeTypeFlow.update, SpecialInvokeTypeFlow.update or from
-         * InitialReceiverTypeFlow.update.
-         */
+    public boolean addState(PointsToAnalysis bb, TypeState add) {
         return false;
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * The saturation of the actual receiver doesn't result in the saturation of the formal
          * receiver; some callees, depending how low in the type hierarchies they are, may only see
@@ -84,16 +84,16 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
          */
     }
 
-    public boolean addReceiverState(BigBang bb, TypeState add) {
+    public boolean addReceiverState(PointsToAnalysis bb, TypeState add) {
         // The type state of a receiver cannot be null.
         return super.addState(bb, add.forNonNull(bb));
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("FormalReceiverFlow").append("[").append(method.format("%H.%n")).append("]").append("<").append(getState()).append(">");
-        return str.toString();
+    public String format(boolean withState, boolean withSource) {
+        return "Formal receiver of " + method.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
 
 }

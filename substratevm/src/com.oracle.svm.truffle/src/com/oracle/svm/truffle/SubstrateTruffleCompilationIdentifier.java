@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -39,8 +40,28 @@ public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationI
     }
 
     @Override
-    protected StringBuilder buildName(StringBuilder sb) {
-        return sb.append(optimizedCallTarget.toString());
+    protected StringBuilder buildString(StringBuilder sb, Verbosity verbosity) {
+        switch (verbosity) {
+            case ID:
+                buildID(sb);
+                break;
+            case NAME:
+                buildName(sb);
+                break;
+            case DETAILED:
+                buildID(sb);
+                sb.append('[');
+                buildName(sb);
+                sb.append(']');
+                break;
+            default:
+                throw new GraalError("unknown verbosity: " + verbosity);
+        }
+        return sb;
+    }
+
+    protected void buildName(StringBuilder sb) {
+        sb.append(optimizedCallTarget.toString());
     }
 
     @Override

@@ -67,6 +67,10 @@ class MultiBitSet<T extends BitSet> {
     }
 
     public CodeTree createContains(FrameState frameState, Object[] elements) {
+        return createContainsImpl(sets, frameState, elements);
+    }
+
+    protected static CodeTree createContainsImpl(List<? extends BitSet> sets, FrameState frameState, Object[] elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         String sep = "";
         if (sets.size() > 1) {

@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class SLValueSharingTest {
@@ -52,10 +53,6 @@ public class SLValueSharingTest {
         public Object sharedField;
     }
 
-    /*
-     * Tests that if a language tries to share a value through host interop it fails with an error
-     * that shows the location in the guest code.
-     */
     @Test
     public void testImplicitValueSharing() {
         JavaObject obj = new JavaObject();
@@ -68,14 +65,11 @@ public class SLValueSharingTest {
 
             c0.getBindings("sl").getMember("test").execute(obj);
             Value test1 = c1.getBindings("sl").getMember("test");
-            try {
-                test1.execute(obj);
-                Assert.fail();
-            } catch (PolyglotException e) {
-                Assert.assertEquals(28, e.getSourceLocation().getCharIndex());
-                Assert.assertEquals(43, e.getSourceLocation().getCharEndIndex());
-                Assert.assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
-            }
+
+            Value v = test1.execute(obj);
+
+            assertTrue(v.hasMembers());
+            assertEquals(v, c1.asValue(obj.sharedField));
         }
 
     }

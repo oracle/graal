@@ -46,7 +46,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -133,11 +135,15 @@ public class InstrumentationEventTest {
         this.factory = new CollectEventsFactory();
     }
 
+    private final Set<org.graalvm.polyglot.Source> sources = new HashSet<>();
+
     protected final void execute(org.graalvm.polyglot.Source source) {
         context.eval(source);
         if (error != null) {
             throw error;
         }
+        // Prevent garbage collection of ASTs from breaking InputFilterTest.
+        sources.add(source);
     }
 
     protected final void execute(String expression) {

@@ -24,38 +24,43 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionType;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionType;
+import org.graalvm.options.OptionValues;
+
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
+
+    public static final long MILLIS_TO_NANOS = 1_000_000L;
+    public static final double MAX_OVERHEAD_WARNING_THRESHOLD = 0.2;
 
     enum Output {
         HISTOGRAM,
         CALLTREE,
         JSON,
+        FLAMEGRAPH,
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
@@ -70,7 +75,31 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
+    static final OptionType<int[]> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
+                    new Function<String, int[]>() {
+                        @Override
+                        public int[] apply(String s) {
+                            if ("false".equals(s)) {
+                                return null;
+                            }
+                            if ("true".equals(s)) {
+                                return new int[0];
+                            }
+                            try {
+                                String[] tierStrings = s.split(",");
+                                int[] tiers = new int[tierStrings.length];
+                                for (int i = 0; i < tierStrings.length; i++) {
+                                    tiers[i] = Integer.parseInt(tierStrings[i]);
+                                }
+                                return tiers;
+                            } catch (NumberFormatException e) {
+                                // Ignored
+                            }
+                            throw new IllegalArgumentException("ShowTiers can be: true, false or a comma separated list of integers");
+                        }
+                    });
+
+    @SuppressWarnings("deprecation") static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
                     new Function<String, CPUSampler.Mode>() {
                         @Override
                         public CPUSampler.Mode apply(String s) {
@@ -86,13 +115,12 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     // @formatter:off
-    @Option(name = "Mode",
-            help = "Describe level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'exclude_inlined_roots' - sample roots excluding inlined functions (default), " +
-                    "'roots' - sample roots including inlined functions, 'statements' - sample all statements.", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @SuppressWarnings("deprecation")
+    @Option(name = "Mode", help = "Deprecated. Has no effect.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
-    // @formatter:om
+    // @formatter:on
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
+    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(10L);
 
     @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
@@ -100,8 +128,12 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram', 'calltree' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "Print a 'histogram', 'calltree', 'json', or `flamegraph` as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+
+    @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
+                    "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
@@ -130,48 +162,100 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> MIN_SAMPLES = new OptionKey<>(0);
 
+    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
+
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
-            if (sampler.hasStackOverflowed()) {
-                out.println("-------------------------------------------------------------------------------- ");
-                out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
-                out.println("The gathered data is incomplete and incorrect!");
-                out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
-                out.println("-------------------------------------------------------------------------------- ");
-                return;
-            }
-            Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
-            Integer minSamples = env.getOptions().get(MIN_SAMPLES);
-            switch (env.getOptions().get(OUTPUT)) {
-                case HISTOGRAM:
-                    printSamplingHistogram(out, sampler, summariseThreads, minSamples);
-                    break;
-                case CALLTREE:
-                    printSamplingCallTree(out, sampler, summariseThreads, minSamples);
-                    break;
-                case JSON:
-                    printSamplingJson(out, sampler);
-            }
+        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+        Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+        OptionValues options = env.getOptions();
+        switch (options.get(OUTPUT)) {
+            case HISTOGRAM:
+                printWarnings(sampler, out);
+                printSamplingHistogram(out, options, data);
+                break;
+            case CALLTREE:
+                printWarnings(sampler, out);
+                printSamplingCallTree(out, options, data);
+                break;
+            case JSON:
+                printSamplingJson(out, options, data);
+                break;
+            case FLAMEGRAPH:
+                SVGSamplerOutput.printSamplingFlameGraph(out, data);
         }
     }
 
-    private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
+    private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
+            new SamplingCallTree(entry.getValue(), options).print(out);
+        }
+    }
+
+    private static void printSamplingHistogram(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+        for (Map.Entry<TruffleContext, CPUSamplerData> entry : data.entrySet()) {
+            new SamplingHistogram(entry.getValue(), options).print(out);
+        }
+    }
+
+    private static void printWarnings(CPUSampler sampler, PrintStream out) {
+        if (sampler.hasStackOverflowed()) {
+            printDiv(out);
+            out.println("Warning: The stack has overflowed the sampled stack limit of " + sampler.getStackLimit() + " during execution!");
+            out.println("         The printed data is incomplete or incorrect!");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set the sampled stack limit.");
+            printDiv(out);
+        }
+        if (sampleDurationTooLong(sampler)) {
+            printDiv(out);
+            out.println("Warning: Average sample duration took over 20% of the sampling period.");
+            out.println("         An overhead above 20% can severely impact the reliability of the sampling data. Use one of these approaches to reduce the overhead:");
+            out.println("         Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to reduce the number of frames sampled,");
+            out.println("         or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
+            printDiv(out);
+        }
+    }
+
+    private static boolean sampleDurationTooLong(CPUSampler sampler) {
+        for (CPUSamplerData value : sampler.getData().values()) {
+            if (value.getSampleDuration().getAverage() > MAX_OVERHEAD_WARNING_THRESHOLD * sampler.getPeriod() * MILLIS_TO_NANOS) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void printDiv(PrintStream out) {
+        out.println("-------------------------------------------------------------------------------- ");
+    }
+
+    private static void printSamplingJson(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {
+        boolean gatheredHitTimes = options.get(GATHER_HIT_TIMES);
         JSONObject output = new JSONObject();
         output.put("tool", CPUSamplerInstrument.ID);
         output.put("version", CPUSamplerInstrument.VERSION);
-        output.put("sample_count", sampler.getSampleCount());
-        output.put("period", sampler.getPeriod());
-        output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        JSONArray contexts = new JSONArray();
+        for (CPUSamplerData samplerData : data.values()) {
+            contexts.put(perContextData(samplerData, gatheredHitTimes));
+        }
+        output.put("contexts", contexts);
+        out.println(output);
+    }
+
+    private static JSONObject perContextData(CPUSamplerData samplerData, boolean gatheredHitTimes) {
+        JSONObject output = new JSONObject();
+        output.put("sample_count", samplerData.getSamples());
+        output.put("period", samplerData.getSampleInterval());
+        output.put("gathered_hit_times", gatheredHitTimes);
         JSONArray profile = new JSONArray();
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
+        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : samplerData.getThreadData().entrySet()) {
             JSONObject perThreadProfile = new JSONObject();
             perThreadProfile.put("thread", entry.getKey().toString());
             perThreadProfile.put("samples", getSamplesRec(entry.getValue()));
             profile.put(perThreadProfile);
         }
         output.put("profile", profile);
-        out.println(output.toString());
+        return output;
     }
 
     private static JSONArray getSamplesRec(Collection<ProfilerNode<CPUSampler.Payload>> nodes) {
@@ -182,254 +266,468 @@ class CPUSamplerCLI extends ProfilerCLI {
             sample.put("source_section", sourceSectionToJSON(node.getSourceSection()));
             CPUSampler.Payload payload = node.getPayload();
             sample.put("hit_count", payload.getHitCount());
-            sample.put("interpreted_hit_count", payload.getInterpretedHitCount());
-            sample.put("compiled_hit_count", payload.getCompiledHitCount());
             sample.put("self_hit_count", payload.getSelfHitCount());
-            sample.put("self_interpreted_hit_count", payload.getSelfInterpretedHitCount());
-            sample.put("self_compiled_hit_count", payload.getSelfCompiledHitCount());
             sample.put("self_hit_times", payload.getSelfHitTimes());
+            int[] selfTierCount = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < selfTierCount.length; i++) {
+                selfTierCount[i] = payload.getTierSelfCount(i);
+            }
+            sample.put("self_tier_count", selfTierCount);
+            int[] tierCount = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierCount.length; i++) {
+                tierCount[i] = payload.getTierSelfCount(i);
+            }
+            sample.put("tier_count", tierCount);
             sample.put("children", getSamplesRec(node.getChildren()));
             samples.put(sample);
         }
         return samples;
     }
 
-    private static Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> computeHistogram(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
-        Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
-        computeHistogramImpl(profilerNodes, histogram);
-        return histogram;
-    }
-
-    private static void computeHistogramImpl(Collection<ProfilerNode<CPUSampler.Payload>> children, Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram) {
-        for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
-            List<ProfilerNode<CPUSampler.Payload>> nodes = histogram.computeIfAbsent(new SourceLocation(treeNode.getSourceSection(), treeNode.getRootName()),
-                            new Function<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>>() {
-                                @Override
-                                public List<ProfilerNode<CPUSampler.Payload>> apply(SourceLocation s) {
-                                    return new ArrayList<>();
-                                }
-                            });
-            nodes.add(treeNode);
-            computeHistogramImpl(treeNode.getChildren(), histogram);
-        }
-    }
-
-    private static void printSamplingHistogram(PrintStream out, CPUSampler sampler, boolean summariseThreads, Integer minSamples) {
-        int maxLength = 10;
-        Map<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> linesPerThread = new HashMap<>();
-        final Set<Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>>> entrySet = summariseThreads ? makeOneEntryMap(sampler).entrySet() : sampler.getThreadToNodesMap().entrySet();
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : entrySet) {
-            List<List<ProfilerNode<CPUSampler.Payload>>> lines = new ArrayList<>(computeHistogram(node.getValue()).values());
-            Collections.sort(lines, new Comparator<List<ProfilerNode<CPUSampler.Payload>>>() {
-                @Override
-                public int compare(List<ProfilerNode<CPUSampler.Payload>> o1, List<ProfilerNode<CPUSampler.Payload>> o2) {
-                    long sum1 = 0;
-                    for (ProfilerNode<CPUSampler.Payload> tree : o1) {
-                        sum1 += tree.getPayload().getSelfHitCount();
-                    }
-
-                    long sum2 = 0;
-                    for (ProfilerNode<CPUSampler.Payload> tree : o2) {
-                        sum2 += tree.getPayload().getSelfHitCount();
-                    }
-                    return Long.compare(sum2, sum1);
-                }
-            });
-
-            for (List<ProfilerNode<CPUSampler.Payload>> line : lines) {
-                maxLength = Math.max(computeRootNameMaxLength(line.get(0)), maxLength);
-            }
-            linesPerThread.put(node.getKey(), lines);
-        }
-
-        String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
-        long samples = sampler.getSampleCount();
-        String sep = repeat("-", title.length());
-        out.println(sep);
-        printLegend(out, "Histogram", samples, sampler.getPeriod());
-        out.println(sep);
-        for (Map.Entry<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> entry : linesPerThread.entrySet()) {
-            if (!summariseThreads) {
-                out.println(" Thread: " + entry.getKey());
-            }
-            out.println(title);
-            out.println(sep);
-            for (List<ProfilerNode<CPUSampler.Payload>> line : entry.getValue()) {
-                printAttributes(out, sampler, "", line, maxLength, false, minSamples);
-            }
-            out.println(sep);
-        }
-    }
-
-    private static Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> makeOneEntryMap(CPUSampler sampler) {
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> oneElementMap = new HashMap<>(1);
-        oneElementMap.put(new Thread("Summary"), sampler.getRootNodes());
-        return oneElementMap;
-    }
-
-    private static void printSamplingCallTree(PrintStream out, CPUSampler sampler, Boolean summariseThreads, Integer minSamples) {
-        Collection<ProfilerNode<CPUSampler.Payload>> actualRoots = new ArrayList<>();
-        Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = summariseThreads ? makeOneEntryMap(sampler) : sampler.getThreadToNodesMap();
-        for (Collection<ProfilerNode<CPUSampler.Payload>> node : threadToNodesMap.values()) {
-            actualRoots.addAll(node);
-        }
-        int maxLength = Math.max(10, computeTitleMaxLength(actualRoots, 0));
-        String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
-        String sep = repeat("-", title.length());
-        out.println(sep);
-        printLegend(out, "CallTree", sampler.getSampleCount(), sampler.getPeriod());
-        out.println(sep);
-        for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
-            if (!summariseThreads) {
-                out.println(" Thread: " + node.getKey());
-            }
-            out.println(title);
-            out.println(sep);
-            printSamplingCallTreeRec(sampler, maxLength, "", node.getValue(), out, minSamples);
-            out.println(sep);
-        }
-    }
-
-    private static void printSamplingCallTreeRec(CPUSampler sampler, int maxRootLength, String prefix, Collection<ProfilerNode<CPUSampler.Payload>> children, PrintStream out, Integer minSamples) {
-        List<ProfilerNode<CPUSampler.Payload>> sortedChildren = new ArrayList<>(children);
-        Collections.sort(sortedChildren, new Comparator<ProfilerNode<CPUSampler.Payload>>() {
-            @Override
-            public int compare(ProfilerNode<CPUSampler.Payload> o1, ProfilerNode<CPUSampler.Payload> o2) {
-                return Long.compare(o2.getPayload().getHitCount(), o1.getPayload().getHitCount());
-            }
-        });
-
-        for (ProfilerNode<CPUSampler.Payload> treeNode : sortedChildren) {
-            if (treeNode == null) {
-                continue;
-            }
-            boolean printed = printAttributes(out, sampler, prefix, Arrays.asList(treeNode), maxRootLength, true, minSamples);
-            printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out, minSamples);
-
-        }
-    }
-
-    private static void printLegend(PrintStream out, String type, long samples, long period) {
-        out.println(String.format("Sampling %s. Recorded %s samples with period %dms.", type, samples, period));
+    private static void printLegend(PrintStream out, String type, long samples, long period, long missed, int[] showTiers, Integer[] tiers) {
+        out.printf("Sampling %s. Recorded %s samples with period %dms. Missed %s samples.%n", type, samples, period, missed);
         out.println("  Self Time: Time spent on the top of the stack.");
         out.println("  Total Time: Time spent somewhere on the stack.");
-        out.println("  Opt %: Percent of time spent in compiled and therefore non-interpreted code.");
-    }
-
-    private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.Payload>> children, int baseLength) {
-        int maxLength = baseLength;
-        for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
-            int rootNameLength = computeRootNameMaxLength(treeNode);
-            maxLength = Math.max(baseLength + rootNameLength, maxLength);
-            maxLength = Math.max(maxLength, computeTitleMaxLength(treeNode.getChildren(), baseLength + 1));
+        if (showTiers == null) {
+            return;
         }
-        return maxLength;
-    }
-
-    private static boolean intersectsLines(SourceSection section1, SourceSection section2) {
-        int x1 = section1.getStartLine();
-        int x2 = section1.getEndLine();
-        int y1 = section2.getStartLine();
-        int y2 = section2.getEndLine();
-        return x2 >= y1 && y2 >= x1;
-    }
-
-    private static boolean printAttributes(PrintStream out, CPUSampler sampler, String prefix, List<ProfilerNode<CPUSampler.Payload>> nodes, int maxRootLength, boolean callTree, Integer minSamples) {
-        long samplePeriod = sampler.getPeriod();
-        long samples = sampler.getSampleCount();
-
-        long selfInterpreted = 0;
-        long selfCompiled = 0;
-        long totalInterpreted = 0;
-        long totalCompiled = 0;
-        for (ProfilerNode<CPUSampler.Payload> tree : nodes) {
-            CPUSampler.Payload payload = tree.getPayload();
-            selfInterpreted += payload.getSelfInterpretedHitCount();
-            selfCompiled += payload.getSelfCompiledHitCount();
-            if (!tree.isRecursive()) {
-                totalInterpreted += payload.getInterpretedHitCount();
-                totalCompiled += payload.getCompiledHitCount();
+        if (showTiers.length == 0) {
+            for (int i : tiers) {
+                out.println("  T" + i + ": Percent of time spent in " + (i == 0 ? "interpreter." : "code compiled by tier " + i + " compiler."));
             }
-            if (callTree) {
-                assert nodes.size() == 1;
-                SourceSection sourceSection = tree.getSourceSection();
-                String rootName = tree.getRootName();
-                selfCompiled = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfCompiled, tree.getChildren(), true);
-                selfInterpreted = getSelfHitCountForRecursiveChildren(sourceSection, rootName, selfInterpreted, tree.getChildren(), false);
+            return;
+        }
+        for (int tier : showTiers) {
+            if (contains(tiers, tier)) {
+                out.println("  T" + tier + ": Percent of time spent in " + (tier == 0 ? "interpreter." : "code compiled by tier " + tier + " compiler."));
+            } else {
+                out.println("  T" + tier + ": No samples of tier " + tier + " found during execution. It is excluded from the report.");
             }
         }
-
-        long totalSamples = totalInterpreted + totalCompiled;
-        if (totalSamples <= minSamples) {
-            // hide methods without any cost
-            return false;
-        }
-        assert totalSamples < samples;
-        ProfilerNode<CPUSampler.Payload> firstNode = nodes.get(0);
-        SourceSection sourceSection = firstNode.getSourceSection();
-        String rootName = firstNode.getRootName();
-
-        if (!firstNode.getTags().contains(StandardTags.RootTag.class)) {
-            rootName += "~" + formatIndices(sourceSection, needsColumnSpecifier(firstNode));
-        }
-
-        long selfSamples = selfInterpreted + selfCompiled;
-        long selfTime = selfSamples * samplePeriod;
-        double selfCost = selfSamples / (double) samples;
-        double selfCompiledP = 0.0;
-        if (selfSamples > 0) {
-            selfCompiledP = selfCompiled / (double) selfSamples;
-        }
-        String selfTimes = String.format("%10dms %5.1f%% | %5.1f%%", selfTime, selfCost * 100, selfCompiledP * 100);
-
-        long totalTime = totalSamples * samplePeriod;
-        double totalCost = totalSamples / (double) samples;
-        double totalCompiledP = totalCompiled / (double) totalSamples;
-        String totalTimes = String.format("%10dms %5.1f%% | %5.1f%%", totalTime, totalCost * 100, totalCompiledP * 100);
-
-        String location = getShortDescription(sourceSection);
-
-        out.println(String.format(" %-" + Math.max(maxRootLength, 10) + "s | %s || %s | %s ", //
-                        prefix + rootName, totalTimes, selfTimes, location));
-        return true;
     }
 
-    private static long getSelfHitCountForRecursiveChildren(SourceSection sourceSection, String rootName, long selfCompiled, Collection<ProfilerNode<CPUSampler.Payload>> children, boolean compiled) {
-        long hitCount = 0;
-        for (ProfilerNode<CPUSampler.Payload> child : children) {
-            if (child.getSourceSection().equals(sourceSection) && child.getRootName().equals(rootName)) {
-                if (compiled) {
-                    hitCount += child.getPayload().getSelfCompiledHitCount();
-                } else {
-                    hitCount += child.getPayload().getSelfInterpretedHitCount();
+    private static double percent(long samples, long totalSamples) {
+        if (totalSamples == 0) {
+            return 0.0;
+        }
+        return ((double) samples * 100) / totalSamples;
+    }
+
+    private static String[] makeTitleAndFormat(int nameLength, int[] showTiers, Integer[] tiers) {
+        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
+        StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s ||       %10dms %5.1f%% ");
+        maybeAddTiers(titleBuilder, formatBuilder, showTiers, tiers);
+        titleBuilder.append("||              Self Time    ");
+        formatBuilder.append("||       %10dms %5.1f%% ");
+        maybeAddTiers(titleBuilder, formatBuilder, showTiers, tiers);
+        titleBuilder.append("|| Location             ");
+        formatBuilder.append("|| %s");
+        String[] strings = new String[2];
+        strings[0] = titleBuilder.toString();
+        strings[1] = formatBuilder.toString();
+        return strings;
+    }
+
+    private static void maybeAddTiers(StringBuilder titleBuilder, StringBuilder formatBuilder, int[] showTiers, Integer[] tiers) {
+        if (showTiers == null) {
+            return;
+        }
+        if (showTiers.length == 0) {
+            for (Integer i : tiers) {
+                titleBuilder.append("|   T").append(i).append("   ");
+                formatBuilder.append("| %5.1f%% ");
+            }
+            return;
+        }
+        for (int i = 0; i < showTiers.length; i++) {
+            int selectedTier = showTiers[i];
+            if (contains(tiers, selectedTier)) {
+                titleBuilder.append("|   T").append(selectedTier).append("   ");
+                formatBuilder.append("| %5.1f%% ");
+            }
+        }
+    }
+
+    private static boolean contains(Integer[] tiers, int selectedTier) {
+        for (Integer tier : tiers) {
+            if (tier == selectedTier) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Integer[] sortedArray(Set<Integer> tiers) {
+        Integer[] sorted = tiers.toArray(new Integer[0]);
+        Arrays.sort(sorted);
+        return sorted;
+    }
+
+    private static final class SamplingHistogram {
+        private final Map<Thread, List<OutputEntry>> histogram = new HashMap<>();
+        private final boolean summariseThreads;
+        private final int minSamples;
+        private final int[] showTiers;
+        private final long samplePeriod;
+        private final long samplesTaken;
+        private final long samplesMissed;
+        private Set<Integer> tiers = new HashSet<>();
+        private Integer[] sortedTiers;
+        private int maxNameLength = 10;
+        private final String title;
+        private final String format;
+
+        SamplingHistogram(CPUSamplerData data, OptionValues options) {
+            this.summariseThreads = options.get(SUMMARISE_THREADS);
+            this.minSamples = options.get(MIN_SAMPLES);
+            this.showTiers = options.get(ShowTiers);
+            this.samplePeriod = options.get(SAMPLE_PERIOD);
+            this.samplesTaken = data.getSamples();
+            Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads = new HashMap<>();
+            this.samplesMissed = data.missedSamples();
+            for (Thread thread : data.getThreadData().keySet()) {
+                perThreadSourceLocationPayloads.put(thread, computeSourceLocationPayloads(data.getThreadData().get(thread)));
+            }
+            maybeSummarizeThreads(perThreadSourceLocationPayloads);
+            for (Map.Entry<Thread, SourceLocationNodes> threadEntry : perThreadSourceLocationPayloads.entrySet()) {
+                histogram.put(threadEntry.getKey(), histogramEntries(threadEntry));
+            }
+            sortedTiers = sortedArray(tiers);
+            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, sortedTiers);
+            this.title = titleAndFormat[0];
+            this.format = titleAndFormat[1];
+        }
+
+        private ArrayList<OutputEntry> histogramEntries(Map.Entry<Thread, SourceLocationNodes> threadEntry) {
+            ArrayList<OutputEntry> histogramEntries = new ArrayList<>();
+            for (Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> sourceLocationEntry : threadEntry.getValue().locations.entrySet()) {
+                histogramEntries.add(histogramEntry(sourceLocationEntry));
+            }
+            histogramEntries.sort((o1, o2) -> Integer.compare(o2.totalSelfSamples, o1.totalSelfSamples));
+            return histogramEntries;
+        }
+
+        private OutputEntry histogramEntry(Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> sourceLocationEntry) {
+            SourceLocation location = sourceLocationEntry.getKey();
+            OutputEntry outputEntry = new OutputEntry(location);
+            maxNameLength = Math.max(maxNameLength, location.getRootName().length());
+
+            for (ProfilerNode<CPUSampler.Payload> node : sourceLocationEntry.getValue()) {
+                CPUSampler.Payload payload = node.getPayload();
+
+                int numberOfTiers = payload.getNumberOfTiers();
+                if (outputEntry.tierToSelfSamples.length < numberOfTiers) {
+                    outputEntry.tierToSelfSamples = Arrays.copyOf(outputEntry.tierToSelfSamples, numberOfTiers);
                 }
-                hitCount += getSelfHitCountForRecursiveChildren(sourceSection, rootName, hitCount, child.getChildren(), compiled);
+                if (outputEntry.tierToSamples.length < numberOfTiers) {
+                    outputEntry.tierToSamples = Arrays.copyOf(outputEntry.tierToSamples, numberOfTiers);
+                }
+
+                for (int i = 0; i < numberOfTiers; i++) {
+                    int selfHitCountsValue = payload.getTierSelfCount(i);
+                    outputEntry.totalSelfSamples += selfHitCountsValue;
+                    outputEntry.tierToSelfSamples[i] += selfHitCountsValue;
+                    tiers.add(i);
+
+                    // if there is a recursive parent summed up for total time we must not sum up
+                    // again
+                    if (node.isRecursive()) {
+                        continue;
+                    }
+
+                    int hitCountsValue = payload.getTierTotalCount(i);
+                    outputEntry.totalSamples += hitCountsValue;
+                    outputEntry.tierToSamples[i] += hitCountsValue;
+
+                }
+            }
+            return outputEntry;
+        }
+
+        private void maybeSummarizeThreads(Map<Thread, SourceLocationNodes> perThreadSourceLocationPayloads) {
+            if (summariseThreads) {
+                SourceLocationNodes summary = new SourceLocationNodes(new HashMap<>());
+                for (SourceLocationNodes sourceLocationNodes : perThreadSourceLocationPayloads.values()) {
+                    for (Map.Entry<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> entry : sourceLocationNodes.locations.entrySet()) {
+                        summary.locations.computeIfAbsent(entry.getKey(), s -> new ArrayList<>()).addAll(entry.getValue());
+                    }
+                }
+                perThreadSourceLocationPayloads.clear();
+                perThreadSourceLocationPayloads.put(new Thread("Summary"), summary);
             }
         }
-        return selfCompiled + hitCount;
+
+        private static SourceLocationNodes computeSourceLocationPayloads(Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes) {
+            Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram = new HashMap<>();
+            computeSourceLocationPayloadsImpl(profilerNodes, histogram);
+            return new SourceLocationNodes(histogram);
+        }
+
+        private static void computeSourceLocationPayloadsImpl(Collection<ProfilerNode<CPUSampler.Payload>> children, Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> histogram) {
+            for (ProfilerNode<CPUSampler.Payload> treeNode : children) {
+                List<ProfilerNode<CPUSampler.Payload>> nodes = histogram.computeIfAbsent(new SourceLocation(treeNode.getSourceSection(), treeNode.getRootName()), s -> new ArrayList<>());
+                nodes.add(treeNode);
+                computeSourceLocationPayloadsImpl(treeNode.getChildren(), histogram);
+            }
+        }
+
+        void print(PrintStream out) {
+            String sep = repeat("-", title.length());
+            out.println(sep);
+            printLegend(out, "Histogram", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
+            out.println(sep);
+            for (Map.Entry<Thread, List<OutputEntry>> threadListEntry : histogram.entrySet()) {
+                out.println(threadListEntry.getKey());
+                out.println(title);
+                out.println(sep);
+                for (OutputEntry entry : threadListEntry.getValue()) {
+                    if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
+                        continue;
+                    }
+                    out.println(entry.format(format, showTiers, SamplingHistogram.this.samplePeriod, 0, samplesTaken, sortedTiers));
+                }
+                out.println(sep);
+            }
+        }
+
+        private static final class SourceLocationNodes {
+            final Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> locations;
+
+            SourceLocationNodes(Map<SourceLocation, List<ProfilerNode<CPUSampler.Payload>>> locations) {
+                this.locations = locations;
+            }
+        }
     }
 
-    private static boolean needsColumnSpecifier(ProfilerNode<CPUSampler.Payload> firstNode) {
-        boolean needsColumnsSpecifier = false;
-        SourceSection sourceSection = firstNode.getSourceSection();
-        for (ProfilerNode<CPUSampler.Payload> node : firstNode.getParent().getChildren()) {
-            if (node.getSourceSection() == sourceSection) {
-                continue;
+    private static class OutputEntry {
+        // break after 128 depth spaces to handle deep recursions
+        private static final int DEPTH_BREAK = 128;
+        final SourceLocation location;
+        int[] tierToSamples = new int[0];
+        int[] tierToSelfSamples = new int[0];
+        int totalSelfSamples = 0;
+        int totalSamples = 0;
+
+        OutputEntry(SourceLocation location) {
+            this.location = location;
+        }
+
+        OutputEntry(ProfilerNode<CPUSampler.Payload> node) {
+            location = new SourceLocation(node.getSourceSection(), node.getRootName());
+            CPUSampler.Payload payload = node.getPayload();
+            this.totalSamples = payload.getHitCount();
+            this.totalSelfSamples = payload.getSelfHitCount();
+            this.tierToSamples = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierToSamples.length; i++) {
+                tierToSamples[i] = payload.getTierTotalCount(i);
             }
-            if (intersectsLines(node.getSourceSection(), sourceSection)) {
-                needsColumnsSpecifier = true;
-                break;
+            this.tierToSelfSamples = new int[payload.getNumberOfTiers()];
+            for (int i = 0; i < tierToSamples.length; i++) {
+                tierToSelfSamples[i] = payload.getTierSelfCount(i);
             }
         }
-        return needsColumnsSpecifier;
+
+        static int computeIndentSize(int depth) {
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                indent += formatIndentBreakLabel(depth - indent).length();
+            }
+            return indent;
+        }
+
+        private static String formatIndentBreakLabel(int skippedDepth) {
+            return String.format("(\u21B3%s) ", skippedDepth);
+        }
+
+        String format(String format, int[] showTiers, long samplePeriod, int depth, long globalTotalSamples, Integer[] tiers) {
+            List<Object> args = new ArrayList<>();
+            int indent = depth % DEPTH_BREAK;
+            if (indent != depth) {
+                args.add(formatIndentBreakLabel(depth - indent) + repeat(" ", indent) + location.getRootName());
+            } else {
+                args.add(repeat(" ", indent) + location.getRootName());
+            }
+            args.add(totalSamples * samplePeriod);
+            args.add(percent(totalSamples, globalTotalSamples));
+            maybeAddTiers(args, tierToSamples, totalSamples, showTiers, tiers);
+            args.add(totalSelfSamples * samplePeriod);
+            args.add(percent(totalSelfSamples, globalTotalSamples));
+            maybeAddTiers(args, tierToSelfSamples, totalSelfSamples, showTiers, tiers);
+            args.add(getShortDescription(location.getSourceSection()));
+            return String.format(format, args.toArray());
+        }
+
+        private static void maybeAddTiers(List<Object> args, int[] samples, int total, int[] showTiers, Integer[] tiers) {
+            if (showTiers == null) {
+                return;
+            }
+            if (showTiers.length == 0) {
+                for (int i : tiers) {
+                    if (i < samples.length) {
+                        args.add(percent(samples[i], total));
+                    } else {
+                        args.add(0.0);
+                    }
+                }
+                return;
+            }
+            for (int showTier : showTiers) {
+                if (contains(tiers, showTier)) {
+                    if (showTier < samples.length) {
+                        args.add(percent(samples[showTier], total));
+                    } else {
+                        args.add(0.0);
+                    }
+                }
+            }
+        }
     }
 
-    private static int computeRootNameMaxLength(ProfilerNode<CPUSampler.Payload> treeNode) {
-        int length = treeNode.getRootName().length();
-        if (!treeNode.getTags().contains(StandardTags.RootTag.class)) {
-            // reserve some space for the line and column info
-            length += formatIndices(treeNode.getSourceSection(), needsColumnSpecifier(treeNode)).length() + 1;
+    private static class SamplingCallTree {
+        private final boolean summariseThreads;
+        private final int minSamples;
+        private final int[] showTiers;
+        private final long samplePeriod;
+        private final long samplesTaken;
+        private final long samplesMissed;
+        private final String title;
+        private final String format;
+        private final Map<Thread, Collection<CallTreeOutputEntry>> entries = new HashMap<>();
+        private int maxNameLength = 10;
+        private final Set<Integer> tiers = new HashSet<>();
+        private final Integer[] sortedTiers;
+
+        SamplingCallTree(CPUSamplerData data, OptionValues options) {
+            this.summariseThreads = options.get(SUMMARISE_THREADS);
+            this.minSamples = options.get(MIN_SAMPLES);
+            this.showTiers = options.get(ShowTiers);
+            this.samplePeriod = options.get(SAMPLE_PERIOD);
+            this.samplesTaken = data.getSamples();
+            this.samplesMissed = data.missedSamples();
+            Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData = data.getThreadData();
+            makeEntries(threadData);
+            calculateMaxValues(threadData);
+            sortedTiers = sortedArray(tiers);
+            String[] titleAndFormat = makeTitleAndFormat(maxNameLength, showTiers, sortedTiers);
+            this.title = titleAndFormat[0];
+            this.format = titleAndFormat[1];
+
         }
-        return length;
+
+        private void calculateMaxValues(Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData) {
+            for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadData.entrySet()) {
+                for (ProfilerNode<CPUSampler.Payload> node : entry.getValue()) {
+                    calculateMaxValuesRec(node, 0);
+                }
+            }
+        }
+
+        private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
+            tiers.add(node.getPayload().getNumberOfTiers() - 1);
+            for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
+                calculateMaxValuesRec(child, depth + 1);
+            }
+        }
+
+        private void makeEntries(Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadData) {
+            if (summariseThreads) {
+                List<CallTreeOutputEntry> callTreeEntries = new ArrayList<>();
+                for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadData.entrySet()) {
+                    for (ProfilerNode<CPUSampler.Payload> node : entry.getValue()) {
+                        mergeEntry(callTreeEntries, node, 0);
+                    }
+                }
+                entries.put(new Thread("Summary"), callTreeEntries);
+            } else {
+                for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadData.entrySet()) {
+                    List<CallTreeOutputEntry> callTreeEntries = new ArrayList<>();
+                    for (ProfilerNode<CPUSampler.Payload> node : entry.getValue()) {
+                        callTreeEntries.add(makeEntry(node, 0));
+                    }
+                    entries.put(entry.getKey(), callTreeEntries);
+                }
+            }
+        }
+
+        private void mergeEntry(List<CallTreeOutputEntry> callTreeEntries, ProfilerNode<CPUSampler.Payload> node, int depth) {
+            for (CallTreeOutputEntry callTreeEntry : callTreeEntries) {
+                if (callTreeEntry.corresponds(node)) {
+                    callTreeEntry.merge(node.getPayload());
+                    for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
+                        mergeEntry(callTreeEntry.children, child, depth + 1);
+                    }
+                    return;
+                }
+            }
+            callTreeEntries.add(makeEntry(node, depth));
+        }
+
+        private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
+            maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
+            tiers.add(node.getPayload().getNumberOfTiers() - 1);
+            CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
+            for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
+                entry.children.add(makeEntry(child, depth + 1));
+            }
+            return entry;
+        }
+
+        void print(PrintStream out) {
+            String sep = repeat("-", title.length());
+            out.println(sep);
+            printLegend(out, "Call Tree", samplesTaken, samplePeriod, samplesMissed, showTiers, sortedTiers);
+            out.println(sep);
+            out.println(title);
+            out.println(sep);
+            for (Map.Entry<Thread, Collection<CallTreeOutputEntry>> threadData : entries.entrySet()) {
+                for (CallTreeOutputEntry entry : threadData.getValue()) {
+                    recursivePrint(out, entry, 0);
+                }
+            }
+            out.println(sep);
+        }
+
+        private void recursivePrint(PrintStream out, CallTreeOutputEntry entry, int depth) {
+            if (minSamples > 0 && entry.totalSelfSamples < minSamples) {
+                return;
+            }
+            out.println(entry.format(format, showTiers, samplePeriod, depth, samplesTaken, sortedTiers));
+            List<CallTreeOutputEntry> sortedChildren = new ArrayList<>(entry.children);
+            sortedChildren.sort((o1, o2) -> Long.compare(o2.totalSamples, o1.totalSamples));
+            for (CallTreeOutputEntry child : sortedChildren) {
+                recursivePrint(out, child, depth + 1);
+            }
+        }
+
+        private static class CallTreeOutputEntry extends OutputEntry {
+            List<CallTreeOutputEntry> children = new ArrayList<>();
+
+            CallTreeOutputEntry(ProfilerNode<CPUSampler.Payload> node) {
+                super(node);
+            }
+
+            boolean corresponds(ProfilerNode<CPUSampler.Payload> node) {
+                return location.getSourceSection().equals(node.getSourceSection()) && location.getRootName().equals(node.getRootName());
+            }
+
+            void merge(CPUSampler.Payload payload) {
+                this.totalSamples += payload.getHitCount();
+                this.totalSelfSamples += payload.getSelfHitCount();
+                if (payload.getNumberOfTiers() > tierToSamples.length) {
+                    tierToSamples = Arrays.copyOf(tierToSamples, payload.getNumberOfTiers());
+                }
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    tierToSamples[i] += payload.getTierTotalCount(i);
+                }
+                if (payload.getNumberOfTiers() > tierToSelfSamples.length) {
+                    tierToSelfSamples = Arrays.copyOf(tierToSelfSamples, payload.getNumberOfTiers());
+                }
+                for (int i = 0; i < payload.getNumberOfTiers(); i++) {
+                    tierToSamples[i] += payload.getTierTotalCount(i);
+                }
+            }
+        }
     }
+
 }

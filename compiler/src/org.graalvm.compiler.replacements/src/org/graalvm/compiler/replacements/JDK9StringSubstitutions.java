@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,8 @@
 package org.graalvm.compiler.replacements;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 
 // JaCoCo Exclude
 
@@ -41,38 +38,12 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
  */
 @ClassSubstitution(String.class)
 public class JDK9StringSubstitutions {
-
-    @MethodSubstitution(isStatic = false)
-    @SuppressFBWarnings(value = "ES_COMPARING_PARAMETER_STRING_WITH_EQ", justification = "reference equality on the receiver is what we want")
-    public static boolean equals(final String thisString, Object obj) {
-        if (thisString == obj) {
-            return true;
-        }
-        if (!(obj instanceof String)) {
-            return false;
-        }
-        String thatString = (String) obj;
-        if (thisString.length() != thatString.length()) {
-            return false;
-        }
-
-        if (thisString.length() == 0) {
-            return true;
-        }
-        if (getCoder(thisString) != getCoder(thatString)) {
-            return false;
-        }
-
-        final byte[] array1 = getValue(thisString);
-        final byte[] array2 = getValue(thatString);
-
-        return ArrayEqualsNode.equals(array1, array2, array1.length);
-    }
-
     /**
      * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
      */
     public static native byte[] getValue(String s);
+
+    public static native byte getByte(byte[] value, int i);
 
     public static native int getCoder(String s);
 

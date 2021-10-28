@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -118,6 +117,7 @@ import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
@@ -265,23 +265,6 @@ public abstract class GraalCompilerTest extends GraalTest {
              */
             iter = ret.getHighTier().findPhase(CanonicalizerPhase.class);
         }
-        iter.add(new Phase() {
-
-            @Override
-            protected void run(StructuredGraph graph) {
-                ComputeLoopFrequenciesClosure.compute(graph);
-            }
-
-            @Override
-            public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
-            }
-
-            @Override
-            protected CharSequence getName() {
-                return "ComputeLoopFrequenciesPhase";
-            }
-        });
         ret.getHighTier().appendPhase(new Phase() {
 
             @Override
@@ -482,7 +465,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void assertOptimizedAway(StructuredGraph g) {
-        Assert.assertEquals(0, g.getNodes().filter(NotOptimizedNode.class).count());
+        Assert.assertEquals("nodes to be optimized away", 0, g.getNodes().filter(NotOptimizedNode.class).count());
     }
 
     protected void assertConstantReturn(StructuredGraph graph, int value) {
@@ -495,8 +478,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST);
+
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
@@ -574,8 +557,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return a scheduled textual dump of {@code graph} .
      */
     protected static String getScheduledGraphString(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
         StringBuilder result = new StringBuilder();
@@ -621,6 +603,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected final MidTierContext getDefaultMidTierContext() {
         return new MidTierContext(getProviders(), getTargetProvider(), getOptimisticOptimizations(), null);
+    }
+
+    protected final LowTierContext getDefaultLowTierContext() {
+        return new LowTierContext(getProviders(), getTargetProvider());
     }
 
     protected SnippetReflectionProvider getSnippetReflection() {
@@ -831,6 +817,20 @@ public abstract class GraalCompilerTest extends GraalTest {
             ResolvedJavaMethod method = getResolvedJavaMethod(name);
             Object receiver = method.isStatic() ? null : this;
             return test(options, method, receiver, args);
+        } catch (AssumptionViolatedException e) {
+            // Suppress so that subsequent calls to this method within the
+            // same Junit @Test annotated method can proceed.
+            return null;
+        }
+    }
+
+    protected final Result test(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
+        try {
+            ResolvedJavaMethod method = getResolvedJavaMethod(name);
+            Object receiver = method.isStatic() ? null : this;
+            Result expect = executeExpected(method, receiver, args);
+            testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
+            return expect;
         } catch (AssumptionViolatedException e) {
             // Suppress so that subsequent calls to this method within the
             // same Junit @Test annotated method can proceed.
@@ -1314,12 +1314,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true));
     }
 
+    protected CompilationIdentifier createCompilationId() {
+        return null;
+    }
+
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
+        }
+        CompilationIdentifier id = createCompilationId();
+        if (id != null) {
+            builder.compilationId(id);
         }
         assert javaMethod.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + javaMethod;
         StructuredGraph graph = builder.build();
@@ -1493,6 +1501,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getReplacements();
     }
 
+    protected Architecture getArchitecture() {
+        return backend.getTarget().arch;
+    }
+
     /**
      * Test if the current test runs on the given platform. The name must match the name given in
      * the {@link Architecture#getName()}.
@@ -1501,7 +1513,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return true if we run on the architecture given by name
      */
     protected boolean isArchitecture(String name) {
-        return name.equals(backend.getTarget().arch.getName());
+        return name.equals(getArchitecture().getName());
     }
 
     protected CanonicalizerPhase createCanonicalizerPhase() {

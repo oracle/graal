@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -241,27 +241,29 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     protected int execute(Context.Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
-            runVersionAction(versionAction, context.getEngine());
-            if (toolchainAPI != null) {
-                printToolchainAPI(context);
-                return 0;
+            try {
+                runVersionAction(versionAction, context.getEngine());
+                if (toolchainAPI != null) {
+                    printToolchainAPI(context);
+                    return 0;
+                }
+                Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
+                if (!library.canExecute()) {
+                    throw abort("no main function found");
+                }
+                return library.execute().asInt();
+            } catch (PolyglotException e) {
+                if (e.isExit()) {
+                    throw e;
+                } else if (!e.isInternalError()) {
+                    printStackTraceSkipTrailingHost(e);
+                    return 1;
+                } else {
+                    throw e;
+                }
+            } catch (IOException e) {
+                throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
             }
-            Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
-            if (!library.canExecute()) {
-                throw abort("no main function found");
-            }
-            return library.execute().asInt();
-        } catch (PolyglotException e) {
-            if (e.isExit()) {
-                throw e;
-            } else if (!e.isInternalError()) {
-                printStackTraceSkipTrailingHost(e);
-                return 1;
-            } else {
-                throw e;
-            }
-        } catch (IOException e) {
-            throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
         }
     }
 

@@ -133,33 +133,33 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testObjectsCheckIndex() {
-        testGraph("objectsCheckIndex");
         test("objectsCheckIndex");
-        testGraph("objectsCheckIndex0");
+        testGraph("objectsCheckIndex");
         test("objectsCheckIndex0");
-        testGraph("objectsCheckIndex1");
+        testGraph("objectsCheckIndex0");
         test("objectsCheckIndex1");
+        testGraph("objectsCheckIndex1");
 
-        testGraph("objectsCheckIndexLoop");
         test("objectsCheckIndexLoop");
-        testGraph("objectsCheckIndexLoopOverLength");
+        testGraph("objectsCheckIndexLoop");
         test("objectsCheckIndexLoopOverLength");
+        testGraph("objectsCheckIndexLoopOverLength");
 
-        testGraph("objectsCheckIndexNonArrayLength");
         test("objectsCheckIndexNonArrayLength");
-        testGraph("objectsCheckIndexNonArrayLength1");
+        testGraph("objectsCheckIndexNonArrayLength");
         test("objectsCheckIndexNonArrayLength1");
+        testGraph("objectsCheckIndexNonArrayLength1");
 
-        testGraph("objectsCheckIndexConstant");
         test("objectsCheckIndexConstant");
+        testGraph("objectsCheckIndexConstant");
     }
 
     @Test
     public void testByteArrayViewVarHandleGetInt() {
-        testGraph("byteArrayViewVarHandleGetInt");
         test("byteArrayViewVarHandleGetInt");
-        testGraph("byteArrayViewVarHandleGetIntConstIndex");
+        testGraph("byteArrayViewVarHandleGetInt");
         test("byteArrayViewVarHandleGetIntConstIndex");
+        testGraph("byteArrayViewVarHandleGetIntConstIndex");
     }
 
     @Test
@@ -173,8 +173,8 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testByteArrayViewVarHandleGetByte() {
-        testGraph("byteArrayViewVarHandleGetByte");
         test("byteArrayViewVarHandleGetByte");
+        testGraph("byteArrayViewVarHandleGetByte");
     }
 
     public static int checkIndexOOB() {
@@ -187,8 +187,8 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testCheckIndexOOB() {
-        testGraph("checkIndexOOB", false);
         test("checkIndexOOB");
+        testGraph("checkIndexOOB", false);
 
         withExceptions = true;
         test("checkIndexOOB");
@@ -197,8 +197,8 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testCheckIndexNegativeLength() {
-        testGraph("checkIndexNegativeLength", false);
         test("checkIndexNegativeLength");
+        testGraph("checkIndexNegativeLength", false);
 
         withExceptions = true;
         test("checkIndexNegativeLength");

@@ -291,17 +291,15 @@ insight.on("source", -> (env) {
 })
 puts("Ruby: Hooks are ready!")
 
-config = Truffle::Interop.hash_keys_as_members({
+insight.on("enter", -> (ctx, frame) {
+    puts("minusOne #{frame.n}")
+}, {
   roots: true,
   rootNameFilter: "minusOne",
   sourceFilter: -> (src) {
     return src.name == "agent-fib.js"
   }
 })
-
-insight.on("enter", -> (ctx, frame) {
-    puts("minusOne #{frame.n}")
-}, config)
 ```
 
 The above is an example of a script that prints out value of variable `n`
@@ -785,6 +783,68 @@ modify values of existing variables by assigning new values to them: `vars.n = 4
 Accessing whole stack is flexible, but unlike [access to locals in the current
 execution frame](Insight-Manual.md#modifying-local-variables), it is not fast
 operation. Use rarely, if you want your program to continue running at full speed!
+
+### Heap Dumping
+
+[Insight](Insight.md) can be used to snapshot a region of your program heap during
+the execution. Use `--heap.dump=/path/to/output.hprof` option together with
+regular `--insight` one. The [Insight](Insight.md) 
+script is going to get access to `heap` object with `dump` function.
+Place your hook whereever needed and at the right moment dump the heap:
+
+```js
+insight.on('return', (ctx, frame) => {
+    heap.dump({
+        format: '1.0',
+        depth: 50, // set max depth for traversing object references
+        events: [
+            {
+                stack : [
+                    {
+                        at : ctx, // location of dump sieve.js:73
+                        frame : {
+                            // assemble frame content as you want
+                            primes : frame.primes, // capture primes object
+                            cnt : frame.cnt, // capture cnt value
+                        },
+                        depth : 10 // optionally override depth to ten references
+                    }, // there can be more stack elements like this one
+                ]
+            },
+            // there can be multiple events like the previous one
+        ],
+    }); 
+    throw 'Heap dump written!';
+}, {
+    roots: true,
+    rootNameFilter: 'measure'
+});
+```
+
+Save the code snippet as `dump.js` file.
+Get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and
+launch it as:
+
+```bash
+$ graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
+```
+
+![Heap Stack](Insight-HeapStack.png)
+
+A `dump.hprof` file is going to be created at the end of `measure` function
+capturing the state of the memory of your progam. 
+Inspect the generated `.hprof` file with regular tools like
+[VisualVM](https://www.graalvm.org/tools/visualvm/) or [NetBeans](http://netbeans.org):
+
+![Heap Inspect](Insight-HeapInspect.png)
+
+The previous picture shows heap dump taken at the end of `measure` function in the
+[sieve.js](../../vm/benchmarks/agentscript/sieve.js) script. The function has just
+computed one hundred thousand (count available in variable `cnt`) prime numbers.
+The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
+The rest of the linked list is hidden (only references up to depth `10` were 
+requested) behind `unreachable` object. Last variable `x` shows the number of 
+searched natural numbers to compute all the prime numbers.
 
 <!--
 

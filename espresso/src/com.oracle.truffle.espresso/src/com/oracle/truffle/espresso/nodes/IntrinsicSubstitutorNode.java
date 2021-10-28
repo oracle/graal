@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,16 @@ package com.oracle.truffle.espresso.nodes;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.substitutions.Substitutor;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
-    @Child private Substitutor substitution;
+    @Child private JavaSubstitution substitution;
 
     @CompilerDirectives.CompilationFinal //
     int callState = 0;
@@ -42,9 +43,13 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     // Truffle does not want to report split on first call. Delay until the second.
     private final DebugCounter nbSplits;
 
-    public IntrinsicSubstitutorNode(Substitutor.Factory factory, Method method) {
+    public IntrinsicSubstitutorNode(JavaSubstitution.Factory factory, Method method) {
         super(method.getMethodVersion());
-        this.substitution = factory.create(EspressoLanguage.getCurrentContext().getMeta());
+        this.substitution = factory.create(getContext().getMeta());
+
+        EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
+                        "Substitution for synchronized method '%s' cannot be marked as trivial", method);
+
         if (substitution.shouldSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
         } else {
@@ -92,5 +97,15 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Override
     public Node copy() {
         return split();
+    }
+
+    @Override
+    public int getBci(@SuppressWarnings("unused") Frame frame) {
+        return -2;
+    }
+
+    @Override
+    protected boolean isTrivial() {
+        return substitution.isTrivial();
     }
 }

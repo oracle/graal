@@ -32,8 +32,8 @@ import java.util.List;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -174,7 +174,7 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
                     }
                 } else if (cur instanceof ReturnNode) {
                     returns.add((ReturnNode) cur);
-                } else if (cur instanceof DeadEndNode) {
+                } else if (cur instanceof LoweredDeadEndNode) {
                     /* Ignore fatal errors, they are a VM exit. */
                 } else {
                     throw VMError.shouldNotReachHere("Unexpected control flow structure after CEntryPointLeaveNode. Disallowed node " + cur +

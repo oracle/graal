@@ -44,27 +44,30 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
+import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 // Checkstyle: resume
 
@@ -215,7 +218,7 @@ final class Target_java_lang_SecurityManager {
     @NeverInline("Starting a stack walk in the caller frame")
     protected Class<?>[] getClassContext() {
         final Pointer startSP = readCallerStackPointer();
-        return StackTraceUtils.getClassContext(1, startSP);
+        return StackTraceUtils.getClassContext(0, startSP);
     }
 }
 
@@ -234,74 +237,50 @@ final class Target_javax_crypto_CryptoAllPermission {
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
 }
 
-final class EnableAllSecurityServicesIsSet implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return SubstrateOptions.EnableAllSecurityServices.getValue();
-    }
-}
-
-/**
- * This substitution is enabled only when EnableAllSecurityServices is set since the functionality
- * that it currently provides, i.e., loading security native libraries, is not needed by default.
- */
-@TargetClass(value = java.security.Provider.class, onlyWith = EnableAllSecurityServicesIsSet.class)
+@Platforms(Platform.WINDOWS.class)
+@TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider {
-
     @Alias //
     private transient boolean initialized;
 
-    @Alias//
-    private String name;
+    @Alias //
+    String name;
 
     /*
-     * Provider.checkInitialized() is called from the other Provider API methods, before any
-     * computation, thus is a convenient location to do our own initialization, i.e., make sure that
-     * the required libraries are loaded.
+     * `Provider.checkInitialized` is called from all other Provider API methods, before any
+     * computation, so it is a convenient location to do our own initialization, e.g., to ensure
+     * that the required native libraries are loaded.
      */
     @Substitute
     private void checkInitialized() {
-        if (this.name.equals("SunEC")) {
-            ProviderUtil.initSunEC();
-        }
-
         if (!initialized) {
             throw new IllegalStateException();
         }
+        /* Do our own initialization. */
+        ProviderUtil.initialize(this);
     }
-
 }
 
 final class ProviderUtil {
     private static volatile boolean initialized = false;
 
-    static void initSunEC() {
+    static void initialize(Target_java_security_Provider provider) {
         if (initialized) {
             return;
         }
-        /* Lazy initialization. */
-        initOnce();
-    }
 
-    // Checkstyle: stop
-    private static synchronized void initOnce() {
-        // Checkstyle: resume
-        if (!initialized) {
+        if (provider.name.equals("SunMSCAPI")) {
             try {
-                System.loadLibrary("sunec");
-            } catch (UnsatisfiedLinkError e) {
+                System.loadLibrary("sunmscapi");
+            } catch (Throwable ignored) {
                 /*
-                 * SunEC has a mode where it can function without the full ECC implementation when
-                 * native library is absent, however, then fewer EC algorithms are available). If
-                 * those algorithms are actually used an java.lang.UnsatisfiedLinkError will be
-                 * thrown. Just warn the user that the library could not be loaded.
+                 * If the loading fails, later calls to native methods will also fail. So, in order
+                 * not to confuse users with unexpected stack traces, we ignore the exceptions here.
                  */
-                Log.log().string("WARNING: The sunec native library, required by the SunEC provider, could not be loaded.").newline();
             }
             initialized = true;
         }
     }
-
 }
 
 @TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
@@ -329,7 +308,7 @@ final class Target_javax_crypto_JceSecurity {
      *
      * This is only used in {@link KeyAgreement}, it's safe to remove.
      */
-    @Alias @TargetElement(onlyWith = JDK15OrEarlier.class) //
+    @Alias @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @InjectAccessors(JceSecurityAccessor.class) //
     static SecureRandom RANDOM;
 
@@ -349,7 +328,8 @@ final class Target_javax_crypto_JceSecurity {
     // value == PROVIDER_VERIFIED is successfully verified
     // value is failure cause Exception in error case
     @Alias //
-    private static Map<Provider, Object> verificationResults;
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
+    private static Map<Object, Object> verificationResults;
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
@@ -371,7 +351,7 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
-        Object o = verificationResults.get(p);
+        Object o = verificationResults.get(JceSecurityUtil.providerKey(p));
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -385,12 +365,27 @@ final class Target_javax_crypto_JceSecurity {
          * getVerificationResult() allows for a better error message.
          */
         throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
-                        "All providers must be registered and verified in the Native Image builder. " +
-                        "Only the SUN provider is registered and verified by default. " +
-                        "All other built-in providers are processed when all security services are enabled using the " + JceSecurityUtil.enableAllSecurityServices + " option. " +
-                        "Third party providers must be configured in the Native Image builder VM. ");
+                        "All providers must be registered and verified in the Native Image builder. ");
     }
 
+    private static class VerificationCacheTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            return SecurityProvidersFilter.instance().cleanVerificationCache(originalValue);
+        }
+    }
+}
+
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK17OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_JceSecurity_IdentityWrapper {
+    @Alias //
+    Provider obj;
+
+    @Alias //
+    Target_javax_crypto_JceSecurity_IdentityWrapper(Provider obj) {
+        this.obj = obj;
+    }
 }
 
 class JceSecurityAccessor {
@@ -422,7 +417,14 @@ class JceSecurityAccessor {
 }
 
 final class JceSecurityUtil {
-    static final String enableAllSecurityServices = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableAllSecurityServices, "+");
+
+    static Object providerKey(Provider p) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return p;
+        }
+        /* Starting with JDK 17 the verification results map key is an identity wrapper object. */
+        return new Target_javax_crypto_JceSecurity_IdentityWrapper(p);
+    }
 
     static RuntimeException shouldNotReach(String method) {
         throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
@@ -530,30 +532,33 @@ final class AllPermissionsPolicy extends Policy {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public PermissionCollection getPermissions(CodeSource codesource) {
         return allPermissions();
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public PermissionCollection getPermissions(ProtectionDomain domain) {
         return allPermissions();
     }
 
     @Override
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
     }
 }
 
 /**
- * This class is instantiated indirectly from the {@link Policy#getInstance} methods via the
+ * This class is instantiated indirectly from the {@code Policy#getInstance} methods via the
  * {@link java.security.Security#getProviders security provider} abstractions. We could just
- * substitute the {@link Policy#getInstance} methods to return
- * {@link AllPermissionsPolicy#SINGLETON}, this version is more fool-proof in case someone manually
- * registers security providers for reflective instantiation.
+ * substitute the Policy.getInstance methods to return {@link AllPermissionsPolicy#SINGLETON}, this
+ * version is more fool-proof in case someone manually registers security providers for reflective
+ * instantiation.
  */
 @TargetClass(className = "sun.security.provider.PolicySpiFile")
-@SuppressWarnings({"unused", "static-method"})
+@SuppressWarnings({"unused", "static-method", "deprecation"})
 final class Target_sun_security_provider_PolicySpiFile {
 
     @Substitute
@@ -561,16 +566,19 @@ final class Target_sun_security_provider_PolicySpiFile {
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private PermissionCollection engineGetPermissions(CodeSource codesource) {
         return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private PermissionCollection engineGetPermissions(ProtectionDomain d) {
         return AllPermissionsPolicy.SINGLETON.getPermissions(d);
     }
 
     @Substitute
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17
     private boolean engineImplies(ProtectionDomain d, Permission p) {
         return AllPermissionsPolicy.SINGLETON.implies(d, p);
     }
@@ -584,6 +592,78 @@ final class Target_sun_security_provider_PolicySpiFile {
 @Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
 @TargetClass(className = "sun.security.provider.PolicyFile")
 final class Target_sun_security_provider_PolicyFile {
+}
+
+@TargetClass(className = "sun.security.jca.ProviderConfig")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_jca_ProviderConfig {
+
+    @Alias @TargetElement(onlyWith = JDK11OrLater.class) //
+    private String provName;
+
+    @Alias @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private String className;
+
+    /**
+     * All security providers used in a native-image must be registered during image build time. At
+     * runtime, we shouldn't have a call to doLoadProvider. However, this method is still reachable
+     * at runtime, and transitively includes other types in the image, among which is
+     * sun.security.jca.ProviderConfig.ProviderLoader. This class contains a static field with a
+     * cache of providers loaded during the image build. The contents of this cache can vary even
+     * when building the same image due to the way services are loaded on Java 11. This cache can
+     * increase the final image size substantially (if it contains, for example,
+     * {@link org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
+     */
+    @Substitute
+    @TargetElement(name = "doLoadProvider", onlyWith = JDK11OrLater.class)
+    private Provider doLoadProviderJDK11OrLater() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
+    }
+
+    @Substitute
+    @TargetElement(name = "doLoadProvider", onlyWith = JDK8OrEarlier.class)
+    private Provider doLoadProviderJDK8OrEarlier() {
+        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + className + ".");
+    }
+}
+
+@SuppressWarnings("unused")
+@TargetClass(className = "sun.security.jca.ProviderConfig", innerClass = "ProviderLoader", onlyWith = JDK11OrLater.class)
+final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//
+    static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
+}
+
+/**
+ * This only applies to JDK8 and JDK11. Experimental FIPS mode in the SunJSSE Provider was removed
+ * in JDK-8217835. Going forward it is recommended to configure FIPS 140 compliant cryptography
+ * providers by using the usual JCA providers configuration mechanism.
+ */
+@SuppressWarnings("unused")
+@TargetClass(value = sun.security.ssl.SunJSSE.class, onlyWith = JDK11OrEarlier.class)
+final class Target_sun_security_ssl_SunJSSE {
+
+    @Substitute
+    private Target_sun_security_ssl_SunJSSE(java.security.Provider cryptoProvider, String providerName) {
+        throw VMError.unsupportedFeature("Experimental FIPS mode in the SunJSSE Provider is deprecated (JDK-8217835)." +
+                        " To register a FIPS provider use the supported java.security.Security.addProvider() API.");
+    }
+}
+
+@TargetClass(className = "sun.security.jca.Providers")
+final class Target_sun_security_jca_Providers {
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ProviderListTransformer.class, disableCaching = true)//
+    private static ProviderList providerList;
+
+    private static class ProviderListTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            ProviderList originalProviderList = (ProviderList) originalValue;
+            return SecurityProvidersFilter.instance().cleanUnregisteredProviders(originalProviderList);
+        }
+    }
 }
 
 /** Dummy class to have a class with the file's name. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -63,6 +64,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -72,8 +74,10 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -174,6 +178,10 @@ public class LoopFragmentInside extends LoopFragment {
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         ArrayList<ValueNode> backedgeValues = new ArrayList<>();
         EconomicMap<Node, Node> new2OldPhis = EconomicMap.create();
+        EconomicMap<Node, Node> originalPhi2Backedges = EconomicMap.create();
+        for (PhiNode mainPhiNode : mainLoopBegin.phis()) {
+            originalPhi2Backedges.put(mainPhiNode, mainPhiNode.valueAt(1));
+        }
         for (PhiNode mainPhiNode : mainLoopBegin.phis()) {
             ValueNode originalNode = mainPhiNode.valueAt(1);
             ValueNode duplicatedNode = getDuplicatedNode(originalNode);
@@ -197,7 +205,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
 
-        placeNewSegmentAndCleanup(loop, new2OldPhis);
+        CompareNode condition = placeNewSegmentAndCleanup(loop, new2OldPhis, originalPhi2Backedges);
 
         // Remove any safepoints from the original copy leaving only the duplicated one
         assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count();
@@ -209,47 +217,49 @@ public class LoopFragmentInside extends LoopFragment {
         if (opaqueUnrolledStrides != null) {
             OpaqueNode opaque = opaqueUnrolledStrides.get(loop.loopBegin());
             CountedLoopInfo counted = loop.counted();
-            ValueNode counterStride = counted.getCounter().strideNode();
-            if (opaque == null) {
-                opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
+            ValueNode counterStride = counted.getLimitCheckedIV().strideNode();
+            if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
-                int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
-                ValueNode newLimit = SubNode.create(limit, opaque, NodeView.DEFAULT);
-                IntegerHelper helper = counted.getCounterIntegerHelper();
-                LogicNode overflowCheck;
-                ConstantNode extremum;
-                if (counted.getDirection() == InductionVariable.Direction.Up) {
-                    // limit - counterStride could overflow negatively if limit - min <
-                    // counterStride
-                    extremum = ConstantNode.forIntegerBits(bits, helper.minValue());
-                    overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), opaque, NodeView.DEFAULT);
-                } else {
-                    assert counted.getDirection() == InductionVariable.Direction.Down;
-                    // limit - counterStride could overflow if max - limit < -counterStride
-                    // i.e., counterStride < limit - max
-                    extremum = ConstantNode.forIntegerBits(bits, helper.maxValue());
-                    overflowCheck = IntegerBelowNode.create(opaque, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
-                }
-                newLimit = ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
-                CompareNode compareNode = (CompareNode) counted.getLimitTest().condition();
-                compareNode.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
+                opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
+                ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
+                condition.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
-                assert counted.getCounter().isConstantStride();
-                assert Math.addExact(counted.getCounter().constantStride(), counted.getCounter().constantStride()) == counted.getCounter().constantStride() * 2;
+                assert counted.getLimitCheckedIV().isConstantStride();
+                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() / 2));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
     }
 
-    private void placeNewSegmentAndCleanup(LoopEx loop, EconomicMap<Node, Node> new2OldPhis) {
+    public static ValueNode partialUnrollOverflowCheck(OpaqueNode opaque, ValueNode limit, CountedLoopInfo counted) {
+        int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
+        ValueNode newLimit = SubNode.create(limit, opaque, NodeView.DEFAULT);
+        IntegerHelper helper = counted.getCounterIntegerHelper();
+        LogicNode overflowCheck;
+        ConstantNode extremum;
+        if (counted.getDirection() == InductionVariable.Direction.Up) {
+            // limit - counterStride could overflow negatively if limit - min <
+            // counterStride
+            extremum = ConstantNode.forIntegerBits(bits, helper.minValue());
+            overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), opaque, NodeView.DEFAULT);
+        } else {
+            assert counted.getDirection() == InductionVariable.Direction.Down;
+            // limit - counterStride could overflow if max - limit < -counterStride
+            // i.e., counterStride < limit - max
+            extremum = ConstantNode.forIntegerBits(bits, helper.maxValue());
+            overflowCheck = IntegerBelowNode.create(opaque, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
+        }
+        return ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
+    }
+
+    protected CompareNode placeNewSegmentAndCleanup(LoopEx loop, EconomicMap<Node, Node> new2OldPhis, @SuppressWarnings("unused") EconomicMap<Node, Node> originalPhi2Backedges) {
         CountedLoopInfo mainCounted = loop.counted();
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         // Discard the segment entry and its flow, after if merging it into the loop
@@ -257,42 +267,64 @@ public class LoopFragmentInside extends LoopFragment {
         IfNode loopTest = mainCounted.getLimitTest();
         IfNode newSegmentLoopTest = getDuplicatedNode(loopTest);
 
-        // Redirect anchors
-        AbstractBeginNode falseSuccessor = newSegmentLoopTest.falseSuccessor();
-        for (Node usage : falseSuccessor.anchored().snapshot()) {
-            usage.replaceFirstInput(falseSuccessor, loopTest.falseSuccessor());
-        }
-        AbstractBeginNode trueSuccessor = newSegmentLoopTest.trueSuccessor();
-        for (Node usage : trueSuccessor.anchored().snapshot()) {
-            usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
-        }
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After duplicating segment");
 
-        assert graph.hasValueProxies() || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+        if (mainCounted.getBody() != loop.loopBegin()) {
+            // regular loop
+            AbstractBeginNode falseSuccessor = newSegmentLoopTest.falseSuccessor();
+            for (Node usage : falseSuccessor.anchored().snapshot()) {
+                usage.replaceFirstInput(falseSuccessor, loopTest.falseSuccessor());
+            }
+            AbstractBeginNode trueSuccessor = newSegmentLoopTest.trueSuccessor();
+            for (Node usage : trueSuccessor.anchored().snapshot()) {
+                usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
+            }
 
-        mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
+            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
 
-        // remove if test
-        graph.removeSplitPropagate(newSegmentLoopTest, loopTest.trueSuccessor() == mainCounted.getBody() ? trueSuccessor : falseSuccessor);
+            mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before placing segment");
-        if (mainCounted.getBody().next() instanceof LoopEndNode) {
-            GraphUtil.killCFG(getDuplicatedNode(mainLoopBegin));
+            // remove if test
+            graph.removeSplitPropagate(newSegmentLoopTest, loopTest.trueSuccessor() == mainCounted.getBody() ? trueSuccessor : falseSuccessor);
+
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before placing segment");
+            if (mainCounted.getBody().next() instanceof LoopEndNode) {
+                GraphUtil.killCFG(getDuplicatedNode(mainLoopBegin));
+            } else {
+                AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
+                FixedNode newSegmentFirstNode = newSegmentBegin.next();
+                EndNode newSegmentEnd = getBlockEnd((FixedNode) getDuplicatedNode(mainLoopBegin.loopEnds().first().predecessor()));
+                FixedWithNextNode newSegmentLastNode = (FixedWithNextNode) newSegmentEnd.predecessor();
+                LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
+                FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
+
+                newSegmentBegin.clearSuccessors();
+                if (newSegmentBegin.hasAnchored()) {
+                    /*
+                     * LoopPartialUnrollPhase runs after guard lowering, thus we cannot see any
+                     * floating guards here except multi-guard nodes (pointing to abstract begins)
+                     * and other anchored nodes. We need to ensure anything anchored on the original
+                     * loop begin will be anchored on the unrolled iteration. Thus we create an
+                     * anchor point here ensuring nothing can flow above the original iteration.
+                     */
+                    if (!(lastCodeNode instanceof GuardingNode) || !(lastCodeNode instanceof AnchoringNode)) {
+                        ValueAnchorNode newAnchoringPointAfterPrevIteration = graph.add(new ValueAnchorNode(null));
+                        graph.addAfterFixed(lastCodeNode, newAnchoringPointAfterPrevIteration);
+                        lastCodeNode = newAnchoringPointAfterPrevIteration;
+                    }
+                    newSegmentBegin.replaceAtUsages(lastCodeNode, InputType.Guard, InputType.Anchor);
+                }
+                lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
+                newSegmentLastNode.replaceFirstSuccessor(newSegmentEnd, loopEndNode);
+
+                newSegmentBegin.safeDelete();
+                newSegmentEnd.safeDelete();
+            }
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
+            return (CompareNode) loopTest.condition();
         } else {
-            AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
-            FixedNode newSegmentFirstNode = newSegmentBegin.next();
-            EndNode newSegmentEnd = getBlockEnd((FixedNode) getDuplicatedNode(mainLoopBegin.loopEnds().first().predecessor()));
-            FixedWithNextNode newSegmentLastNode = (FixedWithNextNode) newSegmentEnd.predecessor();
-            LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
-            FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
-
-            newSegmentBegin.clearSuccessors();
-            lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
-            newSegmentLastNode.replaceFirstSuccessor(newSegmentEnd, loopEndNode);
-
-            newSegmentBegin.safeDelete();
-            newSegmentEnd.safeDelete();
+            throw GraalError.shouldNotReachHere("Cannot unroll inverted loop");
         }
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
     }
 
     /**
@@ -307,11 +339,11 @@ public class LoopFragmentInside extends LoopFragment {
      * Unrolling loops with multiple exits is special in the way the exits are handled.
      * Pre-Main-Post creation will merge them.
      */
-    private void mergeEarlyLoopExits(StructuredGraph graph, LoopBeginNode mainLoopBegin, CountedLoopInfo mainCounted, EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
+    protected void mergeEarlyLoopExits(StructuredGraph graph, LoopBeginNode mainLoopBegin, CountedLoopInfo mainCounted, EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
         if (mainLoopBegin.loopExits().count() <= 1) {
             return;
         }
-        assert graph.hasValueProxies() : "Unrolling with multiple exits requires proxies";
+        assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) : "Unrolling with multiple exits requires proxies";
         // rewire non-counted exits with the follow nodes: merges or sinks
         for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
             // regular path along we unroll
@@ -446,7 +478,7 @@ public class LoopFragmentInside extends LoopFragment {
         return replacement;
     }
 
-    private static EndNode getBlockEnd(FixedNode node) {
+    protected static EndNode getBlockEnd(FixedNode node) {
         FixedNode curNode = node;
         while (curNode instanceof FixedWithNextNode) {
             curNode = ((FixedWithNextNode) curNode).next();

@@ -36,7 +36,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMemoryAccessProviderImpl;
@@ -86,8 +85,8 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
             return ConstantDataConverter.toCompiler(resultData);
         }
 
-        @CEntryPoint
-        @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+        @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+        @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
         private static void read0(@SuppressWarnings("unused") ClientIsolateThread client, char kindChar, ConstantData baseData, long displacement,
                         int primitiveBits, long compressBase, int compressShift, ConstantData resultData) {
             JavaConstant base = ConstantDataConverter.toClient(baseData);
@@ -132,8 +131,8 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return Array.getLength(arrayObj);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int readArrayLength0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> arrayHandle) {
         Object array = IsolatedCompileClient.get().unhand(arrayHandle);
         if (!array.getClass().isArray()) {
@@ -157,11 +156,11 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return ConstantDataConverter.toCompiler(resultData);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void readArrayElement0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData arrayData, int index, ConstantData resultData) {
         JavaConstant array = ConstantDataConverter.toClient(arrayData);
-        Object a = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(array), Object.class);
+        Object a = SubstrateObjectConstant.asObject(array);
         Constant result;
         if (index < 0 || index >= Array.getLength(a)) {
             result = null;
@@ -186,8 +185,8 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return ConstantDataConverter.toCompiler(resultData);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void readFieldValue0(@SuppressWarnings("unused") ClientIsolateThread client, ImageHeapRef<SubstrateField> fieldRef, ConstantData receiverData, ConstantData resultData) {
         JavaConstant receiver = ConstantDataConverter.toClient(receiverData);
         Constant result = readFieldValue(ImageHeapObjects.deref(fieldRef), receiver);
@@ -209,8 +208,8 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return ConstantDataConverter.toCompiler(resultData);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void boxPrimitive0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData primitiveData, ConstantData resultData) {
         JavaConstant primitive = ConstantDataConverter.toClient(primitiveData);
         Constant result = SubstrateObjectConstant.forObject(primitive.asBoxedPrimitive());
@@ -230,11 +229,11 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return super.unboxPrimitive(boxed);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void unboxPrimitive0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData boxedData, ConstantData resultData) {
         Constant boxed = ConstantDataConverter.toClient(boxedData);
-        Constant result = JavaConstant.forBoxedPrimitive(KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(boxed), Object.class));
+        Constant result = JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(boxed));
         ConstantDataConverter.fromClient(result, resultData);
     }
 
@@ -255,11 +254,11 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return super.asJavaType(resolved);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ImageHeapRef<DynamicHub> getHubConstantAsImageHeapRef(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData hubData) {
         JavaConstant hub = ConstantDataConverter.toClient(hubData);
-        Object target = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(hub), Object.class);
+        Object target = SubstrateObjectConstant.asObject(hub);
         return (target instanceof DynamicHub) ? ImageHeapObjects.ref((DynamicHub) target) : WordFactory.nullPointer();
     }
 
@@ -284,8 +283,8 @@ final class IsolateAwareConstantReflectionProvider extends SubstrateConstantRefl
         return super.getImageHeapOffset(constant);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int getImageHeapOffset0(@SuppressWarnings("unused") ClientIsolateThread client, ConstantData constantData) {
         Constant constant = ConstantDataConverter.toClient(constantData);
         return getImageHeapOffsetInternal((SubstrateObjectConstant) constant);

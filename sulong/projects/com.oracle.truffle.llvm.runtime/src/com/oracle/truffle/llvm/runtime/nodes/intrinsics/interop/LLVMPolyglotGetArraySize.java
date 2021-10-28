@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
 
     @Specialization
+    @GenerateAOT.Exclude
     protected long doIntrinsic(LLVMManagedPointer value,
                     @Cached LLVMAsForeignNode asForeign,
                     @CachedLibrary(limit = "3") InteropLibrary interop,

@@ -26,6 +26,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -36,9 +37,9 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
 
-    private final int form;
-    private final int vmentry;
-    private final int hiddenVmtarget;
+    private final Field form;
+    private final Field vmentry;
+    private final Field hiddenVmtarget;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -48,34 +49,42 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
         return target.identity() == cachedTarget.identity();
     }
 
+    private void sanitizeSignature(Method payload) {
+        if (payload.getArgumentCount() != getMethod().getArgumentCount()) {
+            getMeta().throwException(getMeta().java_lang_UnsupportedOperationException);
+        }
+    }
+
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = {"inliningEnabled()", "canInline(target, cachedTarget)"})
     Object executeCallDirect(Object[] args, Method target,
                     @Cached("target") Method cachedTarget,
                     @Cached("create(target.getCallTarget())") DirectCallNode directCallNode) {
+        sanitizeSignature(cachedTarget);
         return directCallNode.call(args);
     }
 
     @Specialization(replaces = "executeCallDirect")
     Object executeCallIndirect(Object[] args, Method target,
                     @Cached("create()") IndirectCallNode callNode) {
+        sanitizeSignature(target);
         return callNode.call(target.getCallTarget(), args);
     }
 
     public MHInvokeBasicNode(Method method) {
         super(method);
         Meta meta = getMeta();
-        this.form = meta.java_lang_invoke_MethodHandle_form.getIndex();
-        this.vmentry = meta.java_lang_invoke_LambdaForm_vmentry.getIndex();
-        this.hiddenVmtarget = meta.HIDDEN_VMTARGET.getIndex();
+        this.form = meta.java_lang_invoke_MethodHandle_form;
+        this.vmentry = meta.java_lang_invoke_LambdaForm_vmentry;
+        this.hiddenVmtarget = meta.HIDDEN_VMTARGET;
     }
 
     @Override
     public Object call(Object[] args) {
         StaticObject mh = (StaticObject) args[0];
-        StaticObject lform = (StaticObject) mh.getUnsafeField(form);
-        StaticObject mname = (StaticObject) lform.getUnsafeField(vmentry);
-        Method target = (Method) mname.getUnsafeField(hiddenVmtarget);
+        StaticObject lform = form.getObject(mh);
+        StaticObject mname = vmentry.getObject(lform);
+        Method target = (Method) hiddenVmtarget.getHiddenObject(mname);
         return executeCall(args, target);
     }
 }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core;
 
+import java.util.function.Consumer;
+import java.util.function.Function;
+
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -40,7 +43,7 @@ public final class TypeResult<T> {
         return new TypeResult<>(clazz.getName(), clazz);
     }
 
-    public static TypeResult<Class<?>> forException(String name, Throwable exception) {
+    public static <T> TypeResult<T> forException(String name, Throwable exception) {
         return new TypeResult<>(name, null, exception);
     }
 
@@ -62,8 +65,23 @@ public final class TypeResult<T> {
         return type != null;
     }
 
+    public void ifPresent(Consumer<? super T> consumer) {
+        if (type != null) {
+            consumer.accept(type);
+        }
+    }
+
     public T get() {
         return type;
+    }
+
+    public <U> TypeResult<U> map(Function<T, U> f) {
+        if (isPresent()) {
+            return new TypeResult<>(name, f.apply(get()));
+        } else {
+            return TypeResult.forException(name, getException());
+        }
+
     }
 
     public Throwable getException() {

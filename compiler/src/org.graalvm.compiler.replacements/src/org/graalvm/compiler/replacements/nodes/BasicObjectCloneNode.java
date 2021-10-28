@@ -31,8 +31,8 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_8)
-public abstract class BasicObjectCloneNode extends MacroStateSplitNode implements ObjectClone {
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "see rationale in MacroNode", size = SIZE_8)
+public abstract class BasicObjectCloneNode extends MacroNode implements ObjectClone {
 
     public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
@@ -33,8 +32,8 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -91,14 +90,12 @@ public final class LoadHubOrNullNode extends FloatingNode implements Lowerable, 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (!GeneratePIC.getValue(tool.getOptions())) {
-            NodeView view = NodeView.from(tool);
-            MetaAccessProvider metaAccess = tool.getMetaAccess();
-            ValueNode curValue = getValue();
-            ValueNode newNode = findSynonym(curValue, (AbstractPointerStamp) stamp(view), metaAccess, tool.getConstantReflection());
-            if (newNode != null) {
-                return newNode;
-            }
+        NodeView view = NodeView.from(tool);
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
+        ValueNode curValue = getValue();
+        ValueNode newNode = findSynonym(curValue, (AbstractPointerStamp) stamp(view), metaAccess, tool.getConstantReflection());
+        if (newNode != null) {
+            return newNode;
         }
         return this;
     }
@@ -112,12 +109,10 @@ public final class LoadHubOrNullNode extends FloatingNode implements Lowerable, 
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (!GeneratePIC.getValue(tool.getOptions())) {
-            ValueNode alias = tool.getAlias(getValue());
-            TypeReference type = StampTool.typeReferenceOrNull(alias);
-            if (type != null && type.isExact()) {
-                tool.replaceWithValue(ConstantNode.forConstant(stamp(NodeView.DEFAULT), tool.getConstantReflection().asObjectHub(type.getType()), tool.getMetaAccess(), graph()));
-            }
+        ValueNode alias = tool.getAlias(getValue());
+        TypeReference type = StampTool.typeReferenceOrNull(alias);
+        if (type != null && type.isExact()) {
+            tool.replaceWithValue(ConstantNode.forConstant(stamp(NodeView.DEFAULT), tool.getConstantReflection().asObjectHub(type.getType()), tool.getMetaAccess(), graph()));
         }
     }
 }

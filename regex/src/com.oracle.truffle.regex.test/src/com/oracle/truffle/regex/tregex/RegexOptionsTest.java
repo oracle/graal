@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -49,6 +48,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.RegexOptions;
@@ -80,7 +80,7 @@ public class RegexOptionsTest {
         assertTrue(parse(setBool(RegexOptions.U180E_WHITESPACE_NAME)).isU180EWhitespace());
         assertTrue(parse(setBool(RegexOptions.UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME)).isUTF16ExplodeAstralSymbols());
         assertTrue(parse(setBool(RegexOptions.VALIDATE_NAME)).isValidate());
-        assertNull(parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_ECMASCRIPT)).getFlavor());
+        assertEquals(ECMAScriptFlavor.INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_ECMASCRIPT)).getFlavor());
         assertEquals(PythonFlavor.BYTES_INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_PYTHON_BYTES)).getFlavor());
         assertEquals(PythonFlavor.STR_INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_PYTHON_STR)).getFlavor());
         assertEquals(RubyFlavor.INSTANCE, parse(setVal(RegexOptions.FLAVOR_NAME, RegexOptions.FLAVOR_RUBY)).getFlavor());

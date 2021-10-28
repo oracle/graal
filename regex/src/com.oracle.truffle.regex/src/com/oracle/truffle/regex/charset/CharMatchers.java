@@ -58,6 +58,7 @@ import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.matchers.TwoCharMatcher;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * Helper class for converting {@link CodePointSet}s to {@link CharMatcher}s.
@@ -65,6 +66,17 @@ import com.oracle.truffle.regex.util.TBitSet;
 public class CharMatchers {
 
     public static CharMatcher createMatcher(CodePointSet cps, CompilationBuffer compilationBuffer) {
+        EconomicMap<CodePointSet, CharMatcher> matcherDeduplicationMap = compilationBuffer.getMatcherDeduplicationMap();
+        CharMatcher matcher = matcherDeduplicationMap.get(cps);
+        if (matcher != null) {
+            return matcher;
+        }
+        matcher = createMatcherInner(cps, compilationBuffer);
+        matcherDeduplicationMap.put(cps, matcher);
+        return matcher;
+    }
+
+    private static CharMatcher createMatcherInner(CodePointSet cps, CompilationBuffer compilationBuffer) {
         if (cps.matchesMinAndMax(compilationBuffer.getEncoding()) || cps.inverseIsSameHighByte(compilationBuffer.getEncoding())) {
             // the inverse of the given set is easier to match, generate inverted matcher
             return createMatcher(cps.createInverse(compilationBuffer.getEncoding()), compilationBuffer, true);
@@ -101,10 +113,10 @@ public class CharMatchers {
             CompressedCodePointSet ccps = CompressedCodePointSet.create(cps, compilationBuffer);
             if (ccps.hasBitSets()) {
                 return HybridBitSetMatcher.create(inverse, ccps);
-            } else if (ccps.size() <= 10) {
+            } else if (ccps.size() <= RangeListMatcher.MAX_NUMBER_OF_RANGES) {
                 return RangeListMatcher.create(inverse, ccps.getRanges());
             } else {
-                return RangeTreeMatcher.fromRanges(inverse, ccps.getRanges());
+                return RangeTreeMatcher.create(inverse, ccps.getRanges());
             }
         }
     }

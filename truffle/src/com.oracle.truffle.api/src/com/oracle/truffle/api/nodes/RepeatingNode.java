@@ -50,6 +50,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * Repeating nodes are intended to be implemented by guest language implementations. For a full
  * usage example please see {@link LoopNode}.
  *
+ * Note: The result of <code>{@link RepeatingNode#shouldContinue shouldContinue}(
+ * {@link RepeatingNode#executeRepeatingWithValue executeRepeatingWithValue}())</code> is
+ * automatically profiled by the loop node, so the {@link RepeatingNode repeating node} should not
+ * use a loop condition profile.
+ *
  * @see LoopNode
  * @see TruffleRuntime#createLoopNode(RepeatingNode)
  * @since 0.8 or earlier

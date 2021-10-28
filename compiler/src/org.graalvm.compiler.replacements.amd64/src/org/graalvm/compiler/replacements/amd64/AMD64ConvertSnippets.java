@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -167,6 +168,10 @@ public class AMD64ConvertSnippets implements Snippets {
         }
 
         public void lower(FloatConvertNode convert, LoweringTool tool) {
+            if (!convert.graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+                return;
+            }
+
             SnippetInfo key;
             switch (convert.getFloatConvert()) {
                 case F2I:

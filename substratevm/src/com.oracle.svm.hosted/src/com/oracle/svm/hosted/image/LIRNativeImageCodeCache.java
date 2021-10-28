@@ -26,9 +26,11 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,9 +50,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
-import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
@@ -101,7 +104,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
-            buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
+            buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.unsigned(codeCacheSize));
         }
     }
 
@@ -155,7 +158,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             ByteBuffer targetCode = null;
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
                 if (codeAnnotation instanceof HostedPatcher) {
-                    patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
+                    HostedPatcher priorValue = patches.put(codeAnnotation.getPosition(), (HostedPatcher) codeAnnotation);
+                    VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
 
                 } else if (codeAnnotation instanceof HostedImageHeapConstantPatch) {
                     HostedImageHeapConstantPatch patch = (HostedImageHeapConstantPatch) codeAnnotation;
@@ -172,6 +176,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     targetCode.putInt(patch.getPosition(), (int) newValue);
                 }
             }
+            int patchesHandled = 0;
+            HashSet<Integer> patchedOffsets = new HashSet<>();
             // ... patch direct call sites.
             for (Infopoint infopoint : compilation.getInfopoints()) {
                 if (infopoint instanceof Call && ((Call) infopoint).direct) {
@@ -186,7 +192,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // Patch a PC-relative call.
                     // This code handles the case of section-local calls only.
                     int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
-                    patches.get(call.pcOffset).patch(call.pcOffset, pcDisplacement, compilation.getTargetCode());
+                    patches.get(call.pcOffset).patch(compStart, pcDisplacement, compilation.getTargetCode());
+                    boolean noPriorMatch = patchedOffsets.add(call.pcOffset);
+                    VMError.guarantee(noPriorMatch, "Patching same offset twice.");
+                    patchesHandled++;
                 }
             }
             for (DataPatch dataPatch : compilation.getDataPatches()) {
@@ -196,7 +205,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                  * read-only (.rodata) section.
                  */
                 patches.get(dataPatch.pcOffset).relocate(ref, relocs, compStart);
+                boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
+                VMError.guarantee(noPriorMatch, "Patching same offset twice.");
+                patchesHandled++;
             }
+            VMError.guarantee(patchesHandled == patches.size(), "Not all patches applied.");
             try (DebugContext.Scope ds = debug.scope("After Patching", method.asJavaMethod())) {
                 debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
             } catch (Throwable e) {
@@ -244,7 +257,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
         Stream<ObjectFile.Symbol> stream = StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false);
         if (onlyGlobal) {
-            stream = stream.filter(ObjectFile.Symbol::isGlobal);
+            Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
+            stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
         }
         return stream.filter(ObjectFile.Symbol::isDefined).collect(Collectors.toList());
     }

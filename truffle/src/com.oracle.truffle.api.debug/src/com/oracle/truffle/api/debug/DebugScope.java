@@ -118,7 +118,9 @@ public final class DebugScope {
     public String getName() {
         try {
             return INTEROP.asString(INTEROP.toDisplayString(scope));
-        } catch (UnsupportedMessageException ex) {
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
             throw DebugException.create(session, ex, language, node, true, null);
         }
     }
@@ -289,11 +291,10 @@ public final class DebugScope {
                 return null;
             }
             String name = INTEROP.asString(NODE.getReceiverMember(node, frame));
-            if (!INTEROP.isMemberReadable(scope, name)) {
+            if (!INTEROP.isMemberReadable(scope, name) || !isDeclaredInScope(name)) {
                 return null;
             }
-            Object receiver = INTEROP.readMember(scope, name);
-            receiverValue = new DebugValue.HeapValue(session, getLanguage(), name, receiver);
+            receiverValue = new DebugValue.ObjectMemberValue(session, getLanguage(), this, scope, name);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -400,6 +401,21 @@ public final class DebugScope {
         return variables;
     }
 
+    private boolean isDeclaredInScope(String name) {
+        Object scopeParent = null;
+        if (INTEROP.hasScopeParent(scope)) {
+            try {
+                scopeParent = INTEROP.getScopeParent(scope);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (scopeParent == null) {
+            return true;
+        }
+        return new SubtractedVariables(scope, scopeParent).isMemberReadable(name);
+    }
+
     /**
      * Converts the value to a DebugValue, or returns <code>null</code> if the requesting language
      * class does not match the root node guest language.
@@ -427,7 +443,7 @@ public final class DebugScope {
             return null;
         }
         // make sure rawValue is a valid Interop value
-        if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
+        if (!InteropLibrary.isValidValue(rawValue)) {
             throw new IllegalArgumentException("raw value is not an Interop value");
         }
         // check if language class of the root node corresponds to the input language

@@ -52,17 +52,21 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
+    private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider originalConstantReflection;
     private final ClassInitializationSupport classInitializationSupport;
 
-    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection, ClassInitializationSupport classInitializationSupport) {
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess,
+                    ConstantReflectionProvider originalConstantReflection, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
+        this.metaAccess = metaAccess;
         this.originalConstantReflection = originalConstantReflection;
         this.classInitializationSupport = classInitializationSupport;
     }
@@ -74,10 +78,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readValue((AnalysisField) field, receiver);
+        return readValue(metaAccess, (AnalysisField) field, receiver);
     }
 
-    public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
         JavaConstant value;
         if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             if (field.isStatic()) {
@@ -92,7 +96,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                 throw VMError.shouldNotReachHere("Cannot read instance field of a class that is initialized at run time: " + field.format("%H.%n"));
             }
         } else {
-            value = universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver)));
+            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, originalConstantReflection, field.wrapped, universe.toHosted(receiver)));
         }
 
         return interceptValue(field, value);
@@ -125,7 +129,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private static JavaConstant readUninitializedStaticValue(AnalysisField field) {
         JavaKind kind = field.getJavaKind();
 
-        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().toJavaName(true).equals("java.lang.String");
+        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
         if (!canHaveConstantValueAttribute || !field.isFinal()) {
             return JavaConstant.defaultForKind(kind);
         }

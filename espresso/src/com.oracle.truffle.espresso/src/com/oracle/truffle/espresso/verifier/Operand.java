@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.verifier;
 
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.failNoClassDefFound;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
 
 import java.util.ArrayList;
@@ -43,12 +46,16 @@ abstract class Operand {
         this.kind = kind;
     }
 
-    boolean isTopOperand() {
+    final boolean isTopOperand() {
         return this == Invalid;
     }
 
-    JavaKind getKind() {
+    final JavaKind getKind() {
         return kind;
+    }
+
+    final int slots() {
+        return isType2(this) ? 2 : 1;
     }
 
     boolean isArrayType() {
@@ -241,12 +248,12 @@ class ReferenceOperand extends Operand {
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
                 if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                    throw new NoClassDefFoundError(type.toString());
+                    throw failNoClassDefFound(type.toString());
                 }
                 throw e;
             }
             if (klass == null) {
-                throw new NoClassDefFoundError(type.toString());
+                throw failNoClassDefFound(type.toString());
             }
         }
         return klass;
@@ -332,7 +339,7 @@ final class ArrayOperand extends Operand {
         super(JavaKind.Object);
         assert !elemental.isArrayType();
         if (dimensions > 255) {
-            throw new VerifyError("Creating array of dimension > 255");
+            throw failVerify("Creating array of dimension > 255");
         }
         this.dimensions = dimensions;
         this.elemental = elemental;

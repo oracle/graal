@@ -25,13 +25,17 @@
 package com.oracle.svm.core.windows;
 
 import java.io.Console;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.Jvm;
 
 @TargetClass(java.lang.System.class)
 @Platforms(Platform.WINDOWS.class)
@@ -48,6 +52,12 @@ final class Target_java_lang_System {
     @Substitute
     public static String mapLibraryName(String libname) {
         return libname + ".dll";
+    }
+
+    @Substitute
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long currentTimeMillis() {
+        return Jvm.JVM_CurrentTimeMillis(WordFactory.nullPointer(), WordFactory.nullPointer());
     }
 }
 

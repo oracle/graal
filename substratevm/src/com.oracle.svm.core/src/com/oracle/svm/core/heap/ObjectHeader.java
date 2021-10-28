@@ -70,6 +70,18 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
 
+    public abstract Pointer readPotentialDynamicHubFromPointer(Pointer ptr);
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader);
+
+    public boolean pointsToObjectHeader(Pointer ptr) {
+        Pointer potentialDynamicHub = readPotentialDynamicHubFromPointer(ptr);
+        if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
+            Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
+            return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
+        }
+        return false;
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -40,12 +41,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMSelectNode extends LLVMExpressionNode {
-    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
-
     public abstract static class LLVMI1SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected boolean doOp(boolean cond, boolean trueBranch, boolean elseBranch) {
+        protected boolean doOp(boolean cond, boolean trueBranch, boolean elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -53,7 +52,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI8SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected byte doOp(boolean cond, byte trueBranch, byte elseBranch) {
+        protected byte doOp(boolean cond, byte trueBranch, byte elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -61,7 +60,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI16SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected short doOp(boolean cond, short trueBranch, short elseBranch) {
+        protected short doOp(boolean cond, short trueBranch, short elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -69,7 +68,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI32SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected int doOp(boolean cond, int trueBranch, int elseBranch) {
+        protected int doOp(boolean cond, int trueBranch, int elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -77,7 +76,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI64SelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch) {
+        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert trueBranch instanceof Long || LLVMPointer.isInstance(trueBranch);
             assert elseBranch instanceof Long || LLVMPointer.isInstance(elseBranch);
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
@@ -87,7 +86,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMFloatSelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected float doOp(boolean cond, float trueBranch, float elseBranch) {
+        protected float doOp(boolean cond, float trueBranch, float elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -95,7 +94,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMDoubleSelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected double doOp(boolean cond, double trueBranch, double elseBranch) {
+        protected double doOp(boolean cond, double trueBranch, double elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -103,7 +102,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVM80BitFloatSelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected LLVM80BitFloat doOp(boolean cond, LLVM80BitFloat trueBranch, LLVM80BitFloat elseBranch) {
+        protected LLVM80BitFloat doOp(boolean cond, LLVM80BitFloat trueBranch, LLVM80BitFloat elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
@@ -111,7 +110,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMGenericSelectNode extends LLVMSelectNode {
 
         @Specialization
-        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch) {
+        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch, @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }

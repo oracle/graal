@@ -114,15 +114,15 @@ public final class ParserKlass {
         return pool;
     }
 
-    ParserMethod[] getMethods() {
+    public ParserMethod[] getMethods() {
         return methods;
     }
 
-    ParserField[] getFields() {
+    public ParserField[] getFields() {
         return fields;
     }
 
-    Attribute getAttribute(Symbol<Name> attributeName) {
+    public Attribute getAttribute(Symbol<Name> attributeName) {
         for (Attribute attribute : attributes) {
             if (attributeName.equals(attribute.getName())) {
                 return attribute;

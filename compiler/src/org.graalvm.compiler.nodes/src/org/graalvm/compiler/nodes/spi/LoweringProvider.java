@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -63,4 +64,15 @@ public interface LoweringProvider {
      * {@code long} values.
      */
     boolean supportsOptimizedFilling(OptionValues options);
+
+    /**
+     * Indicates whether this target platform supports lowering {@link RoundNode}.
+     */
+    boolean supportsRounding();
+
+    /**
+     * Indicates whether this target platform supports the usage of implicit (trapping) null checks.
+     */
+    boolean supportsImplicitNullChecks();
+
 }

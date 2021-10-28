@@ -91,7 +91,7 @@ public class NodeChildTest {
 
     }
 
-    @ExpectError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
+    @ExpectError("Not enough child node declarations found. Please annotate the node class with additional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
                     "The following execute methods do not provide all evaluated values for the expected signature size 3:%")
     @NodeChildren({@NodeChild(value = "child2", type = ValueNode.class)})
     abstract static class Child2Node extends Base1Node {

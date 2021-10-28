@@ -43,8 +43,8 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
@@ -155,6 +155,7 @@ public class SnippetFrameStateAssignment {
                     }
                     nextStateAssignment = NodeStateAssignment.INVALID;
                 }
+                stateMapping.put(node, nextStateAssignment);
             }
             return nextStateAssignment;
         }

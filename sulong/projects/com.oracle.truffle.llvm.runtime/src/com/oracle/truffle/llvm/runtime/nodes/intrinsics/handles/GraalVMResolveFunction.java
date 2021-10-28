@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -47,9 +44,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doNativeResolve(LLVMNativePointer pointer,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return LLVMManagedPointer.create(context.getFunctionDescriptor(pointer));
+    protected Object doNativeResolve(LLVMNativePointer pointer) {
+        return LLVMManagedPointer.create(getContext().getFunctionDescriptor(pointer));
     }
 
     @Specialization(guards = "pointsToFunctionDescriptor(pointer)")
@@ -58,12 +54,11 @@ public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
     }
 
     @Specialization(guards = "pointsToLong(pointer)")
-    protected Object doNativePointerResolve(LLVMPointer pointer,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+    protected Object doNativePointerResolve(LLVMPointer pointer) {
         LLVMManagedPointer object = LLVMManagedPointer.cast(pointer);
         Object pointerValue = object.getObject();
         LLVMNativePointer nativePointer = LLVMNativePointer.create((long) pointerValue);
-        return LLVMManagedPointer.create(context.getFunctionDescriptor(nativePointer));
+        return LLVMManagedPointer.create(getContext().getFunctionDescriptor(nativePointer));
     }
 
     @Fallback

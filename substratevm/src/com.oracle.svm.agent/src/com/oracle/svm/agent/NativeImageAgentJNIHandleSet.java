@@ -38,42 +38,44 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
-    final JNIMethodId javaUtilEnumerationNextElement;
-    final JNIMethodId javaLangClassGetDeclaredMethod;
-    final JNIMethodId javaLangClassGetDeclaredConstructor;
-    final JNIMethodId javaLangClassGetDeclaredField;
     final JNIMethodId javaLangClassGetName;
 
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
+    private JNIMethodId javaLangReflectExecutableGetParameterTypes = WordFactory.nullPointer();
 
     final JNIMethodId javaUtilEnumerationHasMoreElements;
 
     final JNIObjectHandle javaLangClassLoader;
+    final JNIMethodId javaLangClassLoaderGetResource;
+
+    final JNIObjectHandle jdkInternalReflectDelegatingClassLoader;
 
     final JNIMethodId javaLangObjectGetClass;
 
+    final JNIObjectHandle javaLangStackOverflowError;
+
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
+    private JNIMethodId javaLangInvokeMethodTypeReturnType = WordFactory.nullPointer();
+    final JNIObjectHandle javaLangIllegalAccessException;
+    final JNIObjectHandle javaLangInvokeWrongMethodTypeException;
+    final JNIObjectHandle javaLangIllegalArgumentException;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
+    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
-    // Lazily look for serialization classes
-    private JNIMethodId javaIoObjectStreamClassComputeDefaultSUID;
     private JNIMethodId javaIoObjectStreamClassForClass;
     private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
     private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
 
-    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
+    private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
-        javaLangClassGetDeclaredMethod = getMethodId(env, javaLangClass, "getDeclaredMethod", "(Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;", false);
-        javaLangClassGetDeclaredConstructor = getMethodId(env, javaLangClass, "getDeclaredConstructor", "([Ljava/lang/Class;)Ljava/lang/reflect/Constructor;", false);
-        javaLangClassGetDeclaredField = getMethodId(env, javaLangClass, "getDeclaredField", "(Ljava/lang/String;)Ljava/lang/reflect/Field;", false);
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
@@ -82,12 +84,40 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
-        javaUtilEnumerationNextElement = getMethodId(env, javaUtilEnumeration, "nextElement", "()Ljava/lang/Object;", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
+        javaLangClassLoaderGetResource = getMethodId(env, javaLangClassLoader, "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
+
+        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader"); // JDK11+
+        if (reflectLoader.equal(nullHandle())) {
+            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader"); // JDK 8
+        }
+        jdkInternalReflectDelegatingClassLoader = newTrackedGlobalRef(env, reflectLoader);
 
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
+
+        javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
+
+        javaLangIllegalAccessException = newClassGlobalRef(env, "java/lang/IllegalAccessException");
+        javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
+        javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
+    }
+
+    JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
+        if (javaLangReflectExecutableGetParameterTypes.isNull()) {
+            JNIObjectHandle javaLangReflectExecutable = findClass(env, "java/lang/reflect/Executable");
+            javaLangReflectExecutableGetParameterTypes = getMethodId(env, javaLangReflectExecutable, "getParameterTypes", "()[Ljava/lang/Class;", false);
+        }
+        return javaLangReflectExecutableGetParameterTypes;
+    }
+
+    JNIMethodId getJavaLangInvokeMethodTypeReturnType(JNIEnvironment env) {
+        if (javaLangInvokeMethodTypeReturnType.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodType = newClassGlobalRef(env, "java/lang/invoke/MethodType");
+            javaLangInvokeMethodTypeReturnType = getMethodId(env, javaLangInvokeMethodType, "returnType", "()Ljava/lang/Class;", false);
+        }
+        return javaLangInvokeMethodTypeReturnType;
     }
 
     JNIMethodId getJavaLangInvokeMethodTypeParameterArray(JNIEnvironment env) {
@@ -106,13 +136,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             queriedJavaUtilResourceBundleGetBundleImplSLCC = true;
         }
         return javaUtilResourceBundleGetBundleImplSLCC;
-    }
-
-    JNIMethodId getJavaIoObjectStreamClassComputeDefaultSUID(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
-        if (javaIoObjectStreamClassComputeDefaultSUID.equal(nullHandle())) {
-            javaIoObjectStreamClassComputeDefaultSUID = getMethodId(env, javaIoObjectStreamClass, "computeDefaultSUID", "(Ljava/lang/Class;)J", true);
-        }
-        return javaIoObjectStreamClassComputeDefaultSUID;
     }
 
     JNIMethodId getJavaIoObjectStreamClassForClass(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
@@ -148,5 +171,12 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaIOObjectStreamClassClassDataSlotHasData = getFieldId(env, getJavaIOObjectStreamClassClassDataSlot(env), "hasData", "Z", false);
         }
         return javaIOObjectStreamClassClassDataSlotHasData;
+    }
+
+    JNIMethodId getJavaLangReflectConstructorDeclaringClassName(JNIEnvironment env, JNIObjectHandle customSerializationConstructorClass) {
+        if (javaLangReflectConstructorDeclaringClassName.equal(nullHandle())) {
+            javaLangReflectConstructorDeclaringClassName = getMethodId(env, customSerializationConstructorClass, "getName", "()Ljava/lang/String;", false);
+        }
+        return javaLangReflectConstructorDeclaringClassName;
     }
 }

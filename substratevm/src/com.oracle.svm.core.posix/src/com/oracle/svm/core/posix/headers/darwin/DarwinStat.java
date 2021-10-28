@@ -40,17 +40,23 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 @CContext(PosixDirectives.class)
 public class DarwinStat {
 
+    /*
+     * NOTE that we set _DARWIN_USE_64_BIT_INODE in the C directives to force a layout for struct
+     * stat with a 64-bit st_ino, and we have to call functions with a $INODE64 suffix to match,
+     * such as fstat$INODE64.
+     */
+
     @CStruct(addStructKeyword = true)
-    public interface stat64 extends PointerBase {
+    public interface stat extends PointerBase {
         @CField
         long st_size();
     }
 
-    @CFunction("fstat64")
-    public static native int fstat64(int fd, stat64 buf);
+    @CFunction("fstat$INODE64")
+    public static native int fstat(int fd, stat buf);
 
     public static class NoTransitions {
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int fstat64(int fd, stat64 buf);
+        @CFunction(value = "fstat$INODE64", transition = CFunction.Transition.NO_TRANSITION)
+        public static native int fstat(int fd, stat buf);
     }
 }

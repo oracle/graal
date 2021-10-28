@@ -249,8 +249,7 @@ interface GraphPrinter extends Closeable, JavaConstantFormatter {
             if (scheduleResult == null) {
                 DebugContext debug = graph.getDebug();
                 try (Scope scope = debug.disable()) {
-                    SchedulePhase schedule = new SchedulePhase(graph.getOptions());
-                    schedule.apply(sgraph);
+                    SchedulePhase.runWithoutContextOptimizations(sgraph);
                     scheduleResult = sgraph.getLastSchedule();
                 } catch (Throwable t) {
                 }

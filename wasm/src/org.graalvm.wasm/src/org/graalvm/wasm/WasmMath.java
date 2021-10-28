@@ -41,15 +41,13 @@
 
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.ExactMath;
+
 import static java.lang.Integer.compareUnsigned;
 
 /**
  * The class {@code WasmMath} contains methods for performing specific numeric operations such as
  * unsigned arithmetic, which are not built in Java nor provided by the {@link Math} class.
- * <p>
- * <em>Note</em>: in a future implementation, some of these methods might be intrinsified for better
- * performance (GR-26859, GR-28305). They might also be moved to a common Truffle math class
- * sharable with other language implementations (GR-20934).
  */
 public final class WasmMath {
 
@@ -108,6 +106,20 @@ public final class WasmMath {
      */
     public static int maxUnsigned(int a, int b) {
         return compareUnsigned(a, b) > 0 ? a : b;
+    }
+
+    /**
+     * Returns the value of the {@code long} argument as an {@code int}; throwing an exception if
+     * the value overflows an unsigned {@code int}.
+     *
+     * @throws ArithmeticException if the argument is outside of the unsigned int32 range
+     * @since 1.8
+     */
+    public static int toUnsignedIntExact(long value) {
+        if (value < 0 || value > 0xffff_ffffL) {
+            throw new ArithmeticException("unsigned int overflow");
+        }
+        return (int) value;
     }
 
     /**
@@ -181,21 +193,6 @@ public final class WasmMath {
     }
 
     /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given float.
-     */
-    public static float truncFloat(float x) {
-        return (float) truncDouble(x);
-    }
-
-    /**
-     * Removes the decimal part (aka truncation or rounds towards zero) of the given double.
-     */
-    public static double truncDouble(double x) {
-        // See GR-26859 about possible intrinsification of this method.
-        return x < 0.0 ? Math.ceil(x) : Math.floor(x);
-    }
-
-    /**
      * Removes the decimal part (aka truncation or rounds towards zero) of the given float and
      * converts it to a <strong>signed</strong> long.
      * <p>
@@ -216,7 +213,7 @@ public final class WasmMath {
      * {@link Long#MAX_VALUE} is returned.
      */
     public static long truncDoubleToLong(double x) {
-        return (long) truncDouble(x);
+        return (long) ExactMath.truncate(x);
     }
 
     /**

@@ -30,4 +30,6 @@ void *dlsym(void *handle, const char *symbol);
 // On recent glibc, the locale data is initialized on thread creation.
 // To emulate the same behavior and avoid crashes, Java threads created 
 // outside the context must call this function on start.
-void ctypeInit(void);
+void eden_ctypeInit(void);
+
+void* eden_RTLD_DEFAULT(void);

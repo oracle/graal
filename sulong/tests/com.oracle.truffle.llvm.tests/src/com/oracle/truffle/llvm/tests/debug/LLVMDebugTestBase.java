@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -64,12 +65,18 @@ public abstract class LLVMDebugTestBase {
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
     LLVMDebugTestBase(String testName, String configuration) {
+        this(testName, configuration, null);
+    }
+
+    LLVMDebugTestBase(String testName, String configuration, String exclusionReason) {
         this.testName = testName;
         this.configuration = configuration;
+        this.exclusionReason = exclusionReason;
     }
 
     private final String testName;
     private final String configuration;
+    @SuppressWarnings("unused") private final String exclusionReason;
 
     private DebuggerTester tester;
 
@@ -94,6 +101,7 @@ public abstract class LLVMDebugTestBase {
         final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
+        contextBuilder.options(TestEngineConfig.getInstance().getContextOptions());
         if (isCxx()) {
             contextBuilder.option(SulongEngineOption.LOAD_CXX_LIBRARIES_NAME, "true");
         }
@@ -140,22 +148,31 @@ public abstract class LLVMDebugTestBase {
             throw new AssertionError("Missing Scope!");
         }
 
-        int count = 0;
-        for (DebugValue actual : scope.getDeclaredValues()) {
+        for (Map.Entry<String, LLVMDebugValue> entry : expectedLocals.entrySet()) {
+            final String name = entry.getKey();
+            final LLVMDebugValue expected = entry.getValue();
 
-            final String name = actual.getName();
-            final LLVMDebugValue expected = expectedLocals.get(actual.getName());
-
-            if (expected != null) {
+            DebugValue actual = scope.getDeclaredValue(name);
+            if (actual != null) {
                 try {
                     expected.check(actual);
-                    count++;
                 } catch (Throwable t) {
                     throw new AssertionError(String.format("Error in local %s", name), t);
                 }
+            } else {
+                throw new AssertionError(String.format("Missing local %s", name));
+            }
+        }
 
-            } else if (!isPartialScope) {
-                throw new AssertionError(String.format("Unexpected scope member: %s", name));
+        if (!isPartialScope) {
+            for (DebugValue actual : scope.getDeclaredValues()) {
+
+                final String name = actual.getName();
+                final LLVMDebugValue expected = expectedLocals.get(actual.getName());
+
+                if (expected == null) {
+                    throw new AssertionError(String.format("Unexpected scope member: %s", name));
+                }
             }
         }
 
@@ -166,11 +183,8 @@ public abstract class LLVMDebugTestBase {
             final LLVMDebugValue expected = expectedLocals.get(receiver.getName());
             if (expected != null) {
                 expected.check(receiver);
-                count++;
             }
         }
-
-        assertEquals("Unexpected number of scope variables", expectedLocals.size(), count);
     }
 
     private static final class BreakInfo {
@@ -254,6 +268,11 @@ public abstract class LLVMDebugTestBase {
                     }
                     assertValues(actualScope, expectedScope.getLocals(), expectedScope.isPartial());
                     actualScope = actualScope.getParent();
+                }
+                if (bpr.getTopScope() != null) {
+                    StopRequest.Scope expectedScope = bpr.getTopScope();
+                    actualScope = event.getSession().getTopScope("llvm");
+                    assertValues(actualScope, expectedScope.getLocals(), expectedScope.isPartial());
                 }
             } catch (Throwable t) {
                 throw new AssertionError(String.format("Error in function %s on line %d", bpr.getFunctionName(), bpr.getLine()), t);

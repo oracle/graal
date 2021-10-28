@@ -46,7 +46,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
-@Option.Group("wasm")
+@Option.Group(WasmLanguage.ID)
 public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use: [<linking-name>:]<builtin-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)//
     public static final OptionKey<String> Builtins = new OptionKey<>("");
@@ -66,11 +66,16 @@ public class WasmOptions {
         NONE
     }
 
-    public static OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
+    public static final OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
 
     @Option(help = "Whenever to store the constants in a pool or not. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, deprecated = true)//
     public static final OptionKey<ConstantsStorePolicy> StoreConstantsPolicy = new OptionKey<>(ConstantsStorePolicy.NONE, StoreConstantsPolicyOptionType);
 
     @Option(help = "Use sun.misc.Unsafe-based memory.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
+
+    // WASM Context Options
+    public static final String SATURATING_FLOAT_TO_INT_NAME = "saturating-float-to-int";
+    @Option(name = SATURATING_FLOAT_TO_INT_NAME, help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SATURATING_FLOAT_TO_INT = new OptionKey<>(false);
 }

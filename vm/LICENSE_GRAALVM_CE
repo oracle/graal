@@ -3,9 +3,9 @@
 GraalVM Community Edition consists of multiple modules. The software as a 
 whole, is released under version 2 of the GNU General Public License with the 
 “Classpath” Exception. Certain modules of GraalVM Community Edition are released
-under separate and/or additional licenses, as follows: Graal.js and Graal
-Node.js are released under the Universal Permissive License (UPL) Version 1.0; 
-Sulong – LLVM is released under a 3-clause BSD license. 
+under separate and/or additional licenses, as follows: Graal.js is released
+under the Universal Permissive License (UPL) Version 1.0; Sulong – LLVM is
+released under a 3-clause BSD license.
 
 The text of the foregoing licenses is reproduced below.
   
@@ -394,7 +394,7 @@ statement from your version.
 
  ===========================================================================
 
-           Graal.JS and Graal Node.js
+           Graal.JS
 
 Copyright (c) 2018, Oracle and/or its affiliates.
           

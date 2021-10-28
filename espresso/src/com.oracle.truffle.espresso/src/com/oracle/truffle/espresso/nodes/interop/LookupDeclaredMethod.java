@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 
@@ -33,10 +34,10 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
 
     static final int LIMIT = 2;
 
-    public abstract Method execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity);
+    public abstract Method.MethodVersion execute(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException;
 
-    public boolean isInvocable(Klass klass, String key, boolean publicOnly, boolean isStatic) {
-        return doLookup(klass, key, publicOnly, isStatic, -1) != null;
+    public boolean isInvocable(Klass klass, String key, boolean isStatic) {
+        return isInvocable(klass, key, true, isStatic);
     }
 
     @SuppressWarnings("unused")
@@ -45,8 +46,9 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
                     "key.equals(cachedMethodName)",
                     "publicOnly == cachedPublicOnly",
                     "isStatic == cachedIsStatic",
-                    "arity == cachedArity"}, limit = "LIMIT")
-    Method doCached(Klass klass,
+                    "arity == cachedArity",
+                    "methodVersion != null"}, limit = "LIMIT", assumptions = "methodVersion.getAssumption()")
+    Method.MethodVersion doCached(Klass klass,
                     String key,
                     boolean publicOnly,
                     boolean isStatic,
@@ -56,13 +58,14 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
                     @Cached("publicOnly") boolean cachedPublicOnly,
                     @Cached("isStatic") boolean cachedIsStatic,
                     @Cached("arity") int cachedArity,
-                    @Cached("doGeneric(klass, key, publicOnly, isStatic, arity)") Method method) {
-        return method;
+                    @Cached("doGeneric(klass, key, publicOnly, isStatic, arity)") Method.MethodVersion methodVersion) {
+        return methodVersion;
     }
 
     @Specialization(replaces = "doCached")
-    Method doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) {
-        return doLookup(klass, key, publicOnly, isStatic, arity);
+    Method.MethodVersion doGeneric(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+        Method method = doLookup(klass, key, publicOnly, isStatic, arity);
+        return method == null ? null : method.getMethodVersion();
     }
 
     @Override

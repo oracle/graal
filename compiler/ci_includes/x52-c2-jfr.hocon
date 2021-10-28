@@ -1,19 +1,2 @@
 builds += [
-  // JDK8
-  ${x52.tmpfs10g-c2} ${bench-profiling-awfy}           ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-awfy-linux-x52-c2" }
-  ${x52.tmpfs10g-c2} ${bench-profiling-dacapo}         ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-dacapo-linux-x52-c2" }
-  ${x52.tmpfs10g-c2} ${bench-profiling-scala-dacapo}   ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-scala-dacapo-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-specjvm2008-Single}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-specjvm2008-Single-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-specjbb2015}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-specjbb2015-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-renaissance}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-renaissance-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-renaissance-legacy}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-profiling-compiler-renaissance-legacy-linux-x52-c2" }
-
-  // JDK11
-  ${x52.tmpfs10g-c2} ${bench-profiling-awfy}           ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-awfy-11-linux-x52-c2" }
-  ${x52.tmpfs10g-c2} ${bench-profiling-dacapo}         ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-dacapo-11-linux-x52-c2" }
-  ${x52.tmpfs10g-c2} ${bench-profiling-scala-dacapo}   ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-scala-dacapo-11-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-specjvm2008-Single}      ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-specjvm2008-Single-11-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-specjbb2015}             ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-specjbb2015-11-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-renaissance}             ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-renaissance-11-linux-x52-c2" }
-  ${x52.c2} ${bench-profiling-renaissance-legacy}      ${labsjdk11} { targets: [bench, weekly], name: "bench-profiling-compiler-renaissance-legacy-11-linux-x52-c2" }
 ]

@@ -30,15 +30,16 @@ import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject.TypeMark;
 
 import static com.oracle.truffle.tools.chromeinspector.types.RemoteObject.getMetaObject;
 
 /**
  * Collects value type information.
  */
-final class TypeInfo {
+public final class TypeInfo {
 
-    enum TYPE {
+    public enum TYPE {
 
         OBJECT("object"),
         FUNCTION("function"),
@@ -59,8 +60,29 @@ final class TypeInfo {
         }
     }
 
-    final String type;
-    final String subtype;
+    public enum SUBTYPE {
+
+        ARRAY("array"),
+        NULL("null"),
+        DATE("date"),
+        MAP("map"),
+        SET("set"),
+        ITERATOR("iterator"),
+        INTERNAL_ENTRY("internal#entry");
+
+        private final String id;
+
+        SUBTYPE(String id) {
+            this.id = id;
+        }
+
+        String getId() {
+            return id;
+        }
+    }
+
+    final TYPE type;
+    final SUBTYPE subtype;
     final String className;
     final String descriptionType;
     final boolean isObject;
@@ -68,7 +90,7 @@ final class TypeInfo {
     final boolean isNull;
     final boolean isJS;
 
-    TypeInfo(String type, String subtype, String className, String descriptionType, boolean isObject, boolean isFunction, boolean isNull, boolean isJS) {
+    TypeInfo(TYPE type, SUBTYPE subtype, String className, String descriptionType, boolean isObject, boolean isFunction, boolean isNull, boolean isJS) {
         this.type = type;
         this.subtype = subtype;
         this.className = className;
@@ -79,11 +101,11 @@ final class TypeInfo {
         this.isJS = isJS;
     }
 
-    static TypeInfo fromValue(DebugValue debugValue, LanguageInfo originalLanguage, PrintWriter err) {
+    static TypeInfo fromValue(DebugValue debugValue, TypeMark typeMark, LanguageInfo originalLanguage, PrintWriter err) {
         DebugValue metaObject = getMetaObject(debugValue, originalLanguage, err);
         boolean isObject = isObject(debugValue, err);
-        String type = null;
-        String subtype = null;
+        TYPE type;
+        SUBTYPE subtype = null;
         String className = null;
         boolean isJS = LanguageChecks.isJS(originalLanguage);
         String descriptionType = null;
@@ -91,27 +113,42 @@ final class TypeInfo {
         if (metaObject != null) {
             metaType = RemoteObject.toMetaName(metaObject, err);
         }
-        type = getType(debugValue, metaType, isObject);
-        if (debugValue.isArray()) {
-            subtype = "array";
+        type = getType(debugValue, typeMark, metaType, isObject);
+        if (typeMark != null) {
+            switch (typeMark) {
+                case MAP_ENTRIES:
+                    subtype = SUBTYPE.ARRAY;
+                    break;
+                case MAP_ENTRY:
+                    subtype = SUBTYPE.INTERNAL_ENTRY;
+                    break;
+                default:
+                    throw new UnsupportedOperationException(typeMark.name());
+            }
+        } else if (debugValue.isArray()) {
+            subtype = SUBTYPE.ARRAY;
+        } else if (debugValue.hasHashEntries()) {
+            subtype = SUBTYPE.MAP;
+        } else if (debugValue.isIterator()) {
+            subtype = SUBTYPE.ITERATOR;
         }
         boolean isFunction = debugValue.canExecute();
         boolean isNull = false;
         if (isFunction) {
-            type = TYPE.FUNCTION.getId();
+            type = TYPE.FUNCTION;
             className = metaType;
-        } else if (isObject || TYPE.OBJECT.getId().equals(type)) {
+        } else if (isObject || TYPE.OBJECT.equals(type)) {
             className = metaType;
             isNull = debugValue.isNull();
             if (isNull) {
-                subtype = "null";
+                subtype = SUBTYPE.NULL;
                 className = null;
             } else if (debugValue.isDate()) {
-                subtype = "date";
+                subtype = SUBTYPE.DATE;
             }
         } else {
             className = null;
-            if (TYPE.OBJECT.getId().equals(type)) {
+            if (TYPE.OBJECT.equals(type)) {
                 descriptionType = metaType;
             }
         }
@@ -124,7 +161,7 @@ final class TypeInfo {
     static boolean isObject(DebugValue debugValue, PrintWriter err) {
         boolean isObject;
         try {
-            isObject = debugValue.getProperties() != null || debugValue.canExecute() || debugValue.isArray();
+            isObject = debugValue.getProperties() != null || debugValue.canExecute() || debugValue.isArray() || debugValue.hasHashEntries() || debugValue.isIterator();
         } catch (DebugException ex) {
             if (err != null && ex.isInternalError()) {
                 err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
@@ -138,21 +175,30 @@ final class TypeInfo {
     /**
      * The type must be one of {@link TYPE}.
      */
-    private static String getType(DebugValue value, String metaObject, boolean isObject) {
+    private static TYPE getType(DebugValue value, TypeMark typeMark, String metaObject, boolean isObject) {
+        if (typeMark != null) {
+            switch (typeMark) {
+                case MAP_ENTRIES:
+                case MAP_ENTRY:
+                    return TYPE.OBJECT;
+                default:
+                    throw new UnsupportedOperationException(typeMark.name());
+            }
+        }
         if (metaObject != null) {
             for (TYPE type : TYPE.values()) {
                 if (!TYPE.OBJECT.equals(type) && metaObject.equalsIgnoreCase(type.getId())) {
-                    return type.getId();
+                    return type;
                 }
             }
         }
         if (!isObject && value.isNumber()) {
-            return TYPE.NUMBER.getId();
+            return TYPE.NUMBER;
         }
         if (!isObject && value.isBoolean()) {
-            return TYPE.BOOLEAN.getId();
+            return TYPE.BOOLEAN;
         }
-        return TYPE.OBJECT.getId();
+        return TYPE.OBJECT;
     }
 
     static Number toNumber(DebugValue value) {

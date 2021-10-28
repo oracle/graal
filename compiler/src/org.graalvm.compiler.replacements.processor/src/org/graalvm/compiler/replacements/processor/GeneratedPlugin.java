@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.util.Set;
 import java.util.function.Function;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -215,6 +216,12 @@ public abstract class GeneratedPlugin {
         return true;
     }
 
+    protected boolean isWithExceptionReplacement(AbstractProcessor processor) {
+        Element nodeElement = intrinsicMethod.getEnclosingElement();
+        TypeMirror withExceptionNodeType = processor.getType("org.graalvm.compiler.nodes.WithExceptionNode");
+        return processor.env().getTypeUtils().isAssignable(nodeElement.asType(), withExceptionNodeType);
+    }
+
     protected static String getReturnKind(ExecutableElement method) {
         switch (method.getReturnType().getKind()) {
             case BOOLEAN:
@@ -304,7 +311,7 @@ public abstract class GeneratedPlugin {
         out.printf("        } else {\n");
         if (!isReplacement) {
             out.printf("            if (b.shouldDeferPlugin(this)) {\n");
-            out.printf("                b.replacePlugin(this, targetMethod, args, %s.FUNCTION);\n", getReplacementName());
+            out.printf("                b.replacePlugin%s(this, targetMethod, args, %s.FUNCTION);\n", getReplacementFunctionSuffix(processor), getReplacementName());
             out.printf("                return true;\n");
             out.printf("            }\n");
             out.printf("            assert b.canDeferPlugin(this) : b.getClass().toString() + \" \" + %s;\n", argFormatter.apply(nodeIdx));
@@ -313,5 +320,9 @@ public abstract class GeneratedPlugin {
 
         out.printf("        }\n");
         return argName;
+    }
+
+    protected String getReplacementFunctionSuffix(AbstractProcessor processor) {
+        return isWithExceptionReplacement(processor) ? "WithException" : "";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,27 +24,20 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
+import java.util.Iterator;
+
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Test;
 
-import java.util.Iterator;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
-    private TruffleRuntime runtime;
-
-    public TruffleBoundaryInliningTest() {
-        this.runtime = Truffle.getRuntime();
-    }
 
     private static RootNode createRootNodeAllowInline() {
         return new RootNode(null) {
@@ -78,11 +71,11 @@ public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
 
     private void runTest() {
         RootNode n1 = createRootNodeAllowInline();
-        RootCallTarget c1 = runtime.createCallTarget(n1);
-        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        RootCallTarget c1 = n1.getCallTarget();
+        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, getCompilationId(c1));
         RootNode n2 = createRootNodeNoInline();
-        RootCallTarget c2 = runtime.createCallTarget(n2);
-        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        RootCallTarget c2 = n2.getCallTarget();
+        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, getCompilationId(c2));
         checkHasTestMethod(allowInline);
         checkHasTestMethod(noInline);
     }

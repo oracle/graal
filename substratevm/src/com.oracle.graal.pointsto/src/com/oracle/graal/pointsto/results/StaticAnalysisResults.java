@@ -24,13 +24,13 @@
  */
 package com.oracle.graal.pointsto.results;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
+
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
-
-import org.graalvm.compiler.nodes.StructuredGraph;
 
 public class StaticAnalysisResults implements ProfilingInfo {
     public static final StaticAnalysisResults NO_RESULTS = new StaticAnalysisResults(0, null, null, null);
@@ -80,16 +80,12 @@ public class StaticAnalysisResults implements ProfilingInfo {
     private final BytecodeEntry first;
     private BytecodeEntry cache;
 
-    /** The IR graph size of the compiled method. */
-    private int graphSize;
-
     public StaticAnalysisResults(int codeSize, JavaTypeProfile[] parameterTypeProfiles, JavaTypeProfile resultTypeProfile, BytecodeEntry first) {
         this.codeSize = codeSize;
         this.parameterTypeProfiles = parameterTypeProfiles;
         this.resultTypeProfile = resultTypeProfile;
         this.first = first;
         this.cache = first;
-        this.graphSize = -1;
     }
 
     /**
@@ -196,29 +192,25 @@ public class StaticAnalysisResults implements ProfilingInfo {
 
     @Override
     public boolean setCompilerIRSize(Class<?> irType, int size) {
-        if (irType == StructuredGraph.class) {
-            graphSize = size;
-            return true;
-        }
-        return false;
+        throw AnalysisError.shouldNotReachHere("unreachable");
     }
 
     @Override
     public int getCompilerIRSize(Class<?> irType) {
-        if (irType == StructuredGraph.class) {
-            return graphSize;
-        }
-        return -1;
+        throw AnalysisError.shouldNotReachHere("unreachable");
     }
 
     @Override
     public boolean isMature() {
-        /* Static analysis results are definitely correct and do not change. */
-        return true;
+        /*
+         * Static analysis results are definitely correct and do not change, but do not provide
+         * mature branch probability information.
+         */
+        return false;
     }
 
     @Override
     public void setMature() {
-        /* Nothing to do, results are always mature. */
+        /* Nothing to do, results cannot change. */
     }
 }

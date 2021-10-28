@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,10 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
 public interface ReflectionRegistry {
-    void register(Class<?>... classes);
+    void register(ConfigurationCondition condition, Class<?>... classes);
 
-    void register(Executable... methods);
+    void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods);
 
-    void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields);
+    void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields);
 
 }

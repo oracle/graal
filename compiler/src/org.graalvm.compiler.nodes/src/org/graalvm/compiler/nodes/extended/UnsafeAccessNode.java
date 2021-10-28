@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,13 @@ import java.nio.ByteOrder;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
@@ -56,14 +57,14 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
     @Input ValueNode offset;
     protected final JavaKind accessKind;
     protected final LocationIdentity locationIdentity;
-    protected final boolean forceAnyLocation;
+    protected final boolean forceLocation;
 
     public abstract boolean isVolatile();
 
     protected UnsafeAccessNode(NodeClass<? extends UnsafeAccessNode> c, Stamp stamp, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity,
-                    boolean forceAnyLocation) {
+                    boolean forceLocation) {
         super(c, stamp);
-        this.forceAnyLocation = forceAnyLocation;
+        this.forceLocation = forceLocation;
         assert accessKind != null;
         assert locationIdentity != null;
         this.object = object;
@@ -76,8 +77,8 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return locationIdentity;
     }
 
-    public boolean isAnyLocationForced() {
-        return forceAnyLocation;
+    public boolean isLocationForced() {
+        return forceLocation;
     }
 
     public ValueNode object() {
@@ -94,7 +95,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isAnyLocationForced()) {
+        if (!isLocationForced()) {
             if (offset().isConstant()) {
                 long constantOffset = offset().asJavaConstant().asLong();
 
@@ -111,7 +112,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // this is never a valid access of an arbitrary address.
                     if ((field != null && field.getJavaKind() == this.accessKind() &&
                                     !field.isInternal() /* Ensure this is a true java field. */)) {
-                        assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                        assert graph().isBeforeStage(StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
                         return cloneAsFieldAccess(graph().getAssumptions(), field, isVolatile());
                     }
                 }
@@ -125,7 +126,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                      * outside of the body of the array. This seems to be benign.
                      */
                     LocationIdentity identity = NamedLocationIdentity.getArrayLocation(receiverType.getComponentType().getJavaKind());
-                    assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
+                    assert graph().isBeforeStage(StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
                     return cloneAsArrayAccess(offset(), identity, isVolatile());
                 }
             }

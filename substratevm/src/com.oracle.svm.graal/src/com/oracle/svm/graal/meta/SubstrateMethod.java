@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -98,14 +97,14 @@ public class SubstrateMethod implements SharedRuntimeMethod {
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);
-        neverInline = SubstrateUtil.NativeImageLoadingShield.isNeverInline(original);
+        neverInline = original.hasNeverInlineDirective();
 
         /*
          * AnalysisMethods of snippets are stored in a hash map of SubstrateReplacements. The
          * GraalObjectReplacer replaces them with SubstrateMethods. Therefore we have to preserve
          * the hashCode of the original AnalysisMethod. Note that this is only required because it
          * is a replaced object. For not replaced objects the hash code is preserved automatically
-         * in a synthetic hash-code field (see BootImageHeap.ObjectInfo.identityHashCode).
+         * in a synthetic hash-code field (see NativeImageHeap.ObjectInfo.identityHashCode).
          */
         hashCode = original.hashCode();
         implementations = new SubstrateMethod[0];
@@ -168,6 +167,11 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         this.vTableIndex = vTableIndex;
         this.codeOffsetInImage = codeOffsetInImage;
         this.deoptOffsetInImage = deoptOffsetInImage;
+    }
+
+    @Override
+    public boolean hasCodeOffsetInImage() {
+        return codeOffsetInImage != 0;
     }
 
     @Override

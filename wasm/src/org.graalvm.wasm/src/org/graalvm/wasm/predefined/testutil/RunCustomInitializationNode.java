@@ -75,7 +75,7 @@ public class RunCustomInitializationNode extends RootNode {
     @CompilerDirectives.TruffleBoundary
     private static void initializeModule(Object initialization) {
         if (initialization != null) {
-            WasmContext context = WasmContext.getCurrent();
+            WasmContext context = WasmContext.get(null);
             ((Consumer<WasmContext>) initialization).accept(context);
         }
     }

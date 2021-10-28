@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,13 @@ package com.oracle.truffle.object.dsl.processor;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -72,7 +76,7 @@ public class LayoutGenerator {
         stream.printf("package %s;%n", layout.getPackageName());
         stream.println();
 
-        generateImports(stream);
+        generateImports(stream, layout.getPackageName());
 
         stream.println();
         stream.println("@SuppressWarnings(\"deprecation\")");
@@ -118,7 +122,7 @@ public class LayoutGenerator {
         stream.println("}");
     }
 
-    private void generateImports(PrintStream stream) {
+    private void generateImports(PrintStream stream, String importingPackage) {
         boolean needsAtomicInteger = false;
         boolean needsAtomicBoolean = false;
         boolean needsAtomicReference = false;
@@ -126,6 +130,8 @@ public class LayoutGenerator {
         boolean needsFinalLocationException = false;
         boolean needsHiddenKey = false;
         boolean needsBoundary = false;
+
+        HashSet<String> imports = new HashSet<>();
 
         for (PropertyModel property : layout.getProperties()) {
             if (!property.isShapeProperty() && !property.hasIdentifier()) {
@@ -155,60 +161,76 @@ public class LayoutGenerator {
         }
 
         if (layout.hasFinalInstanceProperties() || layout.hasNonNullableInstanceProperties()) {
-            stream.println("import java.util.EnumSet;");
+            imports.add("java.util.EnumSet");
         }
 
         if (needsAtomicBoolean) {
-            stream.println("import java.util.concurrent.atomic.AtomicBoolean;");
+            imports.add("java.util.concurrent.atomic.AtomicBoolean");
         }
 
         if (needsAtomicInteger) {
-            stream.println("import java.util.concurrent.atomic.AtomicInteger;");
+            imports.add("java.util.concurrent.atomic.AtomicInteger");
         }
 
         if (needsAtomicReference) {
-            stream.println("import java.util.concurrent.atomic.AtomicReference;");
+            imports.add("java.util.concurrent.atomic.AtomicReference");
         }
 
         if (!layout.hasBuilder()) {
-            stream.println("import com.oracle.truffle.api.CompilerAsserts;");
+            imports.add("com.oracle.truffle.api.CompilerAsserts");
         }
-        stream.println("import com.oracle.truffle.api.dsl.GeneratedBy;");
+        imports.add("com.oracle.truffle.api.dsl.GeneratedBy");
 
         if (needsBoundary) {
-            stream.println("import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;");
+            imports.add("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary");
         }
 
-        stream.println("import com.oracle.truffle.api.object.DynamicObject;");
-        stream.println("import com.oracle.truffle.api.object.DynamicObjectFactory;");
+        imports.add("com.oracle.truffle.api.object.DynamicObject");
+        imports.add("com.oracle.truffle.api.object.DynamicObjectFactory");
 
         if (needsFinalLocationException) {
-            stream.println("import com.oracle.truffle.api.object.FinalLocationException;");
+            imports.add("com.oracle.truffle.api.object.FinalLocationException");
         }
 
         if (needsHiddenKey) {
-            stream.println("import com.oracle.truffle.api.object.HiddenKey;");
+            imports.add("com.oracle.truffle.api.object.HiddenKey");
         }
 
         if (needsIncompatibleLocationException) {
-            stream.println("import com.oracle.truffle.api.object.IncompatibleLocationException;");
+            imports.add("com.oracle.truffle.api.object.IncompatibleLocationException");
         }
 
         if (layout.hasFinalInstanceProperties() || layout.hasNonNullableInstanceProperties()) {
-            stream.println("import com.oracle.truffle.api.object.LocationModifier;");
+            imports.add("com.oracle.truffle.api.object.LocationModifier");
         }
 
-        stream.println("import com.oracle.truffle.api.object.ObjectType;");
+        imports.add("com.oracle.truffle.api.object.ObjectType");
 
         if (!layout.getInstanceProperties().isEmpty()) {
-            stream.println("import com.oracle.truffle.api.object.Property;");
+            imports.add("com.oracle.truffle.api.object.Property");
         }
 
-        stream.println("import com.oracle.truffle.api.object.Shape;");
-        stream.printf("import %s;%n", layout.getInterfaceFullName());
+        imports.add("com.oracle.truffle.api.object.Shape");
+        imports.add(layout.getInterfaceFullName());
 
         if (layout.getSuperLayout() != null) {
-            stream.printf("import %s.%sLayoutImpl;%n", layout.getSuperLayout().getPackageName(), layout.getSuperLayout().getName());
+            imports.add(String.format("%s.%sLayoutImpl", layout.getSuperLayout().getPackageName(), layout.getSuperLayout().getName()));
+        }
+
+        Pattern packageClassBoundary = Pattern.compile("\\.([A-Z])");
+        String[] importsArray = imports.toArray(new String[imports.size()]);
+        Arrays.sort(importsArray);
+        for (String i : importsArray) {
+            Matcher matcher = packageClassBoundary.matcher(i);
+            if (matcher.find()) {
+                String packageName = i.substring(0, matcher.start());
+                String className = i.substring(matcher.start() + 1);
+                if (packageName.equals(importingPackage) && className.indexOf('.') == -1) {
+                    // No need to import top level class in the same package
+                    continue;
+                }
+            }
+            stream.printf("import %s;%n", i);
         }
     }
 

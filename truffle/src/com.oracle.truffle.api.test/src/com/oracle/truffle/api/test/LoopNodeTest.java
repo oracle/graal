@@ -162,7 +162,7 @@ public class LoopNodeTest {
             }
         };
 
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
+        CallTarget target = root.getCallTarget();
         for (int i = 0; i < 1000; i++) {
             Assert.assertEquals(15, target.call());
         }

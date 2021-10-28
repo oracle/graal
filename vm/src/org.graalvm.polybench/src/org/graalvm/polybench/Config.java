@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,112 @@
  */
 package org.graalvm.polybench;
 
+import org.graalvm.polyglot.Value;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 class Config {
+
+    public static final String EVAL_SOURCE_ONLY_OPTION = "--eval-source-only";
+
     String path;
+    String className;
     int warmupIterations;
     int iterations;
     Mode mode;
     Metric metric;
-    List<String> unrecognizedArguments = new ArrayList<>();
+    boolean evalSourceOnlyDefault;
+
+    final List<String> unrecognizedArguments = new ArrayList<>();
+
+    private static final int UNINITIALIZED_ITERATIONS = -1;
+    private static final int DEFAULT_WARMUP = 20;
+    private static final int DEFAULT_ITERATIONS = 30;
+
+    /**
+     * Multi-context runs related configuration.
+     */
+    MultiEngineConfig multiEngine;
 
     Config() {
         this.path = null;
-        this.warmupIterations = 20;
-        this.iterations = 30;
+        this.className = null;
+        this.warmupIterations = UNINITIALIZED_ITERATIONS;
+        this.iterations = UNINITIALIZED_ITERATIONS;
         this.mode = Mode.standard;
         this.metric = new PeakTimeMetric();
     }
 
+    /**
+     * Polybench options that can be specified per run.
+     */
+    private static final Set<String> POLYBENCH_RUN_OPTIONS = new HashSet<>();
+    static {
+        POLYBENCH_RUN_OPTIONS.add(EVAL_SOURCE_ONLY_OPTION);
+    }
+
+    public MultiEngineConfig initMultiEngine() {
+        if (multiEngine == null) {
+            multiEngine = new MultiEngineConfig();
+        }
+        return multiEngine;
+    }
+
+    public void parseBenchSpecificDefaults(Value benchmark) {
+        if (warmupIterations == UNINITIALIZED_ITERATIONS) {
+            if (benchmark.hasMember("warmupIterations")) {
+                Value warmupIterationsMember = benchmark.getMember("warmupIterations");
+                warmupIterations = warmupIterationsMember.canExecute() ? warmupIterationsMember.execute().asInt() : warmupIterationsMember.asInt();
+            } else {
+                warmupIterations = DEFAULT_WARMUP;
+            }
+        }
+        if (iterations == UNINITIALIZED_ITERATIONS) {
+            if (benchmark.hasMember("iterations")) {
+                Value iterationsMember = benchmark.getMember("iterations");
+                iterations = iterationsMember.canExecute() ? iterationsMember.execute().asInt() : iterationsMember.asInt();
+            } else {
+                iterations = DEFAULT_ITERATIONS;
+            }
+        }
+    }
+
     @Override
     public String toString() {
-        return "execution-mode:    " + mode + "\n" +
+        String config = "execution-mode:    " + mode + "\n" +
                         "metric:            " + metric.name() + " (" + metric.unit() + ")" + "\n" +
-                        "warmup-iterations: " + warmupIterations + "\n" +
-                        "iterations:        " + iterations;
+                        "warmup-iterations: " + (warmupIterations == UNINITIALIZED_ITERATIONS ? "default" : warmupIterations) + "\n" +
+                        "iterations:        " + (iterations == UNINITIALIZED_ITERATIONS ? "default" : iterations + "\n");
+        if (multiEngine != null) {
+            config += "runs:              " + multiEngine.numberOfRuns + "\n" +
+                            "shared engine:     " + multiEngine.sharedEngine;
+        }
+        return config;
+    }
+
+    boolean isSingleEngine() {
+        return multiEngine == null;
+    }
+
+    String compilation() {
+        String compilationOptionValue;
+        switch (mode) {
+            case interpreter:
+                compilationOptionValue = "false";
+                break;
+            case standard:
+                compilationOptionValue = "true";
+                break;
+            default:
+                throw new AssertionError("Unknown execution-mode: " + mode);
+        }
+        return compilationOptionValue;
     }
 
     enum Mode {
@@ -63,6 +144,27 @@ class Config {
             }
             throw new IllegalArgumentException("Unknown execution-mode: " + name);
         }
+
+    }
+
+    static boolean isPolybenchRunOption(String optionName) {
+        return POLYBENCH_RUN_OPTIONS.contains(optionName);
+    }
+
+    boolean isEvalSourceOnly(int run) {
+        if (multiEngine == null) {
+            return evalSourceOnlyDefault;
+        }
+        String evalSourceOptionValue = multiEngine.polybenchRunOptionsMap.getOrDefault(run, Collections.emptyMap()).get(EVAL_SOURCE_ONLY_OPTION);
+        return evalSourceOptionValue == null ? evalSourceOnlyDefault : Boolean.parseBoolean(evalSourceOptionValue);
+    }
+
+    static final class MultiEngineConfig {
+        final Map<String, String> engineOptions = new HashMap<>();
+        final Map<Integer, Map<String, String>> polyglotRunOptionsMap = new HashMap<>();
+        final Map<Integer, Map<String, String>> polybenchRunOptionsMap = new HashMap<>();
+        int numberOfRuns = 1;
+        boolean sharedEngine;
 
     }
 

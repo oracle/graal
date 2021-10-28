@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ParameterNode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -53,7 +53,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new FormalParamTypeFlow(this, methodFlows);
     }
 
@@ -63,7 +63,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         /*
          * If the type flow constraints are relaxed filter the incoming value using the parameter's
          * declared type.
@@ -76,10 +76,10 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("FormalParamFlow").append("[").append(method.format("%H.%n")).append("]").append("[").append(position).append("]<").append(getState()).append(">");
-        return str.toString();
+    public String format(boolean withState, boolean withSource) {
+        return "Parameter " + position + " of " + method.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
 
 }

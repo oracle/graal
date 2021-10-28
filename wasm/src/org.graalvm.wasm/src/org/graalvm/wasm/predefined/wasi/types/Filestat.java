@@ -56,7 +56,7 @@ public final class Filestat {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 64;
+    public static final int BYTES = 64;
 
     /** Reads device id of device containing the file. */
     public static long readDev(Node node, WasmMemory memory, int address) {

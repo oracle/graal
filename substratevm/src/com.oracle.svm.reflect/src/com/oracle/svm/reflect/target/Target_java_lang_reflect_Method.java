@@ -26,8 +26,12 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
+
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -35,8 +39,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.AccessorComputer;
+import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -47,12 +52,35 @@ public final class Target_java_lang_reflect_Method {
 
     @Alias MethodRepository genericInfo;
 
+    @Alias private Class<?>[] parameterTypes;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private byte[] annotations;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private byte[] parameterAnnotations;
+
     @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
     Target_jdk_internal_reflect_MethodAccessor methodAccessor;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = DefaultValueComputer.class) //
     Object defaultValue;
+
+    @Alias
+    @TargetElement(name = CONSTRUCTOR_NAME)
+    @SuppressWarnings("hiding")
+    public native void constructor(Class<?> declaringClass,
+                    String name,
+                    Class<?>[] parameterTypes,
+                    Class<?> returnType,
+                    Class<?>[] checkedExceptions,
+                    int modifiers,
+                    int slot,
+                    String signature,
+                    byte[] annotations,
+                    byte[] parameterAnnotations,
+                    byte[] annotationDefault);
 
     @Alias
     native Target_java_lang_reflect_Method copy();
@@ -60,9 +88,19 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported.");
+            throw VMError.unsupportedFeature("Runtime reflection is not supported for " + this);
         }
         return methodAccessor;
+    }
+
+    @Substitute
+    public Annotation[][] getParameterAnnotations() {
+        Target_java_lang_reflect_Executable self = SubstrateUtil.cast(this, Target_java_lang_reflect_Executable.class);
+        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(self);
+        if (holder.parameterAnnotations != null) {
+            return holder.parameterAnnotations;
+        }
+        return self.sharedGetParameterAnnotations(parameterTypes, parameterAnnotations);
     }
 
     @Substitute

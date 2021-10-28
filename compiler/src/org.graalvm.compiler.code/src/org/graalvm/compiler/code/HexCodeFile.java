@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.code;
 
+import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.KEY2_OFFSET;
+import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.OFFSET;
+
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -37,8 +40,7 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
-
-import jdk.vm.ci.code.CodeUtil;
+import org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat;
 
 /**
  * A HexCodeFile is a textual format for representing a chunk of machine code along with extra
@@ -59,7 +61,9 @@ import jdk.vm.ci.code.CodeUtil;
  *
  *     OperandComment ::= "OperandComment" Position String
  *
- *     JumpTable ::= "JumpTable" Position EntrySize Low High
+ *     EntryFormat ::= 4 | 8 | "OFFSET" | "KEY2_OFFSET"
+ *
+ *     JumpTable ::= "JumpTable" Position EntryFormat Low High
  *
  *     LookupTable ::= "LookupTable" Position NPairs KeySize OffsetSize
  *
@@ -95,13 +99,13 @@ import jdk.vm.ci.code.CodeUtil;
  */
 public class HexCodeFile {
 
-    public static final String NEW_LINE = CodeUtil.NEW_LINE;
+    public static final String NEW_LINE = System.lineSeparator();
     public static final String SECTION_DELIM = " <||@";
     public static final String COLUMN_END = " <|@";
     public static final Pattern SECTION = Pattern.compile("(\\S+)\\s+(.*)", Pattern.DOTALL);
     public static final Pattern COMMENT = Pattern.compile("(\\d+)\\s+(.*)", Pattern.DOTALL);
     public static final Pattern OPERAND_COMMENT = COMMENT;
-    public static final Pattern JUMP_TABLE = Pattern.compile("(\\d+)\\s+(\\d+)\\s+(-{0,1}\\d+)\\s+(-{0,1}\\d+)\\s*");
+    public static final Pattern JUMP_TABLE = Pattern.compile("(\\d+)\\s+(\\S+)\\s+(-{0,1}\\d+)\\s+(-{0,1}\\d+)\\s*");
     public static final Pattern LOOKUP_TABLE = Pattern.compile("(\\d+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d+)\\s*");
     public static final Pattern HEX_CODE = Pattern.compile("(\\p{XDigit}+)(?:\\s+(\\p{XDigit}*))?");
     public static final Pattern PLATFORM = Pattern.compile("(\\S+)\\s+(\\S+)", Pattern.DOTALL);
@@ -173,7 +177,10 @@ public class HexCodeFile {
         ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
-            ps.printf("JumpTable %d %d %d %d %s%n", table.getPosition(), table.entrySize, table.low, table.high, SECTION_DELIM);
+            EntryFormat ef = table.entryFormat;
+            // Backwards compatibility support for old versions of C1Visualizer
+            String efString = ef == OFFSET || ef == KEY2_OFFSET ? String.valueOf(ef.size) : ef.name();
+            ps.printf("JumpTable %d %s %d %d %s%n", table.getPosition(), efString, table.low, table.high, SECTION_DELIM);
         }
 
         for (Map.Entry<Integer, List<String>> e : comments.entrySet()) {
@@ -433,13 +440,30 @@ public class HexCodeFile {
                 m = HexCodeFile.JUMP_TABLE.matcher(body);
                 check(m.matches(), bodyOffset, "JumpTable does not match pattern " + HexCodeFile.JUMP_TABLE);
                 int pos = parseInt(bodyOffset + m.start(1), m.group(1));
-                int entrySize = parseInt(bodyOffset + m.start(2), m.group(2));
+                JumpTable.EntryFormat entryFormat = parseJumpTableEntryFormat(m, bodyOffset);
                 int low = parseInt(bodyOffset + m.start(3), m.group(3));
                 int high = parseInt(bodyOffset + m.start(4), m.group(4));
-                hcf.jumpTables.add(new JumpTable(pos, low, high, entrySize));
+                hcf.jumpTables.add(new JumpTable(pos, low, high, entryFormat));
             } else {
                 error(offset, "Unknown section header: " + header);
             }
+        }
+
+        private JumpTable.EntryFormat parseJumpTableEntryFormat(Matcher m, int bodyOffset) throws Error {
+            String entryFormatName = m.group(2);
+            JumpTable.EntryFormat entryFormat;
+            if ("4".equals(entryFormatName)) {
+                entryFormat = EntryFormat.OFFSET;
+            } else if ("8".equals(entryFormatName)) {
+                entryFormat = EntryFormat.KEY2_OFFSET;
+            } else {
+                try {
+                    entryFormat = EntryFormat.valueOf(entryFormatName);
+                } catch (IllegalArgumentException e) {
+                    throw error(bodyOffset + m.start(2), "Not a valid " + EntryFormat.class.getSimpleName() + " value: " + entryFormatName);
+                }
+            }
+            return entryFormat;
         }
     }
 }

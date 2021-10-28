@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
@@ -35,18 +36,19 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.SharedConstantFieldProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
     private final AnalysisUniverse universe;
+    private final AnalysisMetaAccess metaAccess;
     private final AnalysisConstantReflectionProvider constantReflection;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider constantReflection,
+    public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
                     ClassInitializationSupport classInitializationSupport) {
         super(metaAccess, classInitializationSupport);
         this.universe = universe;
+        this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
     }
 
@@ -59,7 +61,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
         if (f.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
             if (readableField.allowConstantFolding()) {
-                JavaConstant fieldValue = readableField.readValue(universe.toHosted(analysisTool.getReceiver()));
+                JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
                     return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
                 }

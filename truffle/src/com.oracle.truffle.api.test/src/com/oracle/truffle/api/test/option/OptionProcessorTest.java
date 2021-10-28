@@ -86,6 +86,7 @@ public class OptionProcessorTest {
         descriptor1 = descriptor = descriptors.get("optiontestlang1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
+        assertEquals(String.format("Deprecation message%nwith newline"), descriptor.getDeprecationMessage());
         assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.USER, descriptor.getCategory());
         assertSame(OptionStability.EXPERIMENTAL, descriptor.getStability());
@@ -94,7 +95,7 @@ public class OptionProcessorTest {
 
         descriptor2 = descriptor = descriptors.get("optiontestlang1.StringOption2");
         assertNotNull(descriptor);
-        assertEquals("StringOption2 help", descriptor.getHelp());
+        assertEquals(String.format("StringOption2 help%nwith newline"), descriptor.getHelp());
         assertFalse(descriptor.isDeprecated());
         assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
@@ -166,6 +167,7 @@ public class OptionProcessorTest {
         descriptor1 = descriptor = descriptors.get("optiontestinstr1.StringOption1");
         assertNotNull(descriptor);
         assertTrue(descriptor.isDeprecated());
+        assertEquals(String.format("Deprecation message%nwith newline"), descriptor.getDeprecationMessage());
         assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.USER, descriptor.getCategory());
         assertEquals("StringOption1 help", descriptor.getHelp());
@@ -173,7 +175,7 @@ public class OptionProcessorTest {
 
         descriptor2 = descriptor = descriptors.get("optiontestinstr1.StringOption2");
         assertNotNull(descriptor);
-        assertEquals("StringOption2 help", descriptor.getHelp());
+        assertEquals(String.format("StringOption2 help%nwith newline"), descriptor.getHelp());
         assertFalse(descriptor.isDeprecated());
         assertFalse(descriptor.isOptionMap());
         assertSame(OptionCategory.EXPERT, descriptor.getCategory());
@@ -357,10 +359,10 @@ public class OptionProcessorTest {
     @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1")
     public static class OptionTestLang1 extends TruffleLanguage<Env> {
 
-        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER) //
+        @Option(help = "StringOption1 help", deprecated = true, deprecationMessage = "Deprecation message%nwith newline", category = OptionCategory.USER) //
         static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
 
-        @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+        @Option(help = "StringOption2 help%nwith newline", deprecated = false, category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
         public static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
 
         // The variable name differs from the option name on purpose, to test they can be different
@@ -386,8 +388,10 @@ public class OptionProcessorTest {
             return env;
         }
 
+        private static final ContextReference<Env> REFERENCE = ContextReference.create(OptionTestLang1.class);
+
         public static Env getCurrentContext() {
-            return getCurrentContext(OptionTestLang1.class);
+            return REFERENCE.get(null);
         }
 
     }
@@ -395,10 +399,10 @@ public class OptionProcessorTest {
     @TruffleInstrument.Registration(id = "optiontestinstr1", services = OptionValues.class)
     public static class OptionTestInstrument1 extends TruffleInstrument {
 
-        @Option(help = "StringOption1 help", deprecated = true, category = OptionCategory.USER, stability = OptionStability.STABLE) //
+        @Option(help = "StringOption1 help", deprecated = true, deprecationMessage = "Deprecation message%nwith newline", category = OptionCategory.USER, stability = OptionStability.STABLE) //
         public static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");
 
-        @Option(help = "StringOption2 help", deprecated = false, category = OptionCategory.EXPERT) //
+        @Option(help = "StringOption2 help%nwith newline", deprecated = false, category = OptionCategory.EXPERT) //
         public static final OptionKey<String> StringOption2 = new OptionKey<>("defaultValue");
 
         @Option(help = "Instrument user-defined thresholds", deprecated = false, category = OptionCategory.EXPERT) //

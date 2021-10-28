@@ -119,7 +119,7 @@ public final class PolyglotNativeAPI {
 
     private static ThreadLocal<CallbackException> exceptionsTL = new ThreadLocal<>();
     private static ThreadLocal<ErrorStateHolder> errorHolder = new ThreadLocal<>();
-    @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
+    @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "PolyglotNativeAPI.handles");
 
     @SuppressWarnings("unchecked")
     private static ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> getHandles() {

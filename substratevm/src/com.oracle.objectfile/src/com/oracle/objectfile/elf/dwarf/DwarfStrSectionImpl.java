@@ -52,7 +52,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
             if (stringEntry.isAddToStrSection()) {
                 stringEntry.setOffset(pos);
                 String string = stringEntry.getString();
-                pos += string.length() + 1;
+                pos += countUTF8Bytes(string) + 1;
             }
         }
         byte[] buffer = new byte[pos];
@@ -74,7 +74,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
             if (stringEntry.isAddToStrSection()) {
                 assert stringEntry.getOffset() == pos;
                 String string = stringEntry.getString();
-                pos = putAsciiStringBytes(string, buffer, pos);
+                pos = putUTF8StringBytes(string, buffer, pos);
                 verboseLog(context, " [0x%08x] string = %s", pos, string);
             }
         }

@@ -238,7 +238,7 @@ public final class Deoptimizer {
             /* A frame is deoptimized when the return address was patched to the deoptStub. */
             if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
                 /* The DeoptimizedFrame instance is stored above the return address. */
-                DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
+                DeoptimizedFrame result = (DeoptimizedFrame) sourceSp.readObject(0);
                 assert result != null;
                 return result;
             }
@@ -406,7 +406,6 @@ public final class Deoptimizer {
             }
         } else {
             if (installedCode == null) {
-                CodeInfoTable.getRuntimeCodeCache().logTable();
                 throw VMError.shouldNotReachHere(
                                 "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sourceSp.rawValue()) + ", returnAddress = " + Long.toHexString(returnAddress.rawValue()));
             }
@@ -482,7 +481,7 @@ public final class Deoptimizer {
         NoDeoptStub,
 
         /**
-         * Custom prologue: rescue all of the architecture's return registers into the
+         * Custom prologue: save all of the architecture's return registers into the
          * {@link DeoptimizedFrame}.
          */
         EntryStub,
@@ -490,7 +489,7 @@ public final class Deoptimizer {
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
          *
-         * Custom epilogue:restore all of the architecture's return registers from the
+         * Custom epilogue: restore all of the architecture's return registers from the
          * {@link DeoptimizedFrame}.
          */
         ExitStub
@@ -735,7 +734,7 @@ public final class Deoptimizer {
     private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult frameInfo) {
         StringBuilderLog log = new StringBuilderLog();
         PointerBase deoptimizedFrameAddress = deoptimizedFrame.getPin().addressOfObject();
-        log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").hex(deoptimizedFrameAddress).string(": ");
+        log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").zhex(deoptimizedFrameAddress).string(": ");
         printDeoptimizedFrame(log, sp, deoptimizedFrame, frameInfo, true);
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
     }
@@ -752,9 +751,9 @@ public final class Deoptimizer {
     };
 
     public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("== [Recent Deoptimizer Events: ").newline();
+        log.string("Recent deoptimization events:").indent(true);
         recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
-        log.string("]").newline();
+        log.indent(false);
     }
 
     /**
@@ -792,11 +791,13 @@ public final class Deoptimizer {
         int newEndOfParams = endOfParams;
         for (int idx = 0; idx < numValues; idx++) {
             ValueInfo targetValue = targetFrame.getValueInfos()[idx];
-            if (targetValue.getKind() == JavaKind.Illegal) {
+            if (targetValue.getKind() == JavaKind.Illegal || targetValue.getType() == FrameInfoQueryResult.ValueType.ReservedRegister) {
                 /*
-                 * The target value is optimized out, e.g. at a position after the lifetime of a
-                 * local variable. Actually we don't care what's the source value in this case, but
-                 * most likely it's also "illegal".
+                 * The target value is either optimized out, e.g. at a position after the lifetime
+                 * of a local variable, or is a reserved register. In either situation, we don't
+                 * care what the source value is. Optimized out values will not be restored, and for
+                 * reserved registers the value will be automatically correct when execution resumes
+                 * in the target frame.
                  */
             } else {
                 ValueInfo sourceValue = sourceFrame.getValueInfos()[idx];
@@ -862,13 +863,6 @@ public final class Deoptimizer {
                         DeoptimizationCounters.counters().constantValueCount.inc();
                         break;
 
-                    case ReservedRegister:
-                        /*
-                         * Nothing to do, the register will automatically be correct when execution
-                         * resumes in the target frame.
-                         */
-                        break;
-
                     default:
                         /*
                          * There must not be any other target value types because deoptimization
@@ -887,7 +881,7 @@ public final class Deoptimizer {
     }
 
     private void relockObject(JavaConstant valueConstant) {
-        Object lockedObject = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
+        Object lockedObject = SubstrateObjectConstant.asObject(valueConstant);
         Object lockData = MonitorSupport.singleton().prepareRelockObject(lockedObject);
 
         if (relockedObjects == null) {
@@ -957,7 +951,7 @@ public final class Deoptimizer {
         DeoptimizationCounters.counters().virtualObjectsCount.inc();
 
         ValueInfo[] encodings = sourceFrame.getVirtualObjects()[virtualObjectId];
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
 
         int curIdx;
@@ -1071,7 +1065,7 @@ public final class Deoptimizer {
         if (installedCode != null) {
             log.string("    name: ").string(installedCode.getName()).newline();
         }
-        log.string("    sp: ").hex(sp).string("  ip: ").hex(deoptimizedFrame.getSourcePC()).newline();
+        log.string("    sp: ").zhex(sp).string("  ip: ").zhex(deoptimizedFrame.getSourcePC()).newline();
 
         if (sourceFrameInfo != null) {
             log.string("    stack trace where execution continues:").newline();
@@ -1090,11 +1084,11 @@ public final class Deoptimizer {
                         log.string(deoptMethod.format("%H.%n(%p)"));
                     }
                 } else {
-                    log.string("method at ").hex(sourceFrame.getDeoptMethodAddress());
+                    log.string("method at ").zhex(sourceFrame.getDeoptMethodAddress());
                 }
                 log.string(" bci ");
                 FrameInfoDecoder.logReadableBci(log, sourceFrame.getEncodedBci());
-                log.string("  return address ").hex(targetFrame.returnAddress.returnAddress).newline();
+                log.string("  return address ").zhex(targetFrame.returnAddress.returnAddress).newline();
 
                 if (printOnlyTopFrames || Options.TraceDeoptimizationDetails.getValue()) {
                     printVirtualFrame(log, targetFrame);
@@ -1123,17 +1117,13 @@ public final class Deoptimizer {
         log.string("            bci: ");
         FrameInfoDecoder.logReadableBci(log, frameInfo.getEncodedBci());
         log.string("  deoptMethodOffset: ").signed(frameInfo.getDeoptMethodOffset());
-        log.string("  deoptMethod: ").hex(frameInfo.getDeoptMethodAddress());
-        log.string("  return address: ").hex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
+        log.string("  deoptMethod: ").zhex(frameInfo.getDeoptMethodAddress());
+        log.string("  return address: ").zhex(virtualFrame.returnAddress.returnAddress).string("  offset: ").signed(virtualFrame.returnAddress.offset);
 
         for (int i = 0; i < frameInfo.getValueInfos().length; i++) {
             JavaConstant con = virtualFrame.getConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 log.newline().string("            slot ").signed(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    log.string(" ").string(name);
-                }
                 log.string("  kind: ").string(con.getJavaKind().toString());
                 if (con.getJavaKind() == JavaKind.Object) {
                     Object val = SubstrateObjectConstant.asObject(con);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -250,7 +251,7 @@ public interface JDWPContext {
 
     /**
      * Verifies that the array has the expected length.
-     * 
+     *
      * @param array guest language array object
      * @param length expected length of the array
      * @return true if array is equal to or bigger in size than the expected length
@@ -442,15 +443,6 @@ public interface JDWPContext {
     MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames);
 
     /**
-     * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
-     * no current contended monitor for this thread.
-     *
-     * @param guestThread the guest thread
-     * @return the current contended monitor
-     */
-    Object getCurrentContendedMonitor(Object guestThread);
-
-    /**
      * Returns the language class associated with the implementing class of this interface.
      *
      * @return the Truffle language class
@@ -465,13 +457,61 @@ public interface JDWPContext {
      * @param redefineInfos the information about the original class and the new class bytes
      * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
      */
-    int redefineClasses(RedefineInfo[] redefineInfos);
+    int redefineClasses(List<RedefineInfo> redefineInfos);
 
     /**
      * Exit all monitors that was entered by the frame.
-     * 
+     *
      * @param frame
      */
     void clearFrameMonitors(CallFrame frame);
+
+    /**
+     * Aborts the context.
+     *
+     * @param exitCode the system exit code
+     */
+    void abort(int exitCode);
+
+    /**
+     * Determines if the current thread is a VM internal thread.
+     *
+     * @return true if current thread is a VM internal thread
+     */
+    boolean isSystemThread();
+
+    /**
+     * Returns the current BCI of the node.
+     *
+     * @param rawNode the current node
+     * @param frame the current frame
+     * @return the current bci
+     */
+    long getBCI(Node rawNode, Frame frame);
+
+    /**
+     * Returns the instrumentable delegate node for the language root node or <code>rootNode</code>
+     * if no instrumentable node can be found.
+     *
+     * @param rootNode the root node
+     * @return the instrumentable delegate node
+     */
+    Node getInstrumentableNode(RootNode rootNode);
+
+    /**
+     * Tests if the guest object is a member of the klass.
+     *
+     * @param guestObject the guest object
+     * @param klass the class
+     * @return true is guest object is a member of the klass
+     */
+    boolean isMemberOf(Object guestObject, KlassRef klass);
+
+    /**
+     * Returns all defined modules.
+     *
+     * @return all modules
+     */
+    ModuleRef[] getAllModulesRefs();
 
 }

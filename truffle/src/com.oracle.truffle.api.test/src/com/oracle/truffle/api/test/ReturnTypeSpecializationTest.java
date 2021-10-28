@@ -43,9 +43,6 @@ package com.oracle.truffle.api.test;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -72,13 +69,11 @@ public class ReturnTypeSpecializationTest {
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new IntAssignLocal(slot, new StringTestChildNode()), new IntReadLocal(slot));
-        CallTarget target = runtime.createCallTarget(rootNode);
         Assert.assertEquals(FrameSlotKind.Int, frameDescriptor.getFrameSlotKind(slot));
-        Object result = target.call();
+        Object result = rootNode.getCallTarget().call();
         Assert.assertEquals("42", result);
         Assert.assertEquals(FrameSlotKind.Object, frameDescriptor.getFrameSlotKind(slot));
     }

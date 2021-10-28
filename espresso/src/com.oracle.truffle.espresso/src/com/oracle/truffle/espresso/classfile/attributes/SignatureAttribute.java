@@ -30,11 +30,11 @@ public final class SignatureAttribute extends Attribute {
 
     public static final Symbol<Name> NAME = Name.Signature;
 
-    private final int signatureIndex;
+    private final char signatureIndex;
 
     public SignatureAttribute(Symbol<Name> name, int signatureIndex) {
         super(name, null);
-        this.signatureIndex = signatureIndex;
+        this.signatureIndex = (char) signatureIndex;
     }
 
     public int getSignatureIndex() {

@@ -126,6 +126,10 @@ public final class GuardExpression extends MessageContainer {
             public DSLExpression visitVariable(Variable binary) {
                 // on the slow path we can assume all cache expressions inlined.
                 for (CacheExpression cache : source.getCaches()) {
+                    if (cache.getSharedGroup() != null) {
+                        // with sharing we cannot inline cache expressions.
+                        continue;
+                    }
                     if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), binary.getResolvedVariable())) {
                         return uncached ? cache.getUncachedExpression() : cache.getDefaultExpression();
                     }

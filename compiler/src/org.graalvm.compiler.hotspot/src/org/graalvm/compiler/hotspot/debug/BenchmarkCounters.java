@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.debug;
 
-import java.io.File;
+import static org.graalvm.compiler.debug.PathUtilities.getAbsolutePath;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -42,6 +43,7 @@ import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.CSVUtil;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
@@ -505,9 +507,9 @@ public class BenchmarkCounters {
             PrintStream ps = TTY.out;
             if (Options.BenchmarkCountersFile.getValue(options) != null) {
                 try {
-                    File file = new File(Options.BenchmarkCountersFile.getValue(options));
-                    TTY.println("Writing benchmark counters to '%s'", file.getAbsolutePath());
-                    ps = new PrintStream(file);
+                    String file = getAbsolutePath(Options.BenchmarkCountersFile.getValue(options));
+                    TTY.println("Writing benchmark counters to '%s'", file);
+                    ps = new PrintStream(PathUtilities.openOutputStream(file));
                 } catch (IOException e) {
                     TTY.out().println(e.getMessage());
                     TTY.out().println("Fallback to default");

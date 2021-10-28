@@ -74,7 +74,7 @@ public class CEntryPointFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        CEntryPointSnippets.registerForeignCalls(providers, foreignCalls);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        CEntryPointSnippets.registerForeignCalls(foreignCalls);
     }
 }

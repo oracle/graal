@@ -41,6 +41,7 @@ typedef struct {
   char fLZCNT;
   char fTSC;
   char fTSCINV;
+  char fTSCINVBIT;
   char fAVX;
   char fAVX2;
   char fAES;
@@ -59,4 +60,15 @@ typedef struct {
   char fAVX512VL;
   char fSHA;
   char fFMA;
+  char fVZEROUPPER;
+  char fAVX512VPOPCNTDQ;
+  char fAVX512VPCLMULQDQ;
+  char fAVX512VAES;
+  char fAVX512VNNI;
+  char fFLUSH;
+  char fFLUSHOPT;
+  char fCLWB;
+  char fAVX512VBMI2;
+  char fAVX512VBMI;
+  char fHV;
 } CPUFeatures;

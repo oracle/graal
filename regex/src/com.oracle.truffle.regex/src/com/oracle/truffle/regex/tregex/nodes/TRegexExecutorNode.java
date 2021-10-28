@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -62,8 +62,12 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getEncoding();
     }
 
-    public ConditionProfile getInputProfile() {
-        return root.getInputProfile();
+    public BranchProfile getBMPProfile() {
+        return root.getBMPProfile();
+    }
+
+    public BranchProfile getAstralProfile() {
+        return root.getAstralProfile();
     }
 
     /**
@@ -178,7 +182,7 @@ public abstract class TRegexExecutorNode extends Node {
                 return codepoint | (c & (0xff >>> nBytes)) << (6 * (nBytes - 1));
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.ASCII;
             locals.setNextIndex(inputIncRaw(index));
             return inputReadRaw(locals);
         }
@@ -243,9 +247,10 @@ public abstract class TRegexExecutorNode extends Node {
         } else if (getEncoding() == Encodings.UTF_8) {
             if (forward) {
                 int c = inputReadRaw(locals, true);
-                if (getInputProfile().profile(c < 128)) {
+                if (c < 128) {
                     inputIncRaw(locals, true);
                 } else {
+                    getBMPProfile().enter();
                     inputIncRaw(locals, inputUTF8NumberOfLeadingOnes(c), true);
                 }
             } else {
@@ -256,7 +261,7 @@ public abstract class TRegexExecutorNode extends Node {
                 } while (inputHasNext(locals, false) && inputUTF8IsTrailingByte(c));
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.ASCII;
             inputIncRaw(locals, forward);
         }
     }

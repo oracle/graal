@@ -24,29 +24,29 @@
  */
 package com.oracle.svm.core.handles;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ObjectHandlesSupport;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
-@AutomaticFeature
-class ObjectHandlesFeature implements Feature {
-    static class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
-        final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl();
+class ObjectHandlesSupportImpl implements ObjectHandlesSupport {
+    final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl();
 
-        @Override
-        public ObjectHandles getGlobalHandles() {
-            return globalHandles;
-        }
-
-        @Override
-        public ObjectHandles createHandles() {
-            return new ObjectHandlesImpl();
-        }
+    @Override
+    public ObjectHandles getGlobalHandles() {
+        return globalHandles;
     }
 
+    @Override
+    public ObjectHandles createHandles() {
+        return new ObjectHandlesImpl();
+    }
+}
+
+@AutomaticFeature
+class ObjectHandlesFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(ObjectHandlesSupport.class, new ObjectHandlesSupportImpl());

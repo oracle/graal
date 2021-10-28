@@ -26,7 +26,10 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -59,20 +62,42 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
             }
         };
         final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
-                        new TruffleInlining(),
-                        compilationIdentifier, getSpeculationLog(), null);
+                        compilationIdentifier, getSpeculationLog(),
+                        new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                            private TruffleInliningData inlining = new TruffleInlining();
+
+                            @Override
+                            public boolean isCancelled() {
+                                return false;
+                            }
+
+                            @Override
+                            public boolean isLastTier() {
+                                return true;
+                            }
+
+                            @Override
+                            public TruffleInliningData inliningData() {
+                                return inlining;
+                            }
+
+                            @Override
+                            public boolean hasNextTier() {
+                                return false;
+                            }
+                        }));
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
         agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
         return request.graph;
     }
 
-    protected final OptimizedCallTarget createDummyNode() {
-        return (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+    protected static final OptimizedCallTarget createDummyNode() {
+        return (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
+        }.getCallTarget();
     }
 
     protected class CallsInnerNodeTwice extends RootNode {

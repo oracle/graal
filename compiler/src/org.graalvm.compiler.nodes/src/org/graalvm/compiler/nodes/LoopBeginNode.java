@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -52,16 +52,17 @@ import jdk.vm.ci.meta.SpeculationLog;
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
-    protected double loopFrequency;
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
     protected int splits;
     protected int peelings;
-    protected int inversionCount;
+    protected boolean compilerInverted;
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    protected boolean stripMinedOuter;
+    protected boolean stripMinedInner;
     /**
      * Flag to indicate that this loop must not be detected as a counted loop.
      */
@@ -79,8 +80,53 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         POST_LOOP
     }
 
+    /**
+     * A {@link GuardingNode} protecting an unsigned inverted counted loop. {@link IntegerStamp}
+     * does not record information about the sign of a stamp, i.e., it cannot represent
+     * {@link IntegerStamp#upMask()}} and {@link IntegerStamp#downMask()} in relation with unsigned
+     * stamps. Thus, if we have such a guard we set it explicitly to a loop.
+     *
+     * An example for such a loop would be
+     *
+     * <pre>
+     * public static long foo(int start) {
+     *     if (Integer.compareUnsigned(start, 2) < 0) {
+     *         deoptimize();
+     *     }
+     *     int i = start;
+     *     do {
+     *         // body
+     *         i = i - 2;
+     *     } while (Integer.compareUnsigned(i, 2) >= 0);
+     *     return res;
+     * }
+     * </pre>
+     *
+     * Counted loop detection must ensure that start is |>| 1 else the loop would underflow unsigned
+     * integer range immediately. The unsigned comparison with a deopt dominating the loop ensures
+     * that start is always an unsigned integer in the range of [2,UnsignedIntMax], however this can
+     * currently not be expressed with regular {@link IntegerStamp}.
+     */
+    @OptionalInput(InputType.Guard) protected GuardingNode protectedNonOverflowingUnsigned;
+
+    public GuardingNode getUnsignedRangeGuard() {
+        return protectedNonOverflowingUnsigned;
+    }
+
+    public void setUnsignedRangeGuard(GuardingNode guard) {
+        updateUsagesInterface(this.protectedNonOverflowingUnsigned, guard);
+        this.protectedNonOverflowingUnsigned = guard;
+    }
+
+    public boolean isProtectedNonOverflowingUnsigned() {
+        return protectedNonOverflowingUnsigned != null;
+    }
+
     /** See {@link LoopEndNode#canSafepoint} for more information. */
     boolean canEndsSafepoint;
+
+    /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
+    boolean canEndsGuestSafepoint;
 
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
@@ -91,11 +137,11 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public LoopBeginNode() {
         super(TYPE);
-        loopFrequency = 1;
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
         this.canEndsSafepoint = true;
+        this.canEndsGuestSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
     }
@@ -111,6 +157,26 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             }
         }
         disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public boolean canEndsSafepoint() {
+        return canEndsSafepoint;
+    }
+
+    public void setStripMinedInner(boolean stripMinedInner) {
+        this.stripMinedInner = stripMinedInner;
+    }
+
+    public void setStripMinedOuter(boolean stripMinedOuter) {
+        this.stripMinedOuter = stripMinedOuter;
+    }
+
+    public boolean isStripMinedInner() {
+        return stripMinedInner;
+    }
+
+    public boolean isStripMinedOuter() {
+        return stripMinedOuter;
     }
 
     public boolean canNeverOverflow() {
@@ -175,6 +241,15 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         }
     }
 
+    public void disableGuestSafepoint() {
+        /* Store flag locally in case new loop ends are created later on. */
+        this.canEndsGuestSafepoint = false;
+        /* Propagate flag to all existing loop ends. */
+        for (LoopEndNode loopEnd : loopEnds()) {
+            loopEnd.disableGuestSafepoint();
+        }
+    }
+
     public double loopOrigFrequency() {
         return loopOrigFrequency;
     }
@@ -182,15 +257,6 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public void setLoopOrigFrequency(double loopOrigFrequency) {
         assert loopOrigFrequency >= 0;
         this.loopOrigFrequency = loopOrigFrequency;
-    }
-
-    public double loopFrequency() {
-        return loopFrequency;
-    }
-
-    public void setLoopFrequency(double loopFrequency) {
-        assert loopFrequency >= 1.0;
-        this.loopFrequency = loopFrequency;
     }
 
     /**
@@ -343,12 +409,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unswitches++;
     }
 
-    public int getInversionCount() {
-        return inversionCount;
+    public boolean isCompilerInverted() {
+        return compilerInverted;
     }
 
-    public void setInversionCount(int count) {
-        inversionCount = count;
+    public void setCompilerInverted() {
+        assert !compilerInverted;
+        compilerInverted = true;
     }
 
     @Override

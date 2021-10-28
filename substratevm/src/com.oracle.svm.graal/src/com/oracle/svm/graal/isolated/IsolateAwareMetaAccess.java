@@ -28,14 +28,13 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /** Code for {@link SubstrateMetaAccess} that is specific to compilation in isolates. */
-final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
+public final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
     @Override
     public JavaConstant encodeSpeculation(SpeculationLog.Speculation speculation) {
         if (!SubstrateOptions.shouldCompileInIsolates()) {
@@ -56,7 +55,7 @@ final class IsolateAwareMetaAccess extends SubstrateMetaAccess {
         }
 
         if (constant instanceof DirectSubstrateObjectConstant) {
-            SpeculationLog.Speculation speculation = (SpeculationLog.Speculation) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class);
+            SpeculationLog.Speculation speculation = (SpeculationLog.Speculation) SubstrateObjectConstant.asObject(constant);
             assert speculation == SpeculationLog.NO_SPECULATION;
             return speculation;
         }

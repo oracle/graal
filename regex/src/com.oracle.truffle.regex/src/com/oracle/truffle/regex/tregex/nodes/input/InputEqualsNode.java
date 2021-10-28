@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Arrays;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class InputEqualsNode extends Node {
@@ -76,35 +75,35 @@ public abstract class InputEqualsNode extends Node {
         return input.length() == string.length() && ArrayUtils.regionEqualsWithOrMask(input, 0, string, 0, mask.length(), mask);
     }
 
-    @Specialization(guards = "mask == null")
-    public boolean doTruffleObjBytes(TruffleObject input, byte[] string, @SuppressWarnings("unused") Object mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
+    public boolean doTruffleObjBytes(Object input, byte[] string, @SuppressWarnings("unused") Object mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, null, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask != null")
-    public boolean doTruffleObjBytesMask(TruffleObject input, byte[] string, byte[] mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
+    public boolean doTruffleObjBytesMask(Object input, byte[] string, byte[] mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, mask, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask == null")
-    public boolean doTruffleObjString(TruffleObject input, String string, @SuppressWarnings("unused") Object mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
+    public boolean doTruffleObjString(Object input, String string, @SuppressWarnings("unused") Object mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, null, lengthNode, charAtNode);
     }
 
-    @Specialization(guards = "mask != null")
-    public boolean doTruffleObjStringMask(TruffleObject input, String string, String mask,
+    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
+    public boolean doTruffleObjStringMask(Object input, String string, String mask,
                     @Cached InputLengthNode lengthNode,
                     @Cached InputReadNode charAtNode) {
         return equalsTruffleObj(input, string, mask, lengthNode, charAtNode);
     }
 
-    private static boolean equalsTruffleObj(TruffleObject input, String string, String mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
+    private static boolean equalsTruffleObj(Object input, String string, String mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
         if (lengthNode.execute(input) != string.length()) {
             return false;
         }
@@ -116,7 +115,7 @@ public abstract class InputEqualsNode extends Node {
         return true;
     }
 
-    private static boolean equalsTruffleObj(TruffleObject input, byte[] string, byte[] mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
+    private static boolean equalsTruffleObj(Object input, byte[] string, byte[] mask, InputLengthNode lengthNode, InputReadNode charAtNode) {
         if (lengthNode.execute(input) != string.length) {
             return false;
         }
@@ -126,5 +125,9 @@ public abstract class InputEqualsNode extends Node {
             }
         }
         return true;
+    }
+
+    protected static boolean neitherByteArrayNorString(Object obj) {
+        return !(obj instanceof byte[]) && !(obj instanceof String);
     }
 }

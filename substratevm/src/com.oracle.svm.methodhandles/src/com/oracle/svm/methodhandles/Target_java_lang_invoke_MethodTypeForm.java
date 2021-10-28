@@ -27,15 +27,12 @@ package com.oracle.svm.methodhandles;
 // Checkstyle: stop
 
 import java.lang.ref.SoftReference;
-import java.lang.reflect.Array;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.NewEmptyArrayTransformer;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 // Checkstyle: resume
 
@@ -51,16 +48,4 @@ final class Target_java_lang_invoke_MethodTypeForm {
     private SoftReference<?>[] methodHandles;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) //
     private SoftReference<?>[] lambdaForms;
-}
-
-class NewEmptyArrayTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
-    @Override
-    public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-        if (originalValue == null) {
-            return null;
-        } else {
-            int originalLength = Array.getLength(originalValue);
-            return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
-        }
-    }
 }

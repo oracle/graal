@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -53,6 +54,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -65,23 +72,50 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
+    @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("serial")
-    private static class TestGuestError extends AbstractTruffleException {
+    static class TestGuestError extends AbstractTruffleException {
+
+        String exceptionMessage;
 
         TestGuestError() {
             super("MyError");
+        }
+
+        @ExportMessage
+        boolean hasExceptionMessage() {
+            return exceptionMessage != null;
+        }
+
+        @ExportMessage
+        Object getExceptionMessage() throws UnsupportedMessageException {
+            if (exceptionMessage != null) {
+                return exceptionMessage;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
         }
     }
 
@@ -319,7 +353,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -340,7 +374,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         return "testRootName";
                     }
 
-                });
+                }.getCallTarget();
             }
         });
 
@@ -369,7 +403,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         setupEnv(Context.create(), new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Override
                     @TruffleBoundary
@@ -382,7 +416,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         return "testRootName";
                     }
 
-                });
+                }.getCallTarget();
             }
         });
         assertFails(() -> context.eval(ProxyLanguage.ID, "test"), PolyglotException.class, (e) -> {
@@ -391,6 +425,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             assertTrue(e.isGuestException());
             assertFalse(e.isHostException());
             assertFalse(e.isCancelled());
+            assertEquals(e.getMessage(), "Resource exhausted: Stack overflow");
             Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
             boolean foundFrame = false;
             while (iterator.hasNext()) {
@@ -429,6 +464,47 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         });
     }
 
+    @Test
+    public void testCancelExceptionNoResourceLimit() {
+        enterContext = false;
+        setupEnv(Context.newBuilder().build());
+        context.close(true);
+        assertFails(() -> context.eval(ProxyLanguage.ID, ""), PolyglotException.class, (e) -> {
+            assertFalse(e.isResourceExhausted());
+            assertFalse(e.isInternalError());
+            assertTrue(e.isGuestException());
+            assertFalse(e.isHostException());
+            assertTrue(e.isCancelled());
+        });
+    }
+
+    @Test
+    public void testHostException() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                Source source = request.getSource();
+                SizeNode callHost = PolyglotExceptionTestFactory.SizeNodeGen.create(
+                                PolyglotExceptionTestFactory.ReadBindingsNodeGen.create());
+                return new CallHostRootNode(languageInstance, source, callHost).getCallTarget();
+            }
+        });
+        context.getPolyglotBindings().putMember("receiver", new BrokenList<>());
+        assertFails(() -> context.eval(ProxyLanguage.ID, ""), PolyglotException.class, (pe) -> {
+            assertTrue(pe.isHostException());
+            StackTraceElement prev = null;
+            for (StackTraceElement element : pe.getStackTrace()) {
+                if ("<proxyLanguage>".equals(element.getClassName())) {
+                    break;
+                }
+                prev = element;
+            }
+            assertNotNull("No host frame found.", prev);
+            assertEquals(BrokenList.class.getName(), prev.getClassName());
+            assertEquals("size", prev.getMethodName());
+        });
+    }
+
     static class ThrowStackOverflow implements Runnable {
 
         public void run() {
@@ -454,4 +530,166 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         });
     }
 
+    @Test
+    public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
+        enterContext = false;
+        CountDownLatch waitingStarted = new CountDownLatch(1);
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return new RootNode(ProxyLanguage.get(null)) {
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        waitForever();
+                        return 42;
+                    }
+
+                    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+                    @TruffleBoundary
+                    private void waitForever() {
+                        final Object waitObject = new Object();
+                        waitingStarted.countDown();
+                        synchronized (waitObject) {
+                            try {
+                                waitObject.wait();
+                            } catch (InterruptedException ie) {
+                                /*
+                                 * This is the internal error.
+                                 */
+                                Assert.fail();
+                            }
+                        }
+                    }
+
+                    @Override
+                    public String getName() {
+                        return "testRootName";
+                    }
+
+                }.getCallTarget();
+            }
+        });
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<?> future = executorService.submit(() -> {
+            assertFails(() -> context.eval(ProxyLanguage.ID, "test"), PolyglotException.class, (e) -> {
+                assertTrue(e.isInternalError());
+                assertTrue(e.isGuestException());
+                assertFalse(e.isHostException());
+                assertFalse(e.isCancelled());
+                Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
+                boolean foundGuestFrame = false;
+                boolean foundHostFrame = false;
+                while (iterator.hasNext()) {
+                    StackFrame frame = iterator.next();
+                    if (frame.isGuestFrame()) {
+                        foundGuestFrame = true;
+                        assertTrue(frame.isGuestFrame());
+                        assertEquals("testRootName", frame.getRootName());
+                    } else {
+                        if ("waitForever".equals(frame.toHostFrame().getMethodName())) {
+                            foundHostFrame = true;
+                        }
+                    }
+                }
+                assertTrue(foundGuestFrame);
+                assertTrue(foundHostFrame);
+            });
+        });
+        waitingStarted.await();
+        context.close(true);
+        future.get();
+        executorService.shutdownNow();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testExceptionMessage() {
+        try (Context ctx = Context.create()) {
+            TestGuestError guestError = new TestGuestError();
+            guestError.exceptionMessage = "interop exception message";
+            CauseErrorTruffleObject causeError = new CauseErrorTruffleObject();
+            causeError.thrownError = guestError;
+            Value throwError = ctx.asValue(causeError);
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("interop exception message", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+
+            guestError.exceptionMessage = null;
+            try {
+                throwError.execute();
+                Assert.fail();
+            } catch (PolyglotException e) {
+                Assert.assertEquals("MyError", e.getMessage());
+                Assert.assertTrue(e.isGuestException());
+            }
+        }
+    }
+
+    abstract static class BaseNode extends Node {
+        abstract Object execute(VirtualFrame frame);
+    }
+
+    abstract static class ReadBindingsNode extends BaseNode {
+
+        @Specialization
+        Object doGeneric(@CachedLibrary(limit = "1") InteropLibrary interop) {
+            try {
+                Object bindings = LanguageContext.get(this).getEnv().getPolyglotBindings();
+                return interop.readMember(bindings, "receiver");
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+
+    @NodeChild("receiver")
+    abstract static class SizeNode extends BaseNode {
+
+        @Specialization(limit = "1")
+        Object doGeneric(Object arg, @CachedLibrary(value = "arg") InteropLibrary interop) {
+            try {
+                return interop.getArraySize(arg);
+            } catch (UnsupportedMessageException unsupportedMessageException) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+
+    private static final class CallHostRootNode extends RootNode {
+
+        @Child BaseNode body;
+        Source source;
+
+        CallHostRootNode(TruffleLanguage<?> language, Source source, BaseNode body) {
+            super(language);
+            this.source = source;
+            this.body = body;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return body.execute(frame);
+        }
+
+        @Override
+        @TruffleBoundary
+        public SourceSection getSourceSection() {
+            return source.createSection(1);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class BrokenList<T> extends ArrayList<T> {
+
+        @Override
+        public int size() {
+            throw new NullPointerException();
+        }
+    }
 }

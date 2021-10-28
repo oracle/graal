@@ -25,8 +25,6 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -61,7 +59,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -79,7 +76,7 @@ import com.oracle.svm.core.code.IsolateEnterStub;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -90,21 +87,14 @@ import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.SpeculationLog;
 
-public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, GraphProvider {
+public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
 
     static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess metaAccess) {
         ResolvedJavaMethod unwrappedMethod = targetMethod.getWrapped();
@@ -114,52 +104,20 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return new CEntryPointCallStubMethod(entryPointData, unwrappedMethod, declaringClass, constantPool);
     }
 
-    /**
-     * Line numbers are bogus because this is generated code, but we need to include them in our
-     * debug information. Otherwise, when setting a breakpoint, GDB will just pick a "nearby" code
-     * location that has line number information, which can be in a different function.
-     */
-    private static final LineNumberTable lineNumberTable = new LineNumberTable(new int[]{1}, new int[]{0});
-
     private static final JavaKind cEnumParameterKind = JavaKind.Int;
 
     private final CEntryPointData entryPointData;
     private final ResolvedJavaMethod targetMethod;
-    private final ResolvedJavaType holderClass;
-    private final ConstantPool holderConstantPool;
-
-    private StackTraceElement stackTraceElement;
 
     private CEntryPointCallStubMethod(CEntryPointData entryPointData, ResolvedJavaMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool) {
+        super(SubstrateUtil.uniqueShortName(targetMethod), holderClass, targetMethod.getSignature(), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod;
-        this.holderClass = holderClass;
-        this.holderConstantPool = holderConstantPool;
-    }
-
-    @Override
-    public String getName() {
-        return SubstrateUtil.uniqueShortName(targetMethod);
-    }
-
-    @Override
-    public Signature getSignature() {
-        return targetMethod.getSignature();
     }
 
     @Override
     public Parameter[] getParameters() {
         return targetMethod.getParameters();
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return holderClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return holderConstantPool;
     }
 
     private ResolvedJavaMethod lookupMethodInUniverse(UniverseMetaAccess metaAccess, ResolvedJavaMethod method) {
@@ -181,11 +139,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             unwrappedTargetMethod = ((WrappedJavaMethod) unwrappedTargetMethod).getWrapped();
         }
         return lookupMethodInUniverse(metaAccess, unwrappedTargetMethod);
-    }
-
-    @Override
-    public boolean allowRuntimeCompilation() {
-        return false;
     }
 
     @Override
@@ -505,13 +458,13 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.appendStateSplitProxy(exception.stateAfter());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
             ResolvedJavaType handler = providers.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
             ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
-                            "Exception handler class must declare exactly one static method: % -> %s", targetMethod, handler);
+                            "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
             JavaType[] handlerParameterTypes = handlerMethods[0].toParameterTypes();
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),
@@ -539,7 +492,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
             kit.endInvokeWithException();
 
             kit.inlineAsIntrinsic(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
@@ -557,7 +510,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
-            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY);
+            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
             kit.thenPart();
             ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
             NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));
@@ -569,7 +522,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             kit.appendStateSplitProxy(kit.getFrameState());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
             kit.append(leave);
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
             kit.endIf();
 
             // Always return enum values as a signed word because it should never be a problem if
@@ -648,153 +601,5 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         if (epilogueInvoke != null && epilogueInvoke.isAlive()) {
             kit.inlineAsIntrinsic(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
         }
-    }
-
-    @Override
-    public int getModifiers() {
-        return Modifier.PUBLIC | Modifier.STATIC;
-    }
-
-    @Override
-    public byte[] getCode() {
-        return null;
-    }
-
-    @Override
-    public int getCodeSize() {
-        return 0;
-    }
-
-    @Override
-    public int getMaxLocals() {
-        return 2 * getSignature().getParameterCount(true);
-    }
-
-    @Override
-    public int getMaxStackSize() {
-        return 2;
-    }
-
-    @Override
-    public boolean isSynthetic() {
-        return false;
-    }
-
-    @Override
-    public boolean isVarArgs() {
-        return false;
-    }
-
-    @Override
-    public boolean isBridge() {
-        return false;
-    }
-
-    @Override
-    public boolean isDefault() {
-        return false;
-    }
-
-    @Override
-    public boolean isClassInitializer() {
-        return false;
-    }
-
-    @Override
-    public boolean isConstructor() {
-        return false;
-    }
-
-    @Override
-    public boolean canBeStaticallyBound() {
-        return true;
-    }
-
-    @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        return new ExceptionHandler[0];
-    }
-
-    @Override
-    public StackTraceElement asStackTraceElement(int bci) {
-        if (stackTraceElement == null) {
-            stackTraceElement = new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), "generated", 0);
-        }
-        return stackTraceElement;
-    }
-
-    @Override
-    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public void reprofile() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public Type[] getGenericParameterTypes() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public boolean canBeInlined() {
-        return false;
-    }
-
-    @Override
-    public boolean hasNeverInlineDirective() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldBeInlined() {
-        return false;
-    }
-
-    @Override
-    public LineNumberTable getLineNumberTable() {
-        return lineNumberTable;
-    }
-
-    @Override
-    public LocalVariableTable getLocalVariableTable() {
-        return null;
-    }
-
-    @Override
-    public Constant getEncoding() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public SpeculationLog getSpeculationLog() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return new Annotation[0];
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return new Annotation[0];
     }
 }

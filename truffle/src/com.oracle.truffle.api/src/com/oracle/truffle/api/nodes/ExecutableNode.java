@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,10 @@ package com.oracle.truffle.api.nodes;
 import static com.oracle.truffle.api.nodes.NodeAccessor.ENGINE;
 import static com.oracle.truffle.api.nodes.NodeAccessor.LANGUAGE;
 
-import java.util.concurrent.locks.Lock;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -68,7 +65,6 @@ public abstract class ExecutableNode extends Node {
      * Either instance of TruffleLanguage, PolyglotEngineImpl or null.
      */
     @CompilationFinal private Object engineRef;
-    @CompilationFinal ReferenceCache referenceCache;
 
     /**
      * Creates new executable node with a given language instance. The language instance is
@@ -93,8 +89,9 @@ public abstract class ExecutableNode extends Node {
     }
 
     final TruffleLanguage<?> getLanguage() {
-        if (engineRef instanceof TruffleLanguage<?>) {
-            return (TruffleLanguage<?>) engineRef;
+        Object ref = engineRef;
+        if (ref instanceof TruffleLanguage<?>) {
+            return (TruffleLanguage<?>) ref;
         } else {
             return null;
         }
@@ -113,6 +110,11 @@ public abstract class ExecutableNode extends Node {
         }
     }
 
+    final void setEngine(Object engine) {
+        assert !(engineRef instanceof TruffleLanguage<?>) : "not allowed overwrite language";
+        this.engineRef = engine;
+    }
+
     /**
      * Execute this fragment at the place where it was parsed.
      *
@@ -126,7 +128,7 @@ public abstract class ExecutableNode extends Node {
     /**
      * Returns public information about the language. The language can be assumed equal if the
      * instances of the language info instance are the same. To access internal details of the
-     * language within the language implementation use {@link #lookupLanguageReference(Class)}.
+     * language within the language implementation use a {@link LanguageReference}.
      *
      * @since 0.31
      */
@@ -163,80 +165,4 @@ public abstract class ExecutableNode extends Node {
         }
         return (C) language;
     }
-
-    static final class ReferenceCache {
-
-        final Class<?> languageClass;
-        final LanguageReference<?> languageReference;
-        final ContextReference<?> contextReference;
-        final ReferenceCache next;
-
-        @SuppressWarnings("unchecked")
-        ReferenceCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, ReferenceCache next) {
-            this.languageClass = languageClass;
-            if (languageClass != null) {
-                Object engine = executableNode.getEngine();
-                TruffleLanguage<?> language = executableNode.getLanguage();
-                this.languageReference = ENGINE.lookupLanguageReference(engine, language, languageClass);
-                this.contextReference = ENGINE.lookupContextReference(engine, language, languageClass);
-            } else {
-                this.languageReference = null;
-                this.contextReference = null;
-            }
-            this.next = next;
-        }
-
-    }
-
-    @ExplodeLoop
-    @SuppressWarnings("rawtypes")
-    final ReferenceCache lookupReferenceCache(Class<? extends TruffleLanguage> languageClass) {
-        do {
-            ReferenceCache current = this.referenceCache;
-            if (current == GENERIC) {
-                return null;
-            }
-            while (current != null) {
-                if ((current.languageClass == languageClass)) {
-                    return current;
-                }
-                current = current.next;
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            specializeReferenceCache(languageClass);
-        } while (true);
-    }
-
-    private static final ReferenceCache GENERIC = new ReferenceCache(null, null, null);
-
-    @SuppressWarnings("rawtypes")
-    private void specializeReferenceCache(Class<? extends TruffleLanguage> languageClass) {
-        Lock lock = getLock();
-        lock.lock();
-        try {
-            ReferenceCache current = this.referenceCache;
-            if (current == null) {
-                this.referenceCache = new ReferenceCache(this, languageClass, null);
-            } else {
-                if (getEngine() == null) {
-                    this.referenceCache = GENERIC;
-                } else {
-                    int count = 0;
-                    ReferenceCache original = current;
-                    do {
-                        count++;
-                        current = current.next;
-                    } while (current != null);
-                    if (count >= 5) {
-                        this.referenceCache = GENERIC;
-                    } else {
-                        this.referenceCache = new ReferenceCache(this, languageClass, original);
-                    }
-                }
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
 }

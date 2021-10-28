@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -54,7 +55,7 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
  * Container for character matchers of DFA transitions, potentially specialized for a given string
  * encoding.
  */
-public abstract class Matchers extends Node {
+public abstract class Matchers {
 
     private final short noMatchSuccessor;
 
@@ -104,7 +105,7 @@ public abstract class Matchers extends Node {
     public abstract String toString(int i);
 
     static boolean match(CharMatcher[] matchers, int i, int c) {
-        return matchers != null && matchers[i] != null && matchers[i].execute(c);
+        return matchers != null && matchers[i] != null && matchers[i].match(c);
     }
 
     @TruffleBoundary
@@ -114,7 +115,7 @@ public abstract class Matchers extends Node {
 
     public static final class SimpleMatchers extends Matchers {
 
-        @Children private final CharMatcher[] matchers;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] matchers;
 
         public SimpleMatchers(CharMatcher[] matchers, short noMatchSuccessor) {
             super(noMatchSuccessor);
@@ -144,8 +145,8 @@ public abstract class Matchers extends Node {
 
     public static final class UTF16RawMatchers extends Matchers {
 
-        @Children private final CharMatcher[] latin1;
-        @Children private final CharMatcher[] bmp;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
 
         public UTF16RawMatchers(CharMatcher[] latin1, CharMatcher[] bmp, short noMatchSuccessor) {
             super(noMatchSuccessor);
@@ -180,9 +181,9 @@ public abstract class Matchers extends Node {
 
     public static final class UTF16Matchers extends Matchers {
 
-        @Children private final CharMatcher[] latin1;
-        @Children private final CharMatcher[] bmp;
-        @Children private final CharMatcher[] astral;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] astral;
 
         public UTF16Matchers(CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
             super(noMatchSuccessor);
@@ -205,27 +206,27 @@ public abstract class Matchers extends Node {
 
         @Override
         public int size() {
-            return size(bmp, astral);
+            return size(latin1, bmp, astral);
         }
 
         @Override
         public boolean match(int i, int c) {
-            return match(bmp, i, c) || match(astral, i, c);
+            return match(latin1, i, c) || match(bmp, i, c) || match(astral, i, c);
         }
 
         @TruffleBoundary
         @Override
         public String toString(int i) {
-            return toString(bmp, i) + toString(astral, i);
+            return toString(latin1, i) + toString(bmp, i) + toString(astral, i);
         }
     }
 
     public static final class UTF8Matchers extends Matchers {
 
-        @Children private final CharMatcher[] ascii;
-        @Children private final CharMatcher[] enc2;
-        @Children private final CharMatcher[] enc3;
-        @Children private final CharMatcher[] enc4;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc2;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc3;
+        @CompilationFinal(dimensions = 1) private final CharMatcher[] enc4;
 
         public UTF8Matchers(CharMatcher[] ascii, CharMatcher[] enc2, CharMatcher[] enc3, CharMatcher[] enc4, short noMatchSuccessor) {
             super(noMatchSuccessor);

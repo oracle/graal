@@ -273,7 +273,7 @@ public class NodeAssertionsTest extends InteropLibraryBaseTest {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             Frame frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{});
-            TestAssertsNode n = new TestAssertsNode(ProxyLanguage.getCurrentLanguage(), frame.getFrameDescriptor());
+            TestAssertsNode n = new TestAssertsNode(ProxyLanguage.get(null), frame.getFrameDescriptor());
             NodeLibrary l = createLibrary(NodeLibrary.class, n);
 
             n.getView = (f, x) -> x;
@@ -284,7 +284,7 @@ public class NodeAssertionsTest extends InteropLibraryBaseTest {
             NodeDefaultsTest.ProxyLanguageValue pv = new NodeDefaultsTest.ProxyLanguageValue();
             assertSame(pv, l.getView(n, frame, pv));
             assertFails(() -> l.getView(n, null, pv), AssertionError.class);
-            assertFails(() -> l.getView(new TestAssertsNode(ProxyLanguage.getCurrentLanguage(), null), frame, pv), AssertionError.class);
+            assertFails(() -> l.getView(new TestAssertsNode(ProxyLanguage.get(null), null), frame, pv), AssertionError.class);
             assertFails(() -> l.getView(new TestAssertsNode(null, frame.getFrameDescriptor()), frame, pv), AssertionError.class);
         }
     }

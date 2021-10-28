@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.AllocaNode;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
@@ -49,7 +50,7 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
 
     // JDK-8201593: Print array length in ArrayIndexOutOfBoundsException.
     private static final boolean PRINT_LENGTH_IN_EXCEPTION = JavaVersionUtil.JAVA_SPEC >= 11;
-    private static final int MAX_INT_STRING_SIZE = Integer.toString(Integer.MIN_VALUE).length();
+    static final int MAX_INT_STRING_SIZE = Integer.toString(Integer.MIN_VALUE).length();
     private static final String STR_INDEX = "Index ";
     private static final String STR_OUTOFBOUNDSFORLENGTH = " out of bounds for length ";
 
@@ -59,15 +60,14 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
             case 2:
                 return providers.getRegisters().getThreadRegister();
             case 3:
-                int wordSize = providers.getWordTypes().getWordKind().getByteCount();
                 int bytes;
                 if (PRINT_LENGTH_IN_EXCEPTION) {
                     bytes = STR_INDEX.length() + STR_OUTOFBOUNDSFORLENGTH.length() + 2 * MAX_INT_STRING_SIZE;
                 } else {
                     bytes = MAX_INT_STRING_SIZE;
                 }
-                // (required words for maximum length + nullbyte), rounded up
-                return (bytes + 1) / wordSize + 1;
+                // required bytes for maximum length + nullbyte
+                return bytes + 1;
             case 4:
                 return PRINT_LENGTH_IN_EXCEPTION;
             default:
@@ -76,9 +76,9 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
     }
 
     @Snippet
-    private static Object createOutOfBoundsException(int idx, int length, @ConstantParameter Register threadRegister, @ConstantParameter int bufferSizeInWords,
+    private static Object createOutOfBoundsException(int idx, int length, @ConstantParameter Register threadRegister, @ConstantParameter int bufferSizeInBytes,
                     @ConstantParameter boolean printLengthInException) {
-        Word buffer = AllocaNode.alloca(bufferSizeInWords);
+        Word buffer = AllocaNode.alloca(bufferSizeInBytes, HotSpotReplacementsUtil.wordSize());
         Word ptr;
         if (printLengthInException) {
             ptr = printString(buffer, STR_INDEX);

@@ -2,19 +2,38 @@ name: GraalVM Gate
 
 on:
   push:
+    branches-ignore:
+      - 'github/**'
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   pull_request:
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   workflow_dispatch: []
+
+# The following aims to reduce CI CPU cycles by:
+# 1. Cancelling any previous builds of this PR when pushing new changes to it
+# 2. Cancelling any previous builds of a branch when pushing new changes to it in a fork
+# 3. Cancelling any pending builds, but not active ones, when pushing to a branch in the main
+#    repository. This prevents us from constantly cancelling CI runs, while being able to skip
+#    intermediate builds. E.g., if we perform two pushes the first one will start a CI job and
+#    the second one will add another one to the queue; if we perform a third push while the
+#    first CI job is still running the previously queued CI job (for the second push) will be
+#    cancelled and a new CI job will be queued for the latest (third) push.
+concurrency:
+  group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'oracle/graal' }}
 
 env:
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
+  MX_PYTHON_VERSION: 3
   JAVA_HOME: ${{ github.workspace }}/jdk
+  JDT: builtin
   MX_PATH: ${{ github.workspace }}/mx
 
 jobs:
@@ -66,6 +85,10 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK: "labsjdk-ce-11"
+              GATE: "hellomodule"
+              PRIMARY: "substratevm"
+          - env:
+              JDK: "labsjdk-ce-11"
               GATE: "style,fullbuild"
               PRIMARY: "compiler"
           - env:
@@ -78,6 +101,10 @@ jobs:
               PRIMARY: "compiler"
           - env:
               JDK: "labsjdk-ce-11"
+              GATE: "build"
+              PRIMARY: "vm"
+              DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
+              NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
     steps:
     - uses: actions/checkout@v2
@@ -98,16 +125,20 @@ jobs:
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --java-distribution ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+    - name: Update dependency cache
+      if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
+      run: sudo apt update
     - name: Debug dependencies
       if: ${{ contains(matrix.env.GATE, 'debug') }}
       run: sudo apt install gdb
     - name: Style dependencies
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
-        sudo apt install python-pip
-        sudo pip install astroid==1.1.0
-        sudo pip install pylint==1.1.0
+        sudo apt install python-pip python-setuptools 
+        cat common.json |
+          jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
+          xargs sudo pip install
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
       run: |
@@ -122,22 +153,11 @@ jobs:
           git fetch --unshallow
         fi
 
-        if [[ ${GATE} == *fullbuild* ]]
-        then
-          # Only test JDT on JDK8
-          if [ "${JDK}" == "openjdk8" ]
-          then
-            export JDT=${MX_PATH}/ecj.jar
-            wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
-          fi
-        fi
-
         echo ${JAVA_HOME}
         ${JAVA_HOME}/bin/java -version
         if [[ ${WITHOUT_VCS} ]]
         then
           rm -rf .git
-          ${MX_PATH}/mx --primary-suite-path substratevm native-image --help
-        else
-          ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
         fi
+
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}

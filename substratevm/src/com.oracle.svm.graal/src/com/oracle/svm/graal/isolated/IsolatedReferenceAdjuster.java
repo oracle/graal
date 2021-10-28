@@ -40,7 +40,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -60,7 +59,7 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
             record(NonmovableArrays.addressOf(array, index), ConfigurationValues.getObjectLayout().getReferenceSize(), ((IsolatedObjectConstant) constant).getHandle());
         } else {
             @SuppressWarnings("unchecked")
-            T target = (T) KnownIntrinsics.convertUnknownValue(((DirectSubstrateObjectConstant) constant).getObject(), Object.class);
+            T target = (T) ((DirectSubstrateObjectConstant) constant).getObject();
             setObjectInArray(array, index, target);
         }
     }
@@ -84,7 +83,7 @@ final class IsolatedReferenceAdjuster implements ReferenceAdjuster {
         if (constant instanceof IsolatedObjectConstant) {
             record(address, length, ((IsolatedObjectConstant) constant).getHandle());
         } else {
-            Object target = KnownIntrinsics.convertUnknownValue(((DirectSubstrateObjectConstant) constant).getObject(), Object.class);
+            Object target = ((DirectSubstrateObjectConstant) constant).getObject();
             if (target instanceof IsolatedMirroredObject<?>) {
                 ClientHandle<?> mirror = ((IsolatedMirroredObject<?>) target).getMirror();
                 assert !mirror.equal(IsolatedHandles.nullHandle()) : "Mirror object must not be null";

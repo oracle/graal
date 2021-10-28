@@ -56,7 +56,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 import sun.misc.Unsafe;
 
@@ -224,15 +223,8 @@ public final class TruffleStackTrace extends Exception {
     public static List<TruffleStackTraceElement> getAsynchronousStackTrace(CallTarget target, Frame frame) {
         Objects.requireNonNull(target, "CallTarget must not be null");
         Objects.requireNonNull(frame, "Frame must not be null");
-        assert hasContext(target);
+        assert LanguageAccessor.ENGINE.hasCurrentContext();
         return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static boolean hasContext(CallTarget target) {
-        RootNode root = ((RootCallTarget) target).getRootNode();
-        Object polyglotLanguage = LanguageAccessor.ACCESSOR.nodeSupport().getPolyglotLanguage(root.getLanguageInfo());
-        return LanguageAccessor.ACCESSOR.engineSupport().getCurrentContextReference(polyglotLanguage).get() != null;
     }
 
     static void materializeHostFrames(Throwable t) {
@@ -493,7 +485,7 @@ public final class TruffleStackTrace extends Exception {
                 return;
             }
             lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame);
-            if (root != null && !root.getRootNode().isInternal()) {
+            if (root != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(root.getRootNode())) {
                 lazy.frameCount++;
             }
         }
@@ -525,7 +517,7 @@ public final class TruffleStackTrace extends Exception {
                 Frame frame = captureFrames ? frameInstance.getFrame(FrameAccess.READ_ONLY) : null;
                 frames.add(new TruffleStackTraceElement(location, target, frame));
                 first = false;
-                if (target != null && !target.getRootNode().isInternal()) {
+                if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
                     stackFrameIndex++;
                 }
                 return null;

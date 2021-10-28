@@ -101,7 +101,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
         OptionValues options = debug.getOptions();
-        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, options, debug);
+        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, options, debug, true);
 
         for (BciBlock block : bciBlockMapping.getBlocks()) {
             if (block.getStartBci() != -1) {

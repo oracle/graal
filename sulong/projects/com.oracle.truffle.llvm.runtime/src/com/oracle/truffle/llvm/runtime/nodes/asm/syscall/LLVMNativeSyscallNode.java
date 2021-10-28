@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,7 +66,7 @@ public class LLVMNativeSyscallNode extends LLVMSyscallOperationNode {
     }
 
     @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    public long executeLong(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         return (long) syscall.execute(nr, rdi, rsi, rdx, r10, r8, r9);
     }
 }

@@ -27,7 +27,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -37,18 +37,30 @@ public final class EspressoException extends RuntimeException implements com.ora
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 
-    private EspressoException(@Host(Throwable.class) StaticObject throwable) {
+    private EspressoException(@JavaType(Throwable.class) StaticObject throwable) {
         assert StaticObject.notNull(throwable);
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         this.exception = throwable;
     }
 
-    public static EspressoException wrap(@Host(Throwable.class) StaticObject throwable) {
-        return new EspressoException(throwable);
+    public static EspressoException wrap(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
+        if (throwable.isForeignObject()) {
+            // We can't have hidden fields in foreign objects yet unfortunately.
+            return new EspressoException(throwable);
+        }
+        // we must only have one wrapper per thrown exception for truffle's stack trace
+        // mechanisms to work.
+        EspressoException wrapper = (EspressoException) meta.HIDDEN_EXCEPTION_WRAPPER.getHiddenObject(throwable);
+        if (wrapper != null) {
+            return wrapper;
+        }
+        wrapper = new EspressoException(throwable);
+        meta.HIDDEN_EXCEPTION_WRAPPER.setHiddenObject(throwable, wrapper);
+        return wrapper;
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {
-        return (VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES);
+        return (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(exception);
     }
 
     @Override

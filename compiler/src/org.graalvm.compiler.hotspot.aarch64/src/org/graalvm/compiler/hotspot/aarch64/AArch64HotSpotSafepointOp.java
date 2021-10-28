@@ -97,13 +97,13 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
             if (state != null) {
                 crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
             }
-            masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+            masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
         } else {
             crb.recordMark(onReturn ? HotSpotMarkId.POLL_RETURN_NEAR : HotSpotMarkId.POLL_NEAR);
             if (state != null) {
                 crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
             }
-            masm.ldr(32, zr, AArch64Address.createPcLiteralAddress(0));
+            masm.ldr(32, zr, AArch64Address.createPCLiteralAddress(32));
         }
     }
 
@@ -115,7 +115,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
         if (state != null) {
             crb.recordInfopoint(masm.position(), state, InfopointReason.SAFEPOINT);
         }
-        masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(scratch));
+        masm.ldr(32, zr, AArch64Address.createBaseRegisterOnlyAddress(32, scratch));
     }
 
 }

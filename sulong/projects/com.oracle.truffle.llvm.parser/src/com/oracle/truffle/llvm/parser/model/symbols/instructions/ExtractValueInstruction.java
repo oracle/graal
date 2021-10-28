@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+
+import java.util.Collection;
+import java.util.Collections;
 
 public final class ExtractValueInstruction extends ValueInstruction {
 
     private SymbolImpl aggregate;
+    private final Collection<Long> indices;
 
-    private final int index;
-
-    private ExtractValueInstruction(Type type, int index) {
+    private ExtractValueInstruction(Type type, Collection<Long> indices) {
         super(type);
-        this.index = index;
+        this.indices = indices;
     }
 
     @Override
@@ -54,8 +56,8 @@ public final class ExtractValueInstruction extends ValueInstruction {
         return aggregate;
     }
 
-    public int getIndex() {
-        return index;
+    public Collection<Long> getIndices() {
+        return indices;
     }
 
     @Override
@@ -66,13 +68,18 @@ public final class ExtractValueInstruction extends ValueInstruction {
     }
 
     public static ExtractValueInstruction create(SymbolImpl aggreggate, Type type, int index) {
-        final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
+        final ExtractValueInstruction inst = new ExtractValueInstruction(type, Collections.singletonList((long) index));
         inst.aggregate = aggreggate;
         return inst;
     }
 
-    public static ExtractValueInstruction fromSymbols(SymbolTable symbols, Type type, int aggregate, int index) {
-        final ExtractValueInstruction inst = new ExtractValueInstruction(type, index);
+    /**
+     * @param indices the indices list in the reverse order (as expected by
+     *            CommonNodeFactory.getTargetAddress called from
+     *            LLVMBitcodeInstructionVisitor.visit(ExtractValueInstruction)).
+     */
+    public static ExtractValueInstruction fromSymbols(SymbolTable symbols, Type type, int aggregate, Collection<Long> indices) {
+        final ExtractValueInstruction inst = new ExtractValueInstruction(type, indices);
         inst.aggregate = symbols.getForwardReferenced(aggregate, inst);
         return inst;
     }

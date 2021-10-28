@@ -213,6 +213,12 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasThreadBindings(Object engine) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            return instrumentationHandler.hasThreadBindings();
+        }
+
+        @Override
         @CompilerDirectives.TruffleBoundary
         public void notifyContextCreated(Object engine, TruffleContext context) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
@@ -328,6 +334,11 @@ final class InstrumentAccessor extends Accessor {
             return targets;
         }
 
+        @Override
+        public Object getPolyglotInstrument(Object instrumentEnv) {
+            return ((TruffleInstrument.Env) instrumentEnv).getPolyglotInstrument();
+        }
+
         private static InstrumentationHandler getHandler(RootNode rootNode) {
             Object polyglotEngineImpl = nodesAccess().getPolyglotEngine(rootNode);
             if (polyglotEngineImpl == null) {
@@ -343,7 +354,7 @@ final class InstrumentAccessor extends Accessor {
 
         private static boolean validEngine(RootNode rootNode) {
             Object currentPolyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
-            if (!InstrumentAccessor.engineAccess().isHostToGuestRootNode(rootNode) &&
+            if (!InstrumentAccessor.engineAccess().skipEngineValidation(rootNode) &&
                             currentPolyglotEngine != InstrumentAccessor.nodesAccess().getPolyglotEngine(rootNode)) {
                 throw InstrumentAccessor.engineAccess().invalidSharingError(currentPolyglotEngine);
             }

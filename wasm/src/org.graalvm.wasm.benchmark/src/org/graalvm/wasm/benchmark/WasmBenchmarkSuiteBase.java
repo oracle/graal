@@ -40,9 +40,15 @@
  */
 package org.graalvm.wasm.benchmark;
 
+import static org.graalvm.wasm.utils.SystemProperties.DISABLE_COMPILATION_FLAG;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Objects;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
@@ -51,12 +57,6 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Objects;
-
-import static org.graalvm.wasm.utils.SystemProperties.DISABLE_COMPILATION_FLAG;
 
 @Warmup(iterations = 6)
 @Measurement(iterations = 8)
@@ -79,7 +79,7 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
-            final Context.Builder contextBuilder = Context.newBuilder("wasm");
+            final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
             if (!Objects.isNull(DISABLE_COMPILATION_FLAG)) {
                 contextBuilder.allowExperimentalOptions(true);
@@ -94,7 +94,7 @@ public abstract class WasmBenchmarkSuiteBase {
             // but we currently have a hack because the WASI module imports
             // a memory from a module called main.
             // We should fix that in the future.
-            Value benchmarkModule = context.getBindings("wasm").getMember("main");
+            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember("main");
             Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");
@@ -112,13 +112,13 @@ public abstract class WasmBenchmarkSuiteBase {
         }
 
         @Setup(Level.Iteration)
-        public void setupIteration() throws InterruptedException {
+        public void setupIteration() {
             // Reset result.
             result = null;
         }
 
         @TearDown(Level.Iteration)
-        public void teardownIteration() throws InterruptedException {
+        public void teardownIteration() {
             // Validate result.
             WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
         }

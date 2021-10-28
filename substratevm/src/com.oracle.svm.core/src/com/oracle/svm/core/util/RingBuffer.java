@@ -59,6 +59,11 @@ public final class RingBuffer<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int size() {
+        return entries.length;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private int nextIndex(int p) {
         return (p + 1) % entries.length;
     }

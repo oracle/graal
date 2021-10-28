@@ -26,8 +26,8 @@ package org.graalvm.compiler.replacements.nodes;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * {@link System#identityHashCode(Object)}.
  */
 @NodeInfo
-public abstract class PureFunctionMacroNode extends MacroStateSplitNode implements Canonicalizable {
+public abstract class PureFunctionMacroNode extends MacroNode implements Canonicalizable {
 
     public static final NodeClass<PureFunctionMacroNode> TYPE = NodeClass.create(PureFunctionMacroNode.class);
 

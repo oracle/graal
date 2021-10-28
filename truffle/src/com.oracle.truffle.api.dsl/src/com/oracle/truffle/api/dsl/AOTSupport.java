@@ -79,7 +79,10 @@ public final class AOTSupport {
                     public boolean visit(Node node) {
                         if (node instanceof GenerateAOT.Provider) {
                             GenerateAOT.Provider provider = (GenerateAOT.Provider) node;
-                            provider.prepareForAOT(language, node.getRootNode());
+                            if (node.isAdoptable() && node.getRootNode() == null) {
+                                throw new AssertionError("Node is not yet adopted before prepare " + node);
+                            }
+                            provider.prepareForAOT(language, root);
                         }
                         return NodeUtil.forEachChild(node, this);
                     }

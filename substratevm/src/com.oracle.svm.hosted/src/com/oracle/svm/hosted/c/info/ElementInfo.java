@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import com.oracle.svm.util.ClassUtil;
+
 public abstract class ElementInfo {
 
     protected final String name;
@@ -100,7 +102,7 @@ public abstract class ElementInfo {
         if (getParent() != null) {
             result.append(getParent().getUniqueID()).append(ID_DELIMINATOR);
         }
-        result.append(getClass().getSimpleName()).append(ID_DELIMINATOR).append(getName().replaceAll("\\W", "_"));
+        result.append(ClassUtil.getUnqualifiedName(getClass())).append(ID_DELIMINATOR).append(getName().replaceAll("\\W", "_"));
         return result.toString();
     }
 

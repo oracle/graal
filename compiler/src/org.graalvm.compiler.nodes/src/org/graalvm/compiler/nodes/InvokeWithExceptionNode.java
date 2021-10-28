@@ -29,6 +29,8 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodes.Invoke.CYCLES_UNKNOWN_RATIONALE;
+import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Map;
 
@@ -43,14 +45,21 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 
-@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class InvokeWithExceptionNode extends WithExceptionNode implements Invoke, IterableNodeType, SingleMemoryKill, LIRLowerable, UncheckedInterfaceProvider {
+// @formatter:off
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}",
+          allowedUsageTypes = {Memory},
+          cycles = CYCLES_UNKNOWN, cyclesRationale = CYCLES_UNKNOWN_RATIONALE,
+          size   = SIZE_UNKNOWN,   sizeRationale   = SIZE_UNKNOWN_RATIONALE)
+// @formatter:on
+public final class InvokeWithExceptionNode extends WithExceptionNode implements Invoke, IterableNodeType, SingleMemoryKill, LIRLowerable, UncheckedInterfaceProvider, Simplifiable {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
     @OptionalInput ValueNode classInit;
@@ -73,11 +82,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
-    }
-
-    @Override
-    public FixedNode asFixedNode() {
-        return this;
     }
 
     @Override
@@ -174,9 +178,12 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         return debugProperties;
     }
 
-    @SuppressWarnings("try")
     public AbstractBeginNode killKillingBegin() {
-        AbstractBeginNode begin = next();
+        return killKillingBegin(next());
+    }
+
+    @SuppressWarnings("try")
+    public AbstractBeginNode killKillingBegin(AbstractBeginNode begin) {
         if (begin instanceof KillingBeginNode) {
             try (DebugCloseable position = begin.withNodeSourcePosition()) {
                 AbstractBeginNode newBegin = new BeginNode();
@@ -239,11 +246,32 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, newInvoke, this.next());
         GraphUtil.killCFG(oldException);
+        // copy across any original node source position
+        newInvoke.setNodeSourcePosition(getNodeSourcePosition());
         return newInvoke;
     }
 
     @Override
     public InvokeNode replaceWithNonThrowing() {
         return replaceWithInvoke();
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (exceptionEdge() instanceof UnreachableBeginNode) {
+            AbstractBeginNode storedNext = next();
+            InvokeNode replacement = replaceWithInvoke();
+            if (graph().isAfterStage(StructuredGraph.StageFlag.FLOATING_READS)) {
+                if (!tool.allUsagesAvailable()) {
+                    // we don't know about the usages - do nothing
+                    return;
+                }
+                storedNext.replaceAtUsages(replacement, Memory);
+            }
+            // kill the killing begin
+            AbstractBeginNode newBegin = killKillingBegin(storedNext);
+            tool.addToWorkList(newBegin.next());
+            tool.addToWorkList(newBegin);
+        }
     }
 }

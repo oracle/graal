@@ -31,27 +31,28 @@ import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.jni.NativeEnv.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -80,73 +81,32 @@ public final class Target_sun_misc_Unsafe {
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     @SuppressWarnings("unused")
-    public static @Host(Class.class) StaticObject defineAnonymousClass(
-                    @Host(Unsafe.class) StaticObject self,
-                    @Host(Class.class) StaticObject hostClass,
-                    @Host(byte[].class) StaticObject data,
-                    @Host(Object[].class) StaticObject constantPoolPatches,
-                    @InjectMeta Meta meta) {
-        EspressoContext context = meta.getContext();
-
+    public static @JavaType(Class.class) StaticObject defineAnonymousClass(
+                    @JavaType(Unsafe.class) StaticObject self,
+                    @JavaType(Class.class) StaticObject hostClass,
+                    @JavaType(byte[].class) StaticObject data,
+                    @JavaType(Object[].class) StaticObject constantPoolPatches,
+                    @Inject Meta meta) {
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
-            throw Meta.throwException(meta.java_lang_NullPointerException);
+            throw meta.throwNullPointerException();
         }
         if (hostClass.getMirrorKlass().isArray() || hostClass.getMirrorKlass().isPrimitive()) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
         byte[] bytes = data.unwrap();
+        ObjectKlass hostKlass = (ObjectKlass) hostClass.getMirrorKlass();
+        StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
         StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap();
-        Klass hostKlass = hostClass.getMirrorKlass();
-        ClassfileStream cfs = new ClassfileStream(bytes, null);
-        ParserKlass parserKlass = ClassfileParser.parse(cfs, null, hostKlass, context, patches);
-        StaticObject classLoader = hostKlass.getDefiningClassLoader();
-
         // Inherit host class's protection domain.
-        StaticObject clazz = defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
-        StaticObject pd = (StaticObject) hostClass.getHiddenField(meta.HIDDEN_PROTECTION_DOMAIN);
-        if (pd == null) {
-            pd = StaticObject.NULL;
-        }
-        clazz.setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        ClassRegistry.ClassDefinitionInfo info = new ClassRegistry.ClassDefinitionInfo(pd, hostKlass, patches);
 
-        return clazz;
-    }
+        ObjectKlass k = meta.getRegistries().defineKlass(null, bytes, hostKlass.getDefiningClassLoader(), info);
 
-    private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, Klass hostKlass) {
-        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
+        // Initialize, because no one else will.
+        k.safeInitialize();
 
-        // TODO(garcia): Superclass must be a class, and non-final.
-        ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader, StaticObject.NULL)
-                        : null;
-
-        assert superKlass == null || !superKlass.isInterface();
-
-        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
-
-        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
-                        ? LinkedKlass.EMPTY_ARRAY
-                        : new LinkedKlass[superInterfacesTypes.length];
-
-        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
-                        ? ObjectKlass.EMPTY_ARRAY
-                        : new ObjectKlass[superInterfacesTypes.length];
-
-        // TODO(garcia): Superinterfaces must be interfaces.
-        for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader, StaticObject.NULL);
-            superInterfaces[i] = interf;
-            linkedInterfaces[i] = interf.getLinkedKlass();
-        }
-
-        LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-
-        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
-
-        klass.getConstantPool().setKlassAt(parserKlass.getThisKlassIndex(), klass);
-
-        return klass;
+        return k.mirror();
     }
 
     /**
@@ -159,7 +119,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #putInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static int arrayBaseOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz, @InjectMeta Meta meta) {
+    public static int arrayBaseOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
         Klass klass = clazz.getMirrorKlass();
         assert klass.isArray();
@@ -182,7 +142,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #putInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static int arrayIndexScale(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz, @InjectMeta Meta meta) {
+    public static int arrayIndexScale(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
         Klass klass = clazz.getMirrorKlass();
         assert klass.isArray();
@@ -200,8 +160,8 @@ public final class Target_sun_misc_Unsafe {
      * will be either 4 or 8. Note that the sizes of other primitive types (as stored in native
      * memory blocks) is determined fully by their information content.
      */
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static int addressSize(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class, isTrivial = true)
+    public static int addressSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
         return ADDRESS_SIZE;
     }
 
@@ -220,12 +180,12 @@ public final class Target_sun_misc_Unsafe {
      * use the most significant 32 bits. It is hard to imagine a JVM technology which needs more
      * than a few bits to encode an offset within a non-array object, However, for consistency with
      * other methods in this class, this method reports its result as a long value.
-     * 
+     *
      * @see #getInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long objectFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
-                    @InjectMeta Meta meta) {
+    public static long objectFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
+                    @Inject Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
@@ -244,15 +204,13 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
-                    @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
-                    @Host(ProtectionDomain.class) StaticObject pd,
-                    @InjectMeta Meta meta) {
-        // TODO(peterssen): Protection domain is ignored.
+    public static @JavaType(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(String.class) StaticObject name,
+                    @JavaType(byte[].class) StaticObject guestBuf, int offset, int len, @JavaType(ClassLoader.class) StaticObject loader,
+                    @JavaType(ProtectionDomain.class) StaticObject pd,
+                    @Inject Meta meta) {
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader);
-        klass.mirror().setHiddenField(meta.HIDDEN_PROTECTION_DOMAIN, pd);
+        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         return klass.mirror();
     }
 
@@ -272,149 +230,152 @@ public final class Target_sun_misc_Unsafe {
 
     // CAS ops should be atomic.
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static boolean compareAndSwapObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
+    public static boolean compareAndSwapObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapObject(unwrapNullOrArray(holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapField(f, before, after);
+        return f.compareAndSwapObject(holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static boolean compareAndSwapInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
-                    int after, @InjectMeta Meta meta) {
+    public static boolean compareAndSwapInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int before,
+                    int after, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapInt(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapIntField(f, before, after);
+        return f.compareAndSwapInt(holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static boolean compareAndSwapLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
-                    long after, @InjectMeta Meta meta) {
+    public static boolean compareAndSwapLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long before,
+                    long after, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).compareAndSwapLong(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapLongField(f, before, after);
+        return f.compareAndSwapLong(holder, before, after);
     }
 
     // endregion compareAndSwap*
 
     // region compareAndExchange*
 
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static @JavaType(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                    long offset,
+                    @JavaType(Object.class) StaticObject before,
+                    @JavaType(Object.class) StaticObject after,
+                    @Inject Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        if (f.getKind() != JavaKind.Object) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        return f.compareAndExchangeObject(holder, before, after);
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static int compareAndExchangeInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int before,
+                    int after, @Inject Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Int:
+                return f.compareAndExchangeInt(holder, before, after);
+            case Float:
+                return Float.floatToRawIntBits(f.compareAndExchangeFloat(holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
     /*
-     * Java 8 does not have these instrctions in Unsafe. Implement them by ourselves.
+     * The following three methods are there to enable atomic operations on sub-word fields, which
+     * would be impossible due to the safety checks in the static object model.
+     *
+     * All sub-word CAE operations route to `compareAndExchangeInt` in Java code, which, if left
+     * as-is would access, for example, byte fields as ints, which is forbidden by the object model.
+     *
+     * As a workaround, create a substitution for sub-words CAE operations (to which CAS are routed
+     * in Java code), and check the field kind to call the corresponding static property method.
      */
 
-    private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
-        StaticObject result;
-        do {
-            result = holder.getFieldVolatile(f);
-            if (result != before) {
-                return result;
-            }
-        } while (!holder.compareAndSwapField(f, before, after));
-        return before;
-    }
-
-    private static StaticObject doCompareExchange(Meta meta, Object holder, long offset, StaticObject before, StaticObject after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Object result;
-        do {
-            result = unsafe.getObjectVolatile(holder, offset);
-            if (result != before) {
-                return (StaticObject) result;
-            }
-        } while (!unsafe.compareAndSwapObject(holder, offset, before, after));
-        return before;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true)
+    public static byte compareAndExchangeByte(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    byte before,
+                    byte after,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
-            return doCompareExchange(meta, unwrapNullOrArray(holder), offset, before, after);
-        }
-        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return doStaticObjectCompareExchange(holder, f, before, after);
-    }
-
-    private static int doStaticObjectCompareExchangeInt(StaticObject holder, Field f, int before, int after) {
-        int result;
-        do {
-            result = holder.getIntFieldVolatile(f);
-            if (result != before) {
-                return result;
-            }
-        } while (!holder.compareAndSwapIntField(f, before, after));
-        return before;
-    }
-
-    private static int doCompareExchangeInt(Meta meta, Object holder, long offset, int before, int after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        int result;
-        do {
-            result = unsafe.getIntVolatile(holder, offset);
-            if (result != before) {
-                return result;
-            }
-        } while (!unsafe.compareAndSwapInt(holder, offset, before, after));
-        return before;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static int compareAndExchangeInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
-                    int after, @InjectMeta Meta meta) {
-        if (isNullOrArray(holder)) {
-            return doCompareExchangeInt(meta, unwrapNullOrArray(holder), offset, before, after);
-        }
-        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        return doStaticObjectCompareExchangeInt(holder, f, before, after);
-    }
-
-    private static long doStaticObjectCompareExchangeLong(StaticObject holder, Field f, long before, long after) {
-        long result;
-        do {
-            result = holder.getLongFieldVolatile(f);
-            if (result != before) {
-                return result;
-            }
-        } while (!holder.compareAndSwapLongField(f, before, after));
-        return before;
-    }
-
-    private static long doCompareExchangeLong(Meta meta, Object holder, long offset, long before, long after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        long result;
-        do {
-            result = unsafe.getLongVolatile(holder, offset);
-            if (result != before) {
-                return result;
-            }
-        } while (!unsafe.compareAndSwapLong(holder, offset, before, after));
-        return before;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
-                    long after, @InjectMeta Meta meta) {
-        if (isNullOrArray(holder)) {
-            return doCompareExchangeLong(meta, unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return doStaticObjectCompareExchangeLong(holder, f, before, after);
+        switch (f.getKind()) {
+            case Boolean:
+                return f.compareAndExchangeBoolean(holder, before != 0, after != 0) ? (byte) 1 : (byte) 0;
+            case Byte:
+                return f.compareAndExchangeByte(holder, before, after);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @Substitution(hasReceiver = true)
+    public static short compareAndExchangeShort(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    short before,
+                    short after,
+                    @Inject Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Short:
+                return f.compareAndExchangeShort(holder, before, after);
+            case Char:
+                return (short) f.compareAndExchangeChar(holder, (char) before, (char) after);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static long compareAndExchangeLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long before,
+                    long after, @Inject Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Long:
+                return f.compareAndExchangeLong(holder, before, after);
+            case Double:
+                return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
     // endregion compareAndExchange*
@@ -440,36 +401,25 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long allocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long length, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            JniEnv jni = meta.getContext().getJNI();
-            if (length < 0 || length > jni.sizeMax()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
-            }
-            TruffleObject result = jni.malloc(length);
-            long ptr = 0;
-            try {
-                ptr = InteropLibrary.getUncached().asPointer(result);
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            // malloc may return anything for 0-sized allocations.
-            if (ptr == 0L && length > 0) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
-            }
-            return ptr;
-        } else {
-            // No isolated native namespace, just forward to the host.
-            try {
-                return UnsafeAccess.getIfAllowed(meta).allocateMemory(length);
-            } catch (IllegalArgumentException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-            } catch (OutOfMemoryError e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
-            }
+    public static long allocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long length, @Inject Meta meta) {
+        JniEnv jni = meta.getContext().getJNI();
+        if (length < 0 || length > jni.sizeMax()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
+        @Buffer
+        TruffleObject buffer = meta.getNativeAccess().allocateMemory(length);
+        if (buffer == null && length > 0) {
+            // malloc may return anything for 0-sized allocations.
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "malloc returned NULL");
+        }
+        long ptr = 0;
+        try {
+            ptr = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        return ptr;
     }
 
     /**
@@ -489,36 +439,24 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            JniEnv jni = meta.getContext().getJNI();
-            if (bytes < 0 || bytes > jni.sizeMax()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
-            }
-            TruffleObject result = jni.realloc(RawPointer.create(address), bytes);
-            long ptr = 0;
-            try {
-                ptr = InteropLibrary.getUncached().asPointer(result);
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            // realloc may return anything for 0-sized allocations.
-            if (ptr == 0L && bytes > 0) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc returned NULL");
-            }
-            return ptr;
-        } else {
-            // No isolated native namespace, just forward to the host.
-            try {
-                return UnsafeAccess.getIfAllowed(meta).reallocateMemory(address, bytes);
-            } catch (IllegalArgumentException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-            } catch (OutOfMemoryError e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, e.getMessage());
-            }
+    public static long reallocateMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long newSize, @Inject Meta meta) {
+        JniEnv jni = meta.getContext().getJNI();
+        if (newSize < 0 || newSize > jni.sizeMax()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "requested size doesn't fit in the size_t native type");
         }
+        @Buffer
+        TruffleObject result = meta.getNativeAccess().reallocateMemory(RawPointer.create(address), newSize);
+        if (result == null) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_OutOfMemoryError, "realloc couldn't reallocate " + newSize + " bytes");
+        }
+        long newAddress = 0L;
+        try {
+            newAddress = InteropLibrary.getUncached().asPointer(result);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        return newAddress;
     }
 
     /**
@@ -530,14 +468,8 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void freeMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, @InjectMeta Meta meta) {
-        if (meta.getContext().IsolatedNamespace) {
-            // alloc/free within the isolated native namespace.
-            meta.getContext().getJNI().free(RawPointer.create(address));
-        } else {
-            // No isolated native namespace, just forward to the host.
-            UnsafeAccess.getIfAllowed(meta).freeMemory(address);
-        }
+    public static void freeMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject Meta meta) {
+        meta.getNativeAccess().freeMemory(RawPointer.create(address));
     }
 
     // region get*(Object holder, long offset)
@@ -549,18 +481,18 @@ public final class Target_sun_misc_Unsafe {
      * @see #allocateMemory
      */
     @Substitution(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static byte getByte(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getByte(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (byte) f.get(holder);
+        return f.getAsByte(meta, holder, false);
     }
 
-    @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject getObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static @JavaType(Object.class) StaticObject getObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return (StaticObject) UnsafeAccess.getIfAllowed(meta).getObject(unwrapNullOrArray(holder), offset);
         }
@@ -568,77 +500,77 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (StaticObject) f.get(holder);
+        return f.getAsObject(meta, holder);
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean getBoolean(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static boolean getBoolean(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getBoolean(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (boolean) f.get(holder);
+        return f.getAsBoolean(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static char getChar(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static char getChar(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getChar(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (char) f.get(holder);
+        return f.getAsChar(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static short getShort(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static short getShort(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getShort(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (short) f.get(holder);
+        return f.getAsShort(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static int getInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static int getInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getInt(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (int) f.get(holder);
+        return f.getAsInt(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static float getFloat(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static float getFloat(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getFloat(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (float) f.get(holder);
+        return f.getAsFloat(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static double getDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static double getDouble(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getDouble(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (double) f.get(holder);
+        return f.getAsDouble(meta, holder, false);
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static long getLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getLong(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return (long) f.get(holder);
+        return f.getAsLong(meta, holder, false);
     }
 
     // endregion get*(Object holder, long offset)
@@ -647,101 +579,102 @@ public final class Target_sun_misc_Unsafe {
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static boolean getBooleanVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static boolean getBooleanVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getBooleanVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getByteFieldVolatile(f) != 0;
+        return f.getAsBoolean(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static byte getByteVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static byte getByteVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getByteVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getByteFieldVolatile(f);
+        return f.getAsByte(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static short getShortVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static short getShortVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getShortVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getShortFieldVolatile(f);
+        return f.getAsShort(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static char getCharVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static char getCharVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getCharVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getCharFieldVolatile(f);
+        return f.getAsChar(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static float getFloatVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static float getFloatVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getFloatVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getFloatFieldVolatile(f);
+        return f.getAsFloat(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static int getIntVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static int getIntVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getIntVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getIntFieldVolatile(f);
+        return f.getAsInt(meta, holder, false, true);
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLongVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static long getLongVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getLongVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getLongFieldVolatile(f);
+        return f.getAsLong(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static double getDoubleVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @InjectMeta Meta meta) {
+    public static double getDoubleVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return UnsafeAccess.getIfAllowed(meta).getDoubleVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getDoubleField(f);
+        return f.getAsDouble(meta, holder, false, true);
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject getObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static @JavaType(Object.class) StaticObject getObjectVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                    long offset,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return (StaticObject) UnsafeAccess.getIfAllowed(meta).getObjectVolatile(unwrapNullOrArray(holder), offset);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.getFieldVolatile(f);
+        return f.getAsObject(meta, holder, true);
     }
 
     // endregion get*Volatile(Object holder, long offset)
@@ -749,46 +682,111 @@ public final class Target_sun_misc_Unsafe {
     // region get*(long offset)
 
     @Substitution(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getByte(offset);
+    abstract static class GetByte extends SubstitutionNode {
+
+        abstract byte execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        byte doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getByte(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static char getChar(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getChar(offset);
+    abstract static class GetChar extends SubstitutionNode {
+
+        abstract char execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        char doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getChar(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static short getShort(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getShort(offset);
+    abstract static class GetShort extends SubstitutionNode {
+
+        abstract short execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        short doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getShort(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static int getInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getInt(offset);
+    abstract static class GetInt extends SubstitutionNode {
+
+        abstract int execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        int doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getInt(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static float getFloat(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getFloat(offset);
+    abstract static class GetFloat extends SubstitutionNode {
+
+        abstract float execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        float doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getFloat(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static long getLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getLong(offset);
+    abstract static class GetDouble extends SubstitutionNode {
+
+        abstract double execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        double doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getDouble(address);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static double getDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, @InjectMeta Meta meta) {
-        return UnsafeAccess.getIfAllowed(meta).getDouble(offset);
+    abstract static class GetLong extends SubstitutionNode {
+
+        abstract long execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
+
+        @Specialization
+        long doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @Bind("getContext()") EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getLong(address);
+        }
     }
 
     // endregion get*(long offset)
 
+    // region put*Volatile(Object holder, long offset)
+
     @TruffleBoundary(allowInlining = true)
-    @Substitution(hasReceiver = true)
-    public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static void putObjectVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putObjectVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -798,12 +796,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert !f.getKind().isSubWord();
-        holder.setFieldVolatile(f, value);
+        f.setObject(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putIntVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value, @InjectMeta Meta meta) {
+    public static void putIntVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putIntVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -813,12 +812,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setIntFieldVolatile(f, value);
+        f.setInt(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putLongVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value, @InjectMeta Meta meta) {
+    public static void putLongVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putLongVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -828,13 +828,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().needsTwoSlots();
-        holder.setLongFieldVolatile(f, value);
+        f.setLong(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putBooleanVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, boolean value,
-                    @InjectMeta Meta meta) {
+    public static void putBooleanVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putBooleanVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -844,12 +844,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setBooleanFieldVolatile(f, value);
+        f.setBoolean(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putCharVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, char value, @InjectMeta Meta meta) {
+    public static void putCharVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putCharVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -859,12 +860,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setCharFieldVolatile(f, value);
+        f.setChar(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putShortVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, short value, @InjectMeta Meta meta) {
+    public static void putShortVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putShortVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -874,12 +876,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setShortFieldVolatile(f, value);
+        f.setShort(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putFloatVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, float value, @InjectMeta Meta meta) {
+    public static void putFloatVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putFloatVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -889,12 +892,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setFloatFieldVolatile(f, value);
+        f.setFloat(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putDoubleVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, double value, @InjectMeta Meta meta) {
+    public static void putDoubleVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putDoubleVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -904,12 +908,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().needsTwoSlots();
-        holder.setDoubleFieldVolatile(f, value);
+        f.setDouble(holder, value, true);
     }
 
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void putByteVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, byte value, @InjectMeta Meta meta) {
+    public static void putByteVolatile(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putByteVolatile(unwrapNullOrArray(holder), offset, value);
             return;
@@ -919,12 +924,13 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         assert f.getKind().isSubWord();
-        holder.setByteFieldVolatile(f, value);
+        f.setByte(holder, value, true);
     }
+    // endregion put*Volatile(Object holder, long offset)
 
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static boolean shouldBeInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+    public static boolean shouldBeInitialized(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(clazz)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
@@ -938,17 +944,27 @@ public final class Target_sun_misc_Unsafe {
      * obtaining the static field base of a class.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void ensureClassInitialized(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+    public static void ensureClassInitialized(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz) {
         clazz.getMirrorKlass().safeInitialize();
     }
 
-    @Substitution(hasReceiver = true)
-    public static void copyMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject srcBase, long srcOffset,
-                    @Host(Object.class) StaticObject destBase, long destOffset, long bytes, @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
+    public static void copyMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, @Inject Meta meta) {
         if (bytes == 0) {
             return;
         }
         UnsafeAccess.getIfAllowed(meta).copyMemory(MetaUtil.unwrapArrayOrNull(srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(destBase), destOffset, bytes);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void copySwapMemory0(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject srcBase, long srcOffset,
+                    @JavaType(Object.class) StaticObject destBase, long destOffset, long bytes, long elemSize, @Inject Meta meta) {
+        if (bytes == 0) {
+            return;
+        }
+        UnsafeAccess.checkAllowed(meta);
+        UnsafeSupport.copySwapMemory(MetaUtil.unwrapArrayOrNull(srcBase), srcOffset, MetaUtil.unwrapArrayOrNull(destBase), destOffset, bytes, elemSize);
     }
 
     // region put*(long offset, * value)
@@ -960,47 +976,118 @@ public final class Target_sun_misc_Unsafe {
      * @see #getByte
      */
     @Substitution(hasReceiver = true)
-    public static void putByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, byte value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putByte(offset, value);
+    abstract static class PutByte extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        byte value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putByte(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putChar(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, char value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putChar(offset, value);
+    abstract static class PutChar extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        char value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putChar(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putShort(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, short value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putShort(offset, value);
+    abstract static class PutShort extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        short value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putShort(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, int value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putInt(offset, value);
+    abstract static class PutInt extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        int value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putInt(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putFloat(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, float value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putFloat(offset, value);
+    abstract static class PutFloat extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        float value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putFloat(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, double value, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putDouble(offset, value);
+    abstract static class PutDouble extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        double value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putDouble(address, value);
+        }
     }
 
     @Substitution(hasReceiver = true)
-    public static void putLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long offset, long x, @InjectMeta Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).putLong(offset, x);
+    abstract static class PutLong extends SubstitutionNode {
+
+        abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value);
+
+        @Specialization
+        void doCached(
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        long value,
+                        @Bind("getContext()") EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putLong(address, value);
+        }
     }
 
     // endregion put*(long offset, * value)
 
     // region put*(Object holder, long offset, * value)
 
-    @Substitution(hasReceiver = true)
-    public static void putObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value,
-                    @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static void putObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putObject(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1009,11 +1096,12 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setObject(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putBoolean(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, boolean value, @InjectMeta Meta meta) {
+    public static void putBoolean(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putBoolean(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1022,11 +1110,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setBoolean(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, byte value, @InjectMeta Meta meta) {
+    public static void putByte(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putByte(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1035,11 +1123,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setByte(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putChar(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, char value, @InjectMeta Meta meta) {
+    public static void putChar(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putChar(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1048,11 +1136,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setChar(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putShort(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, short value, @InjectMeta Meta meta) {
+    public static void putShort(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putShort(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1061,11 +1149,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setShort(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value, @InjectMeta Meta meta) {
+    public static void putInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putInt(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1074,11 +1162,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setInt(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putFloat(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, float value, @InjectMeta Meta meta) {
+    public static void putFloat(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putFloat(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1087,11 +1175,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setFloat(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putDouble(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, double value, @InjectMeta Meta meta) {
+    public static void putDouble(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putDouble(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1100,11 +1188,11 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setDouble(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value, @InjectMeta Meta meta) {
+    public static void putLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putLong(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1113,11 +1201,12 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        f.setLong(holder, value);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putOrderedInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int value, @InjectMeta Meta meta) {
+    public static void putOrderedInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putOrderedInt(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1127,11 +1216,12 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setIntFieldVolatile(f, value);
+        f.setInt(holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putOrderedLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long value, @InjectMeta Meta meta) {
+    public static void putOrderedLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+                    @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putOrderedLong(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1141,12 +1231,12 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setLongFieldVolatile(f, value);
+        f.setLong(holder, value, true);
     }
 
     @Substitution(hasReceiver = true)
-    public static void putOrderedObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void putOrderedObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.getIfAllowed(meta).putOrderedObject(unwrapNullOrArray(holder), offset, value);
             return;
@@ -1156,7 +1246,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         // TODO(peterssen): Volatile is stronger than needed.
-        holder.setFieldVolatile(f, value);
+        f.setObject(holder, value, true);
     }
 
     // endregion put*(Object holder, long offset, * value)
@@ -1167,7 +1257,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Throws(InstantiationException.class)
     @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) {
+    public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz) {
         return InterpreterToVM.newObject(clazz.getMirrorKlass(), false);
     }
 
@@ -1188,7 +1278,8 @@ public final class Target_sun_misc_Unsafe {
      * @since 1.7
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static void setMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject o, long offset, long bytes, byte value, @InjectMeta Meta meta) {
+    public static void setMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
+                    @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
     }
 
@@ -1197,7 +1288,7 @@ public final class Target_sun_misc_Unsafe {
      * be a power of two.
      */
     @Substitution(hasReceiver = true)
-    public static int pageSize(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @InjectMeta Meta meta) {
+    public static int pageSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
         return UnsafeAccess.getIfAllowed(meta).pageSize();
     }
 
@@ -1216,12 +1307,12 @@ public final class Target_sun_misc_Unsafe {
      * absolute addresses can use long offsets and null base pointers to express the field locations
      * in a form usable by {@link #getInt}. Therefore, code which will be ported to such JVMs on
      * 64-bit platforms must preserve all bits of static field offsets.
-     * 
+     *
      * @see #getInt
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static long staticFieldOffset(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
-                    @InjectMeta Meta meta) {
+    public static long staticFieldOffset(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
+                    @Inject Meta meta) {
         return Field.getReflectiveFieldRoot(field, meta).getSlot() + SAFETY_FIELD_OFFSET;
     }
 
@@ -1234,15 +1325,16 @@ public final class Target_sun_misc_Unsafe {
      * except as argument to the get and put routines in this class.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static Object staticFieldBase(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(java.lang.reflect.Field.class) StaticObject field,
-                    @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject staticFieldBase(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                    @JavaType(java.lang.reflect.Field.class) StaticObject field,
+                    @Inject Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
         return target.getDeclaringKlass().getStatics();
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static void monitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+    public static void monitorEnter(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject object,
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
@@ -1251,8 +1343,8 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static void monitorExit(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+    public static void monitorExit(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject object,
+                    @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(object)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
@@ -1260,9 +1352,9 @@ public final class Target_sun_misc_Unsafe {
         InterpreterToVM.monitorUnsafeExit(object.getLock());
     }
 
-    @Substitution(hasReceiver = true)
-    public static void throwException(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Throwable.class) StaticObject ee) {
-        throw Meta.throwException(ee);
+    @Substitution(hasReceiver = true, isTrivial = true)
+    public static void throwException(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Throwable.class) StaticObject ee, @Inject Meta meta) {
+        throw meta.throwException(ee);
     }
 
     /**
@@ -1275,8 +1367,8 @@ public final class Target_sun_misc_Unsafe {
      */
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void park(@Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
-                    @InjectMeta Meta meta) {
+    public static void park(@JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time,
+                    @Inject Meta meta) {
         if (time < 0 || (isAbsolute && time == 0)) { // don't wait at all
             return;
         }
@@ -1284,16 +1376,16 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = meta.getContext();
         StaticObject thread = context.getCurrentThread();
 
-        if (Target_java_lang_Thread.checkInterrupt(thread)) {
+        if (meta.getThreadAccess().isInterrupted(thread, false)) {
             return;
         }
 
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Target_java_lang_Thread.fromRunnable(thread, meta, time > 0 ? State.TIMED_WAITING : State.WAITING);
+        meta.getThreadAccess().fromRunnable(thread, time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
         Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-        StaticObject guestBlocker = thread.getField(parkBlocker);
+        StaticObject guestBlocker = parkBlocker.getObject(thread);
         // LockSupport.park(/* guest blocker */);
         if (!StaticObject.isNull(guestBlocker)) {
             unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
@@ -1301,12 +1393,12 @@ public final class Target_sun_misc_Unsafe {
 
         parkBoundary(self, isAbsolute, time, meta);
 
-        Target_java_lang_Thread.toRunnable(thread, meta, State.RUNNABLE);
+        meta.getThreadAccess().toRunnable(thread);
         unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static void parkBoundary(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, boolean isAbsolute, long time, @InjectMeta Meta meta) {
+    public static void parkBoundary(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, boolean isAbsolute, long time, @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).park(isAbsolute, time);
     }
 
@@ -1317,15 +1409,15 @@ public final class Target_sun_misc_Unsafe {
      * special is usually required to ensure this when called from Java (in which there will
      * ordinarily be a live reference to the thread) but this is not nearly-automatically so when
      * calling from native code.
-     * 
+     *
      * @param thread the thread to unpark.
      *
      */
     @TruffleBoundary(allowInlining = true)
     @Substitution(hasReceiver = true)
-    public static void unpark(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject thread,
-                    @InjectMeta Meta meta) {
-        Thread hostThread = (Thread) thread.getHiddenField(meta.HIDDEN_HOST_THREAD);
+    public static void unpark(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject thread,
+                    @Inject Meta meta) {
+        Thread hostThread = meta.getThreadAccess().getHost(thread);
         UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
     }
 
@@ -1342,7 +1434,7 @@ public final class Target_sun_misc_Unsafe {
      * @see #allocateMemory
      */
     @Substitution(hasReceiver = true)
-    public static long getAddress(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, @InjectMeta Meta meta) {
+    public static long getAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, @Inject Meta meta) {
         return UnsafeAccess.getIfAllowed(meta).getAddress(address);
     }
 
@@ -1357,44 +1449,44 @@ public final class Target_sun_misc_Unsafe {
      * @see #getAddress
      */
     @Substitution(hasReceiver = true)
-    public static void putAddress(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long x, @InjectMeta Meta meta) {
+    public static void putAddress(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long x, @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).putAddress(address, x);
     }
 
     /**
      * Ensures lack of reordering of loads before the fence with loads or stores after the fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void loadFence(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @InjectMeta Meta meta) {
+    public static void loadFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).loadFence();
     }
 
     /**
      * Ensures lack of reordering of stores before the fence with loads or stores after the fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void storeFence(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @InjectMeta Meta meta) {
+    public static void storeFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).storeFence();
     }
 
     /**
      * Ensures lack of reordering of loads or stores before the fence with loads or stores after the
      * fence.
-     * 
+     *
      * @since 1.8
      */
     @Substitution(hasReceiver = true)
-    public static void fullFence(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @InjectMeta Meta meta) {
+    public static void fullFence(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @Inject Meta meta) {
         UnsafeAccess.getIfAllowed(meta).fullFence();
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
-    public static @Host(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
         if (isNullOrArray(holder)) {
             return (StaticObject) UnsafeAccess.getIfAllowed(meta).getAndSetObject(unwrapNullOrArray(holder), offset, value);
         }
@@ -1407,8 +1499,8 @@ public final class Target_sun_misc_Unsafe {
 
     @SuppressWarnings("deprecation")
     @Substitution(hasReceiver = true)
-    public static boolean tryMonitorEnter(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject object,
-                    @InjectMeta Meta meta) {
+    public static boolean tryMonitorEnter(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject object,
+                    @Inject Meta meta) {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
@@ -1428,7 +1520,7 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     @SuppressWarnings("unused")
-    public static int getLoadAverage(@Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
+    public static int getLoadAverage(@JavaType(Unsafe.class) StaticObject self, @JavaType(double[].class) StaticObject loadavg, int nelems) {
         return -1; // unobtainable
     }
 
@@ -1436,21 +1528,21 @@ public final class Target_sun_misc_Unsafe {
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @SuppressWarnings("unused")
-    public static boolean isBigEndian0(@Host(Unsafe.class) StaticObject self) {
+    public static boolean isBigEndian0(@JavaType(Unsafe.class) StaticObject self) {
         return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @SuppressWarnings("unused")
-    public static boolean unalignedAccess0(@Host(Unsafe.class) StaticObject self) {
+    public static boolean unalignedAccess0(@JavaType(Unsafe.class) StaticObject self) {
         // Be conservative, unobtainable (in java.nio.Bits, package-private class)
         return false;
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @SuppressWarnings("unused")
-    public static long objectFieldOffset1(@Host(Unsafe.class) StaticObject self, @Host(value = Class.class) StaticObject cl, @Host(value = String.class) StaticObject guestName,
-                    @InjectMeta Meta meta) {
+    public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
+                    @Inject Meta meta) {
         Klass k = cl.getMirrorKlass();
         String hostName = meta.toHostString(guestName);
         if (k instanceof ObjectKlass) {
@@ -1466,24 +1558,24 @@ public final class Target_sun_misc_Unsafe {
                 }
             }
         }
-        throw Meta.throwException(meta.java_lang_InternalError);
+        throw meta.throwException(meta.java_lang_InternalError);
     }
 
-    @Substitution(hasReceiver = true)
-    public static boolean compareAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
+    public static boolean compareAndSetObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+                    @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after, @Inject Meta meta) {
         return compareAndSwapObject(self, holder, offset, before, after, meta);
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean compareAndSetInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
-                    int after, @InjectMeta Meta meta) {
+    public static boolean compareAndSetInt(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int before,
+                    int after, @Inject Meta meta) {
         return compareAndSwapInt(self, holder, offset, before, after, meta);
     }
 
     @Substitution(hasReceiver = true)
-    public static boolean compareAndSetLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
-                    long after, @InjectMeta Meta meta) {
+    public static boolean compareAndSetLong(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long before,
+                    long after, @Inject Meta meta) {
         return compareAndSwapLong(self, holder, offset, before, after, meta);
     }
 
@@ -1506,6 +1598,29 @@ public final class Target_sun_misc_Unsafe {
         @Override
         public String[] getMethodNames(String name) {
             return append0(this, name);
+        }
+    }
+
+    public static class SharedUnsafeObjectAccessToReference extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_MISC_UNSAFE,
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE,
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+        };
+        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafeObjectAccessToReference();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+
+        @Override
+        public String[] getMethodNames(String name) {
+            String[] names = new String[3];
+            names[0] = name;
+            names[1] = name;
+            names[2] = name.replace("Object", "Reference");
+            return names;
         }
     }
 

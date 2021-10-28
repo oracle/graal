@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,262 +20,263 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.truffle.espresso.jni;
 
-import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 
-public abstract class NativeEnv {
+/**
+ * Subclasses of this class are implementation of native interfaces (for example, {@link JniEnv} or
+ * {@link com.oracle.truffle.espresso.vm.VM}.
+ *
+ * Subclasses should be annotated with
+ * {@link com.oracle.truffle.espresso.substitutions.GenerateNativeEnv} to produce the boilerplate
+ * code used to juggle between native world and java world.
+ *
+ * Implementing a new native interface in Espresso requires:
+ * <li>Subclassing this class and annotating it with
+ * {@link com.oracle.truffle.espresso.substitutions.GenerateNativeEnv}, and implementing the native
+ * interface methods, along with annotating them with the annotation given to
+ * {@link GenerateNativeEnv#target()}.</li>
+ * <li>Implementing the {@link #getCollector()} method.</li>
+ * <li>Finally, implement the interface in native code (most likely in mokapot. See the management
+ * implementation there for reference.)</li>
+ */
+public abstract class NativeEnv implements ContextAccess {
 
-    static final Map<Class<?>, NativeSimpleType> classToNative = buildClassToNative();
+    private static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 
-    public static NativeSimpleType word() {
-        return NativeSimpleType.SINT64; // or SINT32
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, this.getClass());
+    private final InteropLibrary uncached = InteropLibrary.getFactory().getUncached();
+
+    private final Set<@Pointer TruffleObject> nativeClosures = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Map<String, CallableFromNative.Factory> methods;
+
+    // region Exposed interface
+    protected abstract List<CallableFromNative.Factory> getCollector();
+
+    protected int lookupCallBackArgsCount() {
+        return LOOKUP_CALLBACK_ARGS_COUNT;
     }
 
-    static Map<Class<?>, NativeSimpleType> buildClassToNative() {
-        Map<Class<?>, NativeSimpleType> map = new HashMap<>();
-        map.put(boolean.class, NativeSimpleType.SINT8);
-        map.put(byte.class, NativeSimpleType.SINT8);
-        map.put(short.class, NativeSimpleType.SINT16);
-        map.put(char.class, NativeSimpleType.SINT16);
-        map.put(int.class, NativeSimpleType.SINT32);
-        map.put(float.class, NativeSimpleType.FLOAT);
-        map.put(long.class, NativeSimpleType.SINT64);
-        map.put(double.class, NativeSimpleType.DOUBLE);
-        map.put(void.class, NativeSimpleType.VOID);
-        map.put(String.class, NativeSimpleType.STRING);
+    protected NativeSignature lookupCallbackSignature() {
+        return NativeSignature.create(NativeType.POINTER, NativeType.POINTER);
+    }
+
+    @SuppressWarnings("unused")
+    protected void processCallBackResult(String name, CallableFromNative.Factory factory, Object... args) {
+        assert args.length == lookupCallBackArgsCount();
+    }
+
+    public JNIHandles getHandles() {
+        return jni().getHandles();
+    }
+
+    protected final InteropLibrary getUncached() {
+        return uncached;
+    }
+
+    protected final TruffleLogger getLogger() {
+        return logger;
+    }
+
+    protected JniEnv jni() {
+        return getContext().getJNI();
+    }
+
+    // endregion Exposed interface
+
+    // region Initialization helper
+    protected TruffleObject initializeAndGetEnv(TruffleObject initializeFunctionPointer, Object... extraArgs) {
+        return initializeAndGetEnv(false, initializeFunctionPointer, extraArgs);
+    }
+
+    @TruffleBoundary
+    protected TruffleObject initializeAndGetEnv(boolean prependExtra, TruffleObject initializeFunctionPointer, Object... extraArgs) {
+        // Prepare call and initialize helper structures
+        Object[] newArgs = prepareInit(prependExtra, extraArgs);
+
+        // Do call
+        TruffleObject res;
+        try {
+            res = (TruffleObject) getUncached().execute(initializeFunctionPointer, newArgs);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        } finally {
+            // Free up helper structures
+            cleanupAfterInit();
+        }
+
+        return res;
+    }
+
+    private Map<String, CallableFromNative.Factory> buildMethodsMap() {
+        Map<String, CallableFromNative.Factory> map = new HashMap<>();
+        for (CallableFromNative.Factory method : getCollector()) {
+            EspressoError.guarantee(!map.containsKey(method.methodName()), "Substitution for " + method + " already exists");
+            map.put(method.methodName(), method);
+        }
         return Collections.unmodifiableMap(map);
     }
 
-    public static long unwrapPointer(Object nativePointer) {
-        try {
-            return InteropLibrary.getFactory().getUncached().asPointer(nativePointer);
-        } catch (UnsupportedMessageException e) {
-            throw new RuntimeException(e);
+    private Object[] prepareInit(boolean prependExtra, Object[] extraArgs) {
+        Object[] newArgs = new Object[extraArgs.length + 1];
+        int pos;
+        if (prependExtra) {
+            newArgs[newArgs.length - 1] = getLookupCallbackClosure();
+            pos = 0;
+        } else {
+            newArgs[0] = getLookupCallbackClosure();
+            pos = 1;
         }
-    }
-
-    public static NativeSimpleType classToType(Class<?> clazz, boolean javaToNative) {
-        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT);
-    }
-
-    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity, JavaKind kind) {
-        return directByteBuffer(interopAsPointer(addressPtr), Math.multiplyExact(capacity, kind.getByteCount()));
-    }
-
-    protected static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
-        return directByteBuffer(address, Math.multiplyExact(capacity, kind.getByteCount()));
-    }
-
-    private static final Constructor<? extends ByteBuffer> constructor;
-    private static final Field addressField;
-
-    @SuppressWarnings("unchecked")
-    private static Class<? extends ByteBuffer> getByteBufferClass(String className) {
-        try {
-            return (Class<? extends ByteBuffer>) Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            throw EspressoError.shouldNotReachHere(e);
+        for (Object arg : extraArgs) {
+            newArgs[pos] = arg;
+            pos++;
         }
+        // Map building + multiple lookup should be faster than multiple list lookups.
+        methods = buildMethodsMap();
+        return newArgs;
     }
 
-    static {
-        try {
-            Class<? extends ByteBuffer> clazz = getByteBufferClass("java.nio.DirectByteBuffer");
-            Class<? extends ByteBuffer> bufferClazz = getByteBufferClass("java.nio.Buffer");
-            constructor = clazz.getDeclaredConstructor(long.class, int.class);
-            addressField = bufferClazz.getDeclaredField("address");
-            addressField.setAccessible(true);
-            constructor.setAccessible(true);
-        } catch (NoSuchMethodException | NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
+    private void cleanupAfterInit() {
+        methods = null;
     }
 
-    @TruffleBoundary
-    protected static ByteBuffer directByteBuffer(long address, long capacity) {
-        ByteBuffer buffer = null;
-        try {
-            buffer = constructor.newInstance(address, Math.toIntExact(capacity));
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        buffer.order(ByteOrder.nativeOrder());
-        return buffer;
-    }
-
-    public static long interopAsPointer(@Pointer TruffleObject interopPtr) {
-        try {
-            return InteropLibrary.getFactory().getUncached().asPointer(interopPtr);
-        } catch (UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    public static String interopPointerToString(@Pointer TruffleObject interopPtr) {
-        return fromUTF8Ptr(interopAsPointer(interopPtr));
-    }
-
-    @TruffleBoundary
-    protected static ByteBuffer directByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
-        ByteBuffer buffer = null;
-        try {
-            long address = interopAsPointer(addressPtr);
-            buffer = constructor.newInstance(address, Math.toIntExact(capacity));
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        buffer.order(ByteOrder.nativeOrder());
-        return buffer;
-    }
-
-    @TruffleBoundary
-    protected static long byteBufferAddress(ByteBuffer byteBuffer) {
-        try {
-            return (long) addressField.get(byteBuffer);
-        } catch (IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    protected static @Pointer TruffleObject byteBufferPointer(ByteBuffer byteBuffer) {
-        return new RawPointer(byteBufferAddress(byteBuffer));
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    public static final class RawPointer implements TruffleObject {
-        private final long rawPtr;
-
-        private static final RawPointer NULL = new RawPointer(0L);
-
-        public static @Pointer TruffleObject nullInstance() {
-            return NULL;
-        }
-
-        private RawPointer(long rawPtr) {
-            this.rawPtr = rawPtr;
-        }
-
-        public static @Pointer TruffleObject create(long ptr) {
-            if (ptr == 0L) {
-                return NULL;
+    private TruffleObject getLookupCallbackClosure() {
+        Callback callback = new Callback(lookupCallBackArgsCount(), new Callback.Function() {
+            @Override
+            @TruffleBoundary
+            public Object call(Object... args) {
+                try {
+                    String name = NativeUtils.interopPointerToString((TruffleObject) args[0]);
+                    CallableFromNative.Factory factory = lookupFactory(name);
+                    processCallBackResult(name, factory, args);
+                    return createNativeClosureForFactory(factory, name);
+                } catch (ClassCastException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Throwable e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
             }
-            return new RawPointer(ptr);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isPointer() {
-            return true;
-        }
-
-        @ExportMessage
-        long asPointer() {
-            return rawPtr;
-        }
-
-        @ExportMessage
-        boolean isNull() {
-            return rawPtr == 0L;
-        }
+        });
+        return getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
     }
 
-    protected static Object defaultValue(String returnType) {
-        if (returnType.equals("boolean")) {
-            return false;
-        }
-        if (returnType.equals("byte")) {
-            return (byte) 0;
-        }
-        if (returnType.equals("char")) {
-            return (char) 0;
-        }
-        if (returnType.equals("short")) {
-            return (short) 0;
-        }
-        if (returnType.equals("int")) {
-            return 0;
-        }
-        if (returnType.equals("float")) {
-            return 0.0F;
-        }
-        if (returnType.equals("double")) {
-            return 0.0;
-        }
-        if (returnType.equals("long")) {
-            return 0L;
-        }
-        if (returnType.equals("StaticObject")) {
-            return 0L; // NULL handle
-        }
-        return StaticObject.NULL;
+    private CallableFromNative.Factory lookupFactory(String methodName) {
+        assert methods != null;
+        CompilerAsserts.neverPartOfCompilation();
+        return methods.get(methodName);
     }
 
-    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name) {
-        return loadLibraryInternal(searchPaths, name, true);
-    }
-
-    public static @Pointer TruffleObject loadLibraryInternal(List<Path> searchPaths, String name, boolean notFoundIsFatal) {
-        for (Path path : searchPaths) {
-            Path libPath = path.resolve(System.mapLibraryName(name));
+    @TruffleBoundary
+    private TruffleObject createNativeClosureForFactory(CallableFromNative.Factory factory, String methodName) {
+        // Dummy placeholder for unimplemented/unknown methods.
+        if (factory == null) {
+            String envName = NativeEnv.this.getClass().getSimpleName();
+            getLogger().log(Level.FINER, "Fetching unknown/unimplemented {0} method: {1}", new Object[]{envName, methodName});
             @Pointer
-            TruffleObject library = NativeLibrary.loadLibrary(libPath.toAbsolutePath());
-            if (library != null) {
-                return library;
+            TruffleObject errorClosure = getNativeAccess().createNativeClosure(new Callback(0, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    CompilerDirectives.transferToInterpreter();
+                    getLogger().log(Level.SEVERE, "Calling unimplemented {0} method: {1}", new Object[]{envName, methodName});
+                    throw EspressoError.unimplemented(envName + " method: " + methodName);
+                }
+            }), NativeSignature.create(NativeType.VOID));
+            nativeClosures.add(errorClosure);
+            return errorClosure;
+        }
+
+        NativeSignature signature = factory.jniNativeSignature();
+        Callback target = intrinsicWrapper(factory);
+        @Pointer
+        TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
+        nativeClosures.add(nativeClosure);
+        return nativeClosure;
+
+    }
+
+    private Callback intrinsicWrapper(CallableFromNative.Factory factory) {
+        int extraArg = (factory.prependEnv()) ? 1 : 0;
+        return new Callback(factory.parameterCount() + extraArg, new Callback.Function() {
+            @CompilerDirectives.CompilationFinal private CallableFromNative subst = null;
+
+            @Override
+            public Object call(Object... args) {
+                boolean isJni = factory.prependEnv();
+                try {
+                    if (subst == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        subst = factory.create(getMeta());
+                    }
+                    return subst.invoke(NativeEnv.this, args);
+                } catch (EspressoException | StackOverflowError | OutOfMemoryError e) {
+                    if (isJni) {
+                        // This will most likely SOE again. Nothing we can do about that
+                        // unfortunately.
+                        EspressoException wrappedError = (e instanceof EspressoException)
+                                        ? (EspressoException) e
+                                        : (e instanceof StackOverflowError)
+                                                        ? getContext().getStackOverflow()
+                                                        : getContext().getOutOfMemory();
+                        jni().setPendingException(wrappedError);
+                        return defaultValue(factory.returnType());
+                    }
+                    throw e;
+                }
             }
-        }
-        if (notFoundIsFatal) {
-            throw EspressoError.shouldNotReachHere("Cannot load library: " + name + "\nSearch path: " + searchPaths);
-        }
-        return null;
+        });
     }
 
-    public static String fromUTF8Ptr(@Pointer TruffleObject buffPtr) {
-        return fromUTF8Ptr(interopAsPointer(buffPtr));
+    protected static Object defaultValue(NativeType nativeType) {
+        // @formatter:off
+        switch (nativeType){
+            case BOOLEAN : return false;
+            case BYTE    : return (byte) 0;
+            case CHAR    : return (char) 0;
+            case SHORT   : return (short) 0;
+            case INT     : return 0;
+            case LONG    : return 0L;
+            case FLOAT   : return 0F;
+            case DOUBLE  : return 0D;
+            case POINTER : return RawPointer.nullInstance();
+            case VOID    : // fall-through
+                // JNI handle for the NULL object (0L) and not StaticObject.NULL directly.
+            case OBJECT  : return 0L; // NULL handle
+        }
+        // @formatter:on
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Unexpected NativeType: " + nativeType);
     }
 
-    @TruffleBoundary
-    public static String fromUTF8Ptr(long rawBytesPtr) {
-        if (rawBytesPtr == 0) {
-            return null;
-        }
-        ByteBuffer buf = directByteBuffer(rawBytesPtr, Integer.MAX_VALUE);
-
-        int utfLen = 0;
-        while (buf.get() != 0) {
-            utfLen++;
-        }
-
-        byte[] bytes = new byte[utfLen];
-        buf.clear();
-        buf.get(bytes);
-        try {
-            return ModifiedUtf8.toJavaString(bytes);
-        } catch (IOException e) {
-            // return StaticObject.NULL;
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
+    // endregion Initialization helper
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,10 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -53,8 +51,8 @@ public abstract class StaticInitsNode extends LLVMStatementNode {
 
     @ExplodeLoop
     @Specialization
-    public void doInit(VirtualFrame frame,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+    public void doInit(VirtualFrame frame) {
+        LLVMContext ctx = LLVMContext.get(this);
         synchronized (ctx) {
             if (ctx.loaderTraceStream() != null) {
                 traceExecution(ctx);

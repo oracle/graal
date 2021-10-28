@@ -24,67 +24,160 @@
  */
 package org.graalvm.compiler.debug;
 
-import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
-
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Iterator;
+import java.util.ServiceLoader;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
 /**
  * Miscellaneous methods for modifying and generating file system paths.
+ *
+ * All path arguments and return values are {@link String}s to avoid use of {@link File} and
+ * {@link Path} which may not be supported in all environments in which Graal is embedded. Use in
+ * such environments requires defining a {@link PathUtilitiesProvider} service implementation.
  */
 public class PathUtilities {
 
+    private static final PathUtilitiesProvider PROVIDER = loadProvider();
+
     /**
-     * Gets a value based on {@code name} that can be passed to {@link Paths#get(String, String...)}
+     * Loads the single {@link PathUtilitiesProvider} implementation available via
+     * {@linkplain ServiceLoader service loading}. If no implementation is available, a
+     * {@link StandardPathUtilitiesProvider} instance is returned.
+     */
+    private static PathUtilitiesProvider loadProvider() {
+        ServiceLoader<PathUtilitiesProvider> providers = ServiceLoader.load(PathUtilitiesProvider.class);
+        for (Iterator<PathUtilitiesProvider> it = providers.iterator(); it.hasNext();) {
+            PathUtilitiesProvider singleProvider = it.next();
+            if (it.hasNext()) {
+                PathUtilitiesProvider other = it.next();
+                throw new InternalError(
+                                String.format("Multiple %s providers found: %s, %s", PathUtilitiesProvider.class.getName(), singleProvider.getClass().getName(), other.getClass().getName()));
+            }
+            return singleProvider;
+        }
+        return new StandardPathUtilitiesProvider();
+    }
+
+    /**
+     * Gets a value based on {@code name} that can be passed to {@link #getPath(String, String...)}
      * without causing an {@link InvalidPathException}.
      *
      * @return {@code name} with all characters invalid for the current file system replaced by
      *         {@code '_'}
      */
     public static String sanitizeFileName(String name) {
-        try {
-            Path path = Paths.get(name);
-            if (path.getNameCount() == 0) {
-                return name;
-            }
-        } catch (InvalidPathException e) {
-            // fall through
-        }
-        StringBuilder buf = new StringBuilder(name.length());
-        for (int i = 0; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (c != File.separatorChar && c != ' ' && !Character.isISOControl(c)) {
-                try {
-                    Paths.get(String.valueOf(c));
-                    buf.append(c);
-                    continue;
-                } catch (InvalidPathException e) {
-                }
-            }
-            buf.append('_');
-        }
-        return buf.toString();
+        return PROVIDER.sanitizeFileName(name);
+    }
+
+    /**
+     * Joins a sequence of strings to form a pathname.
+     */
+    public static String getPath(String first, String... more) {
+        return PROVIDER.getPath(first, more);
+    }
+
+    /**
+     * Gets the absolute pathname of {@code path}.
+     */
+    public static String getAbsolutePath(String path) {
+        return PROVIDER.getAbsolutePath(path);
+    }
+
+    /**
+     * Tests whether the file or directory denoted by {@code path} exists.
+     */
+    public static boolean exists(String path) {
+        return PROVIDER.exists(path);
+    }
+
+    /**
+     * Creates a directory represented by {@code path} by creating all nonexistent parent
+     * directories first. An exception is not thrown if the directory could not be created because
+     * it already exists. If this method fails, then it may do so after creating some, but not all,
+     * of the parent directories.
+     *
+     * @throws IOException if {@code path} exists but is not a directory or if some I/O error occurs
+     */
+    public static String createDirectories(String path) throws IOException {
+        return PROVIDER.createDirectories(path);
+    }
+
+    /**
+     * Creates an output stream to write to the file {@code path}. If {@code append} is true, then
+     * bytes will be written to the end of the file rather than the beginning.
+     *
+     * throws {@link IOException} if the file exists but is a directory rather than a regular file,
+     * does not exist but cannot be created, or cannot be opened for any other reason
+     */
+    public static OutputStream openOutputStream(String path, boolean append) throws IOException {
+        return PROVIDER.openOutputStream(path, append);
+    }
+
+    /**
+     * Short cut for calling {@link #openOutputStream(String, boolean)} with the arguments
+     * {@code path} and {@code false}.
+     */
+    public static OutputStream openOutputStream(String path) throws IOException {
+        return PROVIDER.openOutputStream(path, false);
+    }
+
+    /**
+     * Gets the pathname of {@code path}'s parent, or null if {@code path} does not have a parent
+     * directory.
+     */
+    public static String getParent(String path) {
+        return PROVIDER.getParent(path);
+    }
+
+    /**
+     * Opens or creates a file, returning a channel to access the file {@code path}.
+     */
+    public static WritableByteChannel openFileChannel(String path, OpenOption... options) throws IOException {
+        return PROVIDER.openFileChannel(path, options);
+    }
+
+    /**
+     * Creates an input stream by opening the file {@code path}.
+     *
+     * @throws IOException if {@code path} does not exist, is a directory rather than a regular
+     *             file, or for some other reason cannot be opened for reading
+     */
+    public static InputStream openInputStream(String path) throws IOException {
+        return PROVIDER.openInputStream(path);
+    }
+
+    /**
+     * Zips and deletes {@code directory} if it exists.
+     *
+     * @param zip path of the zip file to create
+     * @throws IOException if something goes wrong
+     */
+    public static String archiveAndDelete(String directory, String zip) throws IOException {
+        return PROVIDER.archiveAndDelete(directory, zip);
     }
 
     /**
      * A maximum file name length supported by most file systems. There is no platform independent
-     * way to get this in Java. Normally it is 255. But for AUFS it is 242. Refer AUFS_MAX_NAMELEN
-     * in http://aufs.sourceforge.net/aufs3/man.html.
+     * way to get this in Java. Normally it is 255. But for AUFS it is 242. See AUFS_MAX_NAMELEN in
+     * http://aufs.sourceforge.net/aufs3/man.html.
      */
     private static final int MAX_FILE_NAME_LENGTH = 242;
 
     private static final String ELLIPSIS = "...";
 
-    static Path createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createMissingDirectory) throws IOException {
+    static String createUnique(OptionValues options, OptionKey<String> baseNameOption, String id, String label, String ext, boolean createMissingDirectory) throws IOException {
         String uniqueTag = "";
         int dumpCounter = 1;
         String prefix;
@@ -115,20 +208,20 @@ public class PathUtilities {
                     fileName = sanitizeFileName(prefix + '[' + adjustedLabel + ']' + uniqueTag + ext);
                 }
             }
-            Path dumpDir = DebugOptions.getDumpDirectory(options);
-            Path result = Paths.get(dumpDir.toString(), fileName);
+            String dumpDir = DebugOptions.getDumpDirectory(options);
+            String result = getPath(dumpDir, fileName);
             try {
                 if (createMissingDirectory) {
-                    return Files.createDirectory(result);
+                    return createDirectories(result);
                 } else {
                     try {
-                        return Files.createFile(result);
+                        return PROVIDER.createFile(result);
                     } catch (AccessDeniedException e) {
                         /*
                          * Thrown on Windows if a directory with the same name already exists, so
                          * convert it to FileAlreadyExistsException if that's the case.
                          */
-                        throw Files.isDirectory(result, NOFOLLOW_LINKS) ? new FileAlreadyExistsException(e.getFile()) : e;
+                        throw PROVIDER.isDirectory(result, false) ? new FileAlreadyExistsException(e.getFile()) : e;
                     }
                 }
             } catch (FileAlreadyExistsException e) {
@@ -137,4 +230,17 @@ public class PathUtilities {
         }
     }
 
+    public static boolean isDirectory(String path, boolean followLinks) {
+        return PROVIDER.isDirectory(path, followLinks);
+    }
+
+    /**
+     * Deletes the file or directory denoted by {@code path}. If {@code path} denotes a directory,
+     * then it must be empty in order to be deleted.
+     *
+     * @throws IOException if the deletion fails
+     */
+    public static void deleteFile(String path) throws IOException {
+        PROVIDER.deleteFile(path);
+    }
 }

@@ -124,23 +124,35 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     void finishBeforeCompilation(CompilationAccessImpl access) {
         HostedUniverse hUniverse = access.getUniverse();
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
-        varargsCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(varargsCallWrapperMethod)));
-        arrayCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayCallWrapperMethod)));
-        valistCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistCallWrapperMethod)));
+        varargsCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(varargsCallWrapperMethod)));
+        arrayCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(arrayCallWrapperMethod)));
+        valistCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(valistCallWrapperMethod)));
         if (!Modifier.isStatic(modifiers) && !Modifier.isAbstract(modifiers)) {
-            varargsNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(varargsNonvirtualCallWrapperMethod)));
-            arrayNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(arrayNonvirtualCallWrapperMethod)));
-            valistNonvirtualCallWrapper = MethodPointer.factory(hUniverse.lookup(aUniverse.lookup(valistNonvirtualCallWrapperMethod)));
+            varargsNonvirtualCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(varargsNonvirtualCallWrapperMethod)));
+            arrayNonvirtualCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(arrayNonvirtualCallWrapperMethod)));
+            valistNonvirtualCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(valistNonvirtualCallWrapperMethod)));
         }
         setHidingSubclasses(access.getMetaAccess(), this::anyMatchIgnoreReturnType);
     }
 
     private boolean anyMatchIgnoreReturnType(ResolvedJavaType sub) {
-        for (ResolvedJavaMethod method : sub.getDeclaredMethods()) {
-            if (descriptor.matchesIgnoreReturnType(method)) {
-                return true;
+        try {
+            for (ResolvedJavaMethod method : sub.getDeclaredMethods()) {
+                if (descriptor.matchesIgnoreReturnType(method)) {
+                    return true;
+                }
             }
+            return false;
+
+        } catch (LinkageError ex) {
+            /*
+             * Ignore any linkage errors due to looking up the declared methods. Unfortunately, it
+             * is not possible to look up methods (even a single declared method with a known
+             * signature using reflection) if any other method of the class references a missing
+             * type. In this case, we have to assume that the subclass does not have a matching
+             * method.
+             */
+            return false;
         }
-        return false;
     }
 }

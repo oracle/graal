@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -75,7 +74,6 @@ public abstract class LLVMPolyglotFromTyped extends LLVMIntrinsic {
 
     @Specialization
     LLVMPointer doError(@SuppressWarnings("unused") LLVMPointer address, LLVMInteropType.Value type) {
-        CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "polyglot_from_typed cannot be used with primitive type (%s).", type.kind);
     }
 }

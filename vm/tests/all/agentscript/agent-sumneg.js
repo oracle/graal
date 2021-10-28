@@ -3,7 +3,7 @@ insight.on('return', function(ctx, frame) {
     try {
         ctx.returnNow(-positive);
     } finally {
-        ctx.returnNow('Never reached!');
+        print(`Original value was ${positive}, but returning ${-positive}`);
     }
 }, {
     roots: true,

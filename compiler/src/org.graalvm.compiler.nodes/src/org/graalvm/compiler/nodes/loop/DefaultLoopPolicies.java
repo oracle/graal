@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,7 +157,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             return FullUnrollability.TOO_LARGE;
         }
         int maxNodes = counted.isExactTripCount() ? Options.ExactFullUnrollMaxNodes.getValue(options) : Options.FullUnrollMaxNodes.getValue(options);
-        for (Node usage : counted.getCounter().valueNode().usages()) {
+        for (Node usage : counted.getLimitCheckedIV().valueNode().usages()) {
             if (usage instanceof CompareNode) {
                 CompareNode compare = (CompareNode) usage;
                 if (compare.getY().isConstant()) {
@@ -204,7 +204,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
         int unrollFactor = loopBegin.getUnrollFactor();
         if (unrollFactor == 1) {
-            double loopFrequency = loopBegin.loopFrequency();
+            double loopFrequency = loop.localLoopFrequency();
             if (loopBegin.isSimpleLoop() && loopFrequency < 5.0) {
                 loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s frequency too low %s ", loopBegin, loopFrequency);
                 return false;
@@ -239,7 +239,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     @Override
     public boolean shouldTryUnswitch(LoopEx loop) {
         LoopBeginNode loopBegin = loop.loopBegin();
-        double loopFrequency = loopBegin.loopFrequency();
+        double loopFrequency = loop.localLoopFrequency();
         if (loopFrequency <= 1.0) {
             return false;
         }
@@ -261,7 +261,11 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+        if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
+            return UnswitchingDecision.NO;
+        }
+
         int phis = 0;
         StructuredGraph graph = loop.loopBegin().graph();
         DebugContext debug = graph.getDebug();
@@ -281,7 +285,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int inBranchTotal = branchNodes.count();
 
         CountingClosure stateNodesCount = new CountingClosure();
-        double loopFrequency = loop.loopBegin().loopFrequency();
+        double loopFrequency = loop.localLoopFrequency();
         OptionValues options = loop.loopBegin().getOptions();
         int maxDiff = Options.LoopUnswitchTrivial.getValue(options) + (int) (Options.LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0 + phis));
 
@@ -301,9 +305,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         loopFrequency, phis, actualDiff <= maxDiff);
         if (actualDiff <= maxDiff) {
             // check whether we're allowed to unswitch this loop
-            return loop.canDuplicateLoop();
+            return loop.canDuplicateLoop() ? UnswitchingDecision.YES : UnswitchingDecision.NO;
         } else {
-            return false;
+            return UnswitchingDecision.NO;
         }
     }
 }

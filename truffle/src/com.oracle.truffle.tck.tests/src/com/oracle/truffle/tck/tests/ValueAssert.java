@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
@@ -275,7 +276,7 @@ public class ValueAssert {
                     if (value.isNull()) {
                         assertNull(value.as(Map.class));
                     } else {
-                        if (!value.isHostObject() || (!(value.asHostObject() instanceof Map))) {
+                        if ((!value.isHostObject() || (!(value.asHostObject() instanceof Map))) && !value.hasHashEntries()) {
                             assertFails(() -> value.as(Map.class), ClassCastException.class);
                         }
                     }
@@ -302,8 +303,7 @@ public class ValueAssert {
                     break;
                 case INSTANTIABLE:
                     assertFalse(value.canInstantiate());
-                    // TODO remove PolyglotException if GR-21743 and GR-21744 is fixed.
-                    // assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
+                    assertFails(() -> value.newInstance(), UnsupportedOperationException.class);
                     if (value.isNull()) {
                         assertNull(value.as(Function.class));
                         assertNull(value.as(IsFunctionalInterfaceVarArgs.class));
@@ -325,12 +325,9 @@ public class ValueAssert {
                     break;
                 case ARRAY_ELEMENTS:
                     assertFalse(value.hasArrayElements());
-                    // temporary workaround for GR-21744
-                    // assertFails(() -> value.getArrayElement(0),
-                    // UnsupportedOperationException.class);
-                    // assertFails(() -> value.setArrayElement(0, null),
-                    // UnsupportedOperationException.class);
-                    // assertFails(() -> value.getArraySize(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getArrayElement(0), UnsupportedOperationException.class);
+                    assertFails(() -> value.setArrayElement(0, null), UnsupportedOperationException.class);
+                    assertFails(() -> value.getArraySize(), UnsupportedOperationException.class);
                     if (!value.isNull()) {
                         if ((!value.isHostObject() || (!(value.asHostObject() instanceof List) && !(value.asHostObject() instanceof Object[])))) {
                             assertFails(() -> value.as(List.class), ClassCastException.class);
@@ -464,6 +461,21 @@ public class ValueAssert {
                     assertFails(() -> value.hasIteratorNextElement(), UnsupportedOperationException.class);
                     assertFails(() -> value.getIteratorNextElement(), UnsupportedOperationException.class);
                     break;
+                case HASH:
+                    assertFalse(value.hasHashEntries());
+                    assertFalse(value.hasHashEntry("asdf"));
+                    assertFails(() -> value.getHashValue("asdf"), UnsupportedOperationException.class);
+                    assertFails(() -> value.putHashEntry("", ""), UnsupportedOperationException.class);
+                    assertFails(() -> value.removeHashEntry(""), UnsupportedOperationException.class);
+                    assertFails(() -> value.getHashEntriesIterator(), UnsupportedOperationException.class);
+                    if (value.isNull()) {
+                        assertNull(value.as(Map.class));
+                    } else {
+                        if ((!value.isHostObject() || (!(value.asHostObject() instanceof Map))) && !value.hasMembers()) {
+                            assertFails(() -> value.as(Map.class), ClassCastException.class);
+                        }
+                    }
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -582,6 +594,8 @@ public class ValueAssert {
                     } else if (value.isHostObject() && value.asHostObject() instanceof Map) {
                         Map<Object, Object> expectedValues = value.asHostObject();
                         assertEquals(value.as(OBJECT_OBJECT_MAP), expectedValues);
+                    } else if (value.hasHashEntries()) {
+                        assertHashKeys(value);
                     } else {
                         Map<String, Object> expectedValues = new HashMap<>();
                         for (String key : value.getMemberKeys()) {
@@ -593,7 +607,6 @@ public class ValueAssert {
                         assertEquals("PolyglotMap should be equal with itself", stringMap, stringMap);
                         assertEquals("Two PolyglotMaps wrapping the same host object should be equal", value.as(STRING_OBJECT_MAP), value.as(STRING_OBJECT_MAP));
                         assertNotEquals("A PolyglotMap should not be equal with a Map", value.as(STRING_OBJECT_MAP), expectedValues);
-
                         Set<String> keySet = value.as(Map.class).keySet();
                         assertEquals(value.getMemberKeys(), keySet);
 
@@ -676,6 +689,10 @@ public class ValueAssert {
                     assertTrue(msg, value.isIterator());
                     value.hasIteratorNextElement();
                     break;
+                case HASH:
+                    assertTrue(msg, value.hasHashEntries());
+                    assertValueHash(value, depth, hasHostAccess);
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -717,25 +734,29 @@ public class ValueAssert {
         assertCollectionEqualValues(receivedObjects, objectList1);
         assertCollectionEqualValues(receivedObjects, objectList2);
 
-        if (value.hasMembers()) {
-            Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
-            assertTrue(objectMap1.keySet().equals(value.getMemberKeys()));
+        if (value.hasHashEntries()) {
+            assertHashKeys(value);
         } else {
-            assertFails(() -> value.as(OBJECT_OBJECT_MAP), ClassCastException.class);
+            if (value.hasMembers()) {
+                Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
+                assertTrue(objectMap1.keySet().equals(value.getMemberKeys()));
+            } else {
+                assertFails(() -> value.as(OBJECT_OBJECT_MAP), ClassCastException.class);
+            }
+
+            Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
+            Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
+            Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
+
+            assertFails(() -> value.as(SHORT_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(BYTE_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
+
+            assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
+            assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
+            assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
         }
-
-        Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
-        Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
-        Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
-
-        assertFails(() -> value.as(SHORT_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(BYTE_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
-
-        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
-        assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
-        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
     }
 
     private static void assertValueBufferElements(Value value) {
@@ -871,6 +892,41 @@ public class ValueAssert {
         assertFalse(objectIterator1.hasNext() || objectIterator2.hasNext() || receivedIterator.hasNext());
     }
 
+    private static void assertValueHash(Value value, int depth, boolean hasHostAccess) {
+        assertTrue(value.hasHashEntries());
+        Map<Object, Object> receivedObjects = new HashMap<>();
+        Value iterator = value.getHashEntriesIterator();
+        while (iterator.hasIteratorNextElement()) {
+            Value element = iterator.getIteratorNextElement();
+            assertTrue(element.hasArrayElements());
+            receivedObjects.put(element.getArrayElement(0).as(Object.class), element.getArrayElement(1).as(Object.class));
+            assertValueImpl(element, depth + 1, hasHostAccess, detectSupportedTypes(element));
+        }
+        Map<Object, Object> objectMap = value.as(OBJECT_OBJECT_MAP);
+        assertTrue(objectMap.equals(objectMap));
+        assertTrue(value.as(OBJECT_OBJECT_MAP).equals(value.as(OBJECT_OBJECT_MAP)));
+        assertNotNull(objectMap.toString());
+
+        Iterator<Map.Entry<Object, Object>> receivedIterator = receivedObjects.entrySet().iterator();
+        Iterator<Map.Entry<Object, Object>> objectIterator1 = objectMap.entrySet().iterator();
+        while (objectIterator1.hasNext() && receivedIterator.hasNext()) {
+            Map.Entry<Object, Object> expected = receivedIterator.next();
+            Map.Entry<Object, Object> actual = objectIterator1.next();
+            assertEqualValues(expected.getKey(), actual.getKey());
+            assertEqualValues(expected.getValue(), actual.getValue());
+        }
+        assertFalse(objectIterator1.hasNext() || receivedIterator.hasNext());
+    }
+
+    private static void assertHashKeys(Value value) {
+        Set<Object> hashKeys = new HashSet<>();
+        for (Value iterator = value.getHashKeysIterator(); iterator.hasIteratorNextElement();) {
+            hashKeys.add(iterator.getIteratorNextElement().as(Object.class));
+        }
+        Map<Object, Object> hashMap = value.as(OBJECT_OBJECT_MAP);
+        assertTrue(hashMap.keySet().equals(hashKeys));
+    }
+
     @SafeVarargs
     private static void assertFails(Runnable runnable, Class<? extends Throwable>... exceptionType) {
         assertFails(() -> {
@@ -912,15 +968,13 @@ public class ValueAssert {
         if (value.fitsInByte()) {
             value.asByte();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asByte(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asByte(), ClassCastException.class);
         }
         if (value.fitsInShort()) {
             short shortValue = value.asShort();
             assertEquals((byte) shortValue == shortValue, value.fitsInByte());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asShort(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asShort(), ClassCastException.class);
         }
 
         if (value.fitsInInt()) {
@@ -928,8 +982,7 @@ public class ValueAssert {
             assertEquals((byte) intValue == intValue, value.fitsInByte());
             assertEquals((short) intValue == intValue, value.fitsInShort());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asInt(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asInt(), ClassCastException.class);
         }
 
         if (value.fitsInLong()) {
@@ -938,22 +991,19 @@ public class ValueAssert {
             assertEquals((short) longValue == longValue, value.fitsInShort());
             assertEquals((int) longValue == longValue, value.fitsInInt());
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asLong(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asLong(), ClassCastException.class);
         }
 
         if (value.fitsInFloat()) {
             value.asFloat();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asFloat(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asFloat(), ClassCastException.class);
         }
 
         if (value.fitsInDouble()) {
             value.asDouble();
         } else {
-            // TODO expecting PolyglotException is a temporary workaround GR-21744
-            assertFails(() -> value.asDouble(), ClassCastException.class, PolyglotException.class);
+            assertFails(() -> value.asDouble(), ClassCastException.class);
         }
     }
 
@@ -1079,6 +1129,9 @@ public class ValueAssert {
         if (value.isIterator()) {
             valueTypes.add(ITERATOR);
         }
+        if (value.hasHashEntries()) {
+            valueTypes.add(HASH);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -1104,6 +1157,7 @@ public class ValueAssert {
         META,
         ITERABLE,
         ITERATOR,
+        HASH
     }
 
 }

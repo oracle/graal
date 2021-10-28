@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ public class DebugExprExecutableNode extends ExecutableNode {
     @Child LLVMExpressionNode root;
 
     public DebugExprExecutableNode(LLVMExpressionNode root) {
-        super(LLVMLanguage.getLanguage());
+        super(LLVMLanguage.get(null));
         this.root = root;
     }
 

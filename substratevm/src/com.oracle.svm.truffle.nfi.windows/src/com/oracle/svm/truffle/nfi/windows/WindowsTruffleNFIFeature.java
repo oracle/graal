@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,16 +33,17 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.windows.WindowsUtils;
 import com.oracle.svm.core.windows.headers.LibC;
-import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
-import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
+import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -77,17 +78,17 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
          * WinBase.SetDllDirectoryA(dllpathPtr); CCharPointerHolder pathPin =
          * CTypeConversion.toCString(path); CCharPointer pathPtr = pathPin.get();
          */
-        HMODULE dlhandle = WinBase.LoadLibraryA(dllPathPtr);
+        HMODULE dlhandle = LibLoaderAPI.LoadLibraryA(dllPathPtr);
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), RuntimeException.class);
+            throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), AbstractTruffleException.class);
         }
         return dlhandle.rawValue();
     }
 
     @Override
     protected void freeLibraryImpl(long library) {
-        WinBase.FreeLibrary(WordFactory.pointer(library));
+        LibLoaderAPI.FreeLibrary(WordFactory.pointer(library));
     }
 
     @Override
@@ -101,13 +102,13 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
             ret = nativeLibrarySupport.findBuiltinSymbol(name);
         } else {
             try (CTypeConversion.CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-                ret = WinBase.GetProcAddress(WordFactory.pointer(library), symbol.get());
+                ret = LibLoaderAPI.GetProcAddress(WordFactory.pointer(library), symbol.get());
             }
         }
 
         if (ret.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), RuntimeException.class);
+            throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), AbstractTruffleException.class);
         }
         return ret.rawValue();
     }

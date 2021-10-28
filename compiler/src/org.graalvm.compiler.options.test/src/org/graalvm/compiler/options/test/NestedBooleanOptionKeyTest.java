@@ -30,9 +30,9 @@
 
 package org.graalvm.compiler.options.test;
 
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master0;
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master1;
-import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Master2;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent0;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent1;
+import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.Parent2;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption0;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption1;
 import static org.graalvm.compiler.options.test.NestedBooleanOptionKeyTest.Options.NestedOption2;
@@ -49,78 +49,78 @@ import org.junit.Test;
 public class NestedBooleanOptionKeyTest {
 
     public static class Options {
-        public static final OptionKey<Boolean> Master0 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption0 = new NestedBooleanOptionKey(Master0, true);
-        public static final OptionKey<Boolean> Master1 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption1 = new NestedBooleanOptionKey(Master1, true);
-        public static final OptionKey<Boolean> Master2 = new OptionKey<>(true);
-        public static final OptionKey<Boolean> NestedOption2 = new NestedBooleanOptionKey(Master2, false);
+        public static final OptionKey<Boolean> Parent0 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption0 = new NestedBooleanOptionKey(Parent0, true);
+        public static final OptionKey<Boolean> Parent1 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption1 = new NestedBooleanOptionKey(Parent1, true);
+        public static final OptionKey<Boolean> Parent2 = new OptionKey<>(true);
+        public static final OptionKey<Boolean> NestedOption2 = new NestedBooleanOptionKey(Parent2, false);
     }
 
-    static final OptionDescriptor master0 = OptionDescriptor.create("Master0", OptionType.Debug, Boolean.class, "", Options.class, "Master0", Master0);
+    static final OptionDescriptor parent0 = OptionDescriptor.create("Parent0", OptionType.Debug, Boolean.class, "", Options.class, "Parent0", Parent0);
     static final OptionDescriptor nestedOption0 = OptionDescriptor.create("NestedOption0", OptionType.Debug, Boolean.class, "", Options.class, "NestedOption0", NestedOption0);
-    static final OptionDescriptor master1 = OptionDescriptor.create("Master1", OptionType.Debug, Boolean.class, "", Options.class, "Master1", Master1);
+    static final OptionDescriptor parent1 = OptionDescriptor.create("Parent1", OptionType.Debug, Boolean.class, "", Options.class, "Parent1", Parent1);
     static final OptionDescriptor nestedOption1 = OptionDescriptor.create("NestedOption1", OptionType.Debug, Boolean.class, "", Options.class, "NestedOption1", NestedOption1);
-    static final OptionDescriptor master2 = OptionDescriptor.create("Master2", OptionType.Debug, Boolean.class, "", Options.class, "Master2", Master2);
+    static final OptionDescriptor parent2 = OptionDescriptor.create("Parent2", OptionType.Debug, Boolean.class, "", Options.class, "Parent2", Parent2);
     static final OptionDescriptor nestedOption2 = OptionDescriptor.create("NestedOption2", OptionType.Debug, Boolean.class, "", Options.class, "NestedOption2", NestedOption2);
 
     @Test
     public void runDefaultTrue() {
-        OptionValues options = new OptionValues(null, Master1, true);
-        assertTrue(Master1.getValue(options));
+        OptionValues options = new OptionValues(null, Parent1, true);
+        assertTrue(Parent1.getValue(options));
         assertTrue(NestedOption1.getValue(options));
 
         // nested value unset
-        options = new OptionValues(null, Master1, false);
-        assertFalse(Master1.getValue(options));
+        options = new OptionValues(null, Parent1, false);
+        assertFalse(Parent1.getValue(options));
         assertFalse(NestedOption1.getValue(options));
 
         // set false
-        options = new OptionValues(null, Master1, false, NestedOption1, false);
-        assertFalse(Master1.getValue(options));
+        options = new OptionValues(null, Parent1, false, NestedOption1, false);
+        assertFalse(Parent1.getValue(options));
         assertFalse(NestedOption1.getValue(options));
 
-        options = new OptionValues(null, Master1, true, NestedOption1, false);
-        assertTrue(Master1.getValue(options));
+        options = new OptionValues(null, Parent1, true, NestedOption1, false);
+        assertTrue(Parent1.getValue(options));
         assertFalse(NestedOption1.getValue(options));
 
         // set true
-        options = new OptionValues(null, Master1, false, NestedOption1, true);
-        assertFalse(Master1.getValue(options));
+        options = new OptionValues(null, Parent1, false, NestedOption1, true);
+        assertFalse(Parent1.getValue(options));
         assertTrue(NestedOption1.getValue(options));
 
-        options = new OptionValues(null, Master1, true, NestedOption1, true);
-        assertTrue(Master1.getValue(options));
+        options = new OptionValues(null, Parent1, true, NestedOption1, true);
+        assertTrue(Parent1.getValue(options));
         assertTrue(NestedOption1.getValue(options));
     }
 
     @Test
     public void runDefaultFalse() {
-        OptionValues options = new OptionValues(null, Master2, true);
-        assertTrue(Master2.getValue(options));
+        OptionValues options = new OptionValues(null, Parent2, true);
+        assertTrue(Parent2.getValue(options));
         assertFalse(NestedOption2.getValue(options));
 
         // nested value unset
-        options = new OptionValues(null, Master2, false);
-        assertFalse(Master2.getValue(options));
+        options = new OptionValues(null, Parent2, false);
+        assertFalse(Parent2.getValue(options));
         assertFalse(NestedOption2.getValue(options));
 
         // set false
-        options = new OptionValues(null, Master2, false, NestedOption2, false);
-        assertFalse(Master2.getValue(options));
+        options = new OptionValues(null, Parent2, false, NestedOption2, false);
+        assertFalse(Parent2.getValue(options));
         assertFalse(NestedOption2.getValue(options));
 
-        options = new OptionValues(null, Master2, true, NestedOption2, false);
-        assertTrue(Master2.getValue(options));
+        options = new OptionValues(null, Parent2, true, NestedOption2, false);
+        assertTrue(Parent2.getValue(options));
         assertFalse(NestedOption2.getValue(options));
 
         // set true
-        options = new OptionValues(null, Master2, false, NestedOption2, true);
-        assertFalse(Master2.getValue(options));
+        options = new OptionValues(null, Parent2, false, NestedOption2, true);
+        assertFalse(Parent2.getValue(options));
         assertTrue(NestedOption2.getValue(options));
 
-        options = new OptionValues(null, Master2, true, NestedOption2, true);
-        assertTrue(Master2.getValue(options));
+        options = new OptionValues(null, Parent2, true, NestedOption2, true);
+        assertTrue(Parent2.getValue(options));
         assertTrue(NestedOption2.getValue(options));
     }
 }

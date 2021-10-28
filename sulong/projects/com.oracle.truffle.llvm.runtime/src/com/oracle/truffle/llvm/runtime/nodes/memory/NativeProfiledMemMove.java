@@ -32,12 +32,10 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -154,10 +152,9 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization(guards = "length <= MAX_JAVA_LEN")
     protected void doInJava(Object target, Object source, long length,
-                    @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        LLVMMemory memory = language.getLLVMMemory();
+        LLVMMemory memory = getLanguage().getLLVMMemory();
         LLVMNativePointer t = convertTarget.executeWithTarget(target);
         LLVMNativePointer s = convertSource.executeWithTarget(source);
         long targetPointer = t.asNative();
@@ -177,10 +174,9 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     @SuppressWarnings("deprecation")
     @Specialization(replaces = "doInJava")
     protected void doNative(Object target, Object source, long length,
-                    @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        language.getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
+        getLanguage().getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
     }
 
     private void copyForward(LLVMMemory memory, long target, long source, long length) {

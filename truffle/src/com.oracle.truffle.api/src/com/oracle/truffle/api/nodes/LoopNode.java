@@ -51,8 +51,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * it returns <code>true</code>. Using the loop node in a guest language implementation allows the
  * Truffle runtime to optimize loops in a better way. For example a Truffle runtime implementation
  * might decide to optimize loop already during its first execution (also called on stack
- * replacement OSR). Loop nodes are not intended to be implemented by Truffle runtime
- * implementations and not by guest language implementations.
+ * replacement OSR). Loop nodes are intended to be implemented by Truffle runtime implementations
+ * and not by guest language implementations.
+ *
+ * Note: The loop condition is automatically profiled by the loop node, so the {@link RepeatingNode
+ * repeating node} should not use a loop condition profile.
  * </p>
  * <p>
  * Full usage example for guest language while node:

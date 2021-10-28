@@ -1232,6 +1232,29 @@ public class ElementUtils {
         return superMethods;
     }
 
+    /**
+     * Determines whether {@code declaringElement} or any of its direct super types override a
+     * default interface method.
+     * <p>
+     * Any declaration of the given method and signature in the direct super type hierarchy - even
+     * if it is abstract - is considered to override the default method.
+     * 
+     * @param declaringElement the type to check
+     * @param name the name of the default interface method
+     * @param params the signature of the method
+     * @return true if any the default method is overridden
+     */
+    public static boolean isDefaultMethodOverridden(TypeElement declaringElement, String name, TypeMirror... params) {
+        TypeElement element = declaringElement;
+        while (element != null) {
+            if (getDeclaredMethod(element, name, params) != null) {
+                return true;
+            }
+            element = getSuperType(element);
+        }
+        return false;
+    }
+
     public static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
         if (type1 == type2) {
             return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
@@ -47,9 +45,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSetI32(this, address, value);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndSetI32(this, address, value);
         }
 
         @Specialization
@@ -67,9 +64,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWAddNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndAddI32(this, address, value);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndAddI32(this, address, value);
         }
 
         @Specialization
@@ -87,9 +83,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWSubNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSubI32(this, address, value);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndSubI32(this, address, value);
         }
 
         @Specialization
@@ -107,9 +102,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWAndNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a & b);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a & b);
         }
 
         @Specialization
@@ -127,9 +121,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWNandNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> ~(a & b));
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
@@ -147,9 +140,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWOrNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a | b);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a | b);
         }
 
         @Specialization
@@ -167,9 +159,8 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXorNode extends LLVMI32RMWNode {
 
         @Specialization
-        protected int doOp(LLVMNativePointer address, int value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a ^ b);
+        protected int doOp(LLVMNativePointer address, int value) {
+            return getLanguage().getLLVMMemory().getAndOpI32(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization

@@ -62,6 +62,7 @@ CLSS public abstract com.oracle.truffle.api.profiles.LoopConditionProfile
 meth public abstract boolean inject(boolean)
 meth public abstract boolean profile(boolean)
 meth public abstract void profileCounted(long)
+meth public static com.oracle.truffle.api.profiles.LoopConditionProfile create()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile createCountingProfile()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile getUncached()
 supr com.oracle.truffle.api.profiles.ConditionProfile
@@ -91,6 +92,7 @@ CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
 meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createEqualityProfile()
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile

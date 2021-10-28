@@ -38,9 +38,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
@@ -95,8 +94,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new JNIGraphKit(debug, providers, method);
-        kit.append(new UnreachableNode());
-        kit.append(new DeadEndNode());
+        kit.append(new LoweredDeadEndNode());
 
         return kit.finalizeGraph();
     }
@@ -122,7 +120,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             parameters.add(providers.getMetaAccess().lookupJavaType(JNIMethodId.class));
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
-                            SubstrateCallingConventionType.NativeCall, returnType, parameters.toArray(new JavaType[0]), backend);
+                            SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
             RegisterValue threadArg = null;
             int threadIsolateOffset = -1;
             if (SubstrateOptions.SpawnIsolates.getValue()) {

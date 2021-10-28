@@ -28,7 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
@@ -49,7 +49,7 @@ public abstract class SLDeoptimizeWhenCompiledBuiltin extends SLGraalRuntimeBuil
     }
 
     @TruffleBoundary
-    private static void printMessage() {
-        SLLanguage.getCurrentContext().getOutput().println("[deoptimizeWhenCompiled]");
+    private void printMessage() {
+        SLContext.get(this).getOutput().println("[deoptimizeWhenCompiled]");
     }
 }

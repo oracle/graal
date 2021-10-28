@@ -28,7 +28,7 @@ import java.lang.annotation.Annotation;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -54,7 +54,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         return original;
     }
 
-    void addInjectedField(ResolvedJavaField field) {
+    public void addInjectedField(ResolvedJavaField field) {
         for (int i = 0; i < instanceFields.length; i++) {
             ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
             newFields[newFields.length - 1] = field;
@@ -277,6 +277,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();

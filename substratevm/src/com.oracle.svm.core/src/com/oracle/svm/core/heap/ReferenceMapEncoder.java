@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 public abstract class ReferenceMapEncoder {
@@ -101,12 +100,12 @@ public abstract class ReferenceMapEncoder {
 
     public long lookupEncoding(ReferenceMapEncoder.Input referenceMap) {
         if (referenceMap == null) {
-            return CodeInfoQueryResult.NO_REFERENCE_MAP;
+            return ReferenceMapIndex.NO_REFERENCE_MAP;
         } else if (referenceMap.isEmpty()) {
-            return CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
+            return ReferenceMapIndex.EMPTY_REFERENCE_MAP;
         } else {
             Long result = encodings.get(referenceMap);
-            assert result != null && result.longValue() != CodeInfoQueryResult.NO_REFERENCE_MAP && result.longValue() != CodeInfoQueryResult.EMPTY_REFERENCE_MAP;
+            assert result != null && !ReferenceMapIndex.denotesEmptyReferenceMap(result);
             return result.longValue();
         }
     }

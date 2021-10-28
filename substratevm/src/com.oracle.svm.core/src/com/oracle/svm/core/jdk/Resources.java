@@ -31,7 +31,10 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -41,6 +44,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -53,23 +59,23 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class Resources {
 
-    static Resources singleton() {
+    public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
+
+    public static Resources singleton() {
         return ImageSingletons.lookup(Resources.class);
     }
 
     /** The hosted map used to collect registered resources. */
-    private final EconomicMap<String, List<byte[]>> resources = ImageHeapMap.create();
+    private final EconomicMap<String, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     Resources() {
     }
 
-    public EconomicMap<String, List<byte[]>> resources() {
+    public EconomicMap<String, ResourceStorageEntry> resources() {
         return resources;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String name, InputStream is) {
-
+    public static byte[] inputStreamToByteArray(InputStream is) {
         byte[] arr = new byte[4096];
         int pos = 0;
         try {
@@ -89,71 +95,103 @@ public final class Resources {
             throw VMError.shouldNotReachHere(ex);
         }
 
-        byte[] res = new byte[pos];
-        System.arraycopy(arr, 0, res, 0, pos);
+        byte[] data = new byte[pos];
+        System.arraycopy(arr, 0, data, 0, pos);
+        return data;
+    }
 
+    private static void addEntry(String resourceName, boolean isDirectory, byte[] data) {
         Resources support = singleton();
-        List<byte[]> list = support.resources.get(name);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(name, list);
+        ResourceStorageEntry entry = support.resources.get(resourceName);
+        if (entry == null) {
+            entry = new ResourceStorageEntry(isDirectory);
+            support.resources.put(resourceName, entry);
         }
-        list.add(res);
+        entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String dir, String content) {
+    public static void registerResource(String resourceName, InputStream is) {
+        addEntry(resourceName, false, inputStreamToByteArray(is));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        Resources support = singleton();
-
-        byte[] arr = content.getBytes();
-        List<byte[]> list = support.resources.get(dir);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(dir, list);
-        }
-        list.add(arr);
+        addEntry(resourceDirName, true, content.getBytes());
     }
 
-    public static List<byte[]> get(String name) {
+    /**
+     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
+     * convert <code>resourceName</code> to canonical variant.
+     */
+    public static String toCanonicalForm(String resourceName) {
+        NativeImageResourcePath path = new NativeImageResourcePath(null, resourceName.getBytes(StandardCharsets.UTF_8), true);
+        return new String(NativeImageResourcePath.getResolved(path));
+    }
+
+    public static ResourceStorageEntry get(String name) {
         return singleton().resources.get(name);
     }
 
-    public static URL createURL(String name, byte[] resourceBytes) {
-        class Conn extends URLConnection {
-            Conn(URL url) {
-                super(url);
-            }
-
-            @Override
-            public void connect() throws IOException {
-            }
-
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return new ByteArrayInputStream(resourceBytes);
-            }
-
-            @Override
-            public long getContentLengthLong() {
-                return resourceBytes.length;
-            }
-        }
-
+    private static URL createURL(String resourceName, int index) {
         try {
-            return new URL("resource", null, -1, name, new URLStreamHandler() {
-                @Override
-                protected URLConnection openConnection(URL u) throws IOException {
-                    return new Conn(u);
-                }
-            });
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, null, -1, resourceName,
+                            new URLStreamHandler() {
+                                @Override
+                                protected URLConnection openConnection(URL url) {
+                                    return new ResourceURLConnection(url, index);
+                                }
+                            });
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }
+
+    }
+
+    public static URL createURL(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        Enumeration<URL> urls = createURLs(toCanonicalForm(resourceName));
+        return urls.hasMoreElements() ? urls.nextElement() : null;
+    }
+
+    /* Avoid pulling in the URL class when only an InputStream is needed. */
+    public static InputStream createInputStream(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        ResourceStorageEntry entry = Resources.get(toCanonicalForm(resourceName));
+        if (entry == null) {
+            return null;
+        }
+        List<byte[]> data = entry.getData();
+        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+    }
+
+    public static Enumeration<URL> createURLs(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        ResourceStorageEntry entry = Resources.get(canonicalResourceName);
+        if (entry == null) {
+            return Collections.emptyEnumeration();
+        }
+        int numberOfResources = entry.getData().size();
+        List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
+        for (int index = 0; index < numberOfResources; index++) {
+            resourcesURLs.add(createURL(canonicalResourceName, index));
+        }
+        return Collections.enumeration(resourcesURLs);
     }
 }
 
@@ -172,8 +210,8 @@ final class ResourcesFeature implements Feature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (List<byte[]> resourceList : Resources.singleton().resources().getValues()) {
-            for (byte[] resource : resourceList) {
+        for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+            for (byte[] resource : resourceList.getData()) {
                 access.registerAsImmutable(resource);
             }
         }

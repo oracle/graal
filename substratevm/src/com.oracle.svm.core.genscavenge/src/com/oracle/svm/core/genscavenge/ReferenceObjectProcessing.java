@@ -36,11 +36,11 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -87,8 +87,10 @@ final class ReferenceObjectProcessing {
     }
 
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
-        Reference<?> dr = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
-        if (ReferenceInternals.getNextDiscovered(dr) != null) {
+        Reference<?> dr = (Reference<?>) obj;
+        // The discovered field might contain an object with a forwarding header
+        // to avoid issues during the cast just look at it as a raw pointer
+        if (ReferenceInternals.getDiscoveredPointer(dr).isNonNull()) {
             // Was already discovered earlier.
             return;
         }
@@ -108,7 +110,7 @@ final class ReferenceObjectProcessing {
         }
         if (maybeUpdateForwardedReference(dr, referentAddr)) {
             // Some other object had a strong reference to the referent, so the referent was already
-            // promoted. The called above updated the reference so that it now points to the
+            // promoted. The call above updated the reference object so that it now points to the
             // promoted object.
             return;
         }
@@ -116,7 +118,7 @@ final class ReferenceObjectProcessing {
         if (willSurviveThisCollection(refObject)) {
             // Referent is in a to-space. So, this is either an object that got promoted without
             // being moved or an object in the old gen.
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
             return;
         }
         if (!softReferencesAreWeak && dr instanceof SoftReference) {
@@ -127,7 +129,9 @@ final class ReferenceObjectProcessing {
             }
             UnsignedWord elapsed = WordFactory.unsigned(clock - timestamp);
             if (elapsed.belowThan(maxSoftRefAccessIntervalMs)) {
-                refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true);
+                // Important: we need to pass the reference object as holder so that the remembered
+                // set can be updated accordingly!
+                refVisitor.visitObjectReference(ReferenceInternals.getReferentFieldAddress(dr), true, dr);
                 return; // referent will survive and referent field has been updated
             }
         }
@@ -175,10 +179,10 @@ final class ReferenceObjectProcessing {
         return pendingHead;
     }
 
-    static void afterCollection(UnsignedWord usedBytes, UnsignedWord maxBytes) {
+    static void afterCollection(UnsignedWord freeBytes) {
         assert rememberedRefsList == null;
-        UnsignedWord unusedMbytes = maxBytes.subtract(usedBytes).unsignedDivide(1024 * 1024 /* MB */);
-        maxSoftRefAccessIntervalMs = unusedMbytes.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
+        maxSoftRefAccessIntervalMs = unused.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
         if (initialSoftRefClock == 0) {
             initialSoftRefClock = ReferenceInternals.getSoftReferenceClock();
@@ -199,7 +203,7 @@ final class ReferenceObjectProcessing {
         }
         Object refObject = refPointer.toObject();
         if (willSurviveThisCollection(refObject)) {
-            HeapImpl.getHeapImpl().dirtyCardIfNecessary(dr, refObject);
+            RememberedSet.get().dirtyCardIfNecessary(dr, refObject);
             return true;
         }
         /*
@@ -227,41 +231,5 @@ final class ReferenceObjectProcessing {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
         return !space.isFromSpace();
-    }
-
-    public static boolean verify(Reference<?> dr) {
-        Pointer refPointer = ReferenceInternals.getReferentPointer(dr);
-        int refClassification = HeapVerifier.classifyPointer(refPointer);
-        if (refClassification < 0) {
-            Log witness = Log.log();
-            witness.string("[ReferenceObjectProcessing.verify:");
-            witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
-            witness.string("  refClassification: ").signed(refClassification);
-            witness.string("]").newline();
-            assert (!(refClassification < 0)) : "Bad referent.";
-            return false;
-        }
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        YoungGeneration youngGen = heap.getYoungGeneration();
-        OldGeneration oldGen = heap.getOldGeneration();
-        boolean refNull = refPointer.isNull();
-        boolean refBootImage = (!refNull) && heap.isInImageHeapSlow(refPointer);
-        boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
-        boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
-        boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);
-        /* The referent might already have survived, or might not have. */
-        if (!(refNull || refYoung || refBootImage || refOldFrom)) {
-            Log witness = Log.log();
-            witness.string("[ReferenceObjectProcessing.verify:");
-            witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
-            witness.string("  refBootImage: ").bool(refBootImage);
-            witness.string("  refYoung: ").bool(refYoung);
-            witness.string("  refOldFrom: ").bool(refOldFrom);
-            witness.string("  referent should be in heap.");
-            witness.string("]").newline();
-            return false;
-        }
-        assert !refOldTo : "referent should be in the heap.";
-        return true;
     }
 }

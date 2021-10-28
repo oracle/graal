@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,19 @@
 package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
+import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
+import org.graalvm.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import org.graalvm.compiler.nodes.memory.MemoryMap;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
@@ -67,8 +71,8 @@ public enum CEOptimization {
      *
      * This phase is unconditionally enabled.
      *
-     * @see org.graalvm.compiler.graph.spi.Canonicalizable#canonical(CanonicalizerTool)
-     * @see org.graalvm.compiler.graph.Node#simplify(SimplifierTool)
+     * @see Canonicalizable#canonical(CanonicalizerTool)
+     * @see Simplifiable#simplify(SimplifierTool)
      * @see org.graalvm.compiler.graph.Node.ValueNumberable
      *
      */
@@ -246,6 +250,25 @@ public enum CEOptimization {
     FullLoopUnrolling(GraalOptions.FullUnroll, LoopFullUnrollPhase.class),
 
     /**
+     * {@link SpeculativeGuardMovementPhase} tries to move a loop invariant guard (e.g., an array
+     * bounds check) inside a loop to outside of the loop. This can improve performance since the
+     * body of the loop is simplified.
+     *
+     * This phase is enabled by default and can be disabled with
+     * {@link GraalOptions#SpeculativeGuardMovement}.
+     */
+    SpeculativeGuardMovement(GraalOptions.SpeculativeGuardMovement, SpeculativeGuardMovementPhase.class),
+
+    /**
+     * {@link LoopPredicationPhase} performs a more limited form of hoisting array bounds checks out
+     * of loops than {@link #SpeculativeGuardMovement}.
+     *
+     * If {@link #SpeculativeGuardMovement} is disabled, this phase is enabled by default and can be
+     * disabled with {@link GraalOptions#LoopPredication}.
+     */
+    LoopPredication(GraalOptions.LoopPredication, LoopPredicationPhase.class),
+
+    /**
      * {@link LoopPeelingPhase} is an optimization that moves first or last loop iterations outside
      * the loop. This process of moving loop iterations is called "peeling". This can improve
      * performance of the generated code when the peeled iterations have complex logic that is
@@ -284,10 +307,9 @@ public enum CEOptimization {
      * phase tries to re-use dominating boxed/unboxed values to avoid repetitive boxing while it
      * respects the caching behavior specified by {@link Integer#valueOf(int)}.
      *
-     * This phase is enabled by default and can be disabled with
-     * {@link org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase.Options#ReuseOutOfCacheBoxedValues}.
+     * This phase is enabled by default.
      */
-    BoxNodeOptimization(BoxNodeOptimizationPhase.Options.ReuseOutOfCacheBoxedValues, BoxNodeOptimizationPhase.class);
+    BoxNodeOptimization(null, BoxNodeOptimizationPhase.class);
 
     private final OptionKey<?> option;
     private final Class<? extends BasePhase<?>> optimization;

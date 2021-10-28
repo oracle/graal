@@ -778,6 +778,11 @@ public final class TruffleFile {
 
     /**
      * Opens or creates a file returning a {@link SeekableByteChannel} to access the file content.
+     * In most cases, the returned {@link SeekableByteChannel} should be closed using
+     * try-with-resources construct. When the channel must keep being opened for the lifetime of a
+     * context it should be {@link Env#registerOnDispose(Closeable) registered} for automatic close
+     * on context dispose.
+     *
      *
      * @param options the options specifying how the file should be opened
      * @param attributes the optional attributes to set atomically when creating the new file
@@ -804,7 +809,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning an {@link InputStream} to access the file content.
+     * Opens a file for reading returning an {@link InputStream} to access the file content. In most
+     * cases, the returned {@link InputStream} should be closed using try-with-resources construct.
+     * When the stream must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link InputStream}
@@ -828,7 +836,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning a {@link BufferedReader} to access the file content.
+     * Opens a file for reading returning a {@link BufferedReader} to access the file content. In
+     * most cases, the returned {@link BufferedReader} should be closed using try-with-resources
+     * construct. When the reader must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param charset the file encoding
      * @return the created {@link BufferedReader}
@@ -842,7 +853,8 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for reading returning a {@link BufferedReader} to access the file content.
+     * Opens a file for reading returning a {@link BufferedReader} to access the file content. See
+     * {@link #newBufferedReader(Charset)}.
      *
      * @return the created {@link BufferedReader}
      * @throws IOException in case of IO error
@@ -902,7 +914,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link OutputStream}.
+     * Opens a file for writing returning an {@link OutputStream}. In most cases, the returned
+     * {@link OutputStream} should be closed using try-with-resources construct. When the stream
+     * must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link OutputStream}
@@ -930,7 +945,10 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link BufferedWriter}.
+     * Opens a file for writing returning an {@link BufferedWriter}. In most cases, the returned
+     * {@link BufferedWriter} should be closed using try-with-resources construct. When the writer
+     * must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      *
      * @param charset the file encoding
      * @param options the options specifying how the file should be opened
@@ -946,7 +964,8 @@ public final class TruffleFile {
     }
 
     /**
-     * Opens a file for writing returning an {@link BufferedWriter}.
+     * Opens a file for writing returning an {@link BufferedWriter}. See
+     * {@link #newBufferedWriter(Charset, OpenOption...)}.
      *
      * @param options the options specifying how the file should be opened
      * @return the created {@link BufferedWriter}
@@ -1444,6 +1463,9 @@ public final class TruffleFile {
      * iterator} are created as if by {@link #resolve(java.lang.String) resolving} the name of the
      * directory entry against this {@link TruffleFile}.
      * <p>
+     * In most cases, the returned {@link DirectoryStream} should be closed using try-with-resources
+     * construct. When the stream must keep being opened for the lifetime of a context it should be
+     * {@link Env#registerOnDispose(Closeable) registered} for automatic close on context dispose.
      * When not using the try-with-resources construct, then the directory stream's
      * {@link DirectoryStream#close() close} method should be called after iteration is completed.
      * <p>

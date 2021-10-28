@@ -423,7 +423,7 @@ public final class DeoptimizedFrame {
         SimpleCodeInfoQueryResult codeInfoQueryResult = StackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)), codeInfoQueryResult);
         long handler = codeInfoQueryResult.getExceptionOffset();
-        assert handler != 0 : "no exception handler registered for deopt target";
+        VMError.guarantee(handler != 0, "no exception handler registered for deopt target");
         firstAddressEntry.returnAddress += handler;
     }
 }

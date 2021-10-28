@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import static java.lang.annotation.ElementType.METHOD;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.METHOD)
 public @interface JniImpl {
+    boolean isJni() default true;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,27 +33,26 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCa
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callIsInliningForced;
-import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
+import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNIUtil;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.nativebridge.jni.HSObject;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNIUtil;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 
 final class HSTruffleCallNode extends HSObject implements TruffleCallNode {
 
-    HSTruffleCallNode(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSTruffleCallNode(JNIMethodScope scope, JObject handle) {
         super(scope, handle);
     }
 
     @TruffleFromLibGraal(GetCurrentCallTarget)
     @Override
     public CompilableTruffleAST getCurrentCallTarget() {
-        JNILibGraalScope<TruffleToLibGraal.Id> scope = JNILibGraalScope.scope().narrow(TruffleToLibGraal.Id.class);
+        JNIMethodScope scope = JNIMethodScope.scope();
         JObject hsCompilable = callGetCurrentCallTarget(scope.getEnv(), getHandle());
         if (hsCompilable.isNull()) {
             return null;

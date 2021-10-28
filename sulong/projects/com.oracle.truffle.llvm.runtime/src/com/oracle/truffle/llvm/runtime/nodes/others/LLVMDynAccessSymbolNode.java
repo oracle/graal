@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,11 @@
 
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -49,14 +48,19 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMSymbol symbol);
 
+    @TruffleBoundary
+    private LLVMLinkerException notFound(LLVMSymbol symbol) {
+        throw new LLVMLinkerException(this, "External %s %s cannot be found.", symbol.getKind(), symbol.getName());
+    }
+
     @Specialization
     LLVMPointer doAccess(LLVMSymbol symbol,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMPointer value = context.getSymbol(symbol);
+                    @Cached BranchProfile exception) {
+        LLVMPointer value = getContext().getSymbol(symbol, exception);
         if (value != null) {
             return value;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
+        exception.enter();
+        throw notFound(symbol);
     }
 }

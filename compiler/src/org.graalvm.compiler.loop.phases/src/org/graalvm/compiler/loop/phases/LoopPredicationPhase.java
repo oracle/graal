@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,8 +26,10 @@
 
 package org.graalvm.compiler.loop.phases;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.SpeculationLog;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
+import static org.graalvm.compiler.core.common.calc.Condition.EQ;
+import static org.graalvm.compiler.core.common.calc.Condition.NE;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -63,9 +65,8 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
-import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
-import static org.graalvm.compiler.core.common.calc.Condition.EQ;
-import static org.graalvm.compiler.core.common.calc.Condition.NE;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPredicationPhase extends BasePhase<MidTierContext> {
     private static final SpeculationReasonGroup LOOP_PREDICATION = new SpeculationReasonGroup("Loop Predication", BytecodePosition.class);
@@ -95,8 +96,9 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                     SpeculationLog.SpeculationReason reason = LOOP_PREDICATION.createSpeculationReason(pos);
                     if (speculationLog.maySpeculate(reason)) {
                         final CountedLoopInfo counted = loop.counted();
-                        final InductionVariable counter = counted.getCounter();
+                        final InductionVariable counter = counted.getLimitCheckedIV();
                         final Condition condition = ((CompareNode) counted.getLimitTest().condition()).condition().asCondition();
+                        final boolean inverted = loop.counted().isInverted();
                         if ((((IntegerStamp) counter.valueNode().stamp(NodeView.DEFAULT)).getBits() == 32) &&
                                         !counted.isUnsignedCheck() &&
                                         ((condition != NE && condition != EQ) || (counter.isConstantStride() && Math.abs(counter.constantStride()) == 1)) &&
@@ -116,11 +118,15 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                             }
                             final AbstractBeginNode body = loop.counted().getBody();
                             final Block bodyBlock = cfg.getNodeToBlock().get(body);
+
                             for (GuardNode guard : guards) {
                                 final AnchoringNode anchor = guard.getAnchor();
                                 final Block anchorBlock = cfg.getNodeToBlock().get(anchor.asNode());
-                                if (!AbstractControlFlowGraph.dominates(bodyBlock, anchorBlock)) {
-                                    continue;
+                                // for inverted loop the anchor can dominate the body
+                                if (!inverted) {
+                                    if (!AbstractControlFlowGraph.dominates(bodyBlock, anchorBlock)) {
+                                        continue;
+                                    }
                                 }
                                 processGuard(loop, guard);
                             }
@@ -163,7 +169,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
 
         Long scale = null;
 
-        final InductionVariable counter = loop.counted().getCounter();
+        final InductionVariable counter = loop.counted().getLimitCheckedIV();
         if (iv.isConstantScale(counter)) {
             scale = iv.constantScale(counter);
         }
@@ -186,7 +192,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
     }
 
     private static void replaceGuardNode(LoopEx loop, GuardNode guard, ValueNode range, StructuredGraph graph, long scaleCon, ValueNode offset) {
-        final InductionVariable counter = loop.counted().getCounter();
+        final InductionVariable counter = loop.counted().getLimitCheckedIV();
         ValueNode rangeLong = IntegerConvertNode.convert(range, StampFactory.forInteger(64), graph, NodeView.DEFAULT);
 
         ValueNode extremumNode = counter.extremumNode(false, StampFactory.forInteger(64));
@@ -199,7 +205,7 @@ public class LoopPredicationPhase extends BasePhase<MidTierContext> {
                         IntegerConvertNode.convert(offset, StampFactory.forInteger(64), graph, NodeView.DEFAULT));
         final LogicNode upperCond = IntegerBelowNode.create(upperNode, rangeLong, NodeView.DEFAULT);
 
-        final ValueNode initNode = IntegerConvertNode.convert(counter.initNode(), StampFactory.forInteger(64), graph, NodeView.DEFAULT);
+        final ValueNode initNode = IntegerConvertNode.convert(loop.counted().getBodyIVStart(), StampFactory.forInteger(64), graph, NodeView.DEFAULT);
         final ValueNode lowerNode = MathUtil.add(graph, MathUtil.mul(graph, initNode, ConstantNode.forLong(scaleCon, graph)),
                         IntegerConvertNode.convert(offset, StampFactory.forInteger(64), graph, NodeView.DEFAULT));
         final LogicNode lowerCond = IntegerBelowNode.create(lowerNode, rangeLong, NodeView.DEFAULT);

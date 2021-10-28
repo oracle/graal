@@ -40,29 +40,22 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import java.util.function.Predicate;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import javax.tools.FileObject;
-import javax.tools.StandardLocation;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -71,12 +64,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 @SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
-    private static final int NUMBER_OF_PROPERTIES_PER_ENTRY = 4;
-
     @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
-        if (!annotatedElement.getModifiers().contains(Modifier.PUBLIC)) {
-            emitError("Registered instrument class must be public", annotatedElement);
+        if (annotatedElement.getModifiers().contains(Modifier.PRIVATE)) {
+            emitError("Registered instrument class must be at least package protected", annotatedElement);
             return false;
         }
         if (annotatedElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !annotatedElement.getModifiers().contains(Modifier.STATIC)) {
@@ -153,77 +144,6 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             }
             default:
                 throw new IllegalStateException("Unsupported method: " + methodToImplement.getSimpleName());
-        }
-    }
-
-    @Override
-    String getRegistrationFileName() {
-        return "META-INF/truffle/instrument";
-    }
-
-    @Override
-    void storeRegistrations(Properties into, Iterable<? extends TypeElement> instruments) {
-        TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        int numInstruments = loadIfFileAlreadyExists(getRegistrationFileName(), into);
-        for (TypeElement l : instruments) {
-            AnnotationMirror annotation = ElementUtils.findAnnotationMirror(l, types.TruffleInstrument_Registration);
-            if (annotation == null) {
-                continue;
-            }
-
-            String id = ElementUtils.getAnnotationValue(String.class, annotation, "id");
-            int instNum = findInstrument(id, into);
-            if (instNum == 0) { // not found
-                numInstruments += 1;
-                instNum = numInstruments;
-            }
-
-            String prefix = "instrument" + instNum + ".";
-            String className = processingEnv.getElementUtils().getBinaryName(l).toString();
-
-            into.setProperty(prefix + "id", id);
-            into.setProperty(prefix + "name", ElementUtils.getAnnotationValue(String.class, annotation, "name"));
-            into.setProperty(prefix + "version", ElementUtils.getAnnotationValue(String.class, annotation, "version"));
-            into.setProperty(prefix + "className", className);
-            into.setProperty(prefix + "internal", Boolean.toString(ElementUtils.getAnnotationValue(Boolean.class, annotation, "internal")));
-
-            int serviceCounter = 0;
-            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : annotation.getElementValues().entrySet()) {
-                final Name attrName = entry.getKey().getSimpleName();
-                if (attrName.contentEquals("services")) {
-                    AnnotationValue attrValue = entry.getValue();
-                    List<?> classes = (List<?>) attrValue.getValue();
-                    for (Object clazz : classes) {
-                        AnnotationValue clazzValue = (AnnotationValue) clazz;
-                        into.setProperty(prefix + "service" + serviceCounter++, clazzValue.getValue().toString());
-                    }
-                }
-            }
-        }
-    }
-
-    private static int findInstrument(String id, Properties p) {
-        int cnt = 1;
-        String val;
-        while ((val = p.getProperty("instrument" + cnt + ".id")) != null) {
-            if (id.equals(val)) {
-                return cnt;
-            }
-            cnt += 1;
-        }
-        return 0;
-    }
-
-    private int loadIfFileAlreadyExists(String filename, Properties p) {
-        try {
-            FileObject file = processingEnv.getFiler().getResource(
-                            StandardLocation.CLASS_OUTPUT, "", filename);
-            p.load(file.openInputStream());
-
-            return p.keySet().size() / NUMBER_OF_PROPERTIES_PER_ENTRY;
-        } catch (IOException e) {
-            // Ignore error. It is ok if the file does not exist
-            return 0;
         }
     }
 }

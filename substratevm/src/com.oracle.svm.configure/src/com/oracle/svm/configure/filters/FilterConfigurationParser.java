@@ -37,6 +37,7 @@ public class FilterConfigurationParser extends ConfigurationParser {
     private final RuleNode rootNode;
 
     public FilterConfigurationParser(RuleNode rootNode) {
+        super(true);
         assert rootNode != null;
         this.rootNode = rootNode;
     }

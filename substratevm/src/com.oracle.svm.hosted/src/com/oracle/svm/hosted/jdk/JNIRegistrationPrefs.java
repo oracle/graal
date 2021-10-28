@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.util.ArrayList;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -50,12 +52,16 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Feature
          */
         String preferencesImplementation = getPlatformPreferencesClassName();
         rerunClassInit(access, preferencesImplementation);
+        ArrayList<Class<?>> triggers = new ArrayList<>();
+        triggers.add(clazz(access, preferencesImplementation));
 
         if (isDarwin()) {
-            rerunClassInit(access, "java.util.prefs.MacOSXPreferencesFile");
+            String darwinSpecificClass = "java.util.prefs.MacOSXPreferencesFile";
+            rerunClassInit(access, darwinSpecificClass);
+            triggers.add(clazz(access, darwinSpecificClass));
         }
 
-        access.registerReachabilityHandler(JNIRegistrationPrefs::handlePreferencesClassReachable, clazz(access, preferencesImplementation));
+        access.registerReachabilityHandler(JNIRegistrationPrefs::handlePreferencesClassReachable, triggers.toArray());
     }
 
     private static String getPlatformPreferencesClassName() {

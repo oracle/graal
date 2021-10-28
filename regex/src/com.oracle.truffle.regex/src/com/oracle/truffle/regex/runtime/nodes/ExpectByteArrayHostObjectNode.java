@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 
 @GenerateUncached
@@ -58,8 +56,7 @@ public abstract class ExpectByteArrayHostObjectNode extends Node {
     }
 
     @Specialization
-    static byte[] doBoxed(Object input,
-                    @CachedContext(RegexLanguage.class) RegexContext context) {
-        return (byte[]) context.getEnv().asHostObject(input);
+    byte[] doBoxed(Object input) {
+        return (byte[]) RegexContext.get(this).getEnv().asHostObject(input);
     }
 }

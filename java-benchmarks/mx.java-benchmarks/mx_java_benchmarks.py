@@ -126,7 +126,7 @@ mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
 
 
 # Adds a java VM from JAVA_HOME without any assumption about it
-mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java_home', 'default'), _suite, 1)
+mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java-home', 'default'), _suite, 1)
 
 
 def java_home_jdk():
@@ -146,6 +146,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         super(TemporaryWorkdirMixin, self).before(otherArgs)
 
     def _create_tmp_workdir(self):
+        mx.log_deprecation("mx_java_benchmarks.mx_benchmark.TemporaryWorkdirMixin is deprecated. Use mx_benchmark.mx_benchmark.TemporaryWorkdirMixin instead.")
         self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
@@ -171,12 +172,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
-    """Benchmark suite for the ShopCart benchmark."""
-
-    def name(self):
-        return "shopcart"
-
+class BaseMicroserviceBenchmarkSuite(object):
     def group(self):
         return "Graal"
 
@@ -184,13 +180,282 @@ class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
         return "graal-compiler"
 
     def version(self):
-        return "0.1"
+        raise NotImplementedError()
 
     def validateReturnCode(self, retcode):
         return retcode == 143
 
+    def applicationDist(self):
+        raise NotImplementedError()
+
+    def applicationPath(self):
+        raise NotImplementedError()
+
+    def applicationStartupRule(self, benchSuiteName, benchmark):
+        return [
+            # Example of Micronaut startup log:
+            # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
+            mx_benchmark.StdOutRule(
+                self.get_application_startup_regex(),
+                {
+                    "benchmark": benchmark,
+                    "bench-suite": benchSuiteName,
+                    "metric.name": "app-startup",
+                    "metric.value": ("<startup>", float),
+                    "metric.unit": self.get_application_startup_units(),
+                    "metric.better": "lower",
+                }
+            )
+        ]
+
+    def get_application_startup_regex(self):
+        raise NotImplementedError()
+
+    def get_application_startup_units(self):
+        raise NotImplementedError
+
+    def skip_agent_assertions(self, benchmark, args):
+        # This method overrides NativeImageMixin.skip_agent_assertions
+        user_args = super(BaseMicroserviceBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        if user_args is not None:
+            return user_args
+        else:
+            return []
+
+    def stages(self, args):
+        # This method overrides NativeImageMixin.stages
+        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+        return parsed_arg.split(',') if parsed_arg else self.default_stages()
+
+    def default_stages(self):
+        raise NotImplementedError()
+
+
+class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    def mainClass(self):
+        raise NotImplementedError()
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        lib = self.applicationDist()
+        classpath = os.path.join(lib, "BOOT-INF/classes")
+        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
+            if filename.endswith(".jar"):
+                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
+        mainclass = self.mainClass()
+        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+
+    def get_application_startup_regex(self):
+        # Example of SpringBoot startup log:
+        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
+        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$"
+
+    def get_application_startup_units(self):
+        return 's'
+
+    def default_stages(self):
+        # This method overrides NativeImageMixin.stages
+        return ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
+    def version(self):
+        return "0.1.6"
+
+    def applicationDist(self):
+        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
+
+    def mainClass(self):
+        return "org.springframework.samples.petclinic.PetClinicApplication"
+
+
+class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using JMeter."""
+
+    def name(self):
+        return "petclinic-jmeter"
+
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny", "small", "large"]
+        return ["tiny"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+mx_benchmark.add_bm_suite(PetClinicJMeterBenchmarkSuite())
+
+
+class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    """PetClinic benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "petclinic-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
+
+
+class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
+    def version(self):
+        return "1.0.1"
+
+    def applicationDist(self):
+        return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
+
+    def mainClass(self):
+        return "com.example.webmvc.WebmvcApplication"
+
+
+class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    def name(self):
+        return "spring-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
+
+    def serviceEndpoint(self):
+        return 'hello'
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(SpringHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
+
+
+class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+
+    def get_application_startup_regex(self):
+        # Example of Quarkus startup log:
+        # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
+        return r"started in (?P<startup>\d*[.,]?\d*)s."
+
+    def get_application_startup_units(self):
+        return 's'
+
+    def default_stages(self):
+        return ['instrument-image', 'instrument-run', 'image', 'run']
+
+    def extra_image_build_argument(self, benchmark, args):
+        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
+                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
+                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dio.netty.leakDetection.level=DISABLED',
+                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Duser.language=en',
+                '-J-Duser.country=US',
+                '-J-Dfile.encoding=UTF-8',
+                '--initialize-at-build-time=',
+                '-H:+JNI',
+                '-H:+AllowFoldMethods',
+                '-H:FallbackThreshold=0',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-AddAllCharsets',
+                '-H:EnableURLProtocols=http',
+                '-H:NativeLinkerOption=-no-pie',
+                '-H:-UseServiceLoaderFeature',
+                '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+
+class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+    def version(self):
+        return "1.0.6"
+
+    def applicationDist(self):
+        return mx.library("TIKA_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'parse'
+
+
+class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    """Tika benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "tika-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["odt-tiny", "odt-small", "odt-medium", "odt-large", "odt-huge", "pdf-tiny", "pdf-small", "pdf-medium", "pdf-large", "pdf-huge"]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
+
+
+class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+    def version(self):
+        return "1.0.1"
+
+    def applicationDist(self):
+        return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "quarkus-hello-world-" + self.version() + "-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'hello'
+
+
+class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    """Quarkus benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "quarkus-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(QuarkusHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
+
+
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    def get_application_startup_regex(self):
+        # Example of Micronaut startup log (there can be some formatting in between):
+        # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
+        return r"^.*\[main\].*INFO.*io.micronaut.runtime.Micronaut.*- Startup completed in (?P<startup>\d+)ms."
+
+    def get_application_startup_units(self):
+        return 'ms'
+
+    def skip_build_assertions(self, benchmark):
+        # This method overrides NativeImageMixin.skip_build_assertions
+        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+
+    def default_stages(self):
+        return ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
+    def version(self):
+        return "0.3.5"
 
     def applicationDist(self):
         shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -199,14 +464,79 @@ class ShopCartBenchmarkSuite(mx_sdk_benchmark.JMeterBenchmarkSuite):
     def applicationPath(self):
         return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
 
-    def workloadPath(self, benchmark):
+    def serviceEndpoint(self):
+        return 'clients'
+
+
+class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
+    """ShopCart benchmark suite that measures throughput using JMeter."""
+
+    def name(self):
+        return "shopcart-jmeter"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["tiny", "small", "large"]
+
+    def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
 
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartJMeterBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-mx_benchmark.add_bm_suite(ShopCartBenchmarkSuite())
+
+mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
 
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    """ShopCart benchmark suite that measures throughput using Wrk."""
+
+    def name(self):
+        return "shopcart-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
+
+
+class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
+    def version(self):
+        return "1.0.2"
+
+    def applicationDist(self):
+        return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "micronaut-hello-world-" + self.version() + ".jar")
+
+    def serviceEndpoint(self):
+        return 'hello'
+
+
+class MicronautHelloWorldWrkBenchmarkSuite(BaseMicronautHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    def name(self):
+        return "micronaut-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(MicronautHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(MicronautHelloWorldWrkBenchmarkSuite())
+
+
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -217,8 +547,8 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def subgroup(self):
         return "graal-compiler"
 
-    def benchSuiteName(self):
-        return self.name()
+    def name(self):
+        raise NotImplementedError()
 
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
@@ -238,6 +568,18 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def daCapoIterations(self):
         raise NotImplementedError()
 
+    def daCapoSizes(self):
+        raise NotImplementedError()
+
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in self.daCapoIterations().keys() if self.workloadSize() in self.daCapoSizes().get(bench, [])])
+
+    def existingSizes(self):
+        return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
+
+    def workloadSize(self):
+        raise NotImplementedError()
+
     def validateEnvironment(self):
         if not self.daCapoPath():
             raise RuntimeError(
@@ -250,10 +592,23 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", default=None)
+        parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
+
+        if args.size:
+            if args.size not in self.existingSizes():
+                mx.abort("Unknown workload size '{}'. "
+                         "Existing benchmark sizes are: {}".format(args.size, ','.join(self.existingSizes())))
+
+            if args.size != self.workloadSize():
+                mx.abort("Mismatch between suite-defined workload size ('{}') "
+                         "and user-provided one ('{}')!".format(self.workloadSize(), args.size))
+
+        otherArgs = ["-s", self.workloadSize()] + remaining
+
         if args.n:
             if args.n.isdigit():
-                return ["-n", args.n] + remaining
+                return ["-n", args.n] + otherArgs
             if args.n == "-1":
                 return None
         else:
@@ -262,7 +617,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 return None
             else:
                 iterations = iterations + self.getExtraIterationCount(iterations)
-                return ["-n", str(iterations)] + remaining
+                return ["-n", str(iterations)] + otherArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -321,11 +676,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
-        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list:
-            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
-            bench_list.remove("batik")
-        return bench_list
+        missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
+        if len(missing_sizes) > 0:
+            mx.abort("Missing size definitions for benchmark(s): {}".format(missing_sizes))
+        return [b for b, it in self.daCapoIterations().items()
+                if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -417,43 +772,108 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
 
 _daCapoIterations = {
-    "avrora"     : 20,
-    "batik"      : 40,
-    "eclipse"    : -1,
-    "fop"        : 40,
-    "h2"         : 25,
-    "jython"     : 40,
-    "luindex"    : 15,
-    "lusearch"   : 40,
-    "pmd"        : 30,
-    "sunflow"    : 35,
-    "tomcat"     : -1, # Stopped working as of 8u92
-    "tradebeans" : -1,
-    "tradesoap"  : -1,
-    "xalan"      : 30,
+    "avrora"      : 20,
+    "batik"       : 40,
+    "eclipse"     : -1,
+    "fop"         : 40,
+    "h2"          : 25,
+    "jython"      : 50,
+    "luindex"     : 20,
+    "lusearch"    : 40,
+    "lusearch-fix": -1,
+    "pmd"         : 30,
+    "sunflow"     : 35,
+    "tomcat"      : -1,
+    "tradebeans"  : 20,
+    "tradesoap"   : 20,
+    "xalan"       : 30,
+}
+
+
+_daCapoSizes = {
+    "avrora":       ["default", "small", "large"],
+    "batik":        ["default", "small", "large"],
+    "eclipse":      ["default", "small", "large"],
+    "fop":          ["default", "small"],
+    "h2":           ["default", "small", "large", "huge"],
+    "jython":       ["default", "small", "large"],
+    "luindex":      ["default", "small"],
+    "lusearch":     ["default", "small", "large"],
+    "lusearch-fix": ["default", "small", "large"],
+    "pmd":          ["default", "small", "large"],
+    "sunflow":      ["default", "small", "large"],
+    "tomcat":       ["default", "small", "large", "huge"],
+    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradesoap":    ["default", "small", "large", "huge"],
+    "xalan":        ["default", "small", "large"]
 }
 
 
 class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
-    """DaCapo 9.12 (Bach) benchmark suite implementation."""
+    """DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "dacapo"
+        if self.workloadSize() == "default":
+            return "dacapo"
+        else:
+            return "dacapo-{}".format(self.workloadSize())
 
-    def version(self):
-        return '9.12-bach'
+    def defaultSuiteVersion(self):
+        return "9.12-MR1-bach"
+
+    def availableSuiteVersions(self):
+        return ["9.12-bach", "9.12-MR1-bach"]
+
+    def workloadSize(self):
+        return "default"
 
     def daCapoSuiteTitle(self):
-        return "DaCapo 9.12"
+        title = None
+        if self.version() == "9.12-bach":
+            title = "DaCapo 9.12"
+        elif self.version() == "9.12-MR1-bach":
+            title = "DaCapo 9.12-MR1"
+        return title
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
 
     def daCapoLibraryName(self):
-        return "DACAPO"
+        if self.version() == "9.12-bach":  # 2009 release
+            return "DACAPO"
+        elif self.version() == "9.12-MR1-bach":  # 2018 maintenance release
+            return "DACAPO_MR1_BACH"
+        else:
+            return None
 
     def daCapoIterations(self):
-        return _daCapoIterations
+        iterations = _daCapoIterations.copy()
+        if self.version() == "9.12-bach":
+            del iterations["eclipse"]
+            del iterations["tradebeans"]
+            del iterations["tradesoap"]
+            del iterations["lusearch-fix"]
+            # Stopped working as of 8u92 on the initial release
+            del iterations["tomcat"]
+
+        if mx.get_jdk().javaCompliance >= '9' and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            if "batik" in iterations:
+                # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+                del iterations["batik"]
+            if "tradesoap" in iterations:
+                # validation fails transiently but frequently in the first iteration in JDK9+
+                del iterations["tradesoap"]
+
+        if self.workloadSize() == "small":
+            # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
+            iterations = {k: (2 * int(v)) if v != -1 else v for k, v in iterations.items()}
+        if self.workloadSize() in {"huge", "gargantuan"}:
+            # Reduce the default number of iterations for very large workloads to keep the runtime reasonable
+            iterations = {k: max(int((int(v)/2)), 5) if v != -1 else v for k, v in iterations.items()}
+        return iterations
+
+    def daCapoSizes(self):
+        return _daCapoSizes
 
     def flakySuccessPatterns(self):
         return [
@@ -465,8 +885,38 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
                 re.MULTILINE),
         ]
 
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(DaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16':
+            vmArgs += ["--add-opens", "java.base/java.lang=ALL-UNNAMED"]
+        return vmArgs
+
+
+class DacapoSmallBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "small"
+
+
+class DacapoLargeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class DacapoHugeBenchmarkSuite(DaCapoBenchmarkSuite):
+    """The subset of DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
 
 mx_benchmark.add_bm_suite(DaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(DacapoHugeBenchmarkSuite())
 
 
 class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
@@ -646,12 +1096,30 @@ _daCapoScalaConfig = {
     "tmt"         : 12
 }
 
+_daCapoScalaSizes = {
+    "actors":       ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "apparat":      ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "factorie":     ["default", "tiny", "small", "large", "huge", "gargantuan"],
+    "kiama":        ["default", "small"],
+    "scalac":       ["default", "small", "large"],
+    "scaladoc":     ["default", "small", "large"],
+    "scalap":       ["default", "small", "large"],
+    "scalariform":  ["default", "tiny", "small", "large", "huge"],
+    "scalatest":    ["default", "small"],  # 'large' and 'huge' sizes fail validation
+    "scalaxb":      ["default", "tiny", "small", "large", "huge"],
+    "specs":        ["default", "small", "large"],
+    "tmt":          ["default", "tiny", "small", "large", "huge"]
+}
+
 
 class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
     def name(self):
-        return "scala-dacapo"
+        if self.workloadSize() == "default":
+            return "scala-dacapo"
+        else:
+            return "scala-dacapo-{}".format(self.workloadSize())
 
     def version(self):
         return "0.1.0"
@@ -665,12 +1133,22 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
     def daCapoLibraryName(self):
         return "DACAPO_SCALA"
 
+    def workloadSize(self):
+        return "default"
+
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
         if not java_home_jdk().javaCompliance < '11':
-            mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+            mx.logv('Removing scala-dacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
+        if java_home_jdk().javaCompliance >= '16':
+            # See GR-29222 for details.
+            mx.logv('Removing scala-dacapo:specs from benchmarks because it uses a library that violates module permissions which is no longer allowed in JDK 16 (JDK-8255363)')
+            del result['specs']
         return result
+
+    def daCapoSizes(self):
+        return _daCapoScalaSizes
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
         skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
@@ -688,8 +1166,47 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
         return vmArgs
 
 
-mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+class ScalaDacapoTinyBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
 
+    def workloadSize(self):
+        return "tiny"
+
+
+class ScalaDacapoSmallBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'small' configuration."""
+
+    def workloadSize(self):
+        return "small"
+
+
+class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'large' configuration."""
+
+    def workloadSize(self):
+        return "large"
+
+
+class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
+
+    def workloadSize(self):
+        return "huge"
+
+
+class ScalaDacapoGargantuanBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
+    """The subset of Scala DaCapo benchmarks supporting the 'gargantuan' configuration."""
+
+    def workloadSize(self):
+        return "gargantuan"
+
+
+mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoTinyBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoSmallBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoLargeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoHugeBenchmarkSuite())
+mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
@@ -780,7 +1297,14 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
-        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
+
+        # The startup benchmarks are executed by spawning a new JVM. However, this new VM doesn't
+        # inherit the flags passed to the main process.
+        # According to the SpecJVM jar help message, one must use the '--jvmArgs' option to specify
+        # options to pass to the startup benchmarks. It has no effect on the non startup benchmarks.
+        startupJVMArgs = ["--jvmArgs", " ".join(vmArgs)] if "startup" in ' '.join(benchmarks) else []
+
+        return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks + startupJVMArgs
 
     def runArgs(self, bmSuiteArgs):
         runArgs = super(SpecJvm2008BenchmarkSuite, self).runArgs(bmSuiteArgs)
@@ -789,6 +1313,15 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(SpecJvm2008BenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if java_home_jdk().javaCompliance >= '16' and \
+                ("xml.transform" in self.benchmarkList(bmSuiteArgs) or
+                 "startup.xml.transform" in self.benchmarkList(bmSuiteArgs)):
+            vmArgs += ["--add-exports=java.xml/com.sun.org.apache.xerces.internal.parsers=ALL-UNNAMED",
+                       "--add-exports=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED"]
+        return vmArgs
 
     def benchmarkList(self, bmSuiteArgs):
         if java_home_jdk().javaCompliance >= '9':
@@ -841,17 +1374,23 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 
 
-_SpecJbb_specific_vmArgs = [
-    "-XX:+UseNUMA",
-    "-XX:+AlwaysPreTouch",
-    "-XX:+UseLargePagesInMetaspace",
-    "-XX:-UseAdaptiveSizePolicy",
-    "-XX:-UseAdaptiveNUMAChunkSizing",
-    "-XX:+PrintGCDetails"
-]
+def _get_specjbb_vmArgs(java_compliance):
+    args = [
+        "-XX:+UseNUMA",
+        "-XX:+AlwaysPreTouch",
+        "-XX:-UseAdaptiveSizePolicy",
+        "-XX:-UseAdaptiveNUMAChunkSizing",
+        "-XX:+PrintGCDetails"
+    ]
 
-if mx.is_linux():
-    _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
+    if java_compliance < '16':
+        # JDK-8243161: Deprecated in JDK15 and marked obsolete in JDK16
+        args.append("-XX:+UseLargePagesInMetaspace")
+
+    if mx.is_linux():
+        args.append("-XX:+UseTransparentHugePages")
+
+    return args
 
 
 class HeapSettingsMixin(object):
@@ -903,7 +1442,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2005 = mx.get_env("SPECJBB2005")
@@ -1044,7 +1583,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2013 = mx.get_env("SPECJBB2013")
@@ -1154,7 +1693,7 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))
-        return _SpecJbb_specific_vmArgs + vmArgs
+        return _get_specjbb_vmArgs(mx.get_jdk().javaCompliance) + vmArgs
 
     def specJbbClassPath(self):
         specjbb2015 = mx.get_env("SPECJBB2015")
@@ -1281,7 +1820,7 @@ _renaissanceConfig = {
 }
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1293,30 +1832,49 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def renaissanceLibraryName(self):
-        return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
+        return "RENAISSANCE_{}".format(self.version())
 
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
-        if self.renaissanceVersionToRun() == "0.9.0":
-            del benchmarks["scala-doku"]  # was introduced in 0.10.0
+        if self.version() == "0.9.0":
+            # benchmark was introduced in 0.10.0
+            del benchmarks["scala-doku"]
+
+        if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
+            # JDK17 support for Spark benchmarks was added in 0.13.0
+            # See: renaissance-benchmarks/renaissance #295
+            del benchmarks["als"]
+            del benchmarks["chi-square"]
+            del benchmarks["dec-tree"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["log-regression"]
+            del benchmarks["movie-lens"]
+            del benchmarks["naive-bayes"]
+            del benchmarks["page-rank"]
+
+        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
+            # GR-33879
+            # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
+            del benchmarks["db-shootout"]
+
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
+            if mx.get_jdk().javaCompliance > '11':
+                del benchmarks["neo4j-analytics"]
+        else:
+            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance > '15':
+                del benchmarks["neo4j-analytics"]
         return benchmarks
 
-    def renaissanceVersionToRun(self):
-        current_version = self.defaultRenaissanceVersion()
-        version_to_run = self.desiredVersion() if self.desiredVersion() else current_version
-        if version_to_run not in self.availableRenaissanceVersions():
-            mx.abort("Available Renaissance versions are : {}".format(self.availableRenaissanceVersions()))
-        return version_to_run
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in _renaissanceConfig.keys()])
 
-    def defaultRenaissanceVersion(self):
-        return "0.11.0"
+    def defaultSuiteVersion(self):
+        #  return self.availableSuiteVersions()[-1]
+        return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
 
-    def availableRenaissanceVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0"]
+    def availableSuiteVersions(self):
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1352,7 +1910,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
-        return sorted(_renaissanceConfig.keys())
+        return [b for b, it in self.renaissanceIterations().items() if it != -1]
 
     def successPatterns(self):
         return []
@@ -1372,7 +1930,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                     "benchmark": ("<benchmark>", str),
                     "benchmark-configuration": ("<config>", str),
                     "bench-suite": self.benchSuiteName(),
-                    "bench-suite-version": self.renaissanceVersionToRun(),
+                    "bench-suite-version": self.version(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1395,7 +1953,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
 
 
-class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Legacy renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1498,7 +2056,7 @@ class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchm
 mx_benchmark.add_bm_suite(RenaissanceLegacyBenchmarkSuite())
 
 
-class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Benchmark suite for the spark-sql-perf benchmarks.
     """
     def name(self):
@@ -1634,9 +2192,6 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
     def subgroup(self):
         return "graal-compiler"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def version(self):
         return "1.1"
 
@@ -1712,3 +2267,73 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
 
 
 mx_benchmark.add_bm_suite(AWFYBenchmarkSuite())
+
+
+_consoleConfig = {
+    "helloworld": {
+        "mainClass": "bench.console.HelloWorld",
+        "args": []
+    },
+    "scalafmt": {
+        "mainClass": "bench.console.Scalafmt",
+        "args": []
+    }
+}
+
+class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """Hello World benchmark suite implementation.
+    """
+    def name(self):
+        return "console"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return self.name()
+
+    def helloWorldPath(self):
+        helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
+        if helloWorld:
+            return helloWorld.path
+        return None
+
+    def classpathAndMainClass(self, benchmark):
+        main_class = _consoleConfig.get(benchmark)["mainClass"]
+        return ["-cp", self.helloWorldPath(), main_class]
+
+    def appArgs(self, benchmark):
+        return _consoleConfig.get(benchmark)["args"]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark to run.")
+        elif benchmarks[0] not in self.benchmarkList(bmSuiteArgs):
+            mx.abort("The specified benchmark doesn't exist. Possible values are: " + ", ".join(self.benchmarkList(bmSuiteArgs)))
+        vmArgs = self.runArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        appArgs = self.appArgs(benchmarks[0])
+        return vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs
+
+    def benchmarkList(self, bmSuiteArgs):
+        return sorted(_consoleConfig.keys())
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return []
+
+mx_benchmark.add_bm_suite(ConsoleBenchmarkSuite())

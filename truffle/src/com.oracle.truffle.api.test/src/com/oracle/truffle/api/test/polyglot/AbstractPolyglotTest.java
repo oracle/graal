@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -194,9 +193,8 @@ public abstract class AbstractPolyglotTest {
     @SuppressWarnings({"unchecked", "static-method"})
     protected final <T extends Node> Supplier<T> adoptNode(TruffleLanguage<?> lang, T node) {
         TestRootNode root = new TestRootNode(lang, node);
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
         // execute it to trigger instrumentations
-        target.call();
+        root.getCallTarget().call();
         return () -> (T) root.node;
     }
 
@@ -227,7 +225,7 @@ public abstract class AbstractPolyglotTest {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             return;
         }
@@ -239,7 +237,7 @@ public abstract class AbstractPolyglotTest {
             run.run();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             verifier.accept(exceptionType.cast(t));
             return;
@@ -258,6 +256,10 @@ public abstract class AbstractPolyglotTest {
             return;
         }
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static boolean isGraalRuntime() {
+        return Truffle.getRuntime().getName().contains("Graal");
     }
 
     private static class TestRootNode extends RootNode {

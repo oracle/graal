@@ -37,7 +37,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -137,8 +136,15 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
         protected void lowerHighTier(AccessMonitorNode node, LoweringTool tool) {
             ValueNode object = node.object();
             if (!StampTool.isPointerNonNull(object)) {
+                /*
+                 * GR-30089: the object is null-checked before monitorenter and can therefore never
+                 * be null here, but cycles with loop phis between monitorenter and monitorexit
+                 * (with proxy nodes in deopt targets, for example) can cause the stamp to lose this
+                 * information. This guard should never trigger, but is left here for caution and
+                 * can be replaced with an assertion once the issue is fixed.
+                 */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck)));
+                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 

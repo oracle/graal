@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
@@ -30,6 +30,8 @@
  */
 package com.oracle.truffle.llvm.tests;
 
+import java.util.Locale;
+
 public class Platform {
 
     public enum Architecture {
@@ -51,6 +53,10 @@ public class Platform {
 
         public static Architecture getArchitecture() {
             return architecture;
+        }
+
+        public String getDirectory() {
+            return toString().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -77,6 +83,10 @@ public class Platform {
 
         public static OS getOS() {
             return os;
+        }
+
+        public String getDirectory() {
+            return toString().toLowerCase(Locale.ROOT);
         }
     }
 

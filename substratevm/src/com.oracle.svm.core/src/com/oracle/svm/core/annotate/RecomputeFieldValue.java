@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.annotate;
 
+// Checkstyle: allow reflection
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Array;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -113,8 +116,11 @@ public @interface RecomputeFieldValue {
      */
     interface CustomFieldValueComputer {
         /**
-         * Computes the new field value.
+         * Computes the new field value. This method can already be invoked during the analysis,
+         * especially when it computes the value of an object field that needs to be visited.
          *
+         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
+         *            {@code HostedMetaAccess} instance after the analysis.
          * @param original The original field (if {@link RecomputeFieldValue} is used for an
          *            {@link Alias} field).
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
@@ -128,7 +134,7 @@ public @interface RecomputeFieldValue {
     /**
      * Custom recomputation of field values. A class implementing this interface must have a
      * no-argument constructor, which is used to instantiate it before invoking {@link #transform}.
-     * 
+     *
      * In contrast to {@link CustomFieldValueComputer}, the {@link #transform} method also has the
      * original field value as a parameter. This is convenient if the new value depends on the
      * original value, but also requires the original field to be present, e.g., it cannot be use
@@ -136,16 +142,33 @@ public @interface RecomputeFieldValue {
      */
     interface CustomFieldValueTransformer {
         /**
-         * Computes the new field value.
+         * Computes the new field value. This method can already be invoked during the analysis,
+         * especially when it computes the value of an object field that needs to be visited.
          *
+         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
+         *            {@code HostedMetaAccess} instance after the analysis.
          * @param original The original field.
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
          * @param receiver The original object for instance fields, or {@code null} for static
          *            fields.
-         * @param originalValue The original value of the field.
          * @return The new field value.
          */
         Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue);
+    }
+
+    /**
+     * Reset an array field to a new empty array of the same type and length.
+     */
+    final class NewEmptyArrayTransformer implements CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            if (originalValue == null) {
+                return null;
+            } else {
+                int originalLength = Array.getLength(originalValue);
+                return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
+            }
+        }
     }
 
     /**
@@ -178,4 +201,9 @@ public @interface RecomputeFieldValue {
      * Treat the value as final, to enforce constant folding already during static analysis.
      */
     boolean isFinal() default false;
+
+    /**
+     * If true, ignores previously computed values and calculates the value for every field read.
+     */
+    boolean disableCaching() default false;
 }

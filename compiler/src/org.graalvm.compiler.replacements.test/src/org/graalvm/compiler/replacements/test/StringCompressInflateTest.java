@@ -34,9 +34,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1InflateNode;
-import org.graalvm.compiler.replacements.amd64.AMD64StringLatin1Substitutions;
 import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16CompressNode;
-import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16Substitutions;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Before;
@@ -48,8 +46,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Test intrinsic/node substitutions for (innate) methods StringLatin1.inflate and
- * StringUTF16.compress provided by {@link AMD64StringLatin1Substitutions} and
- * {@link AMD64StringUTF16Substitutions}.
+ * StringUTF16.compress provided by
+ * {@link org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins}.
  */
 @AddExports({"java.base/java.lang"})
 public final class StringCompressInflateTest extends MethodSubstitutionTest {

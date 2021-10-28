@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -47,7 +48,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.ClassLoaderQuery;
 import com.oracle.svm.core.TypeResult;
 
 public final class ImageClassLoader {
@@ -68,14 +68,14 @@ public final class ImageClassLoader {
     }
 
     public final Platform platform;
-    final NativeImageClassLoaderSupport classLoaderSupport;
+    public final AbstractNativeImageClassLoaderSupport classLoaderSupport;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, AbstractNativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
     }
@@ -285,6 +285,13 @@ public final class ImageClassLoader {
         return Class.forName(name, false, classLoaderSupport.getClassLoader());
     }
 
+    public Class<?> forName(String className, Object module) throws ClassNotFoundException {
+        if (module == null) {
+            return forName(className);
+        }
+        return classLoaderSupport.loadClassFromModule(module, className);
+    }
+
     /**
      * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
      *
@@ -394,7 +401,7 @@ public final class ImageClassLoader {
      * Returns all annotations on classes, methods, and fields (enabled or disabled based on the
      * parameters) of the given annotation class.
      */
-    <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
+    public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
         List<T> result = new ArrayList<>();
         for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
             result.add(clazz.getAnnotation(annotationClass));
@@ -412,28 +419,11 @@ public final class ImageClassLoader {
         return classLoaderSupport.getClassLoader();
     }
 
-    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
-        return classLoaderSupport.loadClassFromModule(module, className);
-    }
-}
-
-class ClassLoaderQueryImpl implements ClassLoaderQuery {
-
-    private final ClassLoader imageClassLoader;
-
-    ClassLoaderQueryImpl(ClassLoader imageClassLoader) {
-        this.imageClassLoader = imageClassLoader;
+    public Optional<String> getMainClassFromModule(Object module) {
+        return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    @Override
-    public boolean isNativeImageClassLoader(ClassLoader classLoader) {
-        ClassLoader loader = classLoader;
-        while (loader != null) {
-            if (loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader) {
-                return true;
-            }
-            loader = loader.getParent();
-        }
-        return false;
+    public Optional<? extends Object> findModule(String moduleName) {
+        return classLoaderSupport.findModule(moduleName);
     }
 }

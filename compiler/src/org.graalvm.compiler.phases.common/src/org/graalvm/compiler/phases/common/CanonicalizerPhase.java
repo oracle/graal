@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,9 +45,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeWorkList;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -58,10 +55,16 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -263,7 +266,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         @Override
         protected void run(StructuredGraph graph) {
-            if (graph.isAfterFinalCanonicalization()) {
+            if (graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
                 GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
             }
             this.debug = graph.getDebug();
@@ -281,7 +284,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             tool = new Tool(graph.getAssumptions(), graph.getOptions());
             processWorkSet(graph);
             if (features.contains(FINAL_CANONICALIZATION)) {
-                graph.setAfterFinalCanonicalization();
+                graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
             }
         }
 
@@ -432,7 +435,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
                         COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
 
-                        node.simplify(tool);
+                        ((Simplifiable) node).simplify(tool);
                         if (node.isDeleted()) {
                             debug.log("Canonicalizer: simplified %s", node);
                             return true;
@@ -488,6 +491,49 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         fixed.replaceAtPredecessor(canonical);
                         GraphUtil.killCFG(fixed);
                         return true;
+
+                    } else if (fixed instanceof WithExceptionNode) {
+                        /*
+                         * A fixed node with an exception edge is handled similarly to a
+                         * FixedWithNextNode. The only difference is that the exception edge needs
+                         * to be killed as part of canonicalization (unless the canonical node is a
+                         * new WithExceptionNode too).
+                         */
+                        WithExceptionNode withException = (WithExceptionNode) fixed;
+
+                        // When removing a fixed node, new canonicalization
+                        // opportunities for its successor may arise
+                        assert withException.next() != null;
+                        tool.addToWorkList(withException.next());
+                        if (canonical == null) {
+                            // case 3
+                            node.replaceAtUsages(null);
+                            GraphUtil.unlinkAndKillExceptionEdge(withException);
+                            GraphUtil.killWithUnusedFloatingInputs(withException);
+                        } else if (canonical instanceof FloatingNode) {
+                            // case 4
+                            withException.killExceptionEdge();
+                            graph.replaceSplitWithFloating(withException, (FloatingNode) canonical, withException.next());
+                        } else {
+                            assert canonical instanceof FixedNode;
+                            if (canonical.predecessor() == null) {
+                                assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
+                                // case 5
+                                if (canonical instanceof WithExceptionNode) {
+                                    graph.replaceWithExceptionSplit(withException, (WithExceptionNode) canonical);
+                                } else {
+                                    withException.killExceptionEdge();
+                                    graph.replaceSplitWithFixed(withException, (FixedWithNextNode) canonical, withException.next());
+                                }
+                            } else {
+                                assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
+                                // case 6
+                                node.replaceAtUsages(canonical);
+                                GraphUtil.unlinkAndKillExceptionEdge(withException);
+                                GraphUtil.killWithUnusedFloatingInputs(withException);
+                            }
+                        }
+
                     } else {
                         assert fixed instanceof FixedWithNextNode;
                         FixedWithNextNode fixedWithNext = (FixedWithNextNode) fixed;
@@ -594,6 +640,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public Integer smallestCompareWidth() {
                 return context.getLowerer().smallestCompareWidth();
+            }
+
+            @Override
+            public boolean supportsRounding() {
+                return context.getLowerer().supportsRounding();
             }
 
             @Override

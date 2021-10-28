@@ -28,14 +28,14 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
- * the beginning of a {@linkplain HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods() call
- * boundary method}. The injected code tests the {@code entryPoint} field of the
+ * the beginning of a
+ * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod)
+ * call boundary method}. The injected code tests the {@code entryPoint} field of the
  * {@code installedCode} field of the receiver and tail calls it if it is non-zero:
  *
  * <pre>

@@ -42,8 +42,6 @@ typedef int (*Espresso_CloseContext_fn_t)(graal_isolatethread_t* thread, struct 
 
 typedef void (*Espresso_Exit_fn_t)(graal_isolatethread_t* thread, struct JavaVM_* javaVM);
 
-typedef void (*vmLocatorSymbol_fn_t)(graal_isolatethread_t* thread);
-
 #if defined(__cplusplus)
 }
 #endif

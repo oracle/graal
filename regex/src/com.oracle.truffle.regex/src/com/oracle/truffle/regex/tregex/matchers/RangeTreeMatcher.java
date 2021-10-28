@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.matchers;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
@@ -72,7 +71,12 @@ import com.oracle.truffle.regex.tregex.util.MathUtil;
  * }
  * </pre>
  */
-public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
+public final class RangeTreeMatcher extends InvertibleCharMatcher {
+
+    /**
+     * Maximum number of ranges for unrolled binary search.
+     */
+    private static final int EXPLODE_THRESHOLD = 16;
 
     /**
      * Constructs a new {@link RangeTreeMatcher}.
@@ -84,8 +88,8 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
      *            method.
      * @return a new {@link RangeTreeMatcher}.
      */
-    public static RangeTreeMatcher fromRanges(boolean invert, int[] ranges) {
-        return RangeTreeMatcherNodeGen.create(invert, ranges);
+    public static RangeTreeMatcher create(boolean invert, int[] ranges) {
+        return new RangeTreeMatcher(invert, ranges);
     }
 
     @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
@@ -95,10 +99,14 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
         this.sortedRanges = sortedRanges;
     }
 
-    @Specialization
+    @Override
     public boolean match(int c) {
         CompilerAsserts.partialEvaluationConstant(this);
-        return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
+        if ((sortedRanges.length / 2) > EXPLODE_THRESHOLD) {
+            return matchLoop(c);
+        } else {
+            return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
+        }
     }
 
     private boolean matchTree(int fromIndex, int toIndex, int c) {
@@ -116,6 +124,23 @@ public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
         } else {
             return result(true);
         }
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    private boolean matchLoop(final int c) {
+        int fromIndex = 0;
+        int toIndex = (sortedRanges.length >>> 1) - 1;
+        while (fromIndex <= toIndex) {
+            final int mid = (fromIndex + toIndex) >>> 1;
+            if (c < sortedRanges[mid << 1]) {
+                toIndex = mid - 1;
+            } else if (c > sortedRanges[(mid << 1) + 1]) {
+                fromIndex = mid + 1;
+            } else {
+                return result(true);
+            }
+        }
+        return result(false);
     }
 
     @Override

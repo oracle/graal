@@ -24,45 +24,24 @@
  */
 package org.graalvm.polybench;
 
-import java.io.IOException;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
 
 final class CompilationTimeMetric implements Metric {
 
     enum MetricType {
-        COMPILATION(null),
-        PARTIAL_EVALUATION("peTime");
-
-        private final String fieldName;
-
-        MetricType(String fieldName) {
-            this.fieldName = fieldName;
-        }
-
-        String getFieldName() {
-            return fieldName;
-        }
+        COMPILATION,
+        PARTIAL_EVALUATION;
     }
 
-    private static final Logger LOG = Logger.getLogger(CompilationTimeMetric.class.getName());
-    private static final String TRUFFLE_COMPILATION_EVENT = "org.graalvm.compiler.truffle.Compilation";
-
-    private final MetricType metricType;
-    /**
-     * {@code true} is the JFR is supported by the VM. We need to run also on the native-image CE
-     * which does not support JFR. In this case this metric returns {@code 0} in each report.
-     */
-    private final boolean supported;
-    private Object recording;
-    private Object snapshot;
+    private final TraceCompilationHandler logHandler;
 
     CompilationTimeMetric(MetricType metricType) {
-        this.metricType = metricType;
-        this.supported = JFRSupport.isAvailable();
+        this.logHandler = new TraceCompilationHandler(metricType);
     }
 
     @Override
@@ -71,11 +50,23 @@ final class CompilationTimeMetric implements Metric {
             throw new IllegalStateException("The Compile Time Metric cannot be used with a background compilation.\n" +
                             "Remove the 'engine.BackgroundCompilation=true' option.");
         }
+        if (polyglotOptions.containsKey("engine.TraceCompilation") && !Boolean.parseBoolean(polyglotOptions.get("engine.TraceCompilation"))) {
+            throw new IllegalStateException("The Compile Time Metric cannot be used without TraceCompilation.\n" +
+                            "Remove the 'engine.TraceCompilation=false' option.");
+        }
     }
 
     @Override
     public Map<String, String> getEngineOptions(Config config) {
-        return Collections.singletonMap("engine.BackgroundCompilation", "false");
+        Map<String, String> options = new HashMap<>();
+        options.put("engine.BackgroundCompilation", "false");
+        options.put("engine.TraceCompilation", "true");
+        return options;
+    }
+
+    @Override
+    public Handler getLogHandler() {
+        return logHandler;
     }
 
     @Override
@@ -90,59 +81,107 @@ final class CompilationTimeMetric implements Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        if (supported) {
-            if (recording == null) {
-                // First iteration, create a new Recording used for all iterations until reset.
-                recording = JFRSupport.startRecording(TRUFFLE_COMPILATION_EVENT);
-            }
-            JFRSupport.disposeRecording(snapshot, false);
-            snapshot = null;
-        }
+        logHandler.startIteration();
     }
 
     @Override
     public void afterIteration(boolean warmup, int iteration, Config config) {
-        if (supported) {
-            if (recording == null) {
-                throw new IllegalStateException("Missing JFR recording.");
-            }
-            if (snapshot != null) {
-                throw new IllegalStateException("Existing JFR snapshot.");
-            }
-            snapshot = JFRSupport.snapshotRecording(recording);
-        }
+        logHandler.endIteration();
     }
 
     @Override
     public void reset() {
-        if (supported) {
-            // Stop and dispose JFR recording.
-            JFRSupport.disposeRecording(recording, true);
-            recording = null;
-            JFRSupport.disposeRecording(snapshot, false);
-            snapshot = null;
-        }
+        logHandler.reset();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return supported ? computeCumulativeTime() : Optional.of(0.0);
+        return logHandler.iterationTime();
     }
 
     @Override
     public Optional<Double> reportAfterAll() {
-        return supported && recording != null ? computeCumulativeTime() : Optional.of(0.0);
+        return logHandler.allIterationsTime();
     }
 
-    private Optional<Double> computeCumulativeTime() {
-        if (snapshot == null) {
-            throw new IllegalStateException("No snapshot.");
+    private static final class TraceCompilationHandler extends Handler {
+
+        private final MetricType metricType;
+        private double allIterationsTime;
+        private final DoubleAdder iterationTime = new DoubleAdder();
+
+        TraceCompilationHandler(MetricType metricType) {
+            this.metricType = metricType;
         }
-        try {
-            return Optional.of(1.0 * JFRSupport.computeCumulativeTime(snapshot, TRUFFLE_COMPILATION_EVENT, metricType.getFieldName()));
-        } catch (IOException ioe) {
-            LOG.log(Level.SEVERE, "Cannot write recording.", ioe);
-            return Optional.empty();
+
+        @Override
+        public void publish(LogRecord record) {
+            if ("engine".equals(record.getLoggerName())) {
+                String message = record.getMessage();
+                if (message.startsWith("opt done") || message.startsWith("opt failed")) {
+                    double time = parseTime(message, metricType);
+                    if (!Double.isNaN(time)) {
+                        iterationTime.add(time);
+                    } else {
+                        throw new IllegalStateException("Failed to parse '" + message + "'");
+                    }
+                }
+            }
+        }
+
+        private static double parseTime(String str, MetricType type) {
+            String timePattern = "|Time";
+            int start = str.indexOf(timePattern);
+            if (start < 0) {
+                return Double.NaN;
+            }
+            start += timePattern.length();
+            int openBraceIndex = str.indexOf('(', start);
+            if (openBraceIndex < 0) {
+                return Double.NaN;
+            }
+            switch (type) {
+                case COMPILATION:
+                    return Double.parseDouble(str.substring(start, openBraceIndex).trim());
+                case PARTIAL_EVALUATION:
+                    start = openBraceIndex + 1;
+                    int end = str.indexOf('+', start);
+                    if (end < 0) {
+                        return Double.NaN;
+                    }
+                    return Double.parseDouble(str.substring(start, end).trim());
+                default:
+                    throw new IllegalArgumentException(type.name());
+            }
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public void close() throws SecurityException {
+        }
+
+        void startIteration() {
+            iterationTime.reset();
+        }
+
+        void endIteration() {
+            allIterationsTime += iterationTime.doubleValue();
+        }
+
+        void reset() {
+            iterationTime.reset();
+            allIterationsTime = 0d;
+        }
+
+        Optional<Double> iterationTime() {
+            return Optional.of(iterationTime.doubleValue());
+        }
+
+        Optional<Double> allIterationsTime() {
+            return Optional.of(allIterationsTime);
         }
     }
 }

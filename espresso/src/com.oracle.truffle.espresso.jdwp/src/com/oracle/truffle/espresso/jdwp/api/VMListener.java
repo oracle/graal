@@ -70,12 +70,25 @@ public interface VMListener {
     boolean onFieldAccess(FieldRef field, Object receiver);
 
     /**
-     * This method will be called when a method is about to return. If will determine if there is an
-     * active method exit breakpoint that will be triggered.
+     * This method will be called when a method is entered iff there is an active
+     * {@link MethodHook}. Returns true if the method has an active method exit breakpoint that
+     * should be triggered.
      *
-     * @param method the field
-     * @param returnValue owner of the field
-     * @return true if a breakpoint should be hit due to the modification
+     * @param method the method
+     * @param scope the {@link com.oracle.truffle.api.interop.InteropLibrary} object representing
+     *            local variables in scope
+     * @return true a breakpoint should be hit on method entry
+     */
+    boolean onMethodEntry(MethodRef method, Object scope);
+
+    /**
+     * This method will be called when a method is about to return iff there is an active
+     * {@link MethodHook}. Returns true if the method has an active method exit breakpoint that
+     * should be triggered.
+     *
+     * @param method the method
+     * @param returnValue the return value
+     * @return true if a breakpoint should be hit on method exit
      */
     boolean onMethodReturn(MethodRef method, Object returnValue);
 

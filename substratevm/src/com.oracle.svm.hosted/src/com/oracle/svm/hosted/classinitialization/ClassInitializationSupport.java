@@ -86,4 +86,8 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     void setConfigurationSealed(boolean sealed);
 
     String objectInstantiationTraceMessage(Object obj, String action);
+
+    String reasonForClass(Class<?> clazz);
+
+    void setProvenSafeLate(Set<Class<?>> initializeSafeDelayedClasses);
 }

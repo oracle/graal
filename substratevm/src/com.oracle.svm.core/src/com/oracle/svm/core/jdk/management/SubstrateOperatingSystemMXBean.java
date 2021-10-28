@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 
 import javax.management.ObjectName;
@@ -36,10 +35,11 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.VMError;
 
+//Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
 
-public abstract class SubstrateOperatingSystemMXBean implements com.sun.management.OperatingSystemMXBean {
+public abstract class SubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBeanBase implements com.sun.management.OperatingSystemMXBean {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SubstrateOperatingSystemMXBean() {
@@ -70,7 +70,7 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
         return Runtime.getRuntime().availableProcessors();
     }
 
-    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize deprecated since JDK 14
+    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize is deprecated after JDK 11
     @Override
     public long getTotalPhysicalMemorySize() {
         return PhysicalMemory.size().rawValue();
@@ -80,8 +80,6 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
     public double getSystemLoadAverage() {
         return -1;
     }
-
-    private static final String MSG = "OperatingSystemMXBean methods";
 
     @Override
     public long getCommittedVirtualMemorySize() {
@@ -103,13 +101,13 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
         throw VMError.unsupportedFeature(MSG);
     }
 
-    @SuppressWarnings("deprecation") // getFreePhysicalMemorySize deprecated since JDK 14
+    @SuppressWarnings("deprecation") // getFreePhysicalMemorySize is deprecated after JDK 11
     @Override
     public long getFreePhysicalMemorySize() {
         throw VMError.unsupportedFeature(MSG);
     }
 
-    @SuppressWarnings("deprecation") // getSystemCpuLoad deprecated since JDK 14
+    @SuppressWarnings("deprecation") // getSystemCpuLoad is deprecated after JDK 11
     @Override
     public double getSystemCpuLoad() {
         throw VMError.unsupportedFeature(MSG);
@@ -117,20 +115,6 @@ public abstract class SubstrateOperatingSystemMXBean implements com.sun.manageme
 
     @Override
     public double getProcessCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    // Temporary fix for JDK14 added methods.
-    // Will be removed after [GR-20166] is implemented.
-    public double getCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    public long getTotalMemorySize() {
-        return getTotalPhysicalMemorySize();
-    }
-
-    public long getFreeMemorySize() {
         throw VMError.unsupportedFeature(MSG);
     }
 }

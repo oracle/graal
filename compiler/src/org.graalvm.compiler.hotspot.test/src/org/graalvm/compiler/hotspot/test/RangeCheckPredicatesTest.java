@@ -26,17 +26,20 @@
 
 package org.graalvm.compiler.hotspot.test;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
+import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredication;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
+import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
+
+import java.util.HashSet;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -46,12 +49,13 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.List;
-
-import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
-import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
-import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
+import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class RangeCheckPredicatesTest extends GraalCompilerTest {
     @SuppressWarnings("unused") private static int volatileField;
@@ -67,12 +71,23 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         return speculationLog;
     }
 
+    /**
+     * Initializes the overrides for the tests in this class which are written specifically for the
+     * graph shapes produced by {@link LoopPredicationPhase}.
+     */
+    private static EconomicMap<OptionKey<?>, Object> initOverrides() {
+        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
+        overrides.put(SpeculativeGuardMovement, false);
+        overrides.put(LoopPredication, true);
+        return overrides;
+    }
+
     private static OptionValues getOptionsMainPath() {
-        return getInitialOptions();
+        return new OptionValues(getInitialOptions(), initOverrides());
     }
 
     private static OptionValues getOptionsAllPaths() {
-        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
+        EconomicMap<OptionKey<?>, Object> overrides = initOverrides();
         overrides.put(LoopPredicationMainPath, false);
         return new OptionValues(getInitialOptions(), overrides);
     }

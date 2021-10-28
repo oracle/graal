@@ -52,7 +52,7 @@ public class ConfigurationMethod implements JsonPrintable {
 
     private final String name;
     private final String internalSignature;
-    private int hash;
+    private final int hash;
 
     public ConfigurationMethod(String name, String internalSignature) {
         this.name = name;
@@ -62,6 +62,7 @@ public class ConfigurationMethod implements JsonPrintable {
             paramsOnlySignature = paramsOnlySignature.substring(0, paramsEnd + 1);
         }
         this.internalSignature = paramsOnlySignature;
+        this.hash = name.hashCode() * 31 + (this.internalSignature == null ? 0 : this.internalSignature.hashCode());
     }
 
     public String getName() {
@@ -96,9 +97,6 @@ public class ConfigurationMethod implements JsonPrintable {
 
     @Override
     public int hashCode() {
-        if (hash == 0) {
-            hash = name.hashCode() * 31 + (internalSignature == null ? 0 : internalSignature.hashCode());
-        }
         return hash;
     }
 
@@ -109,5 +107,14 @@ public class ConfigurationMethod implements JsonPrintable {
             return name.equals(other.name) && Objects.equals(internalSignature, other.internalSignature);
         }
         return (obj == this);
+    }
+
+    @Override
+    public String toString() {
+        return "ConfigurationMethod{" +
+                        "name='" + name + '\'' +
+                        ", internalSignature='" + internalSignature + '\'' +
+                        ", hash=" + hash +
+                        '}';
     }
 }

@@ -132,6 +132,7 @@ public abstract class ReflectionLibrary extends Library {
     }
 
     private static final LibraryFactory<ReflectionLibrary> FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
+    static final ReflectionLibrary UNCACHED = FACTORY.getUncached();
 
     /**
      * Returns the library factory for {@link ReflectionLibrary}.
@@ -140,6 +141,28 @@ public abstract class ReflectionLibrary extends Library {
      */
     public static LibraryFactory<ReflectionLibrary> getFactory() {
         return FACTORY;
+    }
+
+    /**
+     * Returns the uncached automatically dispatched version of the reflection library. This is a
+     * short-cut for calling <code>ReflectionLibrary.getFactory().getUncached()</code>.
+     *
+     * @see LibraryFactory#getUncached()
+     * @since 21.3
+     */
+    public static ReflectionLibrary getUncached() {
+        return UNCACHED;
+    }
+
+    /**
+     * Returns the uncached manually dispatched version of the reflection library. This is a
+     * short-cut for calling <code>ReflectionLibrary.getFactory().getUncached(v)</code>.
+     *
+     * @see LibraryFactory#getUncached(Object)
+     * @since 21.3
+     */
+    public static ReflectionLibrary getUncached(Object v) {
+        return FACTORY.getUncached(v);
     }
 
 }

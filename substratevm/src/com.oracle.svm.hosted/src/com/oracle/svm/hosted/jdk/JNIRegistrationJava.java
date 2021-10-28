@@ -30,28 +30,23 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.c.NativeLibraries;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
  */
-@Platforms({InternalPlatform.PLATFORM_JNI.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
+class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
 
     private static final Consumer<DuringAnalysisAccess> CORESERVICES_LINKER = (duringAnalysisAccess -> {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
@@ -59,20 +54,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
     });
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
-        JNIRegistrationSupport.singleton().registerNativeLibrary(providers, plugins, System.class, "loadLibrary");
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess a) {
-        ImageSingletons.add(JNIRegistrationSupport.class, new JNIRegistrationSupport());
-    }
-
-    @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((BeforeAnalysisAccessImpl) a).getNativeLibraries();
-        JNIRegistrationSupport.singleton().setNativeLibraries(nativeLibraries);
-
         /*
          * It is difficult to track down all the places where exceptions are thrown via JNI. And
          * unconditional registration is cheap. Therefore, we register them unconditionally.

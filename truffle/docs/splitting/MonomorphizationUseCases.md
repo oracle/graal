@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Monomorphization Use Cases
+permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/MonomorphizationUseCases/
+---
 # Monomorphization Use Cases
 
 This guide demonstrates through examples how monomorphization can improve performance of dynamic languages without going into any detail on how monomorphization is implemented (described in the [Splitting](Splitting.md) guide) or how to leverage monomorphization in your language implementation (described in the [Reporting Polymorphism](ReportingPolymorphism.md) guide).

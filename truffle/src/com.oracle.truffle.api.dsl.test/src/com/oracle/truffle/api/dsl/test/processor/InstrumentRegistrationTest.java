@@ -41,19 +41,14 @@
 package com.oracle.truffle.api.dsl.test.processor;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.GenerateLegacyRegistration;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class InstrumentRegistrationTest {
 
-    @ExpectError("Registered instrument class must be public")
+    @ExpectError("Registered instrument class must be at least package protected")
     @Registration(id = "NonPublicInstrument")
-    static final class NonPublicInstrument extends ProxyInstrument {
+    private static final class PrivateInstrument extends ProxyInstrument {
     }
 
     @ExpectError("Registered instrument class must subclass TruffleInstrument")
@@ -70,25 +65,9 @@ public class InstrumentRegistrationTest {
 
     }
 
-    @GenerateLegacyRegistration
-    @Registration(id = "legacyregistration", name = "LegacyRegistration", version = "1.0.0", services = {Service1.class, Service2.class})
-    public static final class LegacyRegistration extends ProxyInstrument {
-
-    }
-
     interface Service1 {
     }
 
     interface Service2 {
-    }
-
-    @Test
-    public void testLoadLegacyRegistrations() {
-        try (Engine eng = Engine.create()) {
-            Instrument instrument = eng.getInstruments().get("legacyregistration");
-            Assert.assertNotNull(instrument);
-            Assert.assertEquals("LegacyRegistration", instrument.getName());
-            Assert.assertEquals("1.0.0", instrument.getVersion());
-        }
     }
 }

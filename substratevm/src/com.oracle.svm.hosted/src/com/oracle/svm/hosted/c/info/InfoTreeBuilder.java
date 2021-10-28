@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
@@ -55,15 +56,16 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -87,7 +89,7 @@ public class InfoTreeBuilder {
 
         String name;
         if (codeCtx.getDirectives() != null) {
-            name = codeCtx.getDirectives().getClass().getSimpleName();
+            name = ClassUtil.getUnqualifiedName(codeCtx.getDirectives().getClass());
         } else {
             StringBuilder nameBuilder = new StringBuilder();
             String sep = "";
@@ -111,8 +113,11 @@ public class InfoTreeBuilder {
         for (ResolvedJavaType type : codeCtx.getRawStructTypes()) {
             createRawStructInfo(type);
         }
-        for (ResolvedJavaType type : codeCtx.getPointerToTypes()) {
-            createPointerToInfo(type);
+        for (ResolvedJavaType type : codeCtx.getCPointerToTypes()) {
+            createCPointerToInfo(type);
+        }
+        for (ResolvedJavaType type : codeCtx.getRawPointerToTypes()) {
+            createRawPointerToInfo(type);
         }
         for (ResolvedJavaType type : codeCtx.getEnumTypes()) {
             createEnumInfo(type);
@@ -144,7 +149,7 @@ public class InfoTreeBuilder {
         nativeLibs.registerElementInfo(method, constantInfo);
     }
 
-    private void createPointerToInfo(ResolvedJavaType type) {
+    private void createCPointerToInfo(ResolvedJavaType type) {
         if (!validInterfaceDefinition(type, CPointerTo.class)) {
             return;
         }
@@ -160,9 +165,32 @@ public class InfoTreeBuilder {
             }
         }
 
-        String typeName = getPointerToTypeName(type);
+        String typeName = getCPointerToTypeName(type);
         String typedefName = getTypedefName(type);
         PointerToInfo pointerToInfo = new PointerToInfo(typeName, typedefName, elementKind(accessorInfos), type);
+        pointerToInfo.adoptChildren(accessorInfos);
+        nativeCodeInfo.adoptChild(pointerToInfo);
+        nativeLibs.registerElementInfo(type, pointerToInfo);
+    }
+
+    private void createRawPointerToInfo(ResolvedJavaType type) {
+        if (!validInterfaceDefinition(type, RawPointerTo.class)) {
+            return;
+        }
+        List<AccessorInfo> accessorInfos = new ArrayList<>();
+
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            AccessorKind accessorKind = returnsDeclaringClass(method) ? AccessorKind.ADDRESS : getAccessorKind(method);
+            boolean isIndexed = getParameterCount(method) > (accessorKind == AccessorKind.SETTER ? 1 : 0);
+            AccessorInfo accessorInfo = new AccessorInfo(method, accessorKind, isIndexed, false, false);
+            if (accessorValid(accessorInfo)) {
+                accessorInfos.add(accessorInfo);
+                nativeLibs.registerElementInfo(method, accessorInfo);
+            }
+        }
+
+        String typeName = getRawPointerToTypeName(type);
+        RawPointerToInfo pointerToInfo = new RawPointerToInfo(typeName, elementKind(accessorInfos), type);
         pointerToInfo.adoptChildren(accessorInfos);
         nativeCodeInfo.adoptChild(pointerToInfo);
         nativeLibs.registerElementInfo(type, pointerToInfo);
@@ -466,7 +494,7 @@ public class InfoTreeBuilder {
         assert type.getAnnotation(annotationClass) != null;
 
         if (!type.isInterface() || !nativeLibs.isPointerBase(type)) {
-            nativeLibs.addError("Annotation @" + annotationClass.getSimpleName() + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
+            nativeLibs.addError("Annotation @" + ClassUtil.getUnqualifiedName(annotationClass) + " can only be used on an interface that extends " + PointerBase.class.getSimpleName(), type);
             return false;
         }
         return true;
@@ -495,40 +523,68 @@ public class InfoTreeBuilder {
         return name;
     }
 
-    private String getPointerToTypeName(ResolvedJavaType type) {
+    private String getCPointerToTypeName(ResolvedJavaType type) {
         CPointerTo pointerToAnnotation = type.getAnnotation(CPointerTo.class);
+        Class<?> pointerToType = pointerToAnnotation.value();
         String nameOfCType = pointerToAnnotation.nameOfCType();
 
-        Class<?> pointerToType = pointerToAnnotation.value();
         CStruct pointerToCStructAnnotation;
-        RawStructure pointerToRawStructAnnotation;
-        CPointerTo pointerToPointerAnnotation;
+        CPointerTo pointerToCPointerAnnotation;
         do {
             pointerToCStructAnnotation = pointerToType.getAnnotation(CStruct.class);
-            pointerToRawStructAnnotation = pointerToType.getAnnotation(RawStructure.class);
-            pointerToPointerAnnotation = pointerToType.getAnnotation(CPointerTo.class);
-            if (pointerToCStructAnnotation != null || pointerToRawStructAnnotation != null || pointerToPointerAnnotation != null) {
+            pointerToCPointerAnnotation = pointerToType.getAnnotation(CPointerTo.class);
+            if (pointerToCStructAnnotation != null || pointerToCPointerAnnotation != null) {
                 break;
             }
             pointerToType = pointerToType.getInterfaces().length == 1 ? pointerToType.getInterfaces()[0] : null;
         } while (pointerToType != null);
 
-        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToRawStructAnnotation != null ? 1 : 0) + (pointerToPointerAnnotation != null ? 1 : 0);
+        int n = (nameOfCType.length() > 0 ? 1 : 0) + (pointerToCStructAnnotation != null ? 1 : 0) + (pointerToCPointerAnnotation != null ? 1 : 0);
         if (n != 1) {
             nativeLibs.addError("Exactly one of " +  //
                             "1) literal C type name, " +  //
                             "2) class annotated with @" + CStruct.class.getSimpleName() + ", or " +  //
-                            "3) class annotated with @" + RawStructure.class.getSimpleName() + ", or " + //
-                            "4) class annotated with @" + CPointerTo.class.getSimpleName() + " must be specified in @" + CPointerTo.class.getSimpleName() + " annotation", type);
+                            "3) class annotated with @" + CPointerTo.class.getSimpleName() + " must be specified in @" + CPointerTo.class.getSimpleName() + " annotation", type);
             return "__error";
         }
 
-        if (pointerToCStructAnnotation != null || pointerToRawStructAnnotation != null) {
+        if (pointerToCStructAnnotation != null) {
             return getStructName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
-        } else if (pointerToPointerAnnotation != null) {
-            return getPointerToTypeName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
+        } else if (pointerToCPointerAnnotation != null) {
+            return getCPointerToTypeName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
         } else {
             return nameOfCType;
+        }
+    }
+
+    private String getRawPointerToTypeName(ResolvedJavaType type) {
+        RawPointerTo pointerToAnnotation = type.getAnnotation(RawPointerTo.class);
+        Class<?> pointerToType = pointerToAnnotation.value();
+
+        RawStructure pointerToRawStructAnnotation;
+        RawPointerTo pointerToRawPointerAnnotation;
+        do {
+            pointerToRawStructAnnotation = pointerToType.getAnnotation(RawStructure.class);
+            pointerToRawPointerAnnotation = pointerToType.getAnnotation(RawPointerTo.class);
+            if (pointerToRawStructAnnotation != null || pointerToRawPointerAnnotation != null) {
+                break;
+            }
+            pointerToType = pointerToType.getInterfaces().length == 1 ? pointerToType.getInterfaces()[0] : null;
+        } while (pointerToType != null);
+
+        int n = (pointerToRawStructAnnotation != null ? 1 : 0) + (pointerToRawPointerAnnotation != null ? 1 : 0);
+        if (n != 1) {
+            nativeLibs.addError("Exactly one of " +  //
+                            "1) class annotated with @" + RawStructure.class.getSimpleName() + ", or " + //
+                            "2) class annotated with @" + RawPointerTo.class.getSimpleName() + " must be specified in @" + RawPointerTo.class.getSimpleName() + " annotation", type);
+            return "__error";
+        }
+
+        if (pointerToRawStructAnnotation != null) {
+            return getStructName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
+        } else {
+            assert pointerToRawPointerAnnotation != null;
+            return getRawPointerToTypeName(getMetaAccess().lookupJavaType(pointerToType)) + "*";
         }
     }
 

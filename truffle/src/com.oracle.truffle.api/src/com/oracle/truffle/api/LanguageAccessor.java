@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,6 +61,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.ContextThreadLocalFactory;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger.LoggerCache;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -82,6 +82,7 @@ final class LanguageAccessor extends Accessor {
     static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
     private LanguageAccessor() {
     }
@@ -146,10 +147,10 @@ final class LanguageAccessor extends Accessor {
             return info.getPolyglotInstrument();
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance) {
             impl.languageInfo = language;
-            impl.reference = engineAccess().getCurrentContextReference(polyglotLanguage);
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (impl.contextLocals == null) {
                 impl.contextLocals = Collections.emptyList();
@@ -347,6 +348,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public void exitContext(Env env, TruffleLanguage.ExitMode exitMode, int exitCode) {
+            env.getSpi().exitContext(env.context, exitMode, exitCode);
+        }
+
+        @Override
         public void disposeThread(TruffleLanguage.Env env, Thread current) {
             env.getSpi().disposeThread(env.context, current);
         }
@@ -518,12 +524,12 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers) {
+        public void configureLoggers(Object vmObject, Map<String, Level> logLevels, Object... loggers) {
             for (Object loggerCache : loggers) {
                 if (logLevels == null) {
-                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForContext(polyglotContext);
+                    ((TruffleLogger.LoggerCache) loggerCache).removeLogLevelsForVMObject(vmObject);
                 } else {
-                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForContext(polyglotContext, logLevels);
+                    ((TruffleLogger.LoggerCache) loggerCache).addLogLevelsForVMObject(vmObject, logLevels);
                 }
             }
         }
@@ -547,11 +553,7 @@ final class LanguageAccessor extends Accessor {
         @Override
         public TruffleFile getTruffleFile(Object fileSystemContext, URI uri) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
-            try {
-                return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
-            } catch (UnsupportedOperationException e) {
-                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
-            }
+            return new TruffleFile(ctx, ctx.fileSystem.parsePath(uri));
         }
 
         @Override
@@ -571,8 +573,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object createEngineLoggers(Object spi, Map<String, Level> logLevels) {
-            return TruffleLogger.createLoggerCache(spi, logLevels);
+        public Object createEngineLoggers(Object spi) {
+            return new LoggerCache(spi);
+        }
+
+        @Override
+        public Object getLoggersSPI(Object loggerCache) {
+            return ((TruffleLogger.LoggerCache) loggerCache).getSPI();
         }
 
         @Override
@@ -586,6 +593,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getLoggerCache(TruffleLogger logger) {
+            return logger.getLoggerCache();
+        }
+
+        @Override
         public FileSystem getFileSystem(TruffleFile truffleFile) {
             return truffleFile.getSPIFileSystem();
         }
@@ -595,5 +607,24 @@ final class LanguageAccessor extends Accessor {
             return truffleFile.getSPIPath();
         }
 
+        @Override
+        public boolean isSynchronousTLAction(ThreadLocalAction action) {
+            return action.isSynchronous();
+        }
+
+        @Override
+        public boolean isSideEffectingTLAction(ThreadLocalAction action) {
+            return action.hasSideEffects();
+        }
+
+        @Override
+        public boolean isRecurringTLAction(ThreadLocalAction action) {
+            return action.isRecurring();
+        }
+
+        @Override
+        public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
+            action.perform(access);
+        }
     }
 }

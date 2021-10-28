@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,14 @@
 package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class EconomyHighTier extends BaseTier<HighTierContext> {
 
-    public EconomyHighTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase(options);
+    public EconomyHighTier() {
+        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
         appendPhase(canonicalizer);
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, true));
     }

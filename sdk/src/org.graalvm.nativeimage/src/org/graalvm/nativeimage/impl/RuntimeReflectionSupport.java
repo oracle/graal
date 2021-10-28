@@ -40,23 +40,10 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Executable;
+import java.util.Set;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // specific to java.lang.reflect reflection
-
-    /**
-     * Returns true if the final field is explicitly made writable using the reflection
-     * configuration, i.e., if the field needs to be treated like a non-final field.
-     * 
-     * After this method was called for a field and returned false, the field must not be added
-     * using new reflection configuration. So this method should be called as late as possible.
-     */
-    boolean inspectFinalFieldWritableForAnalysis(Field field);
-
-    /**
-     * Ensures that the field is going to be made writable once some other mechanism registers the
-     * field for reflection.
-     */
-    void preregisterAsWritableForAnalysis(Field field);
+    Set<Executable> getQueriedOnlyMethods();
 }

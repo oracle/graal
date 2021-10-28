@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,15 @@ public abstract class DerivedInductionVariable extends InductionVariable {
         return base;
     }
 
+    @Override
+    public InductionVariable duplicate() {
+        InductionVariable newBase = base.duplicate();
+        return copy(newBase, copyValue(newBase, false/* no gvn */));
+    }
+
     public abstract ValueNode copyValue(InductionVariable newBase);
+
+    public abstract ValueNode copyValue(InductionVariable newBase, boolean gvn);
 
     public abstract InductionVariable copy(InductionVariable newBase, ValueNode newValue);
 }

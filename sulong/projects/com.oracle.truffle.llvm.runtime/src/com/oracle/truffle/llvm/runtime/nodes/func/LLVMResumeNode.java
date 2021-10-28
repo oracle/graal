@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -75,8 +75,7 @@ public abstract class LLVMResumeNode extends LLVMControlFlowNode {
             LLVMUserException thrownException = (LLVMUserException) frame.getObject(getExceptionSlot());
             throw thrownException;
         } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 }

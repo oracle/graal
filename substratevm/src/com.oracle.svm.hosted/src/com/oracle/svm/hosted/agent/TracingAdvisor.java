@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.agent;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 public class TracingAdvisor {
 
@@ -39,14 +39,14 @@ public class TracingAdvisor {
         for (String option : optionPairs) {
             String[] optionKeyValue = option.split("=");
             if (optionKeyValue.length != 2) {
-                throw UserError.abort("AgentTracingAdvisor: Option must be in format <option>=<val>: %s", option);
+                throw VMError.shouldNotReachHere("AgentTracingAdvisor: Option must be in format <option>=<val>: " + option);
             }
             if (optionKeyValue[0].equals("c")) {
                 classesForInitializationTracing.add(optionKeyValue[1]);
             } else if (optionKeyValue[0].equals("o")) {
                 classesForObjectInstantiationTracing.add(optionKeyValue[1]);
             } else {
-                throw UserError.abort("AgentTracingAdvisor: Unknown option: %s", optionKeyValue[0]);
+                throw VMError.shouldNotReachHere("AgentTracingAdvisor: Unknown option: " + optionKeyValue[0]);
             }
         }
     }

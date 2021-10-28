@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -102,12 +103,14 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(guards = "interop.isPointer(address)", limit = "3", rewriteOn = UnsupportedMessageException.class)
+        @GenerateAOT.Exclude
         protected LLVMNativePointer doPointer(Object address,
                         @CachedLibrary("address") InteropLibrary interop) throws UnsupportedMessageException {
             return LLVMNativePointer.create(interop.asPointer(address));
         }
 
         @Specialization(guards = "!interop.isPointer(address)", limit = "3")
+        @GenerateAOT.Exclude
         protected LLVMManagedPointer doFunction(Object address,
                         @CachedLibrary("address") @SuppressWarnings("unused") InteropLibrary interop) {
             /*
@@ -119,6 +122,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(limit = "3", replaces = {"doPointer", "doFunction"})
+        @GenerateAOT.Exclude
         protected LLVMPointer doGeneric(Object address,
                         @CachedLibrary("address") InteropLibrary interop) {
             if (interop.isPointer(address)) {

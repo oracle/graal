@@ -142,6 +142,25 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    public static String stateToString(int codeInfoState) {
+        switch (codeInfoState) {
+            case CodeInfo.STATE_CREATED:
+                return "created";
+            case CodeInfo.STATE_CODE_CONSTANTS_LIVE:
+                return "code constants live";
+            case CodeInfo.STATE_NON_ENTRANT:
+                return "non-entrant";
+            case CodeInfo.STATE_READY_FOR_INVALIDATION:
+                return "ready for invalidation";
+            case CodeInfo.STATE_PARTIALLY_FREED:
+                return "partially freed";
+            case CodeInfo.STATE_UNREACHABLE:
+                return "unreachable";
+            default:
+                return "invalid state";
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlive(CodeInfo info) {
         return isAliveState(cast(info).getState());
@@ -195,7 +214,6 @@ public final class CodeInfoAccess {
                             .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
                             .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
                             .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
-                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoNames()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
@@ -220,21 +238,39 @@ public final class CodeInfoAccess {
         return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(WordFactory.unsigned(relativeIP));
     }
 
-    public static long initFrameInfoReader(CodeInfo info, CodePointer ip, ReusableTypeReader frameInfoReader) {
-        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(info, relativeIP(info, ip));
-        if (entryOffset >= 0) {
-            if (!CodeInfoDecoder.initFrameInfoReader(info, entryOffset, frameInfoReader)) {
-                return -1;
-            }
+    public static class FrameInfoState {
+        public long entryOffset;
+        public boolean isFirstFrame;
+        public boolean isDone;
+        public int firstValue;
+
+        public FrameInfoState() {
+            reset();
         }
-        return entryOffset;
+
+        public void reset() {
+            entryOffset = -1;
+            isFirstFrame = true;
+            isDone = false;
+            firstValue = -1;
+        }
     }
 
-    public static FrameInfoQueryResult nextFrameInfo(CodeInfo info, long entryOffset, ReusableTypeReader frameInfoReader,
-                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
-        int entryFlags = CodeInfoDecoder.loadEntryFlags(info, entryOffset);
+    public static void initFrameInfoReader(CodeInfo info, CodePointer ip, ReusableTypeReader frameInfoReader, FrameInfoState state) {
+        long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(info, relativeIP(info, ip));
+        state.entryOffset = entryOffset;
+        if (entryOffset >= 0) {
+            if (!CodeInfoDecoder.initFrameInfoReader(info, entryOffset, frameInfoReader)) {
+                state.entryOffset = -1;
+            }
+        }
+    }
+
+    public static FrameInfoQueryResult nextFrameInfo(CodeInfo info, ReusableTypeReader frameInfoReader,
+                    FrameInfoDecoder.FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, FrameInfoState state) {
+        int entryFlags = CodeInfoDecoder.loadEntryFlags(info, state.entryOffset);
         boolean isDeoptEntry = CodeInfoDecoder.extractFI(entryFlags) == CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
-        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, resultAllocator, valueInfoAllocator, fetchFirstFrame);
+        return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, frameInfoReader, info, resultAllocator, valueInfoAllocator, state);
     }
 
     @SuppressWarnings("unchecked")
@@ -274,18 +310,9 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
-    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings, NonmovableObjectArray<Object> objectConstants,
-                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames, NonmovableObjectArray<String> names) {
+    public static void setFrameInfo(CodeInfo info, NonmovableArray<Byte> encodings) {
         CodeInfoImpl impl = cast(info);
         impl.setFrameInfoEncodings(encodings);
-        impl.setFrameInfoObjectConstants(objectConstants);
-        impl.setFrameInfoSourceClasses(sourceClasses);
-        impl.setFrameInfoSourceMethodNames(sourceMethodNames);
-        impl.setFrameInfoNames(names);
-        if (!SubstrateUtil.HOSTED) {
-            // notify the GC about the frame metadata that is now live
-            Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
-        }
     }
 
     public static void setCodeInfo(CodeInfo info, NonmovableArray<Byte> index, NonmovableArray<Byte> encodings, NonmovableArray<Byte> referenceMapEncoding) {
@@ -293,6 +320,19 @@ public final class CodeInfoAccess {
         impl.setCodeInfoIndex(index);
         impl.setCodeInfoEncodings(encodings);
         impl.setStackReferenceMapEncoding(referenceMapEncoding);
+    }
+
+    @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
+    public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants,
+                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames) {
+        CodeInfoImpl impl = cast(info);
+        impl.setFrameInfoObjectConstants(objectConstants);
+        impl.setFrameInfoSourceClasses(sourceClasses);
+        impl.setFrameInfoSourceMethodNames(sourceMethodNames);
+        if (!SubstrateUtil.HOSTED) {
+            // notify the GC about the frame metadata that is now live
+            Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
+        }
     }
 
     public static Log log(CodeInfo info, Log log) {
@@ -346,13 +386,29 @@ public final class CodeInfoAccess {
         return cast(info).getFrameInfoSourceMethodNames();
     }
 
-    public static NonmovableObjectArray<String> getFrameInfoNames(CodeInfo info) {
-        return cast(info).getFrameInfoNames();
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert isValid(info);
         return (CodeInfoImpl) info;
+    }
+
+    public static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+    }
+
+    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+                        .string(CodeInfoAccess.stateToString(state));
+        if (name != null) {
+            log.string(" - ").string(name);
+        }
+        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
+        log.newline();
+        /*
+         * Note that we are not trying to output the InstalledCode object. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,8 +71,9 @@ public class AMD64VectorClearOp extends AMD64LIRInstruction {
                 break;
 
             default:
-                // on AVX1, YMM VPXOR is not supported - still it is possible to clear the whole YMM
-                // register as the upper 128-bit are implicitly cleared by the AVX1 instruction.
+                // on AVX1, YMM VPXOR is not supported - still it is possible to clear the whole
+                // YMM/ZMM register as the upper 128/384-bit are implicitly cleared by the AVX1
+                // instruction.
                 VPXOR.emit(masm, XMM, register, register, register);
         }
     }

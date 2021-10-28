@@ -34,6 +34,4 @@ public interface Commands {
     Callable<Void> createLineBreakpointCommand(BreakpointInfo info);
 
     Callable<Void> createExceptionBreakpoint(BreakpointInfo exceptionBreakpointInfo);
-
-    Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info);
 }

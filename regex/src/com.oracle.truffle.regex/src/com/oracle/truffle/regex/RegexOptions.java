@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
@@ -107,6 +108,8 @@ public final class RegexOptions {
     public static final String UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME = "UTF16ExplodeAstralSymbols";
     private static final int VALIDATE = 1 << 6;
     public static final String VALIDATE_NAME = "Validate";
+    private static final int IGNORE_ATOMIC_GROUPS = 1 << 7;
+    public static final String IGNORE_ATOMIC_GROUPS_NAME = "IgnoreAtomicGroups";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
@@ -118,7 +121,7 @@ public final class RegexOptions {
 
     public static final String ENCODING_NAME = "Encoding";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, null, Encodings.UTF_16_RAW);
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW);
 
     private final int options;
     private final RegexFlavor flavor;
@@ -183,6 +186,13 @@ public final class RegexOptions {
         return isBitSet(VALIDATE);
     }
 
+    /**
+     * Ignore atomic groups (found e.g. in Ruby regular expressions), treat them as regular groups.
+     */
+    public boolean isIgnoreAtomicGroups() {
+        return isBitSet(IGNORE_ATOMIC_GROUPS);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
@@ -234,6 +244,15 @@ public final class RegexOptions {
         if (isAlwaysEager()) {
             sb.append(ALWAYS_EAGER_NAME + "=true,");
         }
+        if (isUTF16ExplodeAstralSymbols()) {
+            sb.append(UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME + "=true,");
+        }
+        if (isValidate()) {
+            sb.append(VALIDATE_NAME + "=true,");
+        }
+        if (isIgnoreAtomicGroups()) {
+            sb.append(IGNORE_ATOMIC_GROUPS_NAME + "=true,");
+        }
         if (flavor == PythonFlavor.STR_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
@@ -256,7 +275,7 @@ public final class RegexOptions {
             this.source = source;
             this.src = sourceString;
             this.options = 0;
-            this.flavor = null;
+            this.flavor = ECMAScriptFlavor.INSTANCE;
         }
 
         @TruffleBoundary
@@ -275,6 +294,9 @@ public final class RegexOptions {
                         break;
                     case 'F':
                         i = parseFlavor(i);
+                        break;
+                    case 'I':
+                        i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -344,7 +366,7 @@ public final class RegexOptions {
             }
             switch (src.charAt(iVal)) {
                 case 'E':
-                    flavor = null;
+                    flavor = ECMAScriptFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
                 case 'R':
                     flavor = RubyFlavor.INSTANCE;
@@ -375,6 +397,9 @@ public final class RegexOptions {
                 throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
             }
             switch (src.charAt(iVal)) {
+                case 'A':
+                    encoding = Encodings.ASCII;
+                    return expectValue(iVal, Encodings.ASCII.getName(), Encodings.ALL_NAMES);
                 case 'B':
                     encoding = Encodings.LATIN_1;
                     return expectValue(iVal, "BYTES", Encodings.ALL_NAMES);
@@ -457,6 +482,16 @@ public final class RegexOptions {
 
         public boolean isUtf16ExplodeAstralSymbols() {
             return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+        }
+
+        public Builder validate(boolean enabled) {
+            updateOption(enabled, VALIDATE);
+            return this;
+        }
+
+        public Builder ignoreAtomicGroups(boolean enabled) {
+            updateOption(enabled, IGNORE_ATOMIC_GROUPS);
+            return this;
         }
 
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {

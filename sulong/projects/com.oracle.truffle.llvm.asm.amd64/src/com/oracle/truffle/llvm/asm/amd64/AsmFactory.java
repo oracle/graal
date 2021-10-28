@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -197,6 +197,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputa
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64AddressComputationNodeFactory.LLVMAMD64AddressSegmentComputationNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64GetTlsNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64LockedInstructionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ReadAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64ReadRegisterNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64Target;
@@ -237,6 +238,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
@@ -950,7 +952,7 @@ public class AsmFactory {
                 statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
         }
-        statements.add(getOperandStore(dstType, dst, out));
+        statements.add(maybeMakeAtomic(getOperandStore(dstType, dst, out), dst));
     }
 
     private static boolean isShiftOperation(String operation) {
@@ -1032,6 +1034,41 @@ public class AsmFactory {
             throw new AsmParseException("cannot infer type");
         }
         return type;
+    }
+
+    /**
+     * Ensures that at least the instruction's operand passed in is a memory operand, and that the
+     * instruction has a lock prefix, in which case it returns the instruction ("the statement")
+     * wrapped in an
+     * {@link com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64LockedInstructionNode}.
+     * Otherwise returns the bare instruction.
+     */
+    private LLVMStatementNode maybeMakeAtomic(LLVMStatementNode statement, AsmOperand maybeMemoryOperand) {
+        if ("lock".equals(currentPrefix)) {
+            return makeAtomic(statement, maybeMemoryOperand);
+        }
+
+        return statement;
+    }
+
+    /**
+     * Ensures that at least the instruction's operand passed in is a memory operand, in which case
+     * it returns the instruction ("the statement") wrapped in an
+     * {@link com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64LockedInstructionNode}.
+     * Otherwise returns the bare instruction.
+     */
+    private LLVMStatementNode makeAtomic(LLVMStatementNode statement, AsmOperand maybeMemoryOperand) {
+        if (maybeMemoryOperand instanceof AsmMemoryOperand) {
+            return LLVMAMD64LockedInstructionNodeGen.create(statement, getOperandAddress(maybeMemoryOperand));
+        } else if (maybeMemoryOperand instanceof AsmArgumentOperand) {
+            AsmArgumentOperand op = (AsmArgumentOperand) maybeMemoryOperand;
+            Argument info = argInfo.get(op.getIndex());
+            if (info.isMemory()) {
+                return LLVMAMD64LockedInstructionNodeGen.create(statement, getOperandAddress(maybeMemoryOperand));
+            }
+        }
+
+        return statement;
     }
 
     void createBinaryOperationImplicitSize(String operation, AsmOperand a, AsmOperand b) {
@@ -1129,7 +1166,17 @@ public class AsmFactory {
                     default:
                         throw invalidOperandType(dstType);
                 }
-                statements.add(res);
+                /**
+                 * Make xchg unconditionally atomic. Some code (e.g. musl libc) using xchg relies on
+                 * its (and any other instruction's) non-atomic behavior in concurrency with other
+                 * locked/atomic instructions to be atomic.
+                 *
+                 * The issue is that we should avoid globally locking memory operations, and so
+                 * instead we hand-pick instructions that are used in code related to
+                 * synchronization, and xchg is one of those (e.g. in the musl libc). This is not
+                 * entirely correct behavior, but should cover most practical use-cases.
+                 */
+                statements.add(makeAtomic(res, b));
                 return;
             }
             case "cmpxchg": {
@@ -1169,7 +1216,7 @@ public class AsmFactory {
                             throw invalidOperandType(dstType);
                     }
                 }
-                statements.add(res);
+                statements.add(maybeMakeAtomic(res, b));
                 return;
             }
             case "and":
@@ -1217,6 +1264,41 @@ public class AsmFactory {
                 LLVMX86_ConversionNode.LLVMX86_Pmovmskb128 pmovmskb128 = LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen.create(srcA);
                 out = pmovmskb128;
                 break;
+            case "xadd":
+                srcA = getOperandLoad(dstType, a);
+                srcB = getOperandLoad(dstType, b);
+                switch (getPrimitiveType(dstType)) {
+                    case I8: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I8, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(maybeMakeAtomic(LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
+                        return;
+                    }
+                    case I16: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I16, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(maybeMakeAtomic(LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
+                        return;
+                    }
+                    case I32: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I32, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(maybeMakeAtomic(LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
+                        return;
+                    }
+                    case I64: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I64, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(maybeMakeAtomic(LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
+                        return;
+                    }
+                    default:
+                        throw invalidOperandType(dstType);
+                }
             default:
                 statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
@@ -1475,22 +1557,22 @@ public class AsmFactory {
                 break;
             case "xchgb": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                statements.add(LLVMAMD64XchgbNodeGen.create(operands.dst, operands.srcA, operands.srcB));
+                statements.add(makeAtomic(LLVMAMD64XchgbNodeGen.create(operands.dst, operands.srcA, operands.srcB), b));
                 return;
             }
             case "xchgw": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                statements.add(LLVMAMD64XchgwNodeGen.create(operands.dst, operands.srcA, operands.srcB));
+                statements.add(makeAtomic(LLVMAMD64XchgwNodeGen.create(operands.dst, operands.srcA, operands.srcB), b));
                 return;
             }
             case "xchgl": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                statements.add(LLVMAMD64XchglNodeGen.create(operands.dst, operands.srcA, operands.srcB));
+                statements.add(makeAtomic(LLVMAMD64XchglNodeGen.create(operands.dst, operands.srcA, operands.srcB), b));
                 return;
             }
             case "xchgq": {
                 XchgOperands operands = new XchgOperands(a, b, dstType);
-                statements.add(LLVMAMD64XchgqNodeGen.create(operands.dst, operands.srcA, operands.srcB));
+                statements.add(makeAtomic(LLVMAMD64XchgqNodeGen.create(operands.dst, operands.srcA, operands.srcB), b));
                 return;
             }
             case "cmpb":
@@ -1509,56 +1591,56 @@ public class AsmFactory {
                 LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
                 LLVMAMD64WriteValueNode dst2 = getRegisterStore("al");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I8, new AsmRegisterOperand("al"));
-                statements.add(LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64CmpXchgbNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB), b));
                 return;
             }
             case "cmpxchgw": {
                 LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
                 LLVMAMD64WriteValueNode dst2 = getRegisterStore("ax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I16, new AsmRegisterOperand("ax"));
-                statements.add(LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64CmpXchgwNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB), b));
                 return;
             }
             case "cmpxchgl": {
                 LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
                 LLVMAMD64WriteValueNode dst2 = getRegisterStore("eax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax"));
-                statements.add(LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64CmpXchglNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB), b));
                 return;
             }
             case "cmpxchgq": {
                 LLVMAMD64WriteValueNode dst1 = getStore(dstType, b);
                 LLVMAMD64WriteValueNode dst2 = getRegisterStore("rax");
                 LLVMExpressionNode accumulator = getOperandLoad(PrimitiveType.I64, new AsmRegisterOperand("rax"));
-                statements.add(LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB), b));
                 return;
             }
             case "xaddb": {
                 LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I8, a);
                 LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
                 LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
-                statements.add(LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
                 return;
             }
             case "xaddw": {
                 LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I16, a);
                 LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
                 LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
-                statements.add(LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
                 return;
             }
             case "xaddl": {
                 LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I32, a);
                 LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
                 LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
-                statements.add(LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
                 return;
             }
             case "xaddq": {
                 LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I64, a);
                 LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
                 LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
-                statements.add(LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                statements.add(maybeMakeAtomic(LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB), b));
                 return;
             }
             case "xorb":
@@ -2027,7 +2109,7 @@ public class AsmFactory {
                     out = from;
                     break;
                 default:
-                    throw new AsmParseException("unsupported operand type: " + op.getType());
+                    throw unsupportedOperandType(op.getType());
             }
             return LLVMWriteI64NodeGen.create(frame, out);
         } else if (operand instanceof AsmArgumentOperand) {
@@ -2048,6 +2130,8 @@ public class AsmFactory {
                         default:
                             throw unsupportedOperandType(type);
                     }
+                } else if (type instanceof PointerType) {
+                    return LLVMPointerStoreNodeGen.create(address, from);
                 } else {
                     throw unsupportedOperandType(type);
                 }

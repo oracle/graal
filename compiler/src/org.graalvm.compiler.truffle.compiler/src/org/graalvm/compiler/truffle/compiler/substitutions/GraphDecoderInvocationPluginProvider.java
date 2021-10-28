@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,12 @@ import jdk.vm.ci.code.Architecture;
 
 /**
  * Registers invocation plugins that are specific to a particular compiler configuration.
- *
+ * <p>
  * These plugins are invoked when the partial evaluator decodes the graphs, and they can decide
  * whether they should be registered for the compiler configuration of the respective compilation
  * tier.
+ * <p>
+ * Implementations are responsible for checking the architecture if needed.
  */
 public interface GraphDecoderInvocationPluginProvider {
     void registerInvocationPlugins(Providers providers, Architecture architecture, String compilerConfiguration, InvocationPlugins plugins, boolean canDelayIntrinsification);

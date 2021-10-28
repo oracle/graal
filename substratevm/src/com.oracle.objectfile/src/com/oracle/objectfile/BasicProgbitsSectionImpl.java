@@ -35,7 +35,6 @@ import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocatableSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
-import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.ObjectFile.Section;
 
 /**
@@ -114,21 +113,21 @@ public class BasicProgbitsSectionImpl extends BasicElementImpl implements Progbi
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend,
-                        explicitAddend);
+    public void markRelocationSite(int offset, RelocationKind k, String symbolName, long addend) {
+        ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName,
+                        addend);
     }
 
     @Override
-    public final RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public final void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, long addend) {
         assert getContent() == null || bb.array() == getContent();
-        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, bb, k, symbolName, useImplicitAddend, explicitAddend);
+        ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, bb, k, symbolName, addend);
     }
 
     @Override
-    public Element getOrCreateRelocationElement(boolean useImplicitAddend) {
+    public Element getOrCreateRelocationElement(long addend) {
         // FIXME: This looks suspicious: turning an Element back into an Impl?
-        return ((RelocatableSectionImpl) getElement()).getOrCreateRelocationElement(useImplicitAddend);
+        return ((RelocatableSectionImpl) getElement()).getOrCreateRelocationElement(addend);
     }
 
     @Override

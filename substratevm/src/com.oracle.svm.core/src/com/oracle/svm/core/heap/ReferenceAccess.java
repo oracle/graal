@@ -117,4 +117,9 @@ public interface ReferenceAccess {
      * Returns the default compression encoding.
      */
     CompressEncoding getCompressEncoding();
+
+    /**
+     * Returns the size of the address space, based on the reference size.
+     */
+    UnsignedWord getAddressSpaceSize();
 }

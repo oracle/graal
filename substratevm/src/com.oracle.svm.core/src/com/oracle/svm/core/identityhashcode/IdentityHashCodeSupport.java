@@ -46,7 +46,7 @@ import jdk.vm.ci.code.TargetDescription;
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
 
-    private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class);
+    private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class, "IdentityHashCodeSupport.hashCodeGeneratorTL");
 
     /**
      * Initialization can require synchronization which is not allowed during safepoints, so this
@@ -61,7 +61,7 @@ public final class IdentityHashCodeSupport {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int generateIdentityHashCode(Object obj) {
+    public static int generateIdentityHashCode(Object obj) {
 
         // generate a new hashcode and try to store it into the object
         int newHashCode = generateHashCode();

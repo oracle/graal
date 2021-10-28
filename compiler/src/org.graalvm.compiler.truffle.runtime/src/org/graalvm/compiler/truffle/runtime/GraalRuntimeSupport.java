@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,23 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -46,6 +54,14 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
+    }
+
+    @Override
+    public RootCallTarget newCallTarget(RootNode rootNode) {
+        CompilerAsserts.neverPartOfCompilation();
+        final OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().newCallTarget(rootNode, null);
+        TruffleSplittingStrategy.newTargetCreated(target);
+        return target;
     }
 
     @ExplodeLoop
@@ -68,6 +84,68 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
+    }
+
+    @Override
+    public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode) {
+        CompilerAsserts.neverPartOfCompilation();
+        TruffleSafepoint.poll((Node) osrNode);
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata == null) {
+            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
+        }
+
+        // metadata can be set to DISABLED during initialization (above) or dynamically after
+        // failed compilation.
+        if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
+            return false;
+        } else {
+            return osrMetadata.incrementAndPoll();
+        }
+    }
+
+    private static BytecodeOSRMetadata initializeBytecodeOSRMetadata(BytecodeOSRNode osrNode) {
+        Node node = (Node) osrNode;
+        return node.atomic(() -> { // double checked locking
+            BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+            if (metadata == null) {
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
+                if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                } else {
+                    metadata = BytecodeOSRMetadata.DISABLED;
+                }
+
+                osrNode.setOSRMetadata(metadata);
+            }
+            return metadata;
+        });
+    }
+
+    @Override
+    public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+        CompilerAsserts.neverPartOfCompilation();
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        return osrMetadata.tryOSR(target, interpreterState, beforeTransfer, parentFrame);
+    }
+
+    @Override
+    public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata != null) {
+            osrMetadata.nodeReplaced(oldNode, newNode, reason);
+        }
+    }
+
+    @Override
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
+    }
+
+    @Override
+    public ThreadLocalHandshake getThreadLocalHandshake() {
+        return GraalTruffleRuntime.getRuntime().getThreadLocalHandshake();
     }
 
     @Override
@@ -150,7 +228,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public boolean inFirstTier() {
-        return GraalCompilerDirectives.inFirstTier();
+        return GraalCompilerDirectives.hasNextTier();
     }
 
     @Override
@@ -202,7 +280,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public boolean isOSRRootNode(RootNode rootNode) {
-        return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+        return rootNode instanceof BaseOSRRootNode;
     }
 
     @Override
@@ -234,4 +312,14 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     public Object getFieldValue(Object resolvedJavaField, Object obj) {
         return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
     }
+
+    @Override
+    public AbstractFastThreadLocal getContextThreadLocal() {
+        AbstractFastThreadLocal local = GraalTruffleRuntime.getRuntime().getFastThreadLocalImpl();
+        if (local == null) {
+            return super.getContextThreadLocal();
+        }
+        return local;
+    }
+
 }

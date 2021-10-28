@@ -27,6 +27,8 @@ package org.graalvm.compiler.nodeinfo;
 /**
  * Constants representing an estimation of the number of CPU cycles needed to execute a certain
  * compiler node.
+ *
+ * See {@link NodeSize} for further information on how to determine a value for a new node.
  */
 public enum NodeCycles {
 
@@ -36,6 +38,7 @@ public enum NodeCycles {
      * For further information about the use of {@code CYCLES_UNSET} see {@link NodeInfo#cycles()}.
      */
     CYCLES_UNSET(0),
+
     /**
      * Nodes for which, due to arbitrary reasons, no estimation can be made either (1) statically
      * without inspecting the properties of a node or (2) at all (like e.g. for an invocation).
@@ -44,14 +47,17 @@ public enum NodeCycles {
      * {@link NodeInfo#cyclesRationale()} property to clarify why an estimation cannot be done.
      */
     CYCLES_UNKNOWN(0),
+
     /**
      * Nodes for which runtime information is irrelevant and can be ignored, e.g. for test nodes.
      */
     CYCLES_IGNORED(0),
+
     /**
-     * Nodes that do not consume any CPU time during the "execution", e.g. Constants.
+     * Nodes that do not consume any CPU time during the "execution", e.g. constants.
      */
     CYCLES_0(0),
+
     CYCLES_1(1),
     CYCLES_2(2),
     CYCLES_4(4),

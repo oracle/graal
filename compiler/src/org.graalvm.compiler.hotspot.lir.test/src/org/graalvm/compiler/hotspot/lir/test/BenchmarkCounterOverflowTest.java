@@ -49,7 +49,6 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,8 +60,7 @@ public class BenchmarkCounterOverflowTest extends LIRTest {
     private static LIRKind intKind;
 
     @Before
-    public void checkAMD64() {
-        Assume.assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+    public void checkHotSpot() {
         Assume.assumeTrue("skipping HotSpot specific test", getBackend() instanceof HotSpotBackend);
     }
 

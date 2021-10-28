@@ -42,6 +42,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     private final LogHandler delegate;
 
     private LogFunctionPointer logFunctionPointer;
+    private LogFunctionPointer fatalLogFunctionPointer;
     private VoidFunctionPointer flushFunctionPointer;
     private VoidFunctionPointer fatalErrorFunctionPointer;
 
@@ -68,12 +69,37 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     }
 
     @Override
-    public boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
+    public Log enterFatalContext(CodePointer callerIP, String msg, Throwable ex) {
         if (delegate instanceof LogHandlerExtension) {
-            return ((LogHandlerExtension) delegate).fatalContext(callerIP, msg, ex);
+            return ((LogHandlerExtension) delegate).enterFatalContext(callerIP, msg, ex);
         }
-        return true;
+        return fatalLog;
     }
+
+    /**
+     * Sends output to {@link FunctionPointerLogHandler#fatalLogFunctionPointer} if it is non-null.
+     */
+    class FatalLog extends RealLog {
+        @Override
+        protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
+            if (fatalLogFunctionPointer.isNonNull()) {
+                fatalLogFunctionPointer.invoke(bytes, length);
+            } else {
+                FunctionPointerLogHandler.this.log(bytes, length);
+            }
+            return this;
+        }
+
+        @Override
+        public Log flush() {
+            if (fatalLogFunctionPointer.isNull()) {
+                FunctionPointerLogHandler.this.flush();
+            }
+            return this;
+        }
+    }
+
+    private final FatalLog fatalLog = new FatalLog();
 
     @Override
     public void fatalError() {
@@ -113,6 +139,9 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     public static boolean parseVMOption(String optionString, WordPointer extraInfo) {
         if (optionString.equals("_log")) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
+            return true;
+        } else if (optionString.equals("_fatal_log")) {
+            handler(optionString).fatalLogFunctionPointer = (LogFunctionPointer) extraInfo;
             return true;
         } else if (optionString.equals("_flush_log")) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;

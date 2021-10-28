@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -92,13 +92,46 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
             }
             if (forX.stamp(view) instanceof IntegerStamp) {
                 assert forY.stamp(view) instanceof IntegerStamp;
-                int bits = ((IntegerStamp) forX.stamp(view)).getBits();
-                assert ((IntegerStamp) forY.stamp(view)).getBits() == bits;
+                IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
+                IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
+                int bits = xStamp.getBits();
+                assert yStamp.getBits() == bits;
                 LogicNode logic = canonicalizeRangeFlip(forX, forY, bits, false, view);
                 if (logic != null) {
                     return logic;
                 }
+                if (xStamp.isPositive() && forY instanceof ConditionalNode && ((ConditionalNode) forY).condition() instanceof IntegerBelowNode) {
+                    logic = canonicalizeBelowCanonicalOfBelow(forX, (ConditionalNode) forY, view);
+                    if (logic != null) {
+                        return logic;
+                    }
+                }
             }
+            return null;
+        }
+
+        private static LogicNode canonicalizeBelowCanonicalOfBelow(ValueNode forX, ConditionalNode forY, NodeView view) {
+            IntegerBelowNode below = (IntegerBelowNode) forY.condition();
+            ValueNode n = below.getX();
+            if (((IntegerStamp) n.stamp(view)).isPositive() && forY.trueValue().isDefaultConstant() && below.getY().isJavaConstant() && forY.falseValue() instanceof AddNode) {
+                AddNode add = (AddNode) forY.falseValue();
+                if (add.getX() == below.getX() && add.getY().isJavaConstant() && add.getY().asJavaConstant().asLong() < 0 &&
+                                add.getY().asJavaConstant().asLong() == -below.getY().asJavaConstant().asLong()) {
+                    ValueNode c = below.getY();
+                    /*
+                     * We have:
+                     *
+                     * x |<| (n |<| C ? 0 : n - C)
+                     *
+                     * where we know that both x (checked by the caller) and n are non-negative.
+                     * This is the same as:
+                     *
+                     * x < n - C
+                     */
+                    return IntegerLessThanNode.create(forX, SubNode.create(n, c, view), view);
+                }
+            }
+
             return null;
         }
 

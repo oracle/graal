@@ -84,21 +84,21 @@ public final class DebuggerConnection implements Commands {
     @Override
     public void stepInto(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_INTO, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_INTO);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOver(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OVER, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OVER);
         addBlocking(debuggerCommand);
     }
 
     @Override
     public void stepOut(Object thread, RequestFilter filter) {
         DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.STEP_OUT, filter);
-        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false);
+        controller.setCommandRequestId(thread, filter.getRequestId(), filter.getSuspendPolicy(), false, false, DebuggerCommand.Kind.STEP_OUT);
         addBlocking(debuggerCommand);
     }
 
@@ -112,7 +112,7 @@ public final class DebuggerConnection implements Commands {
                 try {
                     command.wait();
                 } catch (InterruptedException e) {
-                    JDWPLogger.log("could not submit debugger command due to %s", JDWPLogger.LogLevel.ALL, e.getMessage());
+                    JDWP.LOGGER.warning(() -> "could not submit debugger command due to " + e.getMessage());
                 }
             }
         }
@@ -126,19 +126,6 @@ public final class DebuggerConnection implements Commands {
                 LineBreakpointInfo lineInfo = (LineBreakpointInfo) info;
                 DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_LINE_BREAKPOINT, info.getFilter());
                 debuggerCommand.setSourceLocation(new SourceLocation(lineInfo.getSlashName(), (int) lineInfo.getLine(), context));
-                debuggerCommand.setBreakpointInfo(info);
-                addBlocking(debuggerCommand);
-                return null;
-            }
-        };
-    }
-
-    @Override
-    public Callable<Void> createMethodEntryBreakpointCommand(BreakpointInfo info) {
-        return new Callable<Void>() {
-            @Override
-            public Void call() {
-                DebuggerCommand debuggerCommand = new DebuggerCommand(DebuggerCommand.Kind.SUBMIT_METHOD_ENTRY_BREAKPOINT, info.getFilter());
                 debuggerCommand.setBreakpointInfo(info);
                 addBlocking(debuggerCommand);
                 return null;
@@ -167,25 +154,17 @@ public final class DebuggerConnection implements Commands {
                 DebuggerCommand debuggerCommand = awaitNextCommand(); // blocking
 
                 if (debuggerCommand != null) {
-                    RequestFilter filter = debuggerCommand.getRequestFilter();
                     switch (debuggerCommand.kind) {
-                        case STEP_INTO:
-                            controller.stepInto(filter);
-                            break;
-                        case STEP_OVER:
-                            controller.stepOver(filter);
-                            break;
-                        case STEP_OUT:
-                            controller.stepOut(filter);
-                            break;
                         case SUBMIT_LINE_BREAKPOINT:
                             controller.submitLineBreakpoint(debuggerCommand);
                             break;
-                        case SUBMIT_METHOD_ENTRY_BREAKPOINT:
-                            controller.submitMethodEntryBreakpoint(debuggerCommand);
-                            break;
                         case SUBMIT_EXCEPTION_BREAKPOINT:
                             controller.submitExceptionBreakpoint(debuggerCommand);
+                            break;
+                        case STEP_OUT:
+                            controller.stepOut(debuggerCommand.getRequestFilter());
+                            break;
+                        default:
                             break;
                     }
                     synchronized (debuggerCommand) {
@@ -217,7 +196,12 @@ public final class DebuggerConnection implements Commands {
                     processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
-                        JDWPLogger.log("Failed to process jdwp packet with message: %s", JDWPLogger.LogLevel.ALL, e.getMessage());
+                        // enter Truffle context for logging
+                        boolean entered = controller.enterTruffleContext();
+                        JDWP.LOGGER.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                        if (entered) {
+                            controller.leaveTruffleContext();
+                        }
                     }
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
@@ -231,10 +215,10 @@ public final class DebuggerConnection implements Commands {
             try {
                 if (packet.flags == Packet.Reply) {
                     // result packet from debugger!
-                    JDWPLogger.log("Should not get any reply packet from debugger", JDWPLogger.LogLevel.PACKET);
+                    JDWP.LOGGER.warning(() -> "Should not get any reply packet from debugger");
                 } else {
                     // process a command packet from debugger
-                    JDWPLogger.log("received command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+                    JDWP.LOGGER.fine(() -> "received command(" + packet.cmdSet + "." + packet.cmd + ")");
 
                     switch (packet.cmdSet) {
                         case JDWP.VirtualMachine.ID: {
@@ -302,6 +286,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.INSTANCE_COUNTS.ID:
                                     result = JDWP.VirtualMachine.INSTANCE_COUNTS.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.ALL_MODULES.ID:
+                                    result = JDWP.VirtualMachine.ALL_MODULES.createReply(packet, context);
+                                    break;
                                 default:
                                     break;
                             }
@@ -362,6 +349,9 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 case JDWP.ReferenceType.CONSTANT_POOL.ID:
                                     result = JDWP.ReferenceType.CONSTANT_POOL.createReply(packet, context);
+                                    break;
+                                case JDWP.ReferenceType.MODULE.ID:
+                                    result = JDWP.ReferenceType.MODULE.createReply(packet, context);
                                     break;
                             }
                             break;
@@ -486,7 +476,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.ID:
-                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, context);
+                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.STOP.ID:
                                     result = JDWP.ThreadReference.STOP.createReply(packet, context);
@@ -587,6 +577,19 @@ public final class DebuggerConnection implements Commands {
                             }
                             break;
                         }
+                        case JDWP.ModuleReference.ID: {
+                            switch (packet.cmd) {
+                                case JDWP.ModuleReference.NAME.ID:
+                                    result = JDWP.ModuleReference.NAME.createReply(packet, context);
+                                    break;
+                                case JDWP.ModuleReference.CLASSLOADER.ID:
+                                    result = JDWP.ModuleReference.CLASSLOADER.createReply(packet, context);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
                         case JDWP.Event.ID: {
                             switch (packet.cmd) {
                                 case JDWP.Event.COMPOSITE.ID:
@@ -603,8 +606,16 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                JDWPLogger.log("[Internal error]: %s", JDWPLogger.LogLevel.ALL, t.getClass());
-                JDWPLogger.throwing(JDWPLogger.LogLevel.ALL, t);
+                if (entered) {
+                    // we can only use the Truffle logger if we were able to enter the context
+                    JDWP.LOGGER.warning(() -> "[Internal error]");
+                    JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "processPacket", t);
+                } else {
+                    // Checkstyle: stop allow error output
+                    System.out.println("[internal error]: " + t.getMessage());
+                    t.printStackTrace();
+                    // Checkstyle: resume allow error output
+                }
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));
@@ -629,14 +640,15 @@ public final class DebuggerConnection implements Commands {
                     }
                 }
             } catch (Exception e) {
-                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+                JDWP.LOGGER.warning(() -> "Failed to run future for command(" + packet.cmdSet + "." + packet.cmd + ")");
+                JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "handleReply", e);
             }
         }
         if (result.getReply() != null) {
-            JDWPLogger.log("replying to command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            JDWP.LOGGER.fine(() -> "replying to command(" + packet.cmdSet + "." + packet.cmd + ")");
             connection.queuePacket(result.getReply());
         } else {
-            JDWPLogger.log("no result for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+            JDWP.LOGGER.warning(() -> "no result for command(" + packet.cmdSet + "." + packet.cmd + ")");
         }
         // run post futures after sending the reply
         if (result.getPostFutures() != null) {
@@ -647,7 +659,8 @@ public final class DebuggerConnection implements Commands {
                     }
                 }
             } catch (Exception e) {
-                JDWPLogger.log("Failed to run future for command(%d.%d)", JDWPLogger.LogLevel.PACKET, packet.cmdSet, packet.cmd);
+                JDWP.LOGGER.warning(() -> "Failed to run future for command(" + packet.cmdSet + "." + packet.cmd + ")");
+                JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "handleReply", e);
             }
         }
     }

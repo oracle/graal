@@ -42,7 +42,7 @@ public class CInterfaceWriteNode extends WriteNode {
     protected final String accessName;
 
     public CInterfaceWriteNode(AddressNode address, LocationIdentity locationIdentity, ValueNode value, BarrierType barrierType, String accessName) {
-        super(TYPE, address, locationIdentity, value, barrierType);
+        super(TYPE, address, locationIdentity, locationIdentity, value, barrierType);
         this.accessName = accessName;
     }
 }

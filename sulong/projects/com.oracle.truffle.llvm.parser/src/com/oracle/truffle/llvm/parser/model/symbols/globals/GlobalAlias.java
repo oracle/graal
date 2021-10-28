@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -70,6 +71,9 @@ public final class GlobalAlias extends GlobalValueSymbol {
             return CommonNodeFactory.createLiteral(value, getType());
         } else if (symbol.isGlobalVariable()) {
             LLVMGlobal value = symbol.asGlobalVariable();
+            return CommonNodeFactory.createLiteral(value, getType());
+        } else if (symbol.isElemPtrExpression()) {
+            LLVMElemPtrSymbol value = symbol.asElemPtrExpression();
             return CommonNodeFactory.createLiteral(value, getType());
         } else {
             throw new LLVMParserException("Unexpected symbol: " + symbol.getClass());

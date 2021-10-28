@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.profiles.BranchProfile;
+
 import org.graalvm.wasm.collection.IntArrayList;
 
 public final class WasmCodeEntry {
@@ -58,6 +60,7 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
     @CompilationFinal private FrameSlot stackLocalsSlot;
     @CompilationFinal private int maxStackSize;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
         this.function = function;
@@ -194,6 +197,10 @@ public final class WasmCodeEntry {
             int sum = t + f;
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
         }
+    }
+
+    public void errorBranch() {
+        errorBranch.enter();
     }
 
     @Override

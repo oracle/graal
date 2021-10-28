@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,16 +35,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
 public abstract class LLVMUnreachableNode extends LLVMControlFlowNode {
-
-    public static class LLVMUnreachableException extends ControlFlowException {
-        private static final long serialVersionUID = 1L;
-    }
 
     @Override
     public int getSuccessorCount() {
@@ -65,8 +60,7 @@ public abstract class LLVMUnreachableNode extends LLVMControlFlowNode {
 
     @Specialization
     void doUnreachable() {
-        CompilerDirectives.transferToInterpreter();
-        throw new LLVMUnreachableException();
+        throw CompilerDirectives.shouldNotReachHere("LLVMUnreachableNode");
     }
 
     @Override

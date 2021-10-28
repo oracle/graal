@@ -36,9 +36,9 @@ import org.junit.Test;
 
 public class HotSpotBase64Test extends HotSpotGraalCompilerTest {
 
-    // Checkstyle: stop
+    // @formatter:off
     private static final String lipsum = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata ";
-    // Checkstyle: resume
+    // @formatter:on
 
     @Before
     public void sanity() {

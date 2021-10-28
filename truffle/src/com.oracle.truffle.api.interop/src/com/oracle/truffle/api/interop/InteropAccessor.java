@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,7 @@ final class InteropAccessor extends Accessor {
     }
 
     private static boolean checkInteropTypeImpl(Object obj) {
-        if (AssertUtils.isInteropValue(obj)) {
+        if (InteropLibrary.isValidValue(obj)) {
             return true;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -96,11 +96,6 @@ final class InteropAccessor extends Accessor {
         @Override
         public void checkInteropType(Object result) {
             InteropAccessor.checkInteropType(result);
-        }
-
-        @Override
-        public boolean isInteropType(Object result) {
-            return AssertUtils.isInteropValue(result);
         }
 
         @Override

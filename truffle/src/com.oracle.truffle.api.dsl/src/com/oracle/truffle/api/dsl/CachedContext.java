@@ -47,76 +47,23 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Allows to access the current language execution context in specializations or exported messages.
- * The cached context annotation requires to specify a concrete {@link TruffleLanguage} subclass in
- * order to identify the language uniquely. The parameter type must be the language context type of
- * the language or a {@link ContextReference} that provides it. The latter parameter allows to
- * lookup the context lazily, e.g. in a conditional branch. Using this annotation always allows to
- * generate {@link GenerateUncached uncached} versions of the node.
- * <p>
- * This annotation can be used in two different ways:
- * <ol>
- * <li>Direct context access:</li>
- *
- * <pre>
- * &#64;GenerateUncached
- * abstract static class ExampleNode extends Node {
- *
- *     abstract Object execute(Object argument);
- *
- *     &#64;Specialization
- *     static int doInt(int value,
- *                     &#64;CachedContext(MyLanguage.class) MyContext context) {
- *         // use context
- *         return value;
- *     }
- *
- * }
- * </pre>
- *
- * <li>Conditional context access:</li>
- *
- * <pre>
- * &#64;GenerateUncached
- * abstract class ExampleNode extends Node {
- *
- *     abstract Object execute(Object argument);
- *
- *     &#64;Specialization
- *     static int doInt(int value,
- *                     &#64;CachedContext(MyLanguage.class) ContextReference<MyContext> ref) {
- *         if (value == 42) {
- *             // use context conditionally
- *             MyContext context = ref.get();
- *
- *         }
- *         return value;
- *     }
- * }
- * </pre>
- * </ol>
- * <p>
- * The generated code uses the {@link Node#lookupContextReference(Class)} method to implement this
- * feature. This method may also be used manually.
- *
- * @see Cached @Cached for more information on using this annotation.
- * @see CachedLanguage @CachedLanguage to access the language instance.
  * @since 19.0
+ * @deprecated in 21.3, use static final context references instead. See {@link ContextReference}
+ *             for the new intended usage.
  */
+@Deprecated
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedContext {
 
     /**
-     * Specifies the language the context should be looked up for. Must be the exact language class
-     * annotated by {@link Registration}.
-     *
      * @since 19.0
+     * @deprecated in 21.3, use static final context references instead. See
+     *             {@link ContextReference} for the new intended usage.
      */
+    @Deprecated
     @SuppressWarnings("rawtypes")
     Class<? extends TruffleLanguage> value();
 

@@ -60,7 +60,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -76,6 +75,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.RuntimeOptions;
@@ -204,7 +204,7 @@ public abstract class Launcher {
 
     /**
      * Exception which shall abort the launcher execution. Thrown by this class in the case of
-     * malformed arguments or unknown options, or deliberate exit.
+     * unhandled internal exception, malformed arguments or unknown options, or deliberate exit.
      *
      * @since 20.0
      */
@@ -336,7 +336,7 @@ public abstract class Launcher {
         String message = e.getMessage();
         if (message != null) {
             if (e instanceof NoSuchFileException) {
-                throw abort("Not such file: " + message, exitCode);
+                throw abort("No such file: " + message, exitCode);
             } else if (e instanceof AccessDeniedException) {
                 throw abort("Access denied: " + message, exitCode);
             } else {
@@ -973,9 +973,12 @@ public abstract class Launcher {
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
         String indent = spaces(indentStart);
-        String desc = wrap(description != null ? description : "");
+        String desc = description != null ? description : "";
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
+        for (int i = 0; i < descLines.length; i++) {
+            descLines[i] = wrap(descLines[i]);
+        }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
@@ -1089,11 +1092,10 @@ public abstract class Launcher {
 
     private void printBasicNativeHelp() {
         launcherOption("--vm.D<property>=<value>", "Sets a system property");
-        /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes.");
+        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes.");
+        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes.");
+        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes.");
     }
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
@@ -1501,11 +1503,25 @@ public abstract class Launcher {
                     throw abort("Can not resolve classpath: could not get GraalVM home");
                 }
                 for (String entry : CLASSPATH.split(File.pathSeparator)) {
-                    Path resolved = graalVMHome.resolve(entry);
-                    if (!entry.endsWith("*") && isVerbose() && !Files.exists(resolved)) {
+                    // On Windows, Path.resolve will throw an error on * character in path.
+                    boolean endsWithStar = entry.endsWith("*");
+                    Path resolved;
+
+                    if (endsWithStar) {
+                        resolved = graalVMHome.resolve(entry.substring(0, entry.length() - 1));
+                    } else {
+                        resolved = graalVMHome.resolve(entry);
+                    }
+                    if (isVerbose() && !Files.exists(resolved)) {
                         warn("%s does not exist", resolved);
                     }
                     sb.append(resolved);
+                    if (endsWithStar) {
+                        if (!resolved.endsWith(File.separator)) {
+                            sb.append(File.separator);
+                        }
+                        sb.append("*");
+                    }
                     sb.append(File.pathSeparatorChar);
                 }
             }
@@ -1605,56 +1621,63 @@ public abstract class Launcher {
      */
     protected static OutputStream newLogStream(Path path) throws IOException {
         Path usedPath = path;
-        Path lockFile = null;
-        FileChannel lockFileChannel = null;
-        for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder();
-            lockFileNameBuilder.append(path.toString());
-            if (unique > 0) {
-                lockFileNameBuilder.append(unique);
-                usedPath = Paths.get(lockFileNameBuilder.toString());
+        Path fileNamePath = path.getFileName();
+        String fileName = fileNamePath == null ? "" : fileNamePath.toString();
+        OutputStream outputStream;
+        if (Files.exists(path) && !Files.isRegularFile(path)) {
+            // Don't try to lock device or named pipe.
+            outputStream = new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND));
+        } else {
+            Path lockFile = null;
+            FileChannel lockFileChannel = null;
+            for (int unique = 0;; unique++) {
+                StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
+                if (unique > 0) {
+                    lockFileNameBuilder.append(unique);
+                    usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+                }
+                lockFileNameBuilder.append(".lck");
+                lockFile = path.resolveSibling(lockFileNameBuilder.toString());
+                Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
+                if (openResult != null) {
+                    lockFileChannel = openResult.getLeft();
+                    if (lock(lockFileChannel, openResult.getRight())) {
+                        break;
+                    } else {
+                        // Close and try next name
+                        lockFileChannel.close();
+                    }
+                }
             }
-            lockFileNameBuilder.append(".lck");
-            lockFile = Paths.get(lockFileNameBuilder.toString());
-            Map.Entry<FileChannel, Boolean> openResult = openChannel(lockFile);
-            if (openResult != null) {
-                lockFileChannel = openResult.getKey();
-                if (lock(lockFileChannel, openResult.getValue())) {
-                    break;
-                } else {
-                    // Close and try next name
-                    lockFileChannel.close();
+            assert lockFile != null && lockFileChannel != null;
+            boolean success = false;
+            try {
+                outputStream = new LockableOutputStream(
+                                new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
+                                lockFile,
+                                lockFileChannel);
+                success = true;
+            } finally {
+                if (!success) {
+                    LockableOutputStream.unlock(lockFile, lockFileChannel);
                 }
             }
         }
-        assert lockFile != null && lockFileChannel != null;
-        boolean success = false;
-        try {
-            OutputStream stream = new LockableOutputStream(
-                            new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
-                            lockFile,
-                            lockFileChannel);
-            success = true;
-            return stream;
-        } finally {
-            if (!success) {
-                LockableOutputStream.unlock(lockFile, lockFileChannel);
-            }
-        }
+        return outputStream;
     }
 
-    private static Map.Entry<FileChannel, Boolean> openChannel(Path path) throws IOException {
+    private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {
         FileChannel channel = null;
         for (int retries = 0; channel == null && retries < 2; retries++) {
             try {
                 channel = FileChannel.open(path, CREATE_NEW, WRITE);
-                return new AbstractMap.SimpleImmutableEntry<>(channel, true);
+                return Pair.create(channel, true);
             } catch (FileAlreadyExistsException faee) {
                 // Maybe a FS race showing a zombie file, try to reuse it
                 if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && isParentWritable(path)) {
                     try {
                         channel = FileChannel.open(path, WRITE, APPEND);
-                        return new AbstractMap.SimpleImmutableEntry<>(channel, false);
+                        return Pair.create(channel, false);
                     } catch (NoSuchFileException x) {
                         // FS Race, next try we should be able to create with CREATE_NEW
                     } catch (IOException x) {

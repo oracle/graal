@@ -378,14 +378,14 @@ final class SourceImpl extends Source {
 
         @Override
         void invalidateAfterPreinitialiation() {
-            if (Objects.equals(path, truffleFile.getPath())) {
+            if (path != INVALID && Objects.equals(path, SourceAccessor.getReinitializedPath(truffleFile))) {
                 path = INVALID;
             }
-            if (Objects.equals(uri, truffleFile.toUri())) {
+            if (uri != INVALID && Objects.equals(uri, SourceAccessor.getReinitializedURI(truffleFile))) {
                 this.uri = INVALID;
             }
             try {
-                if (url != null && truffleFile.toUri().toURL().toExternalForm().equals(((URL) url).toExternalForm())) {
+                if (url != null && url != INVALID && SourceAccessor.getReinitializedURI(truffleFile).toURL().toExternalForm().equals(((URL) url).toExternalForm())) {
                     this.url = INVALID;
                 }
             } catch (MalformedURLException mue) {

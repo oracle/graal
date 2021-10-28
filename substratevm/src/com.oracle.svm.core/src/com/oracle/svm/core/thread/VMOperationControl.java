@@ -30,6 +30,7 @@ import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -46,6 +47,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -53,6 +55,7 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -95,6 +98,7 @@ public final class VMOperationControl {
     private final WorkQueues mainQueues;
     private final WorkQueues immediateQueues;
     private final OpInProgress inProgress;
+    private final VMOpHistory history;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     VMOperationControl() {
@@ -102,6 +106,7 @@ public final class VMOperationControl {
         this.mainQueues = new WorkQueues("main", true);
         this.immediateQueues = new WorkQueues("immediate", false);
         this.inProgress = new OpInProgress();
+        this.history = new VMOpHistory();
     }
 
     @Fold
@@ -122,7 +127,7 @@ public final class VMOperationControl {
         VMOperationControl control = get();
         assert control.mainQueues.isEmpty();
 
-        Thread thread = new Thread(control.dedicatedVMOperationThread, "VMOperationThread");
+        Thread thread = new Thread(null, control.dedicatedVMOperationThread, "VMOperationThread", SubstrateOptions.InternalThreadStackSize.getValue());
         thread.setDaemon(true);
         thread.start();
         control.dedicatedVMOperationThread.waitUntilStarted();
@@ -189,7 +194,7 @@ public final class VMOperationControl {
         }
     }
 
-    public static void logRecentEvents(Log log) {
+    public static void printCurrentVMOperation(Log log, boolean allowJavaHeapAccess) {
         /*
          * All reads in this method are racy as the currently executed VM operation could finish and
          * a different VM operation could start. So, the read data is not necessarily consistent.
@@ -198,12 +203,19 @@ public final class VMOperationControl {
         VMOperation op = control.inProgress.operation;
         if (op == null) {
             log.string("No VMOperation in progress").newline();
+        } else if (allowJavaHeapAccess) {
+            log.string("VMOperation in progress: ").string(op.getName()).indent(true);
+            log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
+            log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
+            log.string("ExecutingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.redent(false);
         } else {
-            log.string("VMOperation in progress: ").string(op.getName()).newline();
-            log.string("  causesSafepoint: ").bool(op.getCausesSafepoint()).newline();
-            log.string("  queuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
-            log.string("  executingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
         }
+    }
+
+    public static void printRecentEvents(Log log, boolean allowJavaHeapAccess) {
+        get().history.print(log, allowJavaHeapAccess);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -212,8 +224,20 @@ public final class VMOperationControl {
     }
 
     @Uninterruptible(reason = "Set the current VM operation as atomically as possible - this is mainly relevant for deopt test cases")
-    void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
-        assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull();
+    void setInProgress(VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread, boolean started) {
+        assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull() && !started;
+
+        if (started) {
+            history.add(VMOpStatus.Started, operation, queueingThread, executingThread);
+        } else {
+            if (inProgress.operation != null) {
+                history.add(VMOpStatus.Finished, inProgress.operation, inProgress.executingThread, inProgress.queueingThread);
+            }
+            if (operation != null) {
+                history.add(VMOpStatus.Continued, operation, queueingThread, executingThread);
+            }
+        }
+
         inProgress.executingThread = executingThread;
         inProgress.operation = operation;
         inProgress.queueingThread = queueingThread;
@@ -238,6 +262,7 @@ public final class VMOperationControl {
     private void enqueue(VMOperation operation, NativeVMOperationData data) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
+            VMError.guarantee(!SafepointBehavior.ignoresSafepoints(), "could cause deadlocks otherwise");
             log().string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
@@ -311,7 +336,9 @@ public final class VMOperationControl {
          * - Thread A allocates an object while still holding the lock. The allocation would need
          * to execute a GC but the VM thread is blocked.
          */
-        if (VMOperation.isInProgress()) {
+        VMOperationControl control = VMOperationControl.get();
+        OpInProgress opInProgress = control.getInProgress();
+        if (VMOperation.isInProgress(opInProgress)) {
             Log.log().string(message).newline();
             VMError.shouldNotReachHere("Should not reach here: Not okay to block.");
         }
@@ -420,7 +447,7 @@ public final class VMOperationControl {
             this.nativeSafepointOperations = new NativeVMOperationQueue(prefix + "NativeSafepointOperations");
             this.javaNonSafepointOperations = new JavaVMOperationQueue(prefix + "JavaNonSafepointOperations");
             this.javaSafepointOperations = new JavaVMOperationQueue(prefix + "JavaSafepointOperations");
-            this.mutex = createMutex(needsLocking);
+            this.mutex = createMutex(prefix + "VMOperationControlWorkQueue", needsLocking);
             this.operationQueued = createCondition();
             this.operationFinished = createCondition();
         }
@@ -650,9 +677,9 @@ public final class VMOperationControl {
         }
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
-        private static VMMutex createMutex(boolean needsLocking) {
+        private static VMMutex createMutex(String mutexName, boolean needsLocking) {
             if (needsLocking) {
-                return new VMMutex();
+                return new VMMutex(mutexName);
             }
             return null;
         }
@@ -834,6 +861,91 @@ public final class VMOperationControl {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public IsolateThread getExecutingThread() {
             return executingThread;
+        }
+    }
+
+    /**
+     * This code is used for printing a VM operation history when printing diagnostics. As other
+     * threads may still execute VM operations and as we don't want to use any locks (we don't know
+     * the state the VM is in when printing diagnostics), all the logic in here is racy by design.
+     * It can happen that the races cause an inconsistent output but the races must not result in
+     * any crashes.
+     */
+    private static class VMOpHistory {
+        private final RingBuffer<VMOpStatusChange> history;
+        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_WITH_JAVA_HEAP_DATA = VMOpHistory::printEntryWithJavaHeapData;
+        private static final RingBuffer.Consumer<VMOpStatusChange> PRINT_WITHOUT_JAVA_HEAP_DATA = VMOpHistory::printEntryWithoutJavaHeapData;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        VMOpHistory() {
+            history = new RingBuffer<>(10, VMOpStatusChange::new);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
+            assert Heap.getHeap().isInImageHeap(status);
+            VMOpStatusChange entry = history.next();
+            entry.timestamp = System.currentTimeMillis();
+            entry.status = status;
+            entry.operation = operation.getName();
+            entry.causesSafepoint = operation.getCausesSafepoint();
+            entry.queueingThread = queueingThread;
+            entry.executingThread = executingThread;
+        }
+
+        public void print(Log log, boolean allowJavaHeapAccess) {
+            log.string("The ").signed(history.size()).string(" most recent VM operation status changes (oldest first):").indent(true);
+            history.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
+            log.indent(false);
+        }
+
+        private static void printEntryWithJavaHeapData(Object context, VMOpStatusChange entry) {
+            printEntry(context, entry, true);
+        }
+
+        private static void printEntryWithoutJavaHeapData(Object context, VMOpStatusChange entry) {
+            printEntry(context, entry, false);
+        }
+
+        private static void printEntry(Object context, VMOpStatusChange entry, boolean allowJavaHeapAccess) {
+            Log log = (Log) context;
+            entry.print(log, allowJavaHeapAccess);
+        }
+    }
+
+    private enum VMOpStatus {
+        Started,
+        Continued,
+        Finished
+    }
+
+    /**
+     * Holds information about a VM operation status change. We must not store any reference to the
+     * {@link VMOperation} as this could be a memory leak (some VM operations may reference large
+     * data structures).
+     */
+    private static class VMOpStatusChange {
+        long timestamp;
+        VMOpStatus status;
+        String operation;
+        boolean causesSafepoint;
+        IsolateThread queueingThread;
+        IsolateThread executingThread;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        VMOpStatusChange() {
+        }
+
+        void print(Log log, boolean allowJavaHeapAccess) {
+            VMOpStatus localStatus = status;
+            if (localStatus != null) {
+                log.unsigned(timestamp).string(" - ").string(localStatus.name());
+                if (allowJavaHeapAccess) {
+                    log.string(" ").string(operation);
+                }
+                log.string(" (safepoint: ").bool(causesSafepoint).string(", queueingThread: ")
+                                .zhex(queueingThread.rawValue()).string(", executingThread: ").zhex(executingThread.rawValue()).string(")").newline();
+            }
         }
     }
 }

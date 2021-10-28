@@ -58,6 +58,7 @@ public class SubstrateCodeCacheProvider extends SharedCodeCacheProvider {
             substrateInstalledCode = (SubstrateInstalledCode) predefinedInstalledCode;
         }
         CompilationResult compResult = ((SubstrateCompiledCode) compiledCode).getCompilationResult();
+        substrateInstalledCode.setCompilationId(compResult.getCompilationId());
         RuntimeCodeInstaller.install((SharedRuntimeMethod) method, compResult, substrateInstalledCode);
         return predefinedInstalledCode;
     }

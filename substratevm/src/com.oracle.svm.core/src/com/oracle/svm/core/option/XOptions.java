@@ -24,173 +24,88 @@
  */
 package com.oracle.svm.core.option;
 
-import java.util.Arrays;
-
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
- * has a corresponding {@link RuntimeOptionKey} in {@link SubstrateOptions}. So, the resulting
- * behavior is pretty much as if an {@link APIOption} was specified for a {@link RuntimeOptionKey}.
+ * has a corresponding {@link RuntimeOptionKey} in {@link SubstrateOptions}.
  */
-public class XOptions {
-    public static XOptions singleton() {
-        return ImageSingletons.lookup(XOptions.class);
-    }
-
-    public static XFlag getXmn() {
-        return XOptions.singleton().xmn;
-    }
-
-    public static XFlag getXms() {
-        return XOptions.singleton().xms;
-    }
-
-    public static XFlag getXmx() {
-        return XOptions.singleton().xmx;
-    }
-
-    public static XFlag getXss() {
-        return XOptions.singleton().xss;
-    }
-
-    /** The flag instances. */
-    private final XFlag xmn;
-    private final XFlag xmx;
-    private final XFlag xms;
-    private final XFlag xss;
-
-    /** For iterations over the flags. */
-    private final XFlag[] xFlagArray;
-
-    /** Private constructor during image building: clients use the image singleton. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    XOptions() {
-        xmn = new XFlag("-X", "mn", "The maximum size of the young generation at run-time, in bytes.");
-        xmx = new XFlag("-X", "mx", "The maximum heap size at run-time, in bytes.");
-        xms = new XFlag("-X", "ms", "The minimum heap size at run-time, in bytes.");
-        xss = new XFlag("-X", "ss", "The size of each thread stack at run-time, in bytes.");
-        xFlagArray = new XFlag[]{xmn, xms, xmx, xss};
-    }
-
-    /** An X flag. */
-    public static class XFlag {
-        private final String prefix;
-        private final String name;
-        private final String description;
-        private long value;
-        private long epoch;
-
-        /** The concatenation of the prefix and the name. */
-        private final String prefixAndName;
-
-        /** Constructor. */
-        @Platforms(Platform.HOSTED_ONLY.class)
-        XFlag(String prefix, String name, String description) {
-            this.prefix = prefix;
-            this.name = name;
-            this.description = description;
-            this.prefixAndName = prefix.concat(name);
-            this.value = 0L;
-            this.epoch = 0L;
-        }
-
-        public String getPrefix() {
-            return prefix;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getPrefixAndName() {
-            return prefixAndName;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public long getValue() {
-            return value;
-        }
-
-        public long getEpoch() {
-            return epoch;
-        }
-
-        public void setValue(long valueArg) {
-            value = valueArg;
-            epoch += 1L;
-        }
-    }
-
-    /* Return the list of all the XFlags. */
-    public XFlag[] getXFlags() {
-        /* Danger: Array results are not immutable. */
-        return xFlagArray;
-    }
-
-    /** Parse the "-X" options out of a String[], returning the ones that are not "-X" options. */
-    public String[] parse(String[] args, boolean exitOnError) {
-        int newIdx = 0;
-        for (int oldIdx = 0; oldIdx < args.length; oldIdx += 1) {
-            final String arg = args[oldIdx];
-            boolean parsed = false;
-            for (XFlag xFlag : xFlagArray) {
-                try {
-                    parsed |= parseWithNameAndPrefix(xFlag, arg);
-                } catch (NumberFormatException nfe) {
-                    if (exitOnError) {
-                        Log.logStream().println("error: Wrong value for option '" + arg + "' is not a valid number.");
-                        System.exit(1);
-                    } else {
-                        throw new IllegalArgumentException("Illegal value for option '" + arg + "'", nfe);
-                    }
-                }
-            }
-            if (!parsed) {
-                assert newIdx <= oldIdx;
-                args[newIdx] = arg;
-                newIdx += 1;
-            }
-        }
-        return (newIdx == args.length) ? args : Arrays.copyOf(args, newIdx);
-    }
+public final class XOptions {
+    private static final XFlag[] XOPTIONS = {
+                    new XFlag("ms", SubstrateGCOptions.MinHeapSize),
+                    new XFlag("mx", SubstrateGCOptions.MaxHeapSize),
+                    new XFlag("mn", SubstrateGCOptions.MaxNewSize),
+                    new XFlag("ss", SubstrateOptions.StackSize)
+    };
 
     /**
-     * Try to parse the arg as the given xFlag. Returns true if successful, false otherwise. Throws
-     * NumberFormatException if the option was recognized, but the value was not a number.
+     * Parses an XOption from a name and a value (e.g., from "mx2g") and adds it to the given map.
      */
-    private boolean parseWithNameAndPrefix(XFlag xFlag, String arg) throws NumberFormatException {
-        if (arg.startsWith(xFlag.getPrefixAndName())) {
-            final String valueString = arg.substring(xFlag.getPrefixAndName().length());
-            parseFromValueString(xFlag, valueString);
+    public static boolean parse(String keyAndValue, EconomicMap<OptionKey<?>, Object> values, boolean exitOnError) {
+        XFlag xFlag = findXFlag(keyAndValue);
+        if (xFlag != null) {
+            long value = parse(xFlag, keyAndValue, exitOnError);
+            xFlag.optionKey.update(values, value);
             return true;
         }
         return false;
     }
 
-    /* Set from a String value, e.g., "2g". Returns true if successful, false otherwise. */
-    public void parseFromValueString(XFlag xFlag, String value) throws NumberFormatException {
-        final long valueLong = SubstrateOptionsParser.parseLong(value);
-        xFlag.setValue(valueLong);
+    /**
+     * Sets an XOption from a name and a value (e.g., from "mx2g"). Returns true if successful,
+     * false otherwise. Throws an exception if the option was recognized, but the value was not a
+     * number.
+     */
+    public static boolean setOption(String keyAndValue) {
+        XFlag xFlag = findXFlag(keyAndValue);
+        if (xFlag != null) {
+            long value = parse(xFlag, keyAndValue, false);
+            RuntimeOptionValues.singleton().update(xFlag.optionKey, value);
+            return true;
+        }
+        return false;
     }
-}
 
-/** Set up the singleton instance. */
-@AutomaticFeature
-class XOptionAccessFeature implements Feature {
+    private static XFlag findXFlag(String keyAndValue) {
+        for (XFlag xFlag : XOPTIONS) {
+            if (keyAndValue.startsWith(xFlag.name)) {
+                return xFlag;
+            }
+        }
+        return null;
+    }
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(XOptions.class, new XOptions());
+    private static long parse(XFlag xFlag, String keyAndValue, boolean exitOnError) {
+        final String valueString = keyAndValue.substring(xFlag.name.length());
+        try {
+            return SubstrateOptionsParser.parseLong(valueString);
+        } catch (NumberFormatException nfe) {
+            if (exitOnError) {
+                Log.logStream().println("error: Wrong value for option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' is not a valid number.");
+                System.exit(1);
+                throw VMError.shouldNotReachHere();
+            } else {
+                throw new IllegalArgumentException("Invalid option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' does not specify a valid number.");
+            }
+        }
+    }
+
+    private static class XFlag {
+        final String name;
+        final RuntimeOptionKey<Long> optionKey;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        XFlag(String name, RuntimeOptionKey<Long> optionKey) {
+            this.name = name;
+            this.optionKey = optionKey;
+        }
     }
 }

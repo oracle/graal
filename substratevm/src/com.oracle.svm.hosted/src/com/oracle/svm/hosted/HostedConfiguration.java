@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,18 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.core.SubstrateOptions;
@@ -46,6 +53,10 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -54,6 +65,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -66,7 +78,7 @@ public class HostedConfiguration {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    static void setDefaultIfEmpty() {
+    public static void setDefaultIfEmpty() {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
 
@@ -120,10 +132,23 @@ public class HostedConfiguration {
         return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, identityHashCodeOffset);
     }
 
+    public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+        return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
+    }
+
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
                     SharedRuntimeConfigurationBuilder runtime, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
 
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodTypeFlow) {
+        return new SVMMethodTypeFlowBuilder(bb, methodTypeFlow);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
+        return new SVMMethodTypeFlowBuilder(bb, graph);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
@@ -148,8 +173,18 @@ public class HostedConfiguration {
         }
     }
 
-    public StaticAnalysisResultsBuilder createStaticAnalysisResultsBuilder(BigBang bigbang, HostedUniverse universe) {
-        return new StaticAnalysisResultsBuilder(bigbang, universe);
+    public AbstractAnalysisResultsBuilder createStaticAnalysisResultsBuilder(Inflation bb, HostedUniverse universe) {
+        if (bb instanceof PointsToAnalysis) {
+            PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
+            if (SubstrateOptions.parseOnce()) {
+                return new SubstrateStrengthenGraphs(pointsToAnalysis, universe);
+            } else {
+                return new StaticAnalysisResultsBuilder(pointsToAnalysis, universe);
+            }
+        } else {
+            /*- A custom result builder for Reachability analysis will probably have to be created */
+            throw VMError.shouldNotReachHere("Unsupported analysis type: " + bb.getClass());
+        }
     }
 
     public void collectMonitorFieldInfo(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
@@ -172,7 +207,7 @@ public class HostedConfiguration {
     /** Process the types that the analysis found as needing synchronization. */
     protected void processedSynchronizedTypes(BigBang bb, HostedUniverse hUniverse, Set<AnalysisType> immutableTypes) {
         TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-        for (AnalysisType type : allSynchronizedTypeState.types()) {
+        for (AnalysisType type : allSynchronizedTypeState.types(bb)) {
             maybeSetMonitorField(hUniverse, immutableTypes, type);
         }
     }
@@ -190,9 +225,5 @@ public class HostedConfiguration {
     private static void setMonitorField(HostedUniverse hUniverse, AnalysisType type) {
         final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
         hostedInstanceClass.setNeedMonitorField();
-    }
-
-    public boolean isUsingAOTProfiles() {
-        return false;
     }
 }

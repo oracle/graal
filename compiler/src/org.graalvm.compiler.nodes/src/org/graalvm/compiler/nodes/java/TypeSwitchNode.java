@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,14 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
@@ -62,10 +63,11 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     protected final ResolvedJavaType[] keys;
     protected final Constant[] hubs;
 
-    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors, ConstantReflectionProvider constantReflection) {
-        super(TYPE, value, successors, keySuccessors, keyProbabilities);
+    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, int[] keySuccessors, ConstantReflectionProvider constantReflection,
+                    SwitchProbabilityData profileData) {
+        super(TYPE, value, successors, keySuccessors, profileData);
         assert successors.length <= keys.length + 1;
-        assert keySuccessors.length == keyProbabilities.length;
+        assert keySuccessors.length == profileData.getKeyProbabilities().length;
         this.keys = keys;
         assert value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
         assert assertKeys();
@@ -196,7 +198,9 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
-                    TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors, tool.getConstantReflection()));
+                    TypeSwitchNode newSwitch = graph().add(
+                                    new TypeSwitchNode(value(), successorsArray, newKeys, newKeySuccessors, tool.getConstantReflection(),
+                                                    SwitchProbabilityData.create(newKeyProbabilities, profileData.getProfileSource())));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);
 

@@ -40,7 +40,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-public class EspressoLauncher extends AbstractLanguageLauncher {
+public final class EspressoLauncher extends AbstractLanguageLauncher {
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
     private static final String JAVA_AGENT = "java.JavaAgent";
@@ -146,6 +146,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             return index < arguments.size();
         }
 
+        int getNumberOfProcessedArgs() {
+            return index + ((currentKey == null) ? 0 : 1 /* arg in processing */);
+        }
+
         void pushLeftoversArgs() {
             if (currentKey != null) {
                 // Arg in processing: start from the next one.
@@ -164,6 +168,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         String classpath = null;
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
+        boolean isRelaxStaticObjectSafetyChecksSet = false;
+
         Arguments args = new Arguments(arguments);
         while (args.next()) {
             String arg = args.getKey();
@@ -229,6 +235,11 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
+                    break;
+
+                case "--engine.RelaxStaticObjectSafetyChecks":
+                    isRelaxStaticObjectSafetyChecksSet = true;
+                    unrecognized.add(args.getArg());
                     break;
 
                 default:
@@ -309,6 +320,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                     mainClassName = getMainClassName(jarFileName);
                 }
+                buildJvmArgs(arguments, args.getNumberOfProcessedArgs());
                 args.pushLeftoversArgs();
                 break;
             }
@@ -331,7 +343,34 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
         espressoOptions.put("java.Classpath", classpath);
 
+        if (!isRelaxStaticObjectSafetyChecksSet) {
+            // Since Espresso has a verifier, the Static Object Model does not need to perform shape
+            // checks and can use unsafe casts. Cmd line args have precedence over this default
+            // value.
+            espressoOptions.put("engine.RelaxStaticObjectSafetyChecks", "true");
+        }
+
         return unrecognized;
+    }
+
+    private void buildJvmArgs(List<String> arguments, int toBuild) {
+        /*
+         * Note:
+         *
+         * The format of the arguments passing through here is not the one expected by the java
+         * world. It is actually expected that the vm arguments list is populated with arguments
+         * which have been pre-formatted by the regular Java launcher when passed to the VM, ie: the
+         * arguments if the VM was created through a call to JNI_CreateJavaVM.
+         * 
+         * In particular, it expects all kay-value pairs to be equals-separated and not
+         * space-separated. Furthermore, it does not expect syntactic-sugared some arguments such as
+         * '-m' or '--modules', that would have been replaced by the regular java launcher as
+         * '-Djdk.module.main='.
+         */
+        assert toBuild <= arguments.size();
+        for (int i = 0; i < toBuild; i++) {
+            espressoOptions.put("java.VMArguments." + i, arguments.get(i));
+        }
     }
 
     private void parseNumberedOption(Arguments arguments, String property, String type) {
@@ -496,7 +535,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     }
                 }
             } catch (PolyglotException e) {
-                if (!e.isExit()) {
+                if (e.isInternalError()) {
+                    e.printStackTrace();
+                } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
                 }
             } finally {
@@ -511,6 +552,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     if (e.isExit()) {
                         rc = e.getExitStatus();
                     } else {
+                        e.printStackTrace();
                         throw handleUnexpectedDestroy(e);
                     }
                 }

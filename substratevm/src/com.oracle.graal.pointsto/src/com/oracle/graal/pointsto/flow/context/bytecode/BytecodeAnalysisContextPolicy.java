@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
@@ -76,7 +76,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
      *         extended with the current receiver object
      */
     @Override
-    public BytecodeAnalysisContext calleeContext(BigBang bb, AnalysisObject receiverObject, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
+    public BytecodeAnalysisContext calleeContext(PointsToAnalysis bb, AnalysisObject receiverObject, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
         int maxCalleeContextDepth = callee.getLocalCallingContextDepth();
 
         /*
@@ -108,7 +108,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
     }
 
     @Override
-    public BytecodeAnalysisContext staticCalleeContext(BigBang bb, BytecodeLocation invokeLocation, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
+    public BytecodeAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodeLocation invokeLocation, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
         assert callerContext != null;
 
         /*

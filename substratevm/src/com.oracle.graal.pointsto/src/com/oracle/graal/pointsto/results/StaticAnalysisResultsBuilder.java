@@ -25,21 +25,20 @@
 package com.oracle.graal.pointsto.results;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -48,50 +47,19 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults.BytecodeEntry;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 
 import jdk.vm.ci.meta.JavaMethodProfile;
-import jdk.vm.ci.meta.JavaMethodProfile.ProfiledMethod;
 import jdk.vm.ci.meta.JavaTypeProfile;
-import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.TriState;
 
-public class StaticAnalysisResultsBuilder {
+public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder {
 
-    private final BigBang bb;
-
-    /**
-     * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
-     * conversion should be performed.
-     */
-    protected final Universe converter;
-
-    /* Caches for JavaTypeProfile with 0, 1, or more types. */
-    private final JavaTypeProfile[] types0;
-    private final JavaTypeProfile[] types1Null;
-    private final JavaTypeProfile[] types1NonNull;
-    private final Map<JavaTypeProfile, JavaTypeProfile> types;
-
-    /* Caches for JavaMethodProfile with 0, 1, or more types. */
-    private final JavaMethodProfile[] methods0;
-    private final JavaMethodProfile[] methods1;
-    private final Map<JavaMethodProfile, JavaMethodProfile> methods;
-
-    public StaticAnalysisResultsBuilder(BigBang bb, Universe converter) {
-        this.bb = bb;
-        this.converter = converter;
-
-        types0 = new JavaTypeProfile[2];
-        types1Null = new JavaTypeProfile[bb.getUniverse().getNextTypeId()];
-        types1NonNull = new JavaTypeProfile[bb.getUniverse().getNextTypeId()];
-        types = new HashMap<>();
-
-        methods0 = new JavaMethodProfile[1];
-        methods1 = new JavaMethodProfile[bb.getUniverse().getNextMethodId()];
-        methods = new HashMap<>();
+    public StaticAnalysisResultsBuilder(PointsToAnalysis bb, Universe converter) {
+        super(bb, converter);
     }
 
-    public StaticAnalysisResults makeResults(AnalysisMethod method) {
+    @Override
+    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
 
         MethodTypeFlow methodFlow = method.getTypeFlow();
         MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
@@ -188,13 +156,15 @@ public class StaticAnalysisResultsBuilder {
         }
 
         if (PointstoOptions.PrintSynchronizedAnalysis.getValue(bb.getOptions())) {
-            originalFlows.getMonitorEntries().stream()
+            originalFlows.getMiscFlows().stream()
+                            .filter(flow -> flow instanceof MonitorEnterTypeFlow)
+                            .map(flow -> (MonitorEnterTypeFlow) flow)
                             .filter(m -> m.getState().typesCount() > 20)
                             .sorted(Comparator.comparingInt(m2 -> m2.getState().typesCount()))
                             .forEach(monitorEnter -> {
                                 TypeState monitorEntryState = monitorEnter.getState();
-                                String typesString = monitorEntryState.closeToAllInstantiated(bb) ? "close to all instantiated"
-                                                : StreamSupport.stream(monitorEntryState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                                String typesString = TypeStateUtils.closeToAllInstantiated(bb, monitorEntryState) ? "close to all instantiated"
+                                                : StreamSupport.stream(monitorEntryState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
                                 StringBuilder strb = new StringBuilder();
                                 strb.append("Location: ");
                                 String methodName = method.format("%h.%n(%p)");
@@ -254,116 +224,8 @@ public class StaticAnalysisResultsBuilder {
         }
     }
 
+    @Override
     public JavaTypeProfile makeTypeProfile(AnalysisField field) {
-        TypeState fieldState = field.getTypeState();
-        //@formatter:off
-//        if (field.isStatic()) {
-//            fieldState = field.getStaticFieldFlow().getState();
-//        } else {
-//          fieldState = TypeState.forEmpty();
-//          for (FieldTypeFlow fieldFlow : this.getFieldFlows()) {
-//              fieldState = TypeState.forUnion(bb, fieldState, fieldFlow.getState());
-//        }
-      //@formatter:on
-
-        return makeTypeProfile(fieldState);
-    }
-
-    public BigBang getBigBang() {
-        return bb;
-    }
-
-    private JavaTypeProfile makeTypeProfile(TypeState typeState) {
-        if (typeState == null || typeState.isUnknown() ||
-                        PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions()) != -1 &&
-                                        typeState.typesCount() > PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions())) {
-            return null;
-        }
-
-        if (typeState.isEmpty()) {
-            synchronized (types0) {
-                return cachedTypeProfile(types0, 0, typeState);
-            }
-        } else if (typeState.isNull()) {
-            synchronized (types0) {
-                return cachedTypeProfile(types0, 1, typeState);
-            }
-        } else if (typeState.exactType() != null) {
-            if (typeState.canBeNull()) {
-                synchronized (types1Null) {
-                    return cachedTypeProfile(types1Null, typeState.exactType().getId(), typeState);
-                }
-            } else {
-                synchronized (types1NonNull) {
-                    return cachedTypeProfile(types1NonNull, typeState.exactType().getId(), typeState);
-                }
-            }
-        }
-        synchronized (types) {
-            JavaTypeProfile created = createTypeProfile(typeState);
-            types.putIfAbsent(created, created);
-            return created;
-        }
-    }
-
-    private JavaTypeProfile cachedTypeProfile(JavaTypeProfile[] cache, int cacheIdx, TypeState typeState) {
-        JavaTypeProfile result = cache[cacheIdx];
-        if (result == null) {
-            result = createTypeProfile(typeState);
-            cache[cacheIdx] = result;
-        }
-        return result;
-    }
-
-    private JavaTypeProfile createTypeProfile(TypeState typeState) {
-        double probability = 1d / typeState.typesCount();
-        ProfiledType[] pitems = typeState.typesStream()
-                        .map(analysisType -> converter == null ? analysisType : converter.lookup(analysisType))
-                        .sorted()
-                        .map(type -> new ProfiledType(type, probability))
-                        .toArray(ProfiledType[]::new);
-
-        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), 0, pitems);
-    }
-
-    private JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees) {
-        if (PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions()) != -1 && callees.size() > PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions())) {
-            return null;
-        }
-        if (callees.isEmpty()) {
-            synchronized (methods0) {
-                return cachedMethodProfile(methods0, 0, callees);
-            }
-        } else if (callees.size() == 1) {
-            synchronized (methods1) {
-                return cachedMethodProfile(methods1, callees.iterator().next().getId(), callees);
-            }
-        }
-        synchronized (methods) {
-            JavaMethodProfile created = createMethodProfile(callees);
-            methods.putIfAbsent(created, created);
-            return created;
-        }
-    }
-
-    private JavaMethodProfile cachedMethodProfile(JavaMethodProfile[] cache, int cacheIdx, Collection<AnalysisMethod> callees) {
-        JavaMethodProfile result = cache[cacheIdx];
-        if (result == null) {
-            result = createMethodProfile(callees);
-            cache[cacheIdx] = result;
-        }
-        return result;
-    }
-
-    private JavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
-        ProfiledMethod[] pitems = new ProfiledMethod[callees.size()];
-        double probability = 1d / pitems.length;
-
-        int idx = 0;
-        for (AnalysisMethod aMethod : callees) {
-            ResolvedJavaMethod convertedMethod = converter == null ? aMethod : converter.lookup(aMethod);
-            pitems[idx++] = new ProfiledMethod(convertedMethod, probability);
-        }
-        return new JavaMethodProfile(0, pitems);
+        return makeTypeProfile(field.getTypeState());
     }
 }

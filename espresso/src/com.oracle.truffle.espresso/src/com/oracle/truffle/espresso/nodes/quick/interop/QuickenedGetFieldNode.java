@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,28 +30,21 @@ import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class QuickenedGetFieldNode extends QuickNode {
-    private final Field field;
     private final int statementIndex;
 
     @Child AbstractGetFieldNode getFieldNode;
 
-    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field field) {
+    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field.FieldVersion field) {
         super(top, callerBCI);
-        assert !field.isStatic();
+        assert !field.getField().isStatic();
         this.getFieldNode = AbstractGetFieldNode.create(field);
-        this.field = field;
         this.statementIndex = statementIndex;
     }
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        BytecodeNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodeNode();
         StaticObject receiver = nullCheck(BytecodeNode.popObject(refs, top - 1));
         return getFieldNode.getField(frame, primitives, refs, root, receiver, top - 1, statementIndex) - 1; // -receiver
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return field.getKind().isObject() && BytecodeNode.peekObject(refs, top - 1).isForeignObject();
     }
 }

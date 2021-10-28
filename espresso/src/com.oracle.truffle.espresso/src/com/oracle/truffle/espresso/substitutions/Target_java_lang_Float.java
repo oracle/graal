@@ -27,13 +27,13 @@ package com.oracle.truffle.espresso.substitutions;
  * avoiding expensive guest native calls.
  */
 @EspressoSubstitutions
-public class Target_java_lang_Float {
-    @Substitution
+public final class Target_java_lang_Float {
+    @Substitution(isTrivial = true)
     public static int floatToRawIntBits(float value) {
         return Float.floatToRawIntBits(value);
     }
 
-    @Substitution
+    @Substitution(isTrivial = true)
     public static float intBitsToFloat(int bits) {
         return Float.intBitsToFloat(bits);
     }

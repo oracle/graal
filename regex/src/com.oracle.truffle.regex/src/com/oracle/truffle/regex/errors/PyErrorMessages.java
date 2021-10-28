@@ -89,12 +89,12 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String incompleteEscapeU(char chr, String code) {
-        return "bad escape \\" + chr + code;
+        return "incomplete escape \\" + chr + code;
     }
 
     @TruffleBoundary
     static String incompleteEscapeX(String code) {
-        return "bad escape \\x" + code;
+        return "incomplete escape \\x" + code;
     }
 
     @TruffleBoundary
@@ -109,7 +109,7 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String invalidUnicodeEscape(char chr, String code) {
-        return "unicode escape value \\" + chr + code + " outside of range 0-0x10FFFF";
+        return "bad escape \\" + chr + code;
     }
 
     @TruffleBoundary

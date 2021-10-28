@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.jdk9.test;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -108,24 +107,18 @@ public class VarHandleTest extends GraalCompilerTest {
 
     void testAccess(String name, int expectedReads, int expectedWrites, int expectedMembars, int expectedAnyKill) {
         ResolvedJavaMethod method = getResolvedJavaMethod(name);
+
+        // Ensures that all VarHandles in the snippet are fully resolved.
+        // Works around outlining of methods in VarHandle resolution (JDK-8265135).
+        Holder h = new Holder();
+        executeExpected(method, null, h);
+
         StructuredGraph graph = parseForCompile(method);
         compile(method, graph);
         Assert.assertEquals(expectedReads, graph.getNodes().filter(ReadNode.class).count());
         Assert.assertEquals(expectedWrites, graph.getNodes().filter(WriteNode.class).count());
         Assert.assertEquals(expectedMembars, graph.getNodes().filter(MembarNode.class).count());
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
-    }
-
-    private boolean volatileAccessLowered() {
-        return !(getTarget().arch instanceof AArch64);
-    }
-
-    private int numberOfExpectedMembars() {
-        return volatileAccessLowered() ? 2 : 0;
-    }
-
-    private int numberOfExpectedKills() {
-        return volatileAccessLowered() ? 2 : 1;
     }
 
     @Test
@@ -135,7 +128,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead2() {
-        testAccess("testRead2Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testRead2Snippet", 1, 0, 0, 1);
     }
 
     @Test
@@ -145,7 +138,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead4() {
-        testAccess("testRead4Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testRead4Snippet", 1, 0, 0, 1);
     }
 
     @Test
@@ -155,7 +148,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite2() {
-        testAccess("testWrite2Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testWrite2Snippet", 0, 1, 0, 1);
     }
 
     @Test
@@ -165,7 +158,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite4() {
-        testAccess("testWrite4Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
+        testAccess("testWrite4Snippet", 0, 1, 0, 1);
     }
 
     private static int countAnyKill(StructuredGraph graph) {

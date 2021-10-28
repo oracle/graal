@@ -29,6 +29,7 @@ import java.util.Collections;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -95,7 +96,9 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
 
     @Override
     default void virtualize(VirtualizerTool tool) {
-        ValueNode originalAlias = tool.getAlias(getObject());
+        ValueNode original = getObject();
+        ValueNode originalAlias = tool.getAlias(original);
+        NodeSourcePosition sourcePosition = original.getNodeSourcePosition();
         if (originalAlias instanceof VirtualObjectNode) {
             VirtualObjectNode originalVirtual = (VirtualObjectNode) originalAlias;
             if (originalVirtual.type().isCloneableWithAllocation()) {
@@ -104,7 +107,8 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                     newEntryState[i] = tool.getEntry(originalVirtual, i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
+                /* n.b. duplicate will replicate the source position so pass null */
+                tool.createVirtualObject(newVirtual, newEntryState, Collections.<MonitorIdNode> emptyList(), null, false);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
@@ -122,7 +126,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                     state[i] = load;
                     tool.addNode(load);
                 }
-                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), false);
+                tool.createVirtualObject(newVirtual, state, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
                 tool.replaceWithVirtual(newVirtual);
             } else {
                 ValueNode length = findLength(FindLengthMode.SEARCH_ONLY, tool.getConstantReflection());
@@ -145,7 +149,7 @@ public interface ObjectClone extends StateSplit, VirtualizableAllocation, ArrayL
                         tool.addNode(load);
                     }
                     VirtualObjectNode virtualObject = new VirtualArrayNode(componentType, constantLength);
-                    tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
+                    tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
                     tool.replaceWithVirtual(virtualObject);
                 }
             }

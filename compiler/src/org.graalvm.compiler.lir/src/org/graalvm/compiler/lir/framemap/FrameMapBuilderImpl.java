@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -77,11 +79,11 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
     }
 
     @Override
-    public VirtualStackSlot allocateStackSlots(int slots) {
-        if (slots == 0) {
-            return null;
-        }
-        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, slots, LIRKind.value(frameMap.getTarget().arch.getWordKind()));
+    public VirtualStackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes) {
+        GraalError.guarantee(sizeInBytes > 0, "Invalid size");
+        GraalError.guarantee(alignmentInBytes > 0 && CodeUtil.isPowerOf2(alignmentInBytes), "Invalid alignment");
+
+        VirtualStackSlotRange slot = new VirtualStackSlotRange(numStackSlots++, sizeInBytes, alignmentInBytes, LIRKind.Illegal);
         stackSlots.add(slot);
         return slot;
     }

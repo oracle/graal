@@ -39,6 +39,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * A utility class that makes iterating over bytecodes and reading operands simpler and less error
  * prone. For example, it handles the {@link Bytecodes#WIDE} instruction and wide variants of
  * instructions internally.
+ *
+ * Some accessors have a suffix indicating the type of bytecode it handles, these do <b>NOT</b>
+ * handle the {@link Bytecodes#WIDE} modifier. Methods without the numeric suffix will handle the
+ * {@link Bytecodes#WIDE} modifier internally, but may be slower.
  */
 public final class BytecodeStream {
 
@@ -61,11 +65,7 @@ public final class BytecodeStream {
      * @return the next bytecode index
      */
     public int nextBCI(int curBCI) {
-        if (curBCI < code.length) {
-            return curBCI + lengthOf(curBCI);
-        } else {
-            return curBCI;
-        }
+        return curBCI + lengthOf(curBCI);
     }
 
     /**
@@ -81,7 +81,8 @@ public final class BytecodeStream {
      * Gets the current opcode. This method will never return the {@link Bytecodes#WIDE WIDE}
      * opcode, but will instead return the opcode that is modified by the {@code WIDE} opcode.
      *
-     * @return the current opcode; {@link Bytecodes#END} if at or beyond the end of the code
+     * @return the current opcode;
+     * @see #opcode(int)
      */
     public int currentBC(int curBCI) {
         int opcode = opcode(curBCI);
@@ -123,7 +124,29 @@ public final class BytecodeStream {
     }
 
     /**
-     * Read the delta for an {@link Bytecodes#IINC} bytecode.
+     * Reads the index of a local variable for one of the load or store instructions. The
+     * {@link Bytecodes#WIDE} modifier is handled internally.
+     *
+     * @return the index of the local variable
+     */
+    public int readLocalIndex1(int curBCI) {
+        // read local variable index for load/store
+        return Bytes.beU1(code, curBCI + 1);
+    }
+
+    /**
+     * Reads the index of a local variable for one of the load or store instructions. The
+     * {@link Bytecodes#WIDE} modifier is <b>NOT</b> handled internally.
+     *
+     * @return the index of the local variable
+     */
+    public int readLocalIndex2(int curBCI) {
+        // read local variable index for load/store
+        return Bytes.beU2(code, curBCI + 2);
+    }
+
+    /**
+     * Read the delta for an {@link Bytecodes#IINC} bytecode. The {@link Bytecodes#WIDE} is handled.
      *
      * @return the delta for the {@code IINC}
      */
@@ -136,7 +159,29 @@ public final class BytecodeStream {
     }
 
     /**
-     * Read the destination of a {@link Bytecodes#GOTO} or {@code IF} instructions.
+     * Read the delta for an {@link Bytecodes#IINC} bytecode. The {@link Bytecodes#WIDE} modifier is
+     * <b>NOT</b>handled internally.
+     *
+     * @return the delta for the {@code IINC}
+     */
+    public int readIncrement1(int curBCI) {
+        // read the delta for the iinc bytecode
+        return Bytes.beS1(code, curBCI + 2);
+    }
+
+    /**
+     * Read the delta for a {@link Bytecodes#WIDE} + {@link Bytecodes#IINC} bytecode.
+     *
+     * @return the delta for the {@code WIDE IINC}
+     */
+    public int readIncrement2(int curBCI) {
+        // read the delta for the iinc bytecode
+        return Bytes.beS2(code, curBCI + 4);
+    }
+
+    /**
+     * Read the destination of a {@link Bytecodes#GOTO} or {@code IF} instructions. Wide bytecodes:
+     * {@link Bytecodes#GOTO_W} {@link Bytecodes#JSR_W}, are handled internally.
      *
      * @return the destination bytecode index
      */
@@ -148,6 +193,26 @@ public final class BytecodeStream {
         } else {
             return curBCI + Bytes.beS2(code, curBCI + 1);
         }
+    }
+
+    /**
+     * Read the destination of a {@link Bytecodes#GOTO_W} or {@code JSR_W} instructions.
+     *
+     * @return the destination bytecode index
+     */
+    public int readBranchDest4(int curBCI) {
+        // reads the destination for a branch bytecode
+        return curBCI + Bytes.beS4(code, curBCI + 1);
+    }
+
+    /**
+     * Read the destination of a {@link Bytecodes#GOTO} or {@code IF} instructions.
+     *
+     * @return the destination bytecode index
+     */
+    public int readBranchDest2(int curBCI) {
+        // reads the destination for a branch bytecode
+        return curBCI + Bytes.beS2(code, curBCI + 1);
     }
 
     /**
@@ -172,7 +237,8 @@ public final class BytecodeStream {
     }
 
     /**
-     * Reads a constant pool index for the current instruction.
+     * Reads a constant pool index for the current instruction. Wide and short bytecodes are handled
+     * internally.
      *
      * @return the constant pool index
      */
@@ -223,35 +289,30 @@ public final class BytecodeStream {
         return (short) Bytes.beS2(code, curBCI + 1);
     }
 
+    /**
+     * Reads an unsigned byte for the current instruction (e.g. SIPUSH). The {@link Bytecodes#WIDE}
+     * modifier is <b>NOT</b> handled internally.
+     *
+     * @return the short value
+     */
     public int opcode(int curBCI) {
-        if (curBCI < code.length) {
-            // opcode validity is performed at verification time.
-            return Bytes.beU1(code, curBCI);
-        } else {
-            return Bytecodes.END;
-        }
+        // opcode validity is performed at verification time.
+        return Bytes.beU1(code, curBCI);
     }
 
     private static int opcode(byte[] code, int curBCI) {
-        if (curBCI < code.length) {
-            // opcode validity is performed at verification time.
-            return Bytes.beU1(code, curBCI);
-        } else {
-            return Bytecodes.END;
-        }
+        // opcode validity is performed at verification time.
+        return Bytes.beU1(code, curBCI);
     }
 
     public int volatileOpcode(int curBCI) {
-        if (curBCI < code.length) {
-            // opcode validity is performed at verification time.
-            return Bytes.volatileBeU1(code, curBCI);
-        } else {
-            return Bytecodes.END;
-        }
+        // opcode validity is performed at verification time.
+        return Bytes.volatileBeU1(code, curBCI);
     }
 
     /**
-     * Gets the length of the current bytecode.
+     * Gets the length of the current bytecode. It takes into account bytecodes with non-constant
+     * size and the {@link Bytecodes#WIDE} bytecode.
      */
     private int lengthOf(int curBCI) {
         int length = Bytecodes.lengthOf(opcode(curBCI));
@@ -265,9 +326,7 @@ public final class BytecodeStream {
                 }
                 case Bytecodes.WIDE: {
                     int opc = Bytes.beU1(code, curBCI + 1);
-                    if (opc == Bytecodes.RET) {
-                        return 4;
-                    } else if (opc == Bytecodes.IINC) {
+                    if (opc == Bytecodes.IINC) {
                         return 6;
                     } else {
                         return 4; // a load or store bytecode

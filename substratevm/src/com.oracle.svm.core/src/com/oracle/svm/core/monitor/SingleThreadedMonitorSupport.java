@@ -25,6 +25,7 @@
 package com.oracle.svm.core.monitor;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * Without support for threads, there is no need for any monitor operations.
@@ -65,6 +66,15 @@ public class SingleThreadedMonitorSupport extends MonitorSupport {
     @Override
     public boolean isLockedByAnyThread(Object obj) {
         return isLockedByCurrentThread(obj);
+    }
+
+    @Override
+    public int countThreadLock(IsolateThread vmThread) {
+        /*
+         * Callers of currentThreadHaveLock want to know if it's safe to preempt a continuation
+         * which will not happen in single-threaded programs. It's safe to return any value.
+         */
+        return 0;
     }
 
     @Override

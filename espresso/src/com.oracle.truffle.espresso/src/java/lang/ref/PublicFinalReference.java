@@ -32,12 +32,14 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
  *
  * <p>
  * This class is just a placeholder, not usable as-is. A modified version without the throwing
- * static initializer is injected via {@link sun.misc.Unsafe#defineClass}.
+ * static initializer is injected in the boot class loader. The injected version subclasses
+ * {@link FinalReference}.
  *
  * @see Target_java_lang_ref_Reference
+ * @see com.oracle.truffle.espresso.FinalizationSupport
  * @see EspressoReference
  */
-public abstract class PublicFinalReference<T> extends FinalReference<T> {
+public abstract class PublicFinalReference<T> {
 
     // BEGIN CUT
     static {
@@ -47,7 +49,15 @@ public abstract class PublicFinalReference<T> extends FinalReference<T> {
     }
     // END CUT
 
+    @SuppressWarnings("unused")
     public PublicFinalReference(T referent, ReferenceQueue<? super T> queue) {
-        super(referent, queue);
+    }
+
+    public T get() {
+        throw new AssertionError("Forbidden class");
+    }
+
+    public void clear() {
+        throw new AssertionError("Forbidden class");
     }
 }

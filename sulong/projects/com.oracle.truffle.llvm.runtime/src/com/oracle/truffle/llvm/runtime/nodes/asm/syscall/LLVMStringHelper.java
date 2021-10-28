@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -47,9 +46,8 @@ public abstract class LLVMStringHelper extends LLVMNode {
     public abstract void execute(LLVMPointer dst, long bufLength, String src);
 
     @Specialization
-    void doNative(LLVMNativePointer dst, long bufLength, String src,
-                    @CachedLanguage LLVMLanguage language) {
-        LLVMMemory memory = language.getLLVMMemory();
+    void doNative(LLVMNativePointer dst, long bufLength, String src) {
+        LLVMMemory memory = getLanguage().getLLVMMemory();
         byte[] bytes = getBytes(src);
         long ptr = dst.asNative();
         for (int i = 0; i < bytes.length && i < bufLength - 1; i++) {
@@ -59,6 +57,7 @@ public abstract class LLVMStringHelper extends LLVMNode {
     }
 
     @Specialization(limit = "3")
+    @GenerateAOT.Exclude
     void doManaged(LLVMManagedPointer dst, long bufLength, String src,
                     @Bind("dst.getObject()") Object obj,
                     @CachedLibrary("obj") LLVMManagedWriteLibrary write) {

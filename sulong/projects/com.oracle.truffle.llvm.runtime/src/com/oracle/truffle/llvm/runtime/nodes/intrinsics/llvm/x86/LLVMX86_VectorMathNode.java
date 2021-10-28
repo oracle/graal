@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-import java.util.function.IntPredicate;
-
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -169,18 +168,23 @@ public abstract class LLVMX86_VectorMathNode {
             _CMP_GT_OQ(0x1e, cmp -> cmp > 0, true, false),
             _CMP_TRUE_US(0x1f, cmp -> true, false, true);
 
-            IntPredicate pred;
+            ComparatorPredicate pred;
             boolean ordered;
 
             // TODO: how do we map signaling behavior?
             boolean signaling;
 
             // Parameter i kept to document matching to intrinsic definition
-            Comparator(@SuppressWarnings("unused") int i, IntPredicate pred, boolean ordered, boolean signaling) {
+            Comparator(@SuppressWarnings("unused") int i, ComparatorPredicate pred, boolean ordered, boolean signaling) {
                 this.pred = pred;
                 this.ordered = ordered;
                 this.signaling = signaling;
             }
+        }
+
+        @FunctionalInterface
+        interface ComparatorPredicate {
+            boolean test(int value);
         }
 
         protected static final int cmpCnt = Comparator.values().length;
@@ -189,25 +193,33 @@ public abstract class LLVMX86_VectorMathNode {
             return Comparator.values()[predicate];
         }
 
-        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2", "predicate == cachedPredicate"}, limit = "cmpCnt")
-        protected LLVMDoubleVector doCmp(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") int predicate,
-                        @SuppressWarnings("unused") @Cached("predicate") int cachedPredicate,
-                        @Cached("getComparator(predicate)") Comparator comparator) {
-            double v11 = v1.getValue(0);
-            double v21 = v2.getValue(0);
-            boolean compareResult = comparator.pred.test(Double.compare(v11, v21));
-            if (comparator.ordered) {
-                compareResult = !Double.isNaN(v11) && !Double.isNaN(v21) && compareResult;
-            } else {
-                compareResult = Double.isNaN(v11) || Double.isNaN(v21) || compareResult;
-            }
-            return LLVMDoubleVector.create(new double[]{compareResult ? mask : 0f, v1.getValue(1)});
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, int predicate) {
+            return compare(v1, v2, getComparator(predicate));
+        }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, byte predicate) {
+            return compare(v1, v2, getComparator(predicate));
         }
 
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2", "predicate == cachedPredicate"}, limit = "cmpCnt")
+        @GenerateAOT.Exclude
+        protected LLVMDoubleVector doCmp(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") int predicate,
+                        @SuppressWarnings("unused") @Cached("predicate") int cachedPredicate,
+                        @Cached("getComparator(predicate)") Comparator comparator) {
+            return compare(v1, v2, comparator);
+        }
+
+        @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2", "predicate == cachedPredicate"}, limit = "cmpCnt")
+        @GenerateAOT.Exclude
         protected LLVMDoubleVector doCmp(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") byte predicate,
                         @SuppressWarnings("unused") @Cached("predicate") byte cachedPredicate,
                         @Cached("getComparator(predicate)") Comparator comparator) {
+            return compare(v1, v2, comparator);
+        }
+
+        private static LLVMDoubleVector compare(LLVMDoubleVector v1, LLVMDoubleVector v2, Comparator comparator) {
             double v11 = v1.getValue(0);
             double v21 = v2.getValue(0);
             boolean compareResult = comparator.pred.test(Double.compare(v11, v21));

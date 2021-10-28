@@ -2,6 +2,29 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 22.0.0
+* (GR-33657) Native Image API: Added `CEntryPoint#include` attribute which can be used to controll if the entry point should be automatically added to the shared library.
+* (GR-33207) Native image language libraries: languages can now be deployed as native image libraries, facilitating native embedding scenarios. In this case, a native launcher loads the library dynamically.
+
+## Version 21.3.0
+* Added the ability to share values between contexts. Please see  `Context.Builder.allowValueSharing(boolean)` for further details. 
+* (GR-20286) Polyglot API: Added support for scoped values in guest-to-host callbacks. [Scoped values](https://www.graalvm.org/reference-manual/embed-languages/#controlling-host-callback-parameter-scoping) are automatically released when the callback returns. They can be configured in `HostAccess`.
+
+## Version 21.2.0
+* `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
+* Changed behavior of `Value.as(TypeLiteral<Function<Object, Object>>).apply()`: When the function is called with an `Object[]` argument, it is passed through as a single argument rather than an array of arguments.
+* Updated the required JVMCI version for Polyglot Embeddings in this release. All GraalVM JDK versions (8, 11, 16) already contain the updated JVMCI version and there is no further action required. If you are using a different JDK than GraalVM and you have configured the Graal compiler on the upgrade module path you will need one of the following JDK versions that include [JDK-8264016](https://bugs.openjdk.java.net/browse/JDK-8264016) for full compatibility:
+
+  * Other JDK 11: Oracle JDK 11.0.13 (2021-10-19), OpenJDK is still to be determined.
+  * Other JDK 16: No current plans to update JVMCI.
+  * Other JDK 17: The new JVMCI version is already integrated into early access builds.
+
+  If your JVMCI version is outdated you will be able to use GraalVM embeddings, but forced context cancellation (`Context.close(true)`) and interrupt (`Context.interrupt(Duration)`) will throw an error. We recommend the following workarounds:
+
+  * Do not use forced context cancellation or interrupt. All other features are still supported.
+  * Switch to the fallback runtime by removing graal.jar from the upgrade-module-path. Note that this will significantly worsen performance and should only be a last resort.
+  * Wait with upgrading to 21.2 until the JDK version has support for the new JVMCI version.
+
 ## Version 21.1.0
 * Added new methods  in `Value` for interacting with buffer-like objects:
     * Added `Value.hasBufferElements()` that returns  `true` if this object supports buffer messages.
@@ -18,6 +41,24 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * Added `HostAccess.Builder.allowIterableAccess()` to allow the guest application to access Java `Iterables` as values with iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
 * Added `HostAccess.Builder.allowIteratorAccess()` to allow the guest application to access Java `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
 * Added `ProxyIterable` and `ProxyIterator` to proxy iterable and iterator guest values.
+* Added `Value` methods supporting hash maps:
+    * Added `hasHashEntries()` specifying that the `Value` provides hash entries.
+    * Added `getHashSize()` to return hash entries count.
+    * Added `hasHashEntry(Object)` specifying that the mapping for the specified key exists.
+    * Added `getHashValue(Object)` returning the value for the specified key.
+    * Added `getHashValueOrDefault(Object, Object)` returning the value for the specified key or a default value if the mapping for given key does not exist.
+    * Added `putHashEntry(Object, Object)` associating the specified value with the specified key.
+    * Added `removeHashEntry(Object)` removing the mapping for a given key.
+    * Added `getHashEntriesIterator()` returning a hash entries iterator.
+    * Added `getHashKeysIterator()` returning a hash keys iterator.
+    * Added `getHashValuesIterator()` returning a hash values iterator.
+* Added `HostAccess.Builder.allowMapAccess(boolean)` to allow the guest application to access Java `Map` as values with hash entries (true by default for `HostAccess.ALL`, false otherwise).
+* Added `ProxyHashMap` to proxy map guest values.
+* When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with two array elements.
+* Added `Context.safepoint()` to manually poll thread local of a polyglot context while a host method is executed. For example, this allows the context to check for potential interruption or cancellation.
+* `Value.putMember(String, Object)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not writable.
+* `Value.removeMember(String)` now throws `UnsupportedOperationException` instead of returning `false` if the member is not removable.
+* `Value.invokeMember(String, Object...)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not invokable.
 
 ## Version 21.0.0
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,7 +134,7 @@ final class SSAVerifier {
     private void defConsumer(LIRInstruction inst, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         assert !isCast(value);
         if (shouldProcess(value)) {
-            assert !defined.containsKey(value) : String.format("Value %s redefined at %s but never defined (previous definition %s in block %s)", value, inst, defined.get(value).inst,
+            assert !defined.containsKey(value) : String.format("Value %s redefined at %s (previous definition %s in block %s)", value, inst, defined.get(value).inst,
                             defined.get(value).block);
             defined.put(value, new Entry(inst, currentBlock));
         }

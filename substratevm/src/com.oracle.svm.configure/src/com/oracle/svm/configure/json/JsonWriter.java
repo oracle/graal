@@ -32,8 +32,6 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 
 public class JsonWriter implements AutoCloseable {
-    private static final String WHITESPACE = "                                ";
-
     private final Writer writer;
 
     private int indentation = 0;
@@ -94,8 +92,12 @@ public class JsonWriter implements AutoCloseable {
     }
 
     public JsonWriter newline() throws IOException {
-        writer.write('\n');
-        writer.write(WHITESPACE, 0, Math.min(2 * indentation, WHITESPACE.length()));
+        StringBuilder builder = new StringBuilder(1 + 2 * indentation);
+        builder.append("\n");
+        for (int i = 0; i < indentation; ++i) {
+            builder.append("  ");
+        }
+        writer.write(builder.toString());
         return this;
     }
 

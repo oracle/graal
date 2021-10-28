@@ -138,7 +138,7 @@ public final class SLEvalRootNode extends RootNode {
 
     @TruffleBoundary
     private void registerFunctions() {
-        lookupContextReference(SLLanguage.class).get().getFunctionRegistry().register(functions);
+        SLContext.get(this).getFunctionRegistry().register(functions);
     }
 
 }

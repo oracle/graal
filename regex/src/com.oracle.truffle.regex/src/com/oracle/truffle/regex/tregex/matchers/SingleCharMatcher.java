@@ -41,13 +41,12 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 /**
  * Matcher that matches a single character.
  */
-public abstract class SingleCharMatcher extends InvertibleCharMatcher {
+public final class SingleCharMatcher extends InvertibleCharMatcher {
 
     private final int c;
 
@@ -63,7 +62,7 @@ public abstract class SingleCharMatcher extends InvertibleCharMatcher {
     }
 
     public static SingleCharMatcher create(boolean invert, int c) {
-        return SingleCharMatcherNodeGen.create(invert, c);
+        return new SingleCharMatcher(invert, c);
     }
 
     /**
@@ -73,7 +72,7 @@ public abstract class SingleCharMatcher extends InvertibleCharMatcher {
         return c;
     }
 
-    @Specialization
+    @Override
     public boolean match(int m) {
         return result(c == m);
     }

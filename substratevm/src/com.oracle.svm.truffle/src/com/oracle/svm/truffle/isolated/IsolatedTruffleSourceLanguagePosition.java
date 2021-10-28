@@ -103,29 +103,29 @@ final class IsolatedTruffleSourceLanguagePosition extends IsolatedObjectProxy<Tr
         return nodeId;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> getDescription0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
         String description = IsolatedCompileClient.get().unhand(positionHandle).getDescription();
         return IsolatedCompileClient.get().createStringInCompiler(description);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> getURIString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
         URI uri = IsolatedCompileClient.get().unhand(positionHandle).getURI();
         return (uri != null) ? IsolatedCompileClient.get().createStringInCompiler(uri.toString()) : IsolatedHandles.nullHandle();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> getLanguage0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
         String language = IsolatedCompileClient.get().unhand(positionHandle).getLanguage();
         return IsolatedCompileClient.get().createStringInCompiler(language);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> getNodeClassName0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
         String language = IsolatedCompileClient.get().unhand(positionHandle).getNodeClassName();
         return IsolatedCompileClient.get().createStringInCompiler(language);

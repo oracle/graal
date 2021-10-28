@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,11 +74,6 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public void setCallTarget(RootNode rootNode, RootCallTarget callTarget) {
-            rootNode.setCallTarget(callTarget);
-        }
-
-        @Override
         public boolean isCloneUninitializedSupported(RootNode rootNode) {
             return rootNode.isCloneUninitializedSupported();
         }
@@ -106,6 +101,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public Object getPolyglotEngine(RootNode rootNode) {
             return rootNode.getEngine();
+        }
+
+        @Override
+        public void setPolyglotEngine(RootNode rootNode, Object engine) {
+            rootNode.setEngine(engine);
         }
 
         @Override
@@ -160,6 +160,10 @@ final class NodeAccessor extends Accessor {
             return rootNode.prepareForAOT();
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit(RootNode rootNode) {
+            return rootNode.countsTowardsStackTraceLimit();
+        }
     }
 
 }

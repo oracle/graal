@@ -27,10 +27,12 @@ package org.graalvm.compiler.lir.framemap;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -249,29 +251,23 @@ public abstract class FrameMap {
     }
 
     /**
-     * Returns the size of the stack slot range for {@code slots} objects.
+     * Reserves a contiguous and aligned range of memory in the frame of the method being compiled.
      *
-     * @param slots The number of slots.
-     * @return The size in byte
-     */
-    public int spillSlotRangeSize(int slots) {
-        return slots * getTarget().wordSize;
-    }
-
-    /**
-     * Reserves a number of contiguous slots in the frame of the method being compiled. If the
-     * requested number of slots is 0, this method returns {@code null}.
-     *
-     * @param slots the number of slots to reserve
+     * @param sizeInBytes the number of bytes to reserve. Must be > 0.
+     * @param alignmentInBytes the required alignment of the memory. Must be > 0, a power of 2, and
+     *            not exceed the {@link TargetDescription#stackAlignment OS stack frame alignment}.
      * @return the first reserved stack slot (i.e., at the lowest address)
      */
-    public StackSlot allocateStackSlots(int slots) {
+    public StackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes) {
         assert frameSize == -1 : "frame size must not yet be fixed";
-        if (slots == 0) {
-            return null;
+        GraalError.guarantee(sizeInBytes > 0, "Invalid size");
+        GraalError.guarantee(alignmentInBytes > 0 && CodeUtil.isPowerOf2(alignmentInBytes), "Invalid alignment");
+        if (alignmentInBytes > getTarget().stackAlignment) {
+            throw GraalError.shouldNotReachHere("Stack memory alignment cannot be larger than OS alignment of stack frames: " + alignmentInBytes + " > " + getTarget().stackAlignment);
         }
-        spillSize = NumUtil.roundUp(spillSize + spillSlotRangeSize(slots), getTarget().wordSize);
-        return newStackSlot(LIRKind.value(getTarget().arch.getWordKind()));
+
+        spillSize = NumUtil.roundUp(spillSize + sizeInBytes, alignmentInBytes);
+        return newStackSlot(LIRKind.Illegal);
     }
 
     public ReferenceMapBuilder newReferenceMapBuilder() {

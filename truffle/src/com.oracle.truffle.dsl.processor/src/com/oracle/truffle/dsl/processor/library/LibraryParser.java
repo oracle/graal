@@ -94,6 +94,11 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             return model;
         }
 
+        AnnotationMirror generateAOT = ElementUtils.findAnnotationMirror(element, types.GenerateAOT);
+        if (generateAOT != null) {
+            model.setGenerateAOT(true);
+        }
+
         model.setDefaultExportLookupEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "defaultExportLookupEnabled"));
         model.setDynamicDispatchEnabled(ElementUtils.getAnnotationValue(Boolean.class, mirror, "dynamicDispatchEnabled"));
         model.setPushEncapsulatingNode(ElementUtils.getAnnotationValue(Boolean.class, mirror, "pushEncapsulatingNode"));

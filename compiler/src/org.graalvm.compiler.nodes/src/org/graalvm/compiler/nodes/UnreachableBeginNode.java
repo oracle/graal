@@ -28,8 +28,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * Allows to build control flow structures that are syntactically correct (can be processed by all
@@ -37,7 +35,7 @@ import org.graalvm.word.LocationIdentity;
  * compilation pipeline. Useful together with {@link UnreachableControlSinkNode}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class UnreachableBeginNode extends AbstractBeginNode implements SingleMemoryKill {
+public final class UnreachableBeginNode extends AbstractBeginNode {
 
     public static final NodeClass<UnreachableBeginNode> TYPE = NodeClass.create(UnreachableBeginNode.class);
 
@@ -45,8 +43,4 @@ public final class UnreachableBeginNode extends AbstractBeginNode implements Sin
         super(TYPE);
     }
 
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
-    }
 }

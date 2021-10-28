@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
@@ -123,26 +124,20 @@ public final class UninterruptibleAnnotationChecker {
             Uninterruptible callerAnnotation = caller.getAnnotation(Uninterruptible.class);
             StructuredGraph graph = caller.compilationInfo.getGraph();
             if (callerAnnotation != null) {
-                if (callerAnnotation.calleeMustBe()) {
-                    if (graph != null) {
-                        for (Invoke invoke : graph.getInvokes()) {
-                            HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
-                            if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-                                printDotGraphEdge(caller, callee);
-                            }
-                            if (!isNotInterruptible(callee)) {
-                                violations.add("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)"));
-                            }
+                if (graph != null) {
+                    for (Invoke invoke : graph.getInvokes()) {
+                        HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
+                        if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
+                            printDotGraphEdge(caller, callee);
                         }
-                    }
-                } else {
-                    // Print DOT graph edge even if callee need not be annotated.
-                    if (graph != null) {
-                        for (Invoke invoke : graph.getInvokes()) {
-                            HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
-                            if (Options.PrintUninterruptibleCalleeDOTGraph.getValue()) {
-                                printDotGraphEdge(caller, callee);
-                            }
+
+                        Uninterruptible directCallerAnnotation = invoke.stateAfter().getMethod().getAnnotation(Uninterruptible.class);
+                        if (directCallerAnnotation == null) {
+                            violations.add("Unannotated callee: " + invoke.stateAfter().getMethod().format("%H.%n(%p)") + " inlined into annotated caller " + caller.format("%H.%n(%p)") +
+                                            System.lineSeparator() + FrameState.toSourcePosition(invoke.stateAfter()));
+                        } else if (directCallerAnnotation.calleeMustBe() && !isNotInterruptible(callee)) {
+                            violations.add("Unannotated callee: " + callee.format("%H.%n(%p)") + " called by annotated caller " + caller.format("%H.%n(%p)") +
+                                            System.lineSeparator() + FrameState.toSourcePosition(invoke.stateAfter()));
                         }
                     }
                 }

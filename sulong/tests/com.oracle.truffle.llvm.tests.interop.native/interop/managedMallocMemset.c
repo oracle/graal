@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ typedef void *VALUE;
 int main() {
     VALUE *array = truffle_managed_malloc(sizeof(VALUE) * 4);
     for (long i = 0; i < 4; i++) {
-        array[i] = (VALUE)(i + 1);
+        array[i] = (VALUE) (i + 1);
     }
     memset(array + 1, 0, 2 * sizeof(VALUE));
 

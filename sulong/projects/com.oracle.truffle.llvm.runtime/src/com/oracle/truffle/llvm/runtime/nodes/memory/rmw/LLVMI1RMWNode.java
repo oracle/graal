@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode;
@@ -47,9 +45,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWXchgNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> b);
         }
 
         @Specialization
@@ -67,9 +64,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWAddNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization
@@ -87,9 +83,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWSubNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization
@@ -107,9 +102,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWAndNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a & b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a & b);
         }
 
         @Specialization
@@ -127,9 +121,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWNandNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> !(a & b));
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> !(a & b));
         }
 
         @Specialization
@@ -147,9 +140,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWOrNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a | b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a | b);
         }
 
         @Specialization
@@ -167,9 +159,8 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI1RMWXorNode extends LLVMI1RMWNode {
 
         @Specialization
-        protected boolean doOp(LLVMNativePointer address, boolean value,
-                        @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
+        protected boolean doOp(LLVMNativePointer address, boolean value) {
+            return getLanguage().getLLVMMemory().getAndOpI1(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization

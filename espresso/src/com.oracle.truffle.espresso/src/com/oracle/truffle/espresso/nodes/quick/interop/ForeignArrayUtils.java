@@ -42,30 +42,35 @@ public final class ForeignArrayUtils {
 
     public static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
                     Meta meta, BranchProfile exceptionProfile) {
+        assert array.isForeignObject();
+        assert interop.hasArrayElements(array.rawForeignObject());
         try {
             return interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
-            exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere("readArrayElement on a non-array foreign object", e);
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
     public static void writeForeignArrayElement(StaticObject array, int index, Object value, InteropLibrary interop,
                     Meta meta, BranchProfile exceptionProfile) {
+        assert array.isForeignObject();
+        assert interop.hasArrayElements(array.rawForeignObject());
         try {
             interop.writeArrayElement(array.rawForeignObject(), index, value);
         } catch (UnsupportedMessageException e) {
+            // Read-only interop array.
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The foreign object is not a writable array");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayStoreException, e.getMessage());
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, createTypeErrorMessage(value));
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, createTypeErrorMessage(value));
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 

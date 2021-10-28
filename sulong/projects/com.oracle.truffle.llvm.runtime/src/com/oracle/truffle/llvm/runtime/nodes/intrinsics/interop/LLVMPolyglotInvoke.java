@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -41,6 +40,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
@@ -59,6 +59,8 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     @Child private InteropLibrary foreignInvoke;
     @Child private ForeignToLLVM toLLVM;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
+
+    private final BranchProfile exception = BranchProfile.create();
 
     public LLVMPolyglotInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
@@ -81,8 +83,8 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
             Object rawValue = foreignInvoke.invokeMember(value, id, evaluatedArgs);
             return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            exception.enter();
+            throw new LLVMPolyglotException(this, e.getMessage());
         }
     }
 

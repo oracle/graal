@@ -771,7 +771,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.28
      */
     public static com.oracle.truffle.api.source.Source getSourceImpl(Source source) {
-        return (com.oracle.truffle.api.source.Source) getField(source, "impl");
+        return (com.oracle.truffle.api.source.Source) getField(source, "receiver");
     }
 
     // Copied from ReflectionUtils.

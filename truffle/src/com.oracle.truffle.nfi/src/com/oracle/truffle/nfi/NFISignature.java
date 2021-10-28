@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -59,9 +58,9 @@ import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
 import com.oracle.truffle.nfi.CallSignatureNode.CallSignatureRootNode;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
-import com.oracle.truffle.nfi.util.ProfiledArrayBuilder;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 
 @ExportLibrary(SignatureLibrary.class)
 final class NFISignature implements TruffleObject {
@@ -76,6 +75,21 @@ final class NFISignature implements TruffleObject {
 
     final int nativeArgCount;
     final int managedArgCount;
+
+    static final NFISignature NO_SIGNATURE = new NFISignature();
+
+    /**
+     * Only for NO_SIGNATURE marker object.
+     */
+    private NFISignature() {
+        backendId = null;
+        cachedState = null;
+        nativeSignature = null;
+        retType = null;
+        argTypes = null;
+        nativeArgCount = -1;
+        managedArgCount = -1;
+    }
 
     NFISignature(String backendId, SignatureCachedState cachedState, Object nativeSignature, NFIType retType, NFIType[] argTypes, int nativeArgCount, int managedArgCount) {
         this.backendId = backendId;
@@ -189,8 +203,8 @@ final class NFISignature implements TruffleObject {
         private synchronized void initPolymorphicSignatureCall() {
             if (polymorphicSignatureCall == null) {
                 CallSignatureNode call = createOptimizedSignatureCall();
-                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.getCurrentLanguage(), call);
-                polymorphicSignatureCall = Truffle.getRuntime().createCallTarget(rootNode);
+                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.get(null), call);
+                polymorphicSignatureCall = rootNode.getCallTarget();
             }
         }
 
@@ -206,8 +220,8 @@ final class NFISignature implements TruffleObject {
         private synchronized void initPolymorphicClosureCall() {
             if (polymorphicClosureCall == null) {
                 CallSignatureNode call = createOptimizedClosureCall();
-                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.getCurrentLanguage(), call);
-                polymorphicClosureCall = Truffle.getRuntime().createCallTarget(rootNode);
+                CallSignatureRootNode rootNode = new CallSignatureRootNode(NFILanguage.get(null), call);
+                polymorphicClosureCall = rootNode.getCallTarget();
             }
         }
 

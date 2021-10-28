@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.nfi;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -59,8 +58,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackend;
-import com.oracle.truffle.nfi.spi.types.NativeLibraryDescriptor;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
+import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 
 class NFIRootNode extends RootNode {
 
@@ -123,7 +122,6 @@ class NFIRootNode extends RootNode {
     @Child LoadLibraryNode loadLibrary;
     @Children LookupAndBindNode[] lookupAndBind;
 
-    private final ContextReference<NFIContext> ctxRef;
     private final String backendId;
 
     NFIRootNode(NFILanguage language, ParsedLibrary source, String backendId) {
@@ -131,7 +129,6 @@ class NFIRootNode extends RootNode {
         this.loadLibrary = LoadLibraryNodeGen.create(source.getLibraryDescriptor());
         this.lookupAndBind = new LookupAndBindNode[source.preBoundSymbolsLength()];
 
-        this.ctxRef = lookupContextReference(NFILanguage.class);
         this.backendId = backendId;
 
         for (int i = 0; i < lookupAndBind.length; i++) {
@@ -147,7 +144,7 @@ class NFIRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        NFIBackend backend = ctxRef.get().getBackend(backendId);
+        NFIBackend backend = NFIContext.get(this).getBackend(backendId);
 
         Object library = loadLibrary.execute(backend);
         if (lookupAndBind.length == 0) {

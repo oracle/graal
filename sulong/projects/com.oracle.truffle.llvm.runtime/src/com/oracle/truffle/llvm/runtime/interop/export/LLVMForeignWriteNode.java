@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -49,10 +50,11 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     public abstract void execute(LLVMPointer ptr, LLVMInteropType type, Object value) throws UnsupportedMessageException;
 
     @Specialization(guards = "type.kind == cachedKind", limit = "VALUE_KIND_COUNT")
+    @GenerateAOT.Exclude
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
                     @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMOffsetStoreNode store,
-                    @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
+                    @Cached(value = "createForeignToLLVM(type)", uncached = "getSlowPath()") ForeignToLLVM toLLVM) {
         Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.baseType, cachedKind.foreignToLLVMType);
         store.executeWithTargetGeneric(ptr, 0, llvmValue);
     }

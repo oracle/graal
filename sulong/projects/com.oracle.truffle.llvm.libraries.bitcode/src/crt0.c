@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,7 +72,7 @@ void __sulong_byte_arrays_to_native(char **dest, void **java_byte_arrays) {
     }
 }
 
-void __sulong_init_libc(char **envp, char *pn) {
+__attribute__((optnone, noinline)) void __sulong_init_libc(char **envp, char *pn) {
     // nothing to do
 }
 
