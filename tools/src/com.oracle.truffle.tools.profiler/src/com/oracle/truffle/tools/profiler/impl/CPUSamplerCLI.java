@@ -133,26 +133,9 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @SuppressWarnings("deprecation") static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    new Function<String, CPUSampler.Mode>() {
-                        @Override
-                        public CPUSampler.Mode apply(String s) {
-                            try {
-                                return CPUSampler.Mode.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
-                            }
-                        }
-                    });
-
     @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<EnableOptionData> ENABLED = new OptionKey<>(new EnableOptionData(false, null), ENABLE_OPTION_TYPE);
 
-    // @formatter:off
-    @SuppressWarnings("deprecation")
-    @Option(name = "Mode", help = "Deprecated. Has no effect.", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
-    // @formatter:on
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(10L);
 
