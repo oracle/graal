@@ -64,6 +64,9 @@ public class StampMemoryAccessTest extends GraalCompilerTest {
         assertTrue(stamp.readConstant(memory, arrayBase, 128) == null);
     }
 
+    /**
+     * Checks that unaligned reads are not constant folded.
+     */
     @Test
     public void testReadPrimitiveUnaligned() throws Exception {
         MemoryAccessProvider memory = getConstantReflection().getMemoryAccessProvider();
@@ -76,26 +79,9 @@ public class StampMemoryAccessTest extends GraalCompilerTest {
                 for (long offset = 1; offset < kind.getByteCount(); offset++) {
                     long displacement = baseDisplacement + offset;
                     Stamp stamp = StampFactory.forKind(kind);
-                    JavaKind stackKind = stamp.getStackKind();
-                    JavaConstant expect = readPrimitiveUnsafe(stackKind, object, displacement);
-                    Assert.assertEquals(expect, stamp.readConstant(memory, objectBase, displacement));
+                    Assert.assertEquals(null, stamp.readConstant(memory, objectBase, displacement));
                 }
             }
-        }
-    }
-
-    private static JavaConstant readPrimitiveUnsafe(JavaKind kind, Object object, long displacement) {
-        switch (kind) {
-            case Int:
-                return JavaConstant.forInt(UNSAFE.getInt(object, displacement));
-            case Long:
-                return JavaConstant.forLong(UNSAFE.getLong(object, displacement));
-            case Float:
-                return JavaConstant.forFloat(UNSAFE.getFloat(object, displacement));
-            case Double:
-                return JavaConstant.forDouble(UNSAFE.getDouble(object, displacement));
-            default:
-                throw new AssertionError("Unexpected kind: " + kind);
         }
     }
 }
