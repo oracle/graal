@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
 import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -35,7 +36,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-import org.junit.rules.Timeout;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -60,8 +60,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
-    // 20s timeout
-    @Rule public TestRule timeout = new Timeout(30, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
 
     private int osrThreshold;
 
