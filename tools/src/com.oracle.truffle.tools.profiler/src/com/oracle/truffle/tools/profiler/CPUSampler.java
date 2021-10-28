@@ -638,7 +638,7 @@ public final class CPUSampler implements Closeable {
 
         private boolean syntheticOnly(StackSample sample) {
             for (StackTraceEntry entry : sample.stack) {
-                if (!entry.isSynthetic()){
+                if (!entry.isSynthetic()) {
                     return false;
                 }
             }
