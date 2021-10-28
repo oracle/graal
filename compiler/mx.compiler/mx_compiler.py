@@ -513,7 +513,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # output in a timely manner
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
-    if 'fastdebug' not in out.data:
+    if 'fastdebug' not in out.data and mx.get_arch() != 'aarch64': # GR-34759
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
