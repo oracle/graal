@@ -79,7 +79,6 @@ public abstract class InvokeSpecial extends Node {
         return method.getMethodVersion();
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeSpecial.class)
     @NodeInfo(shortName = "INVOKESPECIAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -137,7 +136,6 @@ public abstract class InvokeSpecial extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKESPECIAL dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 

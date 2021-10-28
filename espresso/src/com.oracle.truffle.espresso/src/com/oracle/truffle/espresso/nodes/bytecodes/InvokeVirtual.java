@@ -79,7 +79,6 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeVirtual.class)
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -201,7 +200,6 @@ public abstract class InvokeVirtual extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKEVIRTUAL dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 
