@@ -142,7 +142,7 @@ public final class InspectorProfiler extends ProfilerDomain {
         return profile;
     }
 
-    private Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(Map<TruffleContext, CPUSamplerData> data) {
+    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(Map<TruffleContext, CPUSamplerData> data) {
         Collection<ProfilerNode<CPUSampler.Payload>> retVal = new ArrayList<>();
         for (CPUSamplerData samplerData : data.values()) {
             for (Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes : samplerData.getThreadData().values()) {
@@ -152,7 +152,7 @@ public final class InspectorProfiler extends ProfilerDomain {
         return retVal;
     }
 
-    private long getSampleCount(Map<TruffleContext, CPUSamplerData> data) {
+    private static long getSampleCount(Map<TruffleContext, CPUSamplerData> data) {
         return data.values().stream().map(CPUSamplerData::getSamples).reduce(0L, Long::sum);
     }
 
