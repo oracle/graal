@@ -34,7 +34,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, dirname
+from os.path import join, exists, dirname, relpath
 import pipes
 from argparse import ArgumentParser
 import fnmatch
@@ -1177,7 +1177,7 @@ def clinittest(args):
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
-        mx.Project.__init__(self, suite, name, "", [], deps, workingSets, suite.dir, theLicense, **kwArgs)
+        mx.Project.__init__(self, suite, name, None, [], deps, workingSets, suite.dir, theLicense, **kwArgs)
 
     def getBuildTask(self, args):
         return JvmFuncsFallbacksBuildTask(self, args, 1)
@@ -1186,18 +1186,26 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
     def __init__(self, subject, args, parallelism):
         super(JvmFuncsFallbacksBuildTask, self).__init__(subject, args, parallelism)
 
-        self.native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix')).dir, 'src')
+        libjvm = mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix'))
+        self.native_project_dir = join(libjvm.dir, 'src')
         self.jvm_funcs_path = join(self.native_project_dir, 'JvmFuncs.c')
-
-        native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
-        java_version = str(svm_java_compliance().value)
         try:
-            for entry in os.listdir(native_project_src_gen_dir):
-                if entry != java_version:
-                    mx.rmtree(join(native_project_src_gen_dir, entry))
+            # Remove any remaining leftover src_gen subdirs in native_project_dir
+            native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
+            if exists(native_project_src_gen_dir):
+                mx.rmtree(native_project_src_gen_dir)
         except OSError:
             pass
-        self.jvm_fallbacks_path = join(native_project_src_gen_dir, java_version, 'JvmFuncsFallbacks.c')
+
+        jvm_fallbacks_dir = join(self.subject.get_output_root(), 'src_gen')
+        self.jvm_fallbacks_path = join(jvm_fallbacks_dir, 'JvmFuncsFallbacks.c')
+
+        # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
+        rel_jvm_fallbacks_dir = relpath(jvm_fallbacks_dir, libjvm.dir)
+        src_dirs = list(libjvm.srcDirs)
+        if rel_jvm_fallbacks_dir not in src_dirs:
+            src_dirs.append(rel_jvm_fallbacks_dir)
+            libjvm.srcDirs = src_dirs
 
         if svm_java8():
             staticlib_path = ['jre', 'lib']
