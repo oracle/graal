@@ -317,7 +317,11 @@ abstract class ProfilerCLI {
                 return new PrintStream(env.out());
             }
         } catch (FileNotFoundException e) {
-            throw new IllegalArgumentException("Cannot redirect output to a directory");
+            throw handleFileNotFound();
         }
+    }
+
+    protected static IllegalArgumentException handleFileNotFound() {
+        return new IllegalArgumentException("Cannot redirect output to a directory");
     }
 }
