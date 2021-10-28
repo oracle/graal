@@ -424,10 +424,10 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         testMismatched(Test::testL_D, Test::changeL);
 
         // Unaligned accesses
-        testMatched(Test::testS_U, Test::changeS);
-        testMatched(Test::testC_U, Test::changeC);
-        testMatched(Test::testI_U, Test::changeI);
-        testMatched(Test::testJ_U, Test::changeJ);
+        testMismatched(Test::testS_U, Test::changeS);
+        testMismatched(Test::testC_U, Test::changeC);
+        testMismatched(Test::testI_U, Test::changeI);
+        testMismatched(Test::testJ_U, Test::changeJ);
     }
 
     @org.junit.Test

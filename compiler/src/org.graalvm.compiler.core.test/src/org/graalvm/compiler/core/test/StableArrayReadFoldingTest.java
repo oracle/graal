@@ -36,8 +36,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class StableArrayReadFoldingTest extends GraalCompilerTest {
 
+    static final int FIRST_INT = 42;
     static final boolean[] STABLE_BOOLEAN_ARRAY = new boolean[16];
-    static final int[] STABLE_INT_ARRAY = IntStream.range(42, 42 + 16).toArray();
+    static final int[] STABLE_INT_ARRAY = IntStream.range(FIRST_INT, FIRST_INT + 16).toArray();
 
     static final long BOOLEAN_ARRAY_BASE_OFFSET;
     static final long INT_ARRAY_BASE_OFFSET;
@@ -95,58 +96,34 @@ public class StableArrayReadFoldingTest extends GraalCompilerTest {
         STABLE_INT_ARRAY[0] = 0x01020304;
         int afterKill = UNSAFE.getInt(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
 
-        STABLE_INT_ARRAY[0] = 0;
+        STABLE_INT_ARRAY[0] = FIRST_INT;
         return beforeKill == afterKill;
     }
 
+    /**
+     * Checks that unaligned reads are not constant folded.
+     */
     @Test
     public void testKillWithSameTypeUnaligned() {
         ResolvedJavaMethod method = getResolvedJavaMethod("killWithSameTypeUnaligned");
-        testAgainstExpected(method, new Result(true, null), null);
-    }
-
-    public static boolean killWithSameTypeUnalignedVolatile() {
-        int beforeKill = UNSAFE.getIntVolatile(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
-        STABLE_INT_ARRAY[0] = 0x01020304;
-        int afterKill = UNSAFE.getIntVolatile(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
-
-        STABLE_INT_ARRAY[0] = 0;
-        return beforeKill == afterKill;
-    }
-
-    @Test
-    public void testKillWithSameTypeUnalignedVolatile() {
-        ResolvedJavaMethod method = getResolvedJavaMethod("killWithSameTypeUnalignedVolatile");
-        testAgainstExpected(method, new Result(true, null), null);
+        testAgainstExpected(method, new Result(false, null), null);
     }
 
     public static boolean killWithDifferentTypeUnaligned() {
-        byte beforeKill = UNSAFE.getByte(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
+        short beforeKill = UNSAFE.getShort(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
         STABLE_INT_ARRAY[0] = 0x01020304;
-        byte afterKill = UNSAFE.getByte(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
+        short afterKill = UNSAFE.getShort(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
 
-        STABLE_INT_ARRAY[0] = 0;
+        STABLE_INT_ARRAY[0] = FIRST_INT;
         return beforeKill == afterKill;
     }
 
+    /**
+     * Checks that unaligned reads are not constant folded.
+     */
     @Test
     public void testKillWithDifferentTypeUnaligned() {
         ResolvedJavaMethod method = getResolvedJavaMethod("killWithDifferentTypeUnaligned");
-        testAgainstExpected(method, new Result(true, null), null);
-    }
-
-    public static boolean killWithDifferentTypeUnalignedVolatile() {
-        byte beforeKill = UNSAFE.getByteVolatile(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
-        STABLE_INT_ARRAY[0] = 0x01020304;
-        byte afterKill = UNSAFE.getByteVolatile(STABLE_INT_ARRAY, INT_ARRAY_BASE_OFFSET + 1);
-
-        STABLE_INT_ARRAY[0] = 0;
-        return beforeKill == afterKill;
-    }
-
-    @Test
-    public void testKillWithDifferentTypeUnalignedVolatile() {
-        ResolvedJavaMethod method = getResolvedJavaMethod("killWithDifferentTypeUnalignedVolatile");
-        testAgainstExpected(method, new Result(true, null), null);
+        testAgainstExpected(method, new Result(false, null), null);
     }
 }
