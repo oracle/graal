@@ -385,7 +385,12 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
-    return mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
+    out = mx.TeeOutputCapture(mx.OutputCapture())
+    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
+    if exit_code != 0:
+        mx.log(out)
+        mx.abort("Gate for dacapo benchmark '{}' failed!".format(name))
+    return exit_code, suite, results
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -397,7 +402,12 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
 
     args = ['-n', str(iterations), '--preserve']
-    return mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args)
+    out = mx.TeeOutputCapture(mx.OutputCapture())
+    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
+    if exit_code != 0:
+        mx.log(out)
+        mx.abort("Gate for scala-dacapo benchmark '{}' failed!".format(name))
+    return exit_code, suite, results
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
@@ -515,6 +525,12 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                         needle = 'MoveOperations (dynamic counters)'
                         if needle not in haystack:
                             mx.abort('Expected to see "' + needle + '" in output of length ' + str(len(haystack)) + ':\n' + haystack)
+                except BaseException:
+                    with open(logFile) as fp:
+                        haystack = fp.read()
+                    if haystack:
+                        mx.log(haystack)
+                    raise
                 finally:
                     os.remove(logFile)
 
