@@ -46,7 +46,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
@@ -250,16 +249,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     private static void checkTimeline(CPUSampler.Payload payload) {
         Assert.assertEquals("Timeline length and self hit count to not match!", payload.getSelfHitCount(), payload.getSelfHitTimes().size());
-    }
-
-
-    private static ProfilerNode<CPUSampler.Payload> findNodeBySourceAndRoot(Collection<ProfilerNode<CPUSampler.Payload>> merged, SourceSection sourceSection, String rootName) {
-        for (ProfilerNode<CPUSampler.Payload> node : merged) {
-            if (node.getSourceSection().equals(sourceSection) && node.getRootName().equals(rootName)) {
-                return node;
-            }
-        }
-        return null;
     }
 
     @Test
