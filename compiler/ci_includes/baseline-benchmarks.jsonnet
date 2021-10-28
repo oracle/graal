@@ -34,7 +34,13 @@
   for suite in bench.groups.main_suites
   ]),
 
-  local all_builds = hotspot_main_builds + hotspot_profiling_builds + weekly_forks_builds + aarch64_builds,
+  local economy_builds = [
+      c.daily + hw.x52 + jdk + cc.libgraal_economy + suite
+    for jdk in cc.bench_jdks
+    for suite in bench.groups.economy_suites
+  ],
+
+  local all_builds = hotspot_main_builds + hotspot_profiling_builds + weekly_forks_builds + aarch64_builds + economy_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]
