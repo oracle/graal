@@ -94,7 +94,7 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
 
     @Override
     protected boolean verifyOops() {
-        return GraalHotSpotVMConfigNode.verifyOops();
+        return HotSpotReplacementsUtil.verifyOops(INJECTED_VMCONFIG);
     }
 
     @Override

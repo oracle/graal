@@ -124,7 +124,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
                 // The pre barrier does nothing if the value being read is null, so it can
                 // be explicitly skipped when this is an initializing store.
                 ShenandoahArrayRangePreWriteBarrier arrayRangePreWriteBarrier = graph.add(new ShenandoahArrayRangePreWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-                graph.addBeforeFixed(write.asNode(), arrayRangePreWriteBarrier);
+                graph.addBeforeFixed(write.preBarrierInsertionPosition(), arrayRangePreWriteBarrier);
             }
         }
     }
@@ -179,12 +179,12 @@ public class ShenandoahBarrierSet implements BarrierSet {
                     return BarrierType.WEAK_FIELD;
                 }
                 // An unknown offset into Reference
-                return BarrierType.MAYBE_WEAK_FIELD;
+                return BarrierType.UNKNOWN;
             }
             if (type == null || type.isAssignableFrom(referenceType)) {
                 // The object is a supertype of Reference with an unknown offset or a constant
                 // offset which is the same as Reference.referent.
-                return BarrierType.MAYBE_WEAK_FIELD;
+                return BarrierType.UNKNOWN;
             }
         }
         return BarrierType.NONE;
@@ -213,5 +213,10 @@ public class ShenandoahBarrierSet implements BarrierSet {
             }
         }
         return BarrierType.NONE;
+    }
+
+    @Override
+    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
+        return arrayStoreBarrierType(storageKind) != BarrierType.NONE;
     }
 }
