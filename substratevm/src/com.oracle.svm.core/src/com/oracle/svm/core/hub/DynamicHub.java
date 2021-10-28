@@ -1605,6 +1605,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
     }
 
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    private static native String typeVarBounds(TypeVariable<?> typeVar);
+
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
      * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
