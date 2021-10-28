@@ -431,8 +431,6 @@ def native_unittests_task():
     ]
 
     if svm_java_compliance() == '17':
-        # The following tests fail with --builder-on-modulepath enabled (GR-34117)
-        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.jdk11.jfr.*')
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
