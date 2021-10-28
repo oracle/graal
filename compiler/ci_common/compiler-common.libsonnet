@@ -16,6 +16,8 @@
     ]
   },
 
+  bench_jdks:: [common.labsjdk11, common.labsjdk17],
+
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
