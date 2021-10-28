@@ -163,18 +163,9 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         @Override
         public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, BytecodePosition invokePosition, int depth) {
             Access access = Access.UNRESTRICTED;
-            boolean overridesCallers = false;
             RestrictHeapAccess annotation = callee.getAnnotation(RestrictHeapAccess.class);
             if (annotation != null) {
                 access = annotation.access();
-                overridesCallers = annotation.overridesCallers();
-            }
-
-            if (!overridesCallers && caller != null) {
-                Access callerAccess = calleeToCallerMap.get(caller).getAccess();
-                if (callerAccess.isMoreRestrictiveThan(access)) {
-                    access = callerAccess;
-                }
             }
 
             if (access == Access.UNRESTRICTED) {

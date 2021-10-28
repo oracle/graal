@@ -79,7 +79,7 @@ public class FrameInfoDecoder {
     }
 
     public interface FrameInfoQueryResultAllocator {
-        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
         FrameInfoQueryResult newFrameInfoQueryResult();
     }
 
@@ -104,25 +104,25 @@ public class FrameInfoDecoder {
 
     static class HeapBasedValueInfoAllocator implements ValueInfoAllocator {
         @Override
-        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
         public ValueInfo newValueInfo() {
             return new ValueInfo();
         }
 
         @Override
-        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
         public ValueInfo[] newValueInfoArray(int len) {
             return new ValueInfo[len];
         }
 
         @Override
-        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
         public ValueInfo[][] newValueInfoArrayArray(int len) {
             return new ValueInfo[len][];
         }
 
         @Override
-        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
         public void decodeConstant(ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants) {
             switch (valueInfo.type) {
                 case DefaultConstant:

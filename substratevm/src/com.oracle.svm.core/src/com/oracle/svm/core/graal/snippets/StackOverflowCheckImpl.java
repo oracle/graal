@@ -277,7 +277,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Uninterruptible(reason = "Allow allocation now that yellow zone is available for new stack frames", calleeMustBe = false)
-    @RestrictHeapAccess(reason = "Allow allocation now that yellow zone is available for new stack frames", overridesCallers = true, access = Access.UNRESTRICTED)
+    @RestrictHeapAccess(reason = "Allow allocation now that yellow zone is available for new stack frames", access = Access.UNRESTRICTED)
     private static StackOverflowError newStackOverflowError() {
         /*
          * Now that the yellow zone is enabled, we can allocate the error and collect the stack

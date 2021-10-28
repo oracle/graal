@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -69,6 +68,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.ActionOnExitSafepointSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -455,12 +455,13 @@ public final class Safepoint {
         KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Must not contain safepoint checks")
     public static boolean tryFastTransitionNativeToVM() {
         StatusSupport.assertStatusNativeOrSafepoint();
         return StatusSupport.compareAndSetNativeToNewStatus(StatusSupport.STATUS_IN_VM);
     }
 
+    @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void slowTransitionNativeToVM() {
         StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_VM;
@@ -470,7 +471,7 @@ public final class Safepoint {
         }
     }
 
-    /** Transition from VM state to Java. */
+    @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void transitionVMToJava() {
         // We can directly change the thread status as no other thread will touch the status field
         // as long as we are in VM status.
@@ -482,7 +483,7 @@ public final class Safepoint {
         }
     }
 
-    /** Transition from Java to VM state. */
+    @Uninterruptible(reason = "Must not contain safepoint checks")
     public static void transitionJavaToVM() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
@@ -500,9 +501,6 @@ public final class Safepoint {
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void callSlowPathSafepointCheck(@ConstantNodeParameter ForeignCallDescriptor descriptor);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus);
 
     /**
      * Block until I can transition from native to a new thread status. This is not inlined and need
@@ -529,6 +527,9 @@ public final class Safepoint {
             Statistics.incSlowPathThawed();
         }
     }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callSlowPathNativeToNewStatus(@ConstantNodeParameter ForeignCallDescriptor descriptor, int newThreadStatus);
 
     /**
      * Transitions from VM to Java do not need a safepoint check. We only need to make sure that any
@@ -581,7 +582,7 @@ public final class Safepoint {
          * only executed by the VM operation thread. Therefore, no other thread can initiate a
          * safepoint and Java allocations are disabled as well.
          */
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "The safepoint logic must not allocate.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
         protected boolean freeze(String reason) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only freeze for a safepoint when multi-threaded.";
             assert VMOperationControl.mayExecuteVmOperations();
@@ -605,8 +606,8 @@ public final class Safepoint {
             return lock;
         }
 
-        /** Let all of the threads proceed from their safepoint. */
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "The safepoint logic must not allocate.")
+        /** Let all threads proceed from their safepoint. */
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
         protected void thaw(String reason, boolean unlock) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only thaw from a safepoint when multi-threaded.";
             assert VMOperationControl.mayExecuteVmOperations();

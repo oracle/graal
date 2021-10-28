@@ -359,8 +359,7 @@ public final class HeapImpl extends Heap {
         }
 
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, //
-                        reason = "Allocation is fine: this method traverses only the image heap.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocation is fine: this method traverses only the image heap.")
         public boolean visitObject(Object o) {
             if (o instanceof Class<?>) {
                 list.add((Class<?>) o);

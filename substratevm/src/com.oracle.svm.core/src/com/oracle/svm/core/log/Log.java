@@ -38,8 +38,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-
 /**
  * Utility class that provides low-level output methods for basic Java data types (strings and
  * numbers). The methods do not allocate any Java objects or arrays, so that they can be used, e.g.,
@@ -129,7 +127,6 @@ public abstract class Log implements AutoCloseable {
     }
 
     /** Is this log enabled? */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract boolean isEnabled();
 
     /**
@@ -140,46 +137,36 @@ public abstract class Log implements AutoCloseable {
     /**
      * Prints all characters in the string, filling with spaces before or after.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log string(String str, int fill, int align);
 
     /**
      * Prints all characters in the array, without any platform- or charset-depending conversions.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log string(char[] value);
 
     /**
      * Prints all bytes in the array, without any conversion.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
-    public final Log string(byte[] value) {
-        string(value, 0, value.length);
-        return this;
-    }
+    public abstract Log string(byte[] value);
 
     /**
      * Prints the provided range of bytes in the array, without any conversion.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log string(byte[] value, int offset, int length);
 
     /**
      * Prints the C string.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log string(CCharPointer value);
 
     /**
      * Prints the provided character.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log character(char value);
 
     /**
      * Prints the newline character.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log newline();
 
     /**
@@ -187,7 +174,6 @@ public abstract class Log implements AutoCloseable {
      *
      * @param onOrOff true if auto-flush must be turned on, false otherwise.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log autoflush(boolean onOrOff);
 
     /**
@@ -199,111 +185,93 @@ public abstract class Log implements AutoCloseable {
      * @param signed true if the value should be treated as a signed value (and the digits are
      *            preceded by '-' for negative values).
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log number(long value, int radix, boolean signed);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log signed(WordBase value);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log signed(int value);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log signed(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log unsigned(WordBase value);
 
     /**
      * Prints the value, treated as an unsigned value, filing spaces before or after.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log unsigned(WordBase value, int fill, int align);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log unsigned(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log unsigned(long value);
 
     /**
      * Prints the value, treated as an unsigned value, filing spaces before or after.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log unsigned(long value, int fill, int align);
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log rational(long numerator, long denominator, long decimals);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log hex(WordBase value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log hex(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log hex(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 16-digits.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(WordBase value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 16-digits.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 8-digits.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 4-digits.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(short value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 2-digits.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log zhex(byte value);
 
     /**
@@ -313,57 +281,43 @@ public abstract class Log implements AutoCloseable {
      * @param wordSize size in bytes that a single word should have
      * @param numWords number of words to dump
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log hexdump(PointerBase from, int wordSize, int numWords);
 
     /**
      * Change current amount of indentation. Indentation determines the amount of spaces emitted
      * after each newline.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log redent(boolean addOrRemove);
 
     /**
      * Change current amount of indentation, and then print a newline.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
-    public final Log indent(boolean addOrRemove) {
-        redent(addOrRemove).newline();
-        return this;
-    }
+    public abstract Log indent(boolean addOrRemove);
 
     /**
      * Reset the indentation to 0.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log resetIndentation();
 
     /**
      * Prints the strings "true" or "false" depending on the value.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log bool(boolean value);
 
     /**
      * Simulates java.lang.String.valueOf(Object obj), but without the call to hashCode().
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log object(Object value);
 
     /**
      * Prints the requested number of spaces, e.g., for indentation.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log spaces(int value);
 
     /**
      * Prints the provided exception, including a stack trace if available, followed by a newline.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
-    public Log exception(Throwable t) {
-        exception(t, Integer.MAX_VALUE);
-        return this;
-    }
+    public abstract Log exception(Throwable t);
 
     /**
      * Prints the provided exception, including a stack trace if available, with at most the
@@ -374,7 +328,6 @@ public abstract class Log implements AutoCloseable {
     /**
      * Forces the log to flush to its destination.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, mayBeInlined = true, reason = "Must not allocate when logging.")
     public abstract Log flush();
 
     /** An implementation of AutoCloseable.close(). */
@@ -423,7 +376,6 @@ public abstract class Log implements AutoCloseable {
     private static final class NoopLog extends Log {
 
         protected NoopLog() {
-            super();
         }
 
         @Override
@@ -444,6 +396,11 @@ public abstract class Log implements AutoCloseable {
         @Override
         public Log string(char[] value) {
             return this;
+        }
+
+        @Override
+        public Log string(byte[] value) {
+            return null;
         }
 
         @Override
@@ -587,6 +544,11 @@ public abstract class Log implements AutoCloseable {
         }
 
         @Override
+        public Log exception(Throwable t) {
+            return null;
+        }
+
+        @Override
         public Log exception(Throwable t, int maxFrames) {
             return this;
         }
@@ -594,6 +556,11 @@ public abstract class Log implements AutoCloseable {
         @Override
         public Log redent(boolean addOrRemove) {
             return this;
+        }
+
+        @Override
+        public Log indent(boolean addOrRemove) {
+            return null;
         }
 
         @Override

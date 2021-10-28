@@ -32,14 +32,8 @@ import java.util.Map;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.java.AccessArrayNode;
-import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,10 +46,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl.RestrictionInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 
 public final class RestrictHeapAccessAnnotationChecker {
 
@@ -91,32 +81,11 @@ public final class RestrictHeapAccessAnnotationChecker {
 
     private static boolean isViolatingNode(Node node, Access access) {
         assert access != Access.UNRESTRICTED : "does not require checks";
-        return !isAllocationNode(node) && (access != Access.NO_HEAP_ACCESS || !isHeapAccess(node));
+        return !isAllocationNode(node);
     }
 
     private static boolean isAllocationNode(Node node) {
         return (node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
-    }
-
-    private static boolean isHeapAccess(Node node) {
-        if (node instanceof AccessFieldNode || node instanceof AccessArrayNode || node instanceof UnsafeAccessNode) {
-            return true;
-        } else if (node instanceof ConstantNode) {
-            Constant constant = ((ConstantNode) node).getValue();
-            if (constant instanceof JavaConstant) {
-                /*
-                 * Loading an object constant other than null is suspicious and can cause pointer
-                 * compression or uncompression which can be undesirable in some contexts, for
-                 * example when the heap is not set up.
-                 */
-                JavaConstant javaConstant = (JavaConstant) constant;
-                return javaConstant.getJavaKind() == JavaKind.Object && javaConstant.isNonNull();
-            }
-        } else if (node instanceof Invoke) {
-            /* Virtual invokes do type checks and vtable lookups that access the heap */
-            return ((Invoke) node).callTarget().invokeKind() == InvokeKind.Virtual;
-        }
-        return false;
     }
 
     /** A HostedMethod visitor that checks for violations of heap access restrictions. */
