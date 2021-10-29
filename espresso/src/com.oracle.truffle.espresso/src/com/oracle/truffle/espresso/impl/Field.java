@@ -45,6 +45,33 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Represents a resolved Espresso field.
+ *
+ * <h3>Class Redefinition</h3>
+ *
+ * In the presence of Class Redefinition a field can have three different behaviors:
+ *
+ * 1. An Original Field is a field that was declared in the first linked
+ * {@link ObjectKlass.KlassVersion}. Accessing Original Fields is done directly through the
+ * underlying {@link LinkedField}.
+ *
+ * 2. A {@link RedefineAddedField} which represents a field that was added by a
+ * {@link com.oracle.truffle.espresso.redefinition.ClassRedefinition}. Management of Redefine Added
+ * Fields is done through {@link ExtensionFieldsMetadata}. Accessing a Redefined Added Field
+ * {@link LinkedField#isRedefineAdded()} normally happens through the associated
+ * {@link ExtensionFieldObject instance} unless the Redefine Added Field has a Compatible Field
+ * {@link #hasCompatibleField()}. A Compatible field is always an Original Field that has the same
+ * name and type as the associated Redefine Added Field. A Redefine Added field can be assigned a
+ * Compatible Field if e.g. the field access modifiers changed. The state of the field is thus
+ * maintained by the Compatible (Original) Field. In this case the Redefine Added Field serves only
+ * as an up-to-date representative of the field in the runtime.
+ *
+ * 3. A Synthetic Field is a special field that is created whenever a certain field requires to be
+ * re-resolved due to class redefinition. It allows obsolete code that uses a field to continue
+ * accessing that field even though the field could no longer be resolved by the caller. Synthetic
+ * fields are always constructed as if they're Redefine Added Fields to trigger the alternative
+ * access path as described above. Moreover, to delegate accesses to the field that maintains the
+ * value (this could be either an Original Field or a Redefine Added Field) a synthetic field is
+ * assigned the underlying field as a Compatible Field.
  */
 public class Field extends Member<Type> implements FieldRef {
 
