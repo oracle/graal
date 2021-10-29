@@ -5,9 +5,6 @@ builds = []
 
 binaries-repository = "lafo"
 
-#Truffle
-include "truffle/ci.hocon"
-
 #Compiler
 compiler-suite-root = "./compiler"
 logPatterns = [
