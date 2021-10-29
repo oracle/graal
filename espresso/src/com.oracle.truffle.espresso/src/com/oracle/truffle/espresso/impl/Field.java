@@ -344,7 +344,7 @@ public class Field extends Member<Type> implements FieldRef {
         assert !isHidden() : this + " is hidden, use getHiddenObject";
         if (linkedField.isRedefineAdded()) {
             if (hasCompatibleField()) {
-                return (StaticObject) getCompatibleField().getObjectHelper(obj, forceVolatile);
+                return getCompatibleField().getObject(obj, forceVolatile);
             } else {
                 return getExtensionObject(obj).getObject(this, forceVolatile);
             }
@@ -361,7 +361,7 @@ public class Field extends Member<Type> implements FieldRef {
         assert !isHidden() : this + " is hidden, use setHiddenObject";
         if (linkedField.isRedefineAdded()) {
             if (hasCompatibleField()) {
-                getCompatibleField().setObjectHelper(obj, value, forceVolatile);
+                getCompatibleField().setObject(obj, value, forceVolatile);
             } else {
                 getExtensionObject(obj).setObject(this, value, forceVolatile);
             }
