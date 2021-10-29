@@ -342,6 +342,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components or registered_graalvm_components(stage1)
+        self.stage1 = stage1
         self.skip_archive = stage1 # Do not build *.tar archive for stage1 distributions
         layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
@@ -2884,6 +2885,43 @@ def print_standalone_home(args):
     print(standalone_home(args.comp_dir_name))
 
 
+def _infer_env(graalvm_dist):
+    dynamicImports = set()
+    components = []
+    foundLibpoly = False
+    for component in registered_graalvm_components():
+        if component.short_name == 'libpoly':
+            foundLibpoly = True
+        else:
+            components.append(component.short_name)
+        suite = component.suite
+        if suite.dir == suite.vc_dir:
+            dynamicImports.add(os.path.basename(suite.dir))
+        else:
+            dynamicImports.add("/" + os.path.basename(suite.dir))
+    excludeComponents = [] if foundLibpoly else ['libpoly']  # 'libpoly' is special, we need to exclude it instead of including
+
+    nativeImages = []
+    for p in _suite.projects:
+        if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
+            if p.is_native():
+                nativeImages.append(p.native_image_name)
+        elif not graalvm_dist.stage1 and isinstance(p, GraalVmLibrary):
+            if not p.is_skipped():
+                library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
+                nativeImages.append('lib:' + library_name)
+    if not nativeImages:
+        nativeImages = ['false']
+
+    disableInstallables = _disabled_installables()
+    if disableInstallables is None:
+        disableInstallables = []
+    elif isinstance(disableInstallables, bool):
+        disableInstallables = [str(disableInstallables)]
+
+    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), _no_licenses()
+
+
 def graalvm_enter(args):
     """enter a subshell for developing with a particular GraalVM config"""
     env = os.environ.copy()
@@ -2939,38 +2977,17 @@ def graalvm_enter(args):
         return
 
     graalvm_dist = get_final_graalvm_distribution()
-
-    components = []
-    dynamicImports = set()
-    foundLibpoly = False
-    for component in registered_graalvm_components():
-        if component.short_name == 'libpoly':
-            foundLibpoly = True  # 'libpoly' is special, we need to exclude it instead of including
-        else:
-            components.append(component.short_name)
-        suite = component.suite
-        if suite.dir == suite.vc_dir:
-            dynamicImports.add(os.path.basename(suite.dir))
-        else:
-            dynamicImports.add("/" + os.path.basename(suite.dir))
-
-    nativeImages = []
-    for p in _suite.projects:
-        if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist:
-            if p.is_native():
-                nativeImages.append(p.native_image_name)
-        elif isinstance(p, GraalVmLibrary):
-            if not p.is_skipped():
-                library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
-                nativeImages.append('lib:' + library_name)
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables, noLicenses = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
     env['DYNAMIC_IMPORTS'] = ','.join(dynamicImports)
     env['COMPONENTS'] = ','.join(components)
     env['NATIVE_IMAGES'] = ','.join(nativeImages)
-    if not foundLibpoly:
-        env['EXCLUDE_COMPONENTS'] = 'libpoly'
+    env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
+    env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
+    if noLicenses:
+        env['NO_LICENSES'] = 'true'
 
     # Disable loading of the global ~/.mx/env file in the subshell. The contents of this file are already in the current
     # environment. Parsing the ~/.mx/env file again would lead to confusing results, especially if it contains settings
@@ -2989,6 +3006,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     """
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
+    parser.add_argument('--print-env', action='store_true', help='print the contents of an env file that reproduces the current GraalVM config')
     args = parser.parse_args(args)
 
     graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
@@ -3043,6 +3061,20 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 print(" - {}".format(s))
         else:
             print("No standalone")
+
+        if args.print_env:
+            def _print_env(name, val):
+                if val:
+                    print(name + '=' + ','.join(val))
+            print('Inferred env file:')
+            dynamic_imports, components, exclude_components, native_images, disable_installables, no_licenses = _infer_env(graalvm_dist)
+            _print_env('DYNAMIC_IMPORTS', dynamic_imports)
+            _print_env('COMPONENTS', components)
+            _print_env('EXCLUDE_COMPONENTS', exclude_components)
+            _print_env('NATIVE_IMAGES', native_images)
+            _print_env('DISABLE_INSTALLABLES', disable_installables)
+            if no_licenses:
+                print('NO_LICENSES=true')
 
 
 def _get_dists(dist_class):
@@ -3201,16 +3233,22 @@ def _debug_images():
 
 
 def _components_include_list():
-    included = _parse_cmd_arg('components', parse_bool=False, default_value=None)
+    included = _parse_cmd_arg('components', parse_bool=True, default_value=None)
     if included is None:
         return None
+    if isinstance(included, bool):
+        return mx_sdk_vm.graalvm_components() if included else []
     components = []
     for name in included:
         if name.startswith('suite:'):
             suite_name = name[len('suite:'):]
             components.extend([c for c in mx_sdk_vm.graalvm_components() if c.suite.name == suite_name])
         else:
-            components.append(mx_sdk.graalvm_component_by_name(name))
+            component = mx_sdk.graalvm_component_by_name(name, False)
+            if component:
+                components.append(component)
+            else:
+                mx.warn("The component inclusion list ('--components' or '$COMPONENTS') includes an unknown component: '{}'".format(name))
     return components
 
 
@@ -3311,9 +3349,13 @@ def _skip_libraries(library):
             return library_name in skipped
 
 
+def _disabled_installables():
+    return _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
+
+
 def _disable_installable(component):
     """ :type component: str | mx_sdk.GraalVmComponent """
-    disabled = _parse_cmd_arg('disable_installables', default_value=str(not has_vm_suite()))
+    disabled = _disabled_installables()
     if isinstance(disabled, bool):
         return disabled
     else:
