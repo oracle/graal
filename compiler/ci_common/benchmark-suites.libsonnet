@@ -13,13 +13,13 @@
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
     special_suites:: std.set([$.renaissance_0_10, $.renaissance_0_13, $.specjbb2015_full_machine], keyF=uniq_key),
     microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
-    economy_suites:: std.set([$.dacapo, $.scala_dacapo, $.renaissance, $.renaissance_legacy, $.specjvm2008], keyF=uniq_key),
 
-    main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
-    all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
+    main_suites:: std.set([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
+    all_suites:: std.set(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
 
     weekly_forks_suites:: std.set([$.renaissance_0_13] + self.main_suites, keyF=uniq_key),
     profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=uniq_key),
+    all_but_main_suites::     std.setDiff(self.all_suites, self.main_suites, keyF=uniq_key),
   },
 
   // suite definitions
