@@ -56,6 +56,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
+import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
@@ -172,8 +173,7 @@ public final class ClassRedefinition {
     }
 
     public synchronized Field createSyntheticFrom(Field field) {
-        Field syntheticField = Field.synthetic(field);
-        syntheticField.setCompatibleField(field);
+        Field syntheticField = RedefineAddedField.synthetic(field);
         if (currentSyntheticFields == null) {
             currentSyntheticFields = new ArrayList<>(1);
         }

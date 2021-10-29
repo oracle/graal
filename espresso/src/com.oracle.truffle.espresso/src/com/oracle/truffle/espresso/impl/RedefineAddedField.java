@@ -39,6 +39,14 @@ public final class RedefineAddedField extends Field {
         }
     }
 
+    public static Field synthetic(Field field) {
+        // update holder to latest klass version to ensure we
+        // only re-resolve again when the class is redefined
+        RedefineAddedField syntheticField = new RedefineAddedField(field.getDeclaringKlass().getKlassVersion(), field.linkedField, field.pool, true);
+        syntheticField.setCompatibleField(field);
+        return syntheticField;
+    }
+
     @Override
     public void setCompatibleField(Field field) {
         compatibleField = field;

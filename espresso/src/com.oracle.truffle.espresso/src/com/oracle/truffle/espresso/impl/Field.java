@@ -53,7 +53,7 @@ public class Field extends Member<Type> implements FieldRef {
     final LinkedField linkedField;
     private final ObjectKlass.KlassVersion holder;
 
-    private final RuntimeConstantPool pool;
+    protected final RuntimeConstantPool pool;
     @CompilationFinal private volatile Klass typeKlassCache;
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
@@ -63,12 +63,6 @@ public class Field extends Member<Type> implements FieldRef {
         this.linkedField = linkedField;
         this.holder = holder;
         this.pool = pool;
-    }
-
-    public static Field synthetic(Field field) {
-        // update holder to latest klass version to ensure we
-        // only re-resolve again when the class is redefined
-        return new RedefineAddedField(field.holder.getKlass().getKlassVersion(), field.linkedField, field.pool, true);
     }
 
     @Override
