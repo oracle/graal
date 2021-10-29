@@ -164,39 +164,12 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 ...
 ```
 
-## Run SimpleLanguage with the Newest Compiler 21.3.0
+## Run SimpleLanguage with the Newest (Developement) version of the Compiler
 
-In the outstanding case that you need to execute SimpleLanguage with the newest version of the GraalVM compiler, please follow these instructions:
+To tun SimpleLanguage with the developement version of the GraalVM compiler we must build a GraalVM whith that compiler.
+Clone the `graal` repository (https://github.com/oracle/graal) and follow the instructions in the `vm/README.md` file to build a GraalVM.
 
-1. Download the latest [JVMCI JDK 8](https://github.com/graalvm/graal-jvmci-8/releases/) and point `JAVA_HOME` at it:
-```shell
-export JAVA_HOME=/path/to/openjdk-8u292-jvmci-21.1-b04
-```
-2. Clone the "Graal" repository from the SimpleLanguage folder:
-```shell
-cd /path/to/simplelanguage
-git clone https://github.com/oracle/graal.git
-```
-3.  Clone the mx repository:
-```shell
-git clone https://github.com/graalvm/mx.git
-```
-4. Add mx to your path:
-```shell
-export PATH=/path/to/mx:$PATH
-```
-5. Navigate to the compiler folder:
-```shell
-cd /path/to/graal/compiler
-```
-6. Build the GraalVM compiler:
-```shell
-mx build
-```
-7. Run SimpleLanguage using the mx command:
-```shell
-mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.3.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
-```
+Once that's done, point `JAVA_HOME` to the newly built GraalVM and proceed with normal building and running of SimpleLanguage.
 
 ## Run SimpleLanguage Using Command Line
 
@@ -216,36 +189,6 @@ $JAVA_HOME/bin/java \
 
 In short, we place the launcher JAR on the class path and execute its main class, but we inform GraalVM of the presence of SimpleLanguage by using the `-Dtruffle.class.path.append` option and providing it the path to the fat language JAR.
 Having the language on a separate class path ensures a strong separation between the language implementation and its embedding context (in this case, the launcher).
-
-#### Disable Class Path Separation
-
-*NOTE! This should only be used during development.*
-
-For development purposes it is useful to disable the class path separation and enable having the language implementation on the application class path (for example, for testing
-the internals of the language).
-
-For the GraalVM distribution based on JDK 8, you can add the `-XX:-UseJVMCIClassLoader` option.
-This disables the class path isolation, enabling the language implementation to be placed on the application class path.
-The command line can be as follows:
-
-```shell
-$JAVA_HOME/bin/java \
-    -XX:-UseJVMCIClassLoader -Dgraalvm.locatorDisabled=true \
-    -cp launcher/target/launcher-21.3.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
-    com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
-```
-
-For the JDK 11-based distribution of GraalVM, the `-XX:-UseJVMCIClassLoader` option is not valid.
-The Java Module System isolation is used. You can achieve the same behavior using `--add-exports` or `--upgrade-module-path`.
-The latter is preferable.
-
-The Language API JAR on Maven Central exports all API packages in its module-info.
-Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
-```shell
--Dgraalvm.locatorDisabled=true --module-path=<yourModulePath>:${truffle.dir} --upgrade-module-path=${truffle.dir}/truffle-api.jar
-```
-
-A sample POM using `--upgrade-module-path` to export Language API packages can be found in the [Simple Language POM.xml](https://github.com/graalvm/simplelanguage/blob/master/language/pom.xml#L58) file.
 
 ### Other JVM Implementations
 
