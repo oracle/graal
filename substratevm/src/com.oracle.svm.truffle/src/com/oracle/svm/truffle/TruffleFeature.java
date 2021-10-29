@@ -530,6 +530,8 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         allowlistMethod(metaAccess, BigInteger.class, "signum");
         allowlistMethod(metaAccess, ReentrantLock.class, "isLocked");
         allowlistMethod(metaAccess, ReentrantLock.class, "isHeldByCurrentThread");
+        allowlistMethod(metaAccess, ReentrantLock.class, "getOwner");
+        allowlistMethod(metaAccess, ReentrantLock.class, "<init>");
 
         /* Methods with synchronization are currently not supported as deoptimization targets. */
         blocklistAllMethods(metaAccess, StringBuffer.class);
@@ -612,7 +614,13 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
      */
     private void allowlistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
-            if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)))) {
+            Executable method;
+            if ("<init>".equals(name)) {
+                method = clazz.getDeclaredConstructor(parameterTypes);
+            } else {
+                method = clazz.getDeclaredMethod(name, parameterTypes);
+            }
+            if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(method))) {
                 throw VMError.shouldNotReachHere();
             }
         } catch (NoSuchMethodException ex) {

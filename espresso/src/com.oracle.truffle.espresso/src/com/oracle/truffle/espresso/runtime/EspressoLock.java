@@ -27,7 +27,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
@@ -102,7 +101,6 @@ public interface EspressoLock extends Lock {
     /**
      * Creates a new {@code EspressoLock} instance.
      */
-    @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
     static EspressoLock create() {
         return new EspressoLockImpl();
     }
@@ -160,7 +158,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
-    @TruffleBoundary // ReentrantLock.getOwner blacklisted by SVM
     public Thread getOwnerThread() {
         return getOwner();
     }

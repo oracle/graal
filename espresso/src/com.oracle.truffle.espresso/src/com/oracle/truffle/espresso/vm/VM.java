@@ -483,7 +483,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     // region system
 
     @VmImpl(isJni = true)
-    // SVM windows has System.currentTimeMillis() BlackListed.
+    // SVM windows has System.currentTimeMillis() blocked for PE.
     @TruffleBoundary(allowInlining = true)
     public static long JVM_CurrentTimeMillis(
                     @SuppressWarnings("unused") @JavaType(Class/* <System> */.class) StaticObject ignored) {
@@ -498,8 +498,10 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary(allowInlining = true)
     @VmImpl(isJni = true)
     public static int JVM_IHashCode(@JavaType(Object.class) StaticObject object) {
-        // On SVM + Windows, the System.identityHashCode substitution triggers the blacklisted
-        // methods (System.currentTimeMillis?) check.
+        /*
+         * On SVM + Windows, the System.identityHashCode substitution calls methods blocked for PE
+         * (System.currentTimeMillis?).
+         */
         return System.identityHashCode(MetaUtil.maybeUnwrapNull(object));
     }
 
