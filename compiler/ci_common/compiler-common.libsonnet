@@ -89,13 +89,10 @@
     }
   },
 
-  libgraal_economy:: {
-    platform:: "libgraal-economy",
+  economy_mode:: {
+    platform+:: "-economy",
     environment+: {
-      "JVM": "server",
-      "JVM_CONFIG": config.compiler.default_jvm_config + "-libgraal-economy",
-      "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
-      "MX_ENV_PATH": config.compiler.libgraal_env_file
+      "JVM_CONFIG"+: "-economy",
     }
-  }
+  },
 }

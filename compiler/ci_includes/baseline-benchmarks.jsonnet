@@ -35,8 +35,8 @@
   ]),
 
   local economy_builds = [
-      c.daily + hw.x52 + jdk + cc.libgraal_economy + suite
-    for jdk in cc.bench_jdks
+      c.daily + hw.x52 + jdk + cc.libgraal + cc.economy_mode + suite
+    for jdk in amd64_jdks
     for suite in bench.groups.economy_suites
   ],
 
