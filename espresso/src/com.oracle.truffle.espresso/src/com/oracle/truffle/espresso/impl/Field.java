@@ -68,11 +68,7 @@ public class Field extends Member<Type> implements FieldRef {
     public static Field synthetic(Field field) {
         // update holder to latest klass version to ensure we
         // only re-resolve again when the class is redefined
-        if (field.linkedField.isRedefineAdded()) {
-            return new RedefineAddedField(field.holder.getKlass().getKlassVersion(), field.linkedField, field.pool, true);
-        } else {
-            return new Field(field.holder.getKlass().getKlassVersion(), field.linkedField, field.pool);
-        }
+        return new RedefineAddedField(field.holder.getKlass().getKlassVersion(), field.linkedField, field.pool, true);
     }
 
     @Override
