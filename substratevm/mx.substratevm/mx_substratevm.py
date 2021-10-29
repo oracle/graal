@@ -63,14 +63,14 @@ else:
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
-def svm_java_compliance():
-    return mx.get_jdk(tag='default').javaCompliance
+def get_jdk():
+    return mx.get_jdk(tag='default')
 
 def svm_java8():
-    return svm_java_compliance() <= mx.JavaCompliance('1.8')
+    return get_jdk().javaCompliance <= mx.JavaCompliance('1.8')
 
 def graal_compiler_flags():
-    version_tag = svm_java_compliance().value
+    version_tag = get_jdk().javaCompliance.value
     compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map()
     if version_tag not in compiler_flags:
         missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
@@ -117,8 +117,8 @@ def svmbuild_dir(suite=None):
 
 
 def is_musl_supported():
-    jdk = mx.get_jdk(tag='default')
-    if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
+    jdk = get_jdk()
+    if mx.is_linux() and mx.get_arch() == "amd64" and jdk.javaCompliance == '11':
         musl_library_path = join(jdk.home, 'lib', 'static', 'linux-amd64', 'musl')
         return exists(musl_library_path)
     return False
@@ -430,7 +430,7 @@ def native_unittests_task():
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
-    if svm_java_compliance() == '17':
+    if get_jdk().javaCompliance == '17':
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
@@ -803,8 +803,7 @@ def _native_image_launcher_extra_jvm_args():
         return []
     # Support for running as Java module
     res = []
-    jdk = mx.get_jdk(tag='default')
-    if not mx_sdk_vm.jdk_enables_jvmci_by_default(jdk):
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
 
@@ -997,7 +996,7 @@ def _native_image_configure_extra_jvm_args():
         return []
     packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
-    if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return args
 
@@ -1462,8 +1461,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
             # Packages to add-export
             distributions_transitive = mx.classpath_entries(self.buildDependencies)
-            jdk = mx.get_jdk(tag='default')
-            required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
+            required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
             graal_compiler_flags_map[11].extend(exports_flags)
             # Currently JDK 17 and JDK 11 have the same flags
