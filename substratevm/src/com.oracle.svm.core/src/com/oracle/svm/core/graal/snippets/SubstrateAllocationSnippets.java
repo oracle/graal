@@ -40,6 +40,7 @@ import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -115,28 +116,26 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    protected Object allocateInstance(DynamicHub hub,
+    protected Object allocateInstance(@NonNullParameter DynamicHub hub,
                     @ConstantParameter long size,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
-    protected Object allocateStoredContinuationInstance(DynamicHub hub,
+    protected Object allocateStoredContinuationInstance(@NonNullParameter DynamicHub hub,
                     long size,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size),
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), WordFactory.unsigned(size),
                         FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, true, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
-    public Object allocateArray(DynamicHub hub,
+    public Object allocateArray(@NonNullParameter DynamicHub hub,
                     int length,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
@@ -147,8 +146,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter AllocationProfilingData profilingData) {
-        DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), length, arrayBaseOffset, log2ElementSize, fillContents,
                         fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -220,23 +218,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return result;
     }
 
-    public static DynamicHub checkHub(DynamicHub hub) {
-        if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
-            DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
-                return nonNullHub;
-            }
-        }
-
-        callHubErrorStub(HUB_ERROR, DynamicHub.toClass(hub));
-        throw UnreachableNode.unreachable();
-    }
-
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
     private static native void callHubErrorWithExceptionStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native void callHubErrorStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
     /** Foreign call: {@link #HUB_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -503,7 +486,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.instanceClass();
-                DynamicHub hub = type.getHub();
+                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
 
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
                 long size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
@@ -565,7 +548,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 ValueNode length = node.length();
                 SharedType type = (SharedType) node.elementType().getArrayClass();
-                DynamicHub hub = type.getHub();
+                DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
@@ -664,5 +647,20 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
+    }
+
+    /**
+     * Verify that we do not need to check at run time if a type coming from a
+     * {@link NewInstanceNode} or {@link NewArrayNode} is instantiated. All allocations with a
+     * constant type before static analysis result in the type being marked as instantiated.
+     * {@link DynamicNewInstanceNode} and {@link DynamicNewArrayNode} whose type gets folded to a
+     * constant late during compilation remain a dynamic allocation because
+     * {@link MetaAccessExtensionProvider#canConstantFoldDynamicAllocation} returns false.
+     */
+    public static DynamicHub ensureMarkedAsInstantiated(DynamicHub hub) {
+        if (!hub.isInstantiated()) {
+            throw VMError.shouldNotReachHere("Cannot allocate type that is not marked as instantiated: " + hub.getName());
+        }
+        return hub;
     }
 }
