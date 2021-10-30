@@ -375,19 +375,6 @@ def _remove_empty_entries(a):
         return []
     return [x for x in a if x]
 
-def _is_batik_supported(jdk):
-    """
-    Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
-    to TruncatedFileException, which is specific to the Sun/Oracle JDK. On a different JDK,
-    this results in a NoClassDefFoundError: com/sun/image/codec/jpeg/TruncatedFileException
-    """
-    try:
-        subprocess.check_output([jdk.javap, 'com.sun.image.codec.jpeg.TruncatedFileException'])
-        return True
-    except subprocess.CalledProcessError:
-        mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
-        return False
-
 def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Dgraal.'):
     """
     Gets options to be prefixed to the VM command line related to Graal compilation errors to improve
@@ -558,6 +545,9 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
 
+    bmSuiteArgs = ["--jvm", "server"]
+    benchVmArgs = bmSuiteArgs + _remove_empty_entries(extraVMarguments)
+
     dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
@@ -565,12 +555,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     dacapo_gate_iterations.update({'fop': 8})
     mx.warn("Disabling gate for dacapo:tradesoap (GR-33605)")
     dacapo_gate_iterations.update({'tradesoap': -1})
-    for name, iterations in sorted(dacapo_gate_iterations.items()):
-        if name == "batik" and not _is_batik_supported(jdk):
-            continue
+    for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+        iterations = dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                               ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run Scala DaCapo benchmarks #
     ###############################
@@ -578,17 +566,16 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     scala_dacapo_gate_iterations = {
         k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
-
-    for name, iterations in sorted(scala_dacapo_gate_iterations.items()):
+    for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
+        iterations = scala_dacapo_gate_iterations.get(name, -1)
         with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
-            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) +
-                                     ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+            if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run benchmark with non default setup #
     ########################################
     # ensure -Xbatch still works
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-Xbatch'])
+        if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
@@ -601,7 +588,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
                 try:
-                    _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
+                    _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Dgraal.LogFile=' + logFile, '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-Dgraal.TimedDynamicCounters=1000', '-XX:JVMCICounterSize=10'])
                     with open(logFile) as fp:
                         haystack = fp.read()
                         needle = 'MoveOperations (dynamic counters)'
@@ -622,24 +609,24 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
     # ensure -XX:+PreserveFramePointer  still works
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
         # ensure CMS still works
         with Task(prefix + 'DaCapo_pmd:CMS', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
         with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
-            if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+            if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
         if prefix != '':
             # ensure G1 still works with libgraal
             with Task(prefix + 'DaCapo_pmd:G1', tasks, tags=cms) as t:
-                if t: _gate_dacapo('pmd', default_iterations, _remove_empty_entries(extraVMarguments) + ['-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+                if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UseG1GC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 
 
