@@ -171,6 +171,10 @@ public class StackTraceUtils {
         return true;
     }
 
+    public static boolean ignoredBySecurityStackWalk(MetaAccessProvider metaAccess, ResolvedJavaMethod method) {
+        return !shouldShowFrame(metaAccess, method, true, false, false);
+    }
+
     public static ClassLoader latestUserDefinedClassLoader(Pointer startSP) {
         GetLatestUserDefinedClassLoaderVisitor visitor = new GetLatestUserDefinedClassLoaderVisitor();
         JavaStackWalker.walkCurrentThread(startSP, visitor);
