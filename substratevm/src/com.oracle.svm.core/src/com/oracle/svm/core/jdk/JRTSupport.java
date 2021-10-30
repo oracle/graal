@@ -136,8 +136,10 @@ final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
  */
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTDisabled {
-    @Delete
-    static native Object reader();
+    @Substitute
+    static Object reader() {
+        throw VMError.unsupportedFeature("JRT file system is disabled");
+    }
 }
 
 @TargetClass(className = "sun.net.www.protocol.jrt.Handler", onlyWith = {JDK11OrLater.class, JRTDisabled.class})

@@ -1626,8 +1626,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Delete
     private native Class<?>[] getInterfaces0();
 
-    @Delete
-    native void setSigners(Object[] signers);
+    @Substitute
+    private void setSigners(@SuppressWarnings("unused") Object[] signers) {
+        throw VMError.unsupportedFeature("Class metadata cannot be changed at run time");
+    }
 
     @Delete
     private native java.security.ProtectionDomain getProtectionDomain0();
