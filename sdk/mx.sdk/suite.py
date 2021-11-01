@@ -162,6 +162,10 @@ suite = {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
             "sha1" : "f820252fc848e3f7ab7a7ebbe8e9b2d4b129a98e",
+          },
+          "aarch64" : {
+            # GR-34811
+            "optional": True,
           }
         },
         "windows" : {

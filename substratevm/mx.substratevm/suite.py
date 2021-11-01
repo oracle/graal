@@ -122,6 +122,10 @@ suite = {
                         "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
                     },
+                    "aarch64": {
+                        # GR-34811
+                        "optional": True,
+                    },
                 },
                 "<others>": {
                     "<others>": {
