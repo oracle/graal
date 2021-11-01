@@ -260,6 +260,40 @@ public abstract class LocalizationFeature implements Feature {
         }
     }
 
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (optimizedMode) {
+            access.registerObjectReplacer(this::eagerlyInitializeBundles);
+        }
+    }
+
+    /**
+     * In the optimized localization support, the bundles are stored in a map. In order to make the
+     * getContents methods unreachable, the bundles are initialized eagerly and the lookup methods
+     * are substituted. However, if there are bundle instances somewhere in the heap that were not
+     * put in the map, they won't be initialized and therefore accessing their content will cause
+     * runtime failures. Therefore, we visit each object in the heap and if it is a ResourceBundle,
+     * we eagerly initialize it.
+     */
+    private Object eagerlyInitializeBundles(Object object) {
+        assert optimizedMode : "Should only be triggered in the optimized mode.";
+        if (object instanceof ResourceBundle) {
+            ResourceBundle bundle = (ResourceBundle) object;
+            try {
+                /*
+                 * getKeys can be null for ResourceBundle.NONEXISTENT_BUNDLE, which causes the
+                 * keySet method to crash.
+                 */
+                if (bundle.getKeys() != null) {
+                    bundle.keySet();
+                }
+            } catch (Exception ex) {
+                trace("Failed to eagerly initialize bundle " + bundle + ", " + bundle.getBaseBundleName() + ", reason " + ex.getClass() + " " + ex.getMessage());
+            }
+        }
+        return object;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private LocalizationSupport selectLocalizationSupport() {
         if (optimizedMode) {
