@@ -50,7 +50,7 @@ vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_ja
     ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
   ]
-  timelimit: "4:00:00"
+  timelimit: "3:00:00"
 }
 
 vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_8} {
@@ -64,7 +64,7 @@ vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_
     ${vm_bench_common.upload}
     ${vm_bench_polybench_linux_compiler.compiler_bench_cmd} ["--polybench-vm-config=native-standard", "--metric=partial-evaluation-time"]
     ${vm_bench_common.upload}
-    ${vm_bench_polybench_linux_compiler.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=allocated-bytes"]
+    ${vm_bench_polybench_linux_compiler.compiler_bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=allocated-bytes"]
     ${vm_bench_common.upload}
   ]
 }
