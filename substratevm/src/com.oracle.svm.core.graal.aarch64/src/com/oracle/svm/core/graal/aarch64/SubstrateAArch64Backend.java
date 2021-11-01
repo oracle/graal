@@ -387,7 +387,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
-            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
             int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
