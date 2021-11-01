@@ -24,6 +24,9 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * Represents an immutable value whose correctness is determined by the assumption. The value is
@@ -35,7 +38,23 @@ public final class AssumptionGuardedValue<T> {
     private final Assumption hasValue;
     final T value;
 
-    public AssumptionGuardedValue(Assumption hasValue, T value) {
+    public static <T> AssumptionGuardedValue<T> create(T value) {
+        if (value == null) {
+            throw reportInvalidValue();
+        }
+        return new AssumptionGuardedValue<>(Truffle.getRuntime().createAssumption(), value);
+    }
+
+    @TruffleBoundary
+    private static NullPointerException reportInvalidValue() {
+        throw new NullPointerException("null is reserved for invalid value");
+    }
+
+    public static <T> AssumptionGuardedValue<T> createInvalid() {
+        return new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
+    }
+
+    private AssumptionGuardedValue(Assumption hasValue, T value) {
         this.hasValue = hasValue;
         this.value = value;
     }

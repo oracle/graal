@@ -25,11 +25,8 @@ package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -53,13 +50,13 @@ public final class SingleImplementor {
                     SingleImplementor.class,
                     AssumptionGuardedValue.class, "currentState");
 
-    static AssumptionGuardedValue<ObjectKlass> NoImplementorsState = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
-    static SingleImplementor MultipleImplementors = new SingleImplementor(NeverValidAssumption.INSTANCE, null);
+    static AssumptionGuardedValue<ObjectKlass> NoImplementorsState = AssumptionGuardedValue.createInvalid();
+    static SingleImplementor MultipleImplementors = new SingleImplementor(AssumptionGuardedValue.createInvalid());
     static AssumptionGuardedValue<ObjectKlass> MultipleImplementorsState = MultipleImplementors.read();
 
-    // Used directly only to create MultipeImplementors instance
-    private SingleImplementor(Assumption assumption, ObjectKlass value) {
-        this.currentState = new AssumptionGuardedValue<>(assumption, value);
+    // Used only to create MultipeImplementors instance
+    private SingleImplementor(AssumptionGuardedValue<ObjectKlass> state) {
+        this.currentState = state;
     }
 
     SingleImplementor() {
@@ -67,7 +64,7 @@ public final class SingleImplementor {
     }
 
     SingleImplementor(ObjectKlass implementor) {
-        this(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+        this.currentState = AssumptionGuardedValue.create(implementor);
     }
 
     void addImplementor(ObjectKlass implementor) {
@@ -78,7 +75,7 @@ public final class SingleImplementor {
         if (currentState == MultipleImplementorsState) {
             return;
         }
-        AssumptionGuardedValue<ObjectKlass> singleImplementor = new AssumptionGuardedValue<>(Truffle.getRuntime().createAssumption("single implementor"), implementor);
+        AssumptionGuardedValue<ObjectKlass> singleImplementor = AssumptionGuardedValue.create(implementor);
         if (!STATE_UPDATER.compareAndSet(this, NoImplementorsState, singleImplementor)) {
             // CAS failed, i.e. there already exists an implementor
             AssumptionGuardedValue<ObjectKlass> state = currentState;

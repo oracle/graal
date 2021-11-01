@@ -61,7 +61,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl(AlwaysValidAssumption.INSTANCE);
     protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
 
-    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
+    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
