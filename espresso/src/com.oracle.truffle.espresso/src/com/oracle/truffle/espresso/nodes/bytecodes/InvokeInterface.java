@@ -117,13 +117,6 @@ public abstract class InvokeInterface extends Node {
             throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", receiverKlass.getName(), interfaceKlass.getName());
         }
 
-        @Specialization(assumptions = "getNoImplementorsAssumption().getAssumption()")
-        Object callNoImplementors(Object[] args, @Bind("getReceiver(args)") StaticObject receiver) {
-            assert args[0] == receiver;
-            assert !StaticObject.isNull(receiver);
-            throw reportNotAnImplementor(receiver.getKlass());
-        }
-
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
