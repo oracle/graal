@@ -1204,6 +1204,14 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     def workloadSize(self):
         return "large"
 
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
+            ]
+        return skip_patterns
+
 
 class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
