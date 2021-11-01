@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -31,7 +30,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * class.
  */
 public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
-    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
+    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
