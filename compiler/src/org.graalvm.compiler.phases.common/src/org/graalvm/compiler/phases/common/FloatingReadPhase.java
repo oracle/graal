@@ -403,6 +403,7 @@ public class FloatingReadPhase extends Phase {
             if (checkpoint instanceof AddressableMemoryAccess) {
                 AddressNode address = ((AddressableMemoryAccess) checkpoint).getAddress();
                 if (identity.equals(init())) {
+                    // Track bases which are used for init memory
                     initMemory.add(address.getBase());
                 }
             }
@@ -410,10 +411,12 @@ public class FloatingReadPhase extends Phase {
 
         @SuppressWarnings("try")
         private void processFloatable(FloatableAccessNode accessNode, MemoryMapImpl state) {
+            // Bases can't be used for both init and other memory locations since init doesn't
+            // participate in the memory graph.
+            GraalError.guarantee(!initMemory.contains(accessNode.getAddress().getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
+
             StructuredGraph graph = accessNode.graph();
             LocationIdentity locationIdentity = accessNode.getLocationIdentity();
-            AddressNode address = accessNode.getAddress();
-            GraalError.guarantee(!initMemory.contains(address.getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
 
             if (accessNode.canFloat()) {
                 assert accessNode.getNullCheck() == false;
