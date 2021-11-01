@@ -1,11 +1,11 @@
 
 builds += [
   # Darwin AMD64
-  ${gateBootstrapLite}       ${oraclejdk8}     ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
-  ${gateBootstrapLite}       ${labsjdk-ee-11}  ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-labsjdk-ee-11-darwin-amd64"} ${graalWeekly}
+  ${gateBootstrapLite}       ${labsjdk-ee-11}  ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-labsjdk-ee-11-darwin-amd64"}
+  ${gateBootstrapLite}       ${labsjdk-ee-17}  ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-labsjdk-ee-17-darwin-amd64"}
 
   # Linux AMD64
-  ${gateBootstrap}           ${oraclejdk8}     ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
-  ${gateBootstrapFullVerify} ${oraclejdk8}     ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap}           ${labsjdk-ee-11}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk-ee-11-linux-amd64"}
+  ${gateBootstrap}           ${labsjdk-ee-17}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-labsjdk-ee-17-linux-amd64"}
+  ${gateBootstrapFullVerify} ${labsjdk-ee-17}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-labsjdk-ee-17-linux-amd64"}
 ]
