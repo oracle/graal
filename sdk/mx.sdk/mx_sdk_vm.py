@@ -243,8 +243,7 @@ class GraalVmComponent(object):
                  dependencies=None,
                  supported=None,
                  early_adopter=False,
-                 stability=None,
-                 explicit_include_only=False):
+                 stability=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -325,7 +324,6 @@ class GraalVmComponent(object):
                 else:
                     stability = "experimental"
         self.stability = stability
-        self.explicit_include_only = explicit_include_only
 
         self.jlink = jlink
 
@@ -468,7 +466,7 @@ def graalvm_components(opt_limit_to_suite=False):
     if opt_limit_to_suite and mx.get_opts().specific_suites:
         return [c for c in _graalvm_components.values() if c.suite.name in mx.get_opts().specific_suites]
     else:
-        return [c for c in list(_graalvm_components.values()) if not c.explicit_include_only]
+        return list(_graalvm_components.values())
 
 
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
