@@ -29,9 +29,9 @@ import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
-    protected static final ClassHierarchyAssumption AlwaysValid = new ClassHierarchyAssumptionImpl(AlwaysValidAssumption.INSTANCE);
-    protected static final ClassHierarchyAssumption NeverValid = new ClassHierarchyAssumptionImpl(NeverValidAssumption.INSTANCE);
+final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
+    static final ClassHierarchyAssumption AlwaysValid = new ClassHierarchyAssumptionImpl(AlwaysValidAssumption.INSTANCE);
+    static final ClassHierarchyAssumption NeverValid = new ClassHierarchyAssumptionImpl(NeverValidAssumption.INSTANCE);
 
     private final Assumption underlying;
 
