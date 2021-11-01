@@ -42,10 +42,6 @@
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
   } + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
 
-  jdk8:: common.oraclejdk8 + {
-    jdk:: "jdk8",
-  },
-
   labsjdk_ce_11: common["labsjdk-ce-11"] {
     jdk:: "jdk11",
     downloads+: {
