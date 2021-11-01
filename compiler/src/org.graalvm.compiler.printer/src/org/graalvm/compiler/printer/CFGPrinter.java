@@ -25,6 +25,7 @@
 package org.graalvm.compiler.printer;
 
 import static java.lang.Character.toLowerCase;
+import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
+import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
@@ -357,7 +359,8 @@ class CFGPrinter extends CompilationPrinter {
 
         if (nodeLirGenerator != null) {
             Value operand = nodeLirGenerator.hasOperand(node) ? nodeLirGenerator.operand(node) : null;
-            if (operand != null) {
+            // Matcher related values aren't real values and confuse the c1visualizer parsing
+            if (operand != null && !operand.equals(INTERIOR_MATCH) && !(operand instanceof ComplexMatchValue)) {
                 out.print("result ").print(operand.toString()).println(COLUMN_END);
             }
         }
