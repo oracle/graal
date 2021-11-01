@@ -43,76 +43,55 @@ package org.graalvm.wasm.memory;
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
-import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
-import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.lang.reflect.Field;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
-import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
-@ExportLibrary(InteropLibrary.class)
-public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
-    /**
-     * @see #declaredMinSize()
-     */
-    private final int declaredMinSize;
+public final class UnsafeWasmMemory extends WasmMemory {
 
-    /**
-     * @see #declaredMaxSize()
-     */
-    private final int declaredMaxSize;
     private long startAddress;
     private int size;
 
-    /**
-     * The maximum practical size of this memory instance (measured in number of
-     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
-     * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
-     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
-     * API for example has lower limits).
-     * <p>
-     * This is different from {@link #declaredMaxSize()}, which can be higher.
-     */
-    private final int maxAllowedSize;
+    private ByteBuffer buffer;
 
     private static final Unsafe unsafe;
+    private static final long addressOffset;
 
     private UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
-        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
-        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
-        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
-        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-
-        this.declaredMinSize = declaredMinSize;
-        this.declaredMaxSize = declaredMaxSize;
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
         this.size = declaredMinSize;
-        this.maxAllowedSize = maxAllowedSize;
         final long byteSize = byteSize();
-        try {
-            this.startAddress = unsafe.allocateMemory(byteSize);
-        } catch (OutOfMemoryError error) {
-            CompilerDirectives.transferToInterpreter();
-            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
-        }
-        unsafe.setMemory(startAddress, byteSize, (byte) 0);
+        this.buffer = allocateBuffer(byteSize);
+        this.startAddress = getBufferAddress(buffer);
     }
 
     public UnsafeWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
         this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    }
+
+    @TruffleBoundary
+    private static ByteBuffer allocateBuffer(final long byteSize) {
+        assert (int) byteSize == byteSize : byteSize;
+        try {
+            return ByteBuffer.allocateDirect((int) byteSize);
+        } catch (OutOfMemoryError error) {
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
+    }
+
+    private static long getBufferAddress(ByteBuffer buffer) {
+        return unsafe.getLong(buffer, addressOffset);
     }
 
     private void validateAddress(Node node, long address, int length) {
@@ -135,8 +114,8 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     @Override
     public void reset() {
         size = declaredMinSize;
-        unsafe.freeMemory(startAddress);
-        startAddress = unsafe.allocateMemory(byteSize());
+        buffer = allocateBuffer(byteSize());
+        startAddress = getBufferAddress(buffer);
     }
 
     @Override
@@ -150,16 +129,6 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     @Override
-    public int declaredMinSize() {
-        return declaredMinSize;
-    }
-
-    @Override
-    public int declaredMaxSize() {
-        return declaredMaxSize;
-    }
-
-    @Override
     @TruffleBoundary
     public boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
@@ -169,18 +138,15 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
-            try {
-                final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
-                unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
-                unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
-                unsafe.freeMemory(startAddress);
-                startAddress = updatedStartAddress;
-                size += extraPageSize;
-                invokeGrowCallback();
-                return true;
-            } catch (OutOfMemoryError error) {
-                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
-            }
+            final long sourceByteSize = byteSize();
+            ByteBuffer updatedBuffer = allocateBuffer(targetByteSize);
+            final long updatedStartAddress = getBufferAddress(updatedBuffer);
+            unsafe.copyMemory(startAddress, updatedStartAddress, sourceByteSize);
+            buffer = updatedBuffer;
+            startAddress = updatedStartAddress;
+            size += extraPageSize;
+            invokeGrowCallback();
+            return true;
         } else {
             return false;
         }
@@ -348,7 +314,7 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
     }
 
     public void free() {
-        unsafe.freeMemory(this.startAddress);
+        buffer = null;
         startAddress = 0;
         size = 0;
     }
@@ -364,15 +330,9 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
         }
     }
 
-    @SuppressWarnings("static-method")
-    @ExportMessage
-    public boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    public long asPointer() {
-        return startAddress;
+    @Override
+    public ByteBuffer asByteBuffer() {
+        return buffer.duplicate();
     }
 
     static {
@@ -380,6 +340,8 @@ public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable 
             final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
+            Field addressField = Buffer.class.getDeclaredField("address");
+            addressOffset = unsafe.objectFieldOffset(addressField);
         } catch (Exception e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }

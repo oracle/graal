@@ -1,5 +1,4 @@
-DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-js
+DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
+COMPONENTS=cmp,cov,dap,dis,gu,gvm,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi,ni,nic,nil,nju,njucp,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,gu,js,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lli,native-image,native-image-configure
 DISABLE_INSTALLABLES=llp
-EXCLUDE_COMPONENTS=pbm,pmh,llmulrl
-FORCE_BASH_LAUNCHERS=polyglot
-SKIP_LIBRARIES=polyglot

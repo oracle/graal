@@ -15,7 +15,7 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 * [GraalVM Enterprise Architecture](#graalvm-enterprise-architecture)
 * [Runtime Modes](#runtime-modes)
 * [Available Distributions](#available-distributions)
-* [Supported Platforms](#supported-platforms)
+* [Certified Platforms](#certified-platforms)
 * [Distribution Components List](#distribution-components-list)
 * [Licensing and Support](#licensing-and-support)
 * [Experimental and Early Adopter Features](#experimental-and-early-adopter-features)

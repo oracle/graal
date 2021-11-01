@@ -352,7 +352,7 @@ public class HostAccessTest {
             fail();
         } catch (UnsupportedOperationException e) {
         }
-        assertEquals(0, value.getMemberKeys().size());
+        assertEquals(2 /* arr.length and arr.clone(). */, value.getMemberKeys().size());
         ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 

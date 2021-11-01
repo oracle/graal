@@ -1,3 +1,5 @@
-DYNAMIC_IMPORTS=/substratevm,/sulong
-COMPONENTS=Polybench Launcher,Polybench Instruments,Native Image,LLVM Runtime Launcher,LLVM Runtime Native,LibGraal
-NATIVE_IMAGES=polybench,lib:jvmcicompiler
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
+COMPONENTS=cmp,lg,llrc,llrl,llrn,nfi,ni,nil,pbm,pbi,sdk,svm,svmnfi,tfl,tflm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=lib:jvmcicompiler,polybench
+DISABLE_INSTALLABLES=False

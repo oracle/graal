@@ -56,7 +56,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -554,19 +553,22 @@ public class SubstrateGraphBuilderPlugins {
                      * constant. That also allows us to constant-fold the required check that the
                      * component type is a primitive type.
                      */
-                    if (componentTypeNode.isJavaConstant() && componentTypeNode.asJavaConstant().isNonNull()) {
-                        ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
-                        if (componentType.isPrimitive()) {
-                            /* Emits a null-check for the otherwise unused receiver. */
-                            unsafe.get();
-
-                            LogicNode lengthNegative = b.append(IntegerLessThanNode.create(lengthNode, ConstantNode.forInt(0), NodeView.DEFAULT));
-                            b.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
-                            b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthNode, false));
-                            return true;
-                        }
+                    if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
+                        return false;
                     }
-                    return false;
+                    ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
+                    if (componentType == null || !componentType.isPrimitive()) {
+                        return false;
+                    }
+                    /* Emits a null-check for the otherwise unused receiver. */
+                    unsafe.get();
+                    /*
+                     * Note that allocateUninitializedArray must throw a IllegalArgumentException,
+                     * and not a NegativeArraySizeException, when the length is negative.
+                     */
+                    ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
+                    b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthPositive, false));
+                    return true;
                 }
             });
         }
@@ -667,7 +669,7 @@ public class SubstrateGraphBuilderPlugins {
             /* A NullPointerException will be thrown at run time for this call. */
             return false;
         }
-        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 16 &&
+        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17 &&
                         (RecordSupport.singleton().isRecord(targetField.getDeclaringClass()) || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
             /*
              * After JDK 11, sun.misc.Unsafe performs a few more checks than

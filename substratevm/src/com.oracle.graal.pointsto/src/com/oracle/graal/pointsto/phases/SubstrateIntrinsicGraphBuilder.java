@@ -79,7 +79,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
     }
 
     @Override
-    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode retVal) {
+    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode retVal) {
         return getFrameState(retVal);
     }
 

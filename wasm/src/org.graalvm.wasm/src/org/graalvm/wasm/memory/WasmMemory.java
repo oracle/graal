@@ -40,6 +40,11 @@
  */
 package org.graalvm.wasm.memory;
 
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
+
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
@@ -70,7 +75,44 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory extends EmbedderDataHolder implements TruffleObject {
 
-    private Object growCallback = null;
+    /**
+     * @see #declaredMinSize()
+     */
+    protected final int declaredMinSize;
+
+    /**
+     * @see #declaredMaxSize()
+     */
+    protected final int declaredMaxSize;
+
+    /**
+     * The maximum practical size of this memory instance (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
+     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
+     * API for example has lower limits).
+     * <p>
+     * This is different from {@link #declaredMaxSize()}, which can be higher.
+     */
+    protected final int maxAllowedSize;
+
+    /**
+     * Optional grow callback to notify the embedder .
+     */
+    private Object growCallback;
+
+    protected WasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
+        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
+        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
+        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
+        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
+
+        this.declaredMinSize = declaredMinSize;
+        this.declaredMaxSize = declaredMaxSize;
+        this.maxAllowedSize = maxAllowedSize;
+    }
 
     public abstract void copy(Node node, int src, int dst, int n);
 
@@ -92,7 +134,9 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * This is a lower bound on this memory's size. This memory can only be imported with a lower or
      * equal minimum size.
      */
-    public abstract int declaredMinSize();
+    public final int declaredMinSize() {
+        return declaredMinSize;
+    }
 
     /**
      * The maximum size of this memory as declared in the binary (measured in number of
@@ -103,7 +147,9 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * <p>
      * This is different from the internal maximum allowed size, which can be lower.
      */
-    public abstract int declaredMaxSize();
+    public final int declaredMaxSize() {
+        return declaredMaxSize;
+    }
 
     public abstract boolean grow(int extraPageSize);
 
@@ -505,4 +551,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected void invokeGrowCallback() {
         WebAssembly.invokeMemGrowCallback(this);
     }
+
+    public abstract void close();
+
+    public abstract ByteBuffer asByteBuffer();
 }

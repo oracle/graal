@@ -94,7 +94,7 @@ final class EspressoPhantomReference extends PhantomReference<StaticObject> impl
 
 /**
  * Usable version of {@link PublicFinalReference} is injected early via
- * {@link sun.misc.Unsafe#defineClass} on the the boot class loader.
+ * {@code sun.misc.Unsafe#defineClass} on the the boot class loader.
  */
 final class EspressoFinalReference extends PublicFinalReference<StaticObject> implements EspressoReference<StaticObject> {
 

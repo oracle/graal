@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
@@ -81,7 +82,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
-import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -117,7 +117,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(DynamicHub hub,
                     @ConstantParameter long size,
-                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
@@ -131,7 +131,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size),
-                        false, true, false, profilingData);
+                        FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, true, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -140,7 +140,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     int length,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter FillContent fillContents,
                     @ConstantParameter int fillStartOffset,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean maybeUnroll,
@@ -154,7 +154,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
+    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
@@ -162,7 +162,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
+    public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
@@ -196,15 +196,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     /** Foreign call: {@link #NEW_MULTI_ARRAY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object newMultiArrayStub(Word dynamicHub, int rank, Word dimensionsStackValue) {
-        /*
-         * All dimensions must be checked here up front, since a previous dimension of length 0
-         * stops allocation of inner dimensions.
-         */
-        for (int i = 0; i < rank; i++) {
-            if (dimensionsStackValue.readInt(i * 4) < 0) {
-                throw new NegativeArraySizeException();
-            }
-        }
         // newMultiArray does not have a fast path, so there is no need to encode the hub as an
         // object header.
         DynamicHub hub = (DynamicHub) dynamicHub.toObject();
@@ -520,7 +511,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.addConst("size", size);
-                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, type));
 
@@ -552,7 +543,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", fillContents);
+                args.addConst("fillContents", FillContent.fromBoolean(fillContents));
                 args.addConst("fillStartOffset", afterArrayLengthOffset());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
@@ -585,7 +576,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
                 args.addConst("arrayBaseOffset", arrayBaseOffset);
                 args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("fillStartOffset", afterArrayLengthOffset());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("maybeUnroll", length.isConstant());
@@ -633,7 +624,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("profilingData", getProfilingData(node, null));
 
@@ -652,7 +643,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("fillContents", node.fillContents());
+                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));

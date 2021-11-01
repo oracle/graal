@@ -31,8 +31,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.VerificationError;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -128,7 +128,7 @@ public class NodeCostUtil {
         if (deltaCompare(codeSizeAfter, codeSizeBefore * codeSizeIncrease, graphSizeDelta) > 0) {
             ResolvedJavaMethod method = graph.method();
             double increase = (double) codeSizeAfter / (double) codeSizeBefore;
-            throw new VerificationError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %d, after: %d)%s",
+            throw new GraalGraphError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %d, after: %d)%s",
                             contract.contractorName(), codeSizeIncrease, increase, codeSizeBefore, codeSizeAfter,
                             method != null ? " when compiling method " + method.format("%H.%n(%p)") + "." : ".");
         }

@@ -972,16 +972,7 @@ public class SnippetTemplate {
             ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
             ArrayList<ValueNode> curPlaceholderStampedNodes = new ArrayList<>();
 
-            boolean containsMerge = false;
-            boolean containsLoopExit = false;
-
             for (Node node : snippetCopy.getNodes()) {
-                if (node instanceof AbstractMergeNode) {
-                    containsMerge = true;
-                }
-                if (node instanceof LoopExitNode) {
-                    containsLoopExit = true;
-                }
                 if (node instanceof ValueNode) {
                     ValueNode valueNode = (ValueNode) node;
                     if (valueNode.stamp(NodeView.DEFAULT) == PlaceholderStamp.singleton()) {
@@ -1093,7 +1084,6 @@ public class SnippetTemplate {
                         memMaps.add(memoryMapNode);
                     }
                 }
-                containsMerge = true;
                 ValueNode returnValue = InliningUtil.mergeReturns(merge, returnNodes);
                 this.returnNode = snippet.add(new ReturnNode(returnValue));
                 if (!memMaps.isEmpty()) {
@@ -1112,7 +1102,7 @@ public class SnippetTemplate {
             debug.dump(DebugContext.INFO_LEVEL, snippet, "After fixing returns");
             canonicalizer.apply(snippet, providers);
 
-            boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts() && (containsMerge || containsLoopExit);
+            boolean needsMergeStateMap = !guardsStage.areFrameStatesAtDeopts();
 
             if (needsMergeStateMap) {
                 frameStateAssignment = new SnippetFrameStateAssignmentClosure(snippetCopy);
@@ -1978,50 +1968,6 @@ public class SnippetTemplate {
     }
 
     private void rewireFrameStatesBeforeFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
-        if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect() && ((StateSplit) replacee).stateAfter() != null) {
-            /*
-             * We have a side-effecting node that is lowered to a snippet that also contains
-             * side-effecting nodes. Either of 2 cases applies: either there is a frame state merge
-             * assignment meaning there are merges in the snippet that require states, then those
-             * will be assigned based on a reverse post order iteration of the snippet examining
-             * effects and trying to find a proper state, or no merges are in the graph, i.e., there
-             * is no complex control flow so every side-effecting node in the snippet can have the
-             * state after of the original node with the correct values replaced (i.e. the replacee
-             * itself in the snippet)
-             */
-            for (StateSplit sideEffectNode : sideEffectNodes) {
-                assert ((StateSplit) replacee).hasSideEffect();
-                Node sideEffectDup = duplicates.get(sideEffectNode.asNode());
-                assert sideEffectDup != null : sideEffectNode;
-                FrameState stateAfter = ((StateSplit) replacee).stateAfter();
-                assert stateAfter != null : "Replacee " + replacee + " has no state after";
-
-                if (sideEffectDup instanceof DeoptBciSupplier) {
-                    if (replacee instanceof DeoptBciSupplier) {
-                        ((DeoptBciSupplier) sideEffectDup).setBci(((DeoptBciSupplier) replacee).bci());
-                    }
-                }
-                if (stateAfter.values().contains(replacee)) {
-                    FrameState duplicated = stateAfter.duplicate();
-                    ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
-                    if (valueInReplacement instanceof ValuePhiNode) {
-                        valueInReplacement = (ValueNode) sideEffectDup;
-                    }
-                    ValueNode replacement = valueInReplacement;
-                    duplicated.applyToNonVirtual(new NodePositionClosure<Node>() {
-                        @Override
-                        public void apply(Node from, Position p) {
-                            if (p.get(from) == replacee) {
-                                p.set(from, replacement);
-                            }
-                        }
-                    });
-                    ((StateSplit) sideEffectDup).setStateAfter(duplicated);
-                } else {
-                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
-                }
-            }
-        }
         if (frameStateAssignment != null) {
             assignNecessaryFrameStates(replacee, duplicates, replaceeGraphCFGPredecessor);
         }
@@ -2031,7 +1977,7 @@ public class SnippetTemplate {
         FrameState stateAfter = null;
         if (replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect()) {
             stateAfter = ((StateSplit) replacee).stateAfter();
-            assert stateAfter != null : "Statesplit with side-effect needs a framestate " + replacee;
+            GraalError.guarantee(stateAfter != null, "Statesplit with side-effect %s needs a framestate", replacee);
         } else {
             /*
              * We dont have a state split as a replacee, thus we take the prev state as the state
@@ -2043,22 +1989,17 @@ public class SnippetTemplate {
         MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
         while (stateAssignments.advance()) {
             Node nodeRequiringState = stateAssignments.getKey();
+
+            if (nodeRequiringState instanceof DeoptBciSupplier) {
+                if (replacee instanceof DeoptBciSupplier) {
+                    ((DeoptBciSupplier) duplicates.get(nodeRequiringState)).setBci(((DeoptBciSupplier) replacee).bci());
+                }
+            }
+
             NodeStateAssignment assignment = stateAssignments.getValue();
             switch (assignment) {
                 case AFTER_BCI:
-                    FrameState newState = stateAfter.duplicate();
-                    if (stateAfter.values().contains(replacee)) {
-                        ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
-                        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
-                            @Override
-                            public void apply(Node from, Position p) {
-                                if (p.get(from) == replacee) {
-                                    p.set(from, valueInReplacement);
-                                }
-                            }
-                        });
-                    }
-                    ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(newState);
+                    setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfter);
                     break;
                 case BEFORE_BCI:
                     FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
@@ -2073,9 +2014,35 @@ public class SnippetTemplate {
                 default:
                     throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment);
             }
-            replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL,
-                            replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
+            replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
         }
+    }
+
+    private void setReplaceeGraphStateAfter(Node nodeRequiringState, Node replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FrameState stateAfter) {
+        FrameState newState = stateAfter.duplicate();
+        if (stateAfter.values().contains(replacee)) {
+            ValueNode valueInReplacement = (ValueNode) duplicates.get(returnNode.result());
+            if (!(nodeRequiringState instanceof AbstractMergeNode || nodeRequiringState instanceof LoopExitNode)) {
+                // merges and loop exit cannot have "this node" on stack
+                if (valueInReplacement instanceof ValuePhiNode) {
+                    Node sideEffectDup = duplicates.get(nodeRequiringState);
+                    valueInReplacement = (ValueNode) sideEffectDup;
+                }
+            }
+            propagateValInState(newState, replacee, valueInReplacement);
+        }
+        ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(newState);
+    }
+
+    private static void propagateValInState(FrameState newState, Node replacee, Node replacement) {
+        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
+            @Override
+            public void apply(Node from, Position p) {
+                if (p.get(from) == replacee) {
+                    p.set(from, replacement);
+                }
+            }
+        });
     }
 
     private void rewireFrameStatesAfterFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {

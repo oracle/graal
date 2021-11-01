@@ -11,20 +11,26 @@
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-21.3-b03", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.13+9-jvmci-21.3-b03", "platformspecific": true },
 
-    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
+    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17+35-jvmci-21.3-b03-debug", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03", "platformspecific": true },
     "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.1+9-jvmci-21.3-b03-debug", "platformspecific": true }
   },
 
-  "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
+  "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
       "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
       "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
   },
+
+  "catch_files" : [
+    "Graal diagnostic output saved in '(?P<filename>[^']+)'",
+    "Dumping debug output to '(?P<filename>[^']+)'"
+  ],
+
   "deps": {
     "COMMENT.common": [
       "pip:isort is a dependency of pip:pylint. The explicit dependency on the pip package works around",

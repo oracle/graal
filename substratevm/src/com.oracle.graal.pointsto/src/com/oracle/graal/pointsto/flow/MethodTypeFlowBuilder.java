@@ -93,7 +93,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
@@ -1118,8 +1118,8 @@ public class MethodTypeFlowBuilder {
                 AtomicReadAndWriteNode node = (AtomicReadAndWriteNode) n;
                 modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
 
-            } else if (n instanceof ArrayCopy) {
-                ArrayCopy node = (ArrayCopy) n;
+            } else if (n instanceof BasicArrayCopyNode) {
+                BasicArrayCopyNode node = (BasicArrayCopyNode) n;
 
                 TypeFlowBuilder<?> srcBuilder = state.lookup(node.getSource());
                 TypeFlowBuilder<?> dstBuilder = state.lookup(node.getDestination());

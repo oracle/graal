@@ -309,7 +309,8 @@ if 'CPPFLAGS' in os.environ:
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
 # Polybench bm suite
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
-
+# LLVM unit tests suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 
 _toolchains = {}
 

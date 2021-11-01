@@ -40,16 +40,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ModuleSupport;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -107,7 +107,7 @@ public class SourceCache {
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
-        if (JavaVersionUtil.JAVA_SPEC < 11) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             Path srcZipDir = javaHomePath.getParent();
             if (srcZipDir == null) {
                 VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);

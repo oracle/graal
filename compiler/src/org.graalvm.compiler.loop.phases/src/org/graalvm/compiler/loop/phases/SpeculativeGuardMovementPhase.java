@@ -182,6 +182,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 LogicNode condition = guard.getCondition();
+
                 Loop<Block> forcedHoisting = null;
                 if (condition instanceof IntegerLessThanNode || condition instanceof IntegerBelowNode) {
                     forcedHoisting = tryOptimizeCompare(guard, (CompareNode) condition);
@@ -253,17 +254,12 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                 bound = compare.getY();
                 mirrored = false;
             }
+
             if (tryOptimizeCompare(compare, iv, bound, mirrored, guard)) {
-                if (isInverted(iv.getLoop())) {
-                    return null;
-                }
                 return iv.getLoop().loop();
             }
             if (otherIV != null) {
                 if (tryOptimizeCompare(compare, otherIV, iv.valueNode(), !mirrored, guard)) {
-                    if (isInverted(iv.getLoop())) {
-                        return null;
-                    }
                     return otherIV.getLoop().loop();
                 }
             }

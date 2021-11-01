@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordCastNode;
 import org.junit.Assert;
@@ -45,6 +44,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -253,13 +253,12 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, DerivedOopTest.class);
-        ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-
-        ResolvedJavaMethod intrinsic = getResolvedJavaMethod("getRawPointerIntrinsic");
         r.register1("getRawPointer", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                return b.intrinsify(bytecodeProvider, targetMethod, intrinsic, receiver, new ValueNode[]{arg});
+                WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));
+                b.addPush(JavaKind.Long, objectToTracked);
+                return true;
             }
         });
         super.registerInvocationPlugins(invocationPlugins);

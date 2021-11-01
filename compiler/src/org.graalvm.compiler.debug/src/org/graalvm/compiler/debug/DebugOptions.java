@@ -124,7 +124,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Specify the DumpLevel if CompilationFailureAction#Diagnose is used." +
+    @Option(help = "Specify the dump level if CompilationFailureAction#Diagnose is used." +
                     "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Integer> DiagnoseDumpLevel = new OptionKey<>(DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
@@ -197,6 +197,13 @@ public class DebugOptions {
     // @formatter:on
 
     /**
+     * The format of the message printed on the console by {@link #getDumpDirectory} when
+     * {@link DebugOptions#ShowDumpFiles} is true. The {@code %s} placeholder is replaced with the
+     * value returned by {@link #getDumpDirectory}.
+     */
+    private static final String DUMP_DIRECTORY_MESSAGE_FORMAT = "Dumping debug output in '%s'";
+
+    /**
      * Gets the directory in which {@link DebugDumpHandler}s can generate output. This will be the
      * directory specified by {@link #DumpPath} if it has been set otherwise it will be derived from
      * the default value of {@link #DumpPath} and {@link GraalServices#getGlobalTimeStamp()}.
@@ -214,7 +221,7 @@ public class DebugOptions {
                 if (!exists(dumpDir)) {
                     createDirectories(dumpDir);
                     if (ShowDumpFiles.getValue(options)) {
-                        TTY.println("Dumping debug output in %s", dumpDir.toString());
+                        TTY.println(DUMP_DIRECTORY_MESSAGE_FORMAT, dumpDir);
                     }
                 }
             }

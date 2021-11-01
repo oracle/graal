@@ -43,11 +43,14 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
@@ -57,6 +60,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -298,6 +302,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      */
     IntrinsicContext getIntrinsic();
 
+    boolean isParsingInvocationPlugin();
+
     BailoutException bailout(String string);
 
     default ValueNode nullCheckedValue(ValueNode value) {
@@ -309,6 +315,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * since it might be checking a range of indexes for an operation on an array body.
      */
     default GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
+        assert isParsingInvocationPlugin();
         if (needsExplicitException()) {
             return emitBytecodeExceptionCheck(condition, negated, BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS);
         } else {
@@ -332,6 +339,28 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             return getGraph().addOrUniqueWithInputs(PiNode.create(value, objectNonNull(), guardingNode.asNode()));
         }
         return value;
+    }
+
+    /**
+     * When {@link #needsExplicitException} is true, the method returns a node with a stamp that is
+     * always positive and emits code that throws the provided exceptionKind for a negative length.
+     */
+    default ValueNode maybeEmitExplicitNegativeArraySizeCheck(ValueNode arrayLength, BytecodeExceptionKind exceptionKind) {
+        if (!needsExplicitException() || ((IntegerStamp) arrayLength.stamp(NodeView.DEFAULT)).isPositive()) {
+            return arrayLength;
+        }
+        ConstantNode zero = ConstantNode.defaultForKind(arrayLength.getStackKind());
+        LogicNode condition = append(IntegerLessThanNode.create(getConstantReflection(), getMetaAccess(), getOptions(), null, arrayLength, zero, NodeView.DEFAULT));
+        ValueNode[] arguments = exceptionKind.getNumArguments() == 1 ? new ValueNode[]{arrayLength} : new ValueNode[0];
+        GuardingNode guardingNode = emitBytecodeExceptionCheck(condition, false, exceptionKind, arguments);
+        if (guardingNode == null) {
+            return arrayLength;
+        }
+        return append(PiNode.create(arrayLength, StampFactory.positiveInt(), guardingNode.asNode()));
+    }
+
+    default ValueNode maybeEmitExplicitNegativeArraySizeCheck(ValueNode arrayLength) {
+        return maybeEmitExplicitNegativeArraySizeCheck(arrayLength, BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE);
     }
 
     default GuardingNode maybeEmitExplicitDivisionByZeroCheck(ValueNode divisor) {
@@ -382,14 +411,14 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Some {@link InvocationPlugin InvocationPlugins} have to build a
-     * {@link org.graalvm.compiler.nodes.MergeNode} to handle multiple return paths but not all
-     * contexts can do this.
+     * Some {@link InvocationPlugin InvocationPlugins} have to build a {@link MergeNode} to handle
+     * multiple return paths but not all contexts can do this.
      *
-     * @return false if {@link #getIntrinsicReturnState(JavaKind, ValueNode)} cannot be called (i.e.
-     *         it unconditionally raises an error)
+     * @return false if {@link #getInvocationPluginReturnState(JavaKind, ValueNode)} cannot be
+     *         called (i.e. it unconditionally raises an error)
      */
     default boolean canMergeIntrinsicReturns() {
+        assert isParsingInvocationPlugin();
         return false;
     }
 
@@ -398,16 +427,29 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * the top of stack. Usually this will be a state in the caller after the call site.
      */
     @SuppressWarnings("unused")
-    default FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnValue) {
+    default FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode returnValue) {
         throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
     }
 
     /**
-     * When this returns true, the parser will report an error if an {@link InvocationPlugin}
+     * Build a FrameState that represents the represents the state before an intrinsic was invoked.
+     */
+    @SuppressWarnings("all")
+    default FrameState getInvocationPluginBeforeState() {
+        throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
+    }
+
+    /**
+     * When this returns false, the parser will report an error if an {@link InvocationPlugin}
      * inserts a {@link org.graalvm.compiler.nodes.DeoptimizeNode} or {@link FixedGuardNode}.
      */
-    default boolean disallowDeoptInPlugins() {
-        return StrictDeoptInsertionChecks.getValue(getOptions());
+    default boolean allowDeoptInPlugins() {
+        return !StrictDeoptInsertionChecks.getValue(getOptions());
+    }
+
+    @SuppressWarnings("all")
+    default Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
+        throw new GraalError("Cannot be called on a " + getClass().getName() + " object");
     }
 
     /**

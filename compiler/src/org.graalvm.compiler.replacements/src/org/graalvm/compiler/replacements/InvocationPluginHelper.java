@@ -24,10 +24,14 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+
 import java.util.ArrayList;
 
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -35,13 +39,17 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -60,27 +68,28 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This is a helper class for writing moderately complex
- * {@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin InvocationPlugins}. It's
- * intentionally more limited than something like {@link GraphKit} because it's rarely useful to
- * write explicit plugins for complex pieces of logic. They are better handled by writing a snippet
- * for the complex logic and having an {@link InvocationPlugin} that performs any required null
- * checks or range checks and then adds a node which is later lowered from the snippet. A major
- * reason for this is that any complex control invariably has {@link MergeNode MergeNodes} which are
- * required to have a valid {@link org.graalvm.compiler.nodes.FrameState} when they comes out of the
- * parser. For intrinsics the only valid {@link org.graalvm.compiler.nodes.FrameState FrameStates}
- * is the entry state and the state after then return and it can be hard to correctly assign states
- * to the merges. There is also little benefit to introducing complex intrinsic graphs early because
- * their are rarely amenable to high level optimizations.
+ * This is a helper class for writing moderately complex {@link InvocationPlugin InvocationPlugins}.
+ * It's intentionally more limited than something like {@link GraphKit} because it's rarely useful
+ * to write explicit plugins for complex pieces of logic. They are better handled by writing a
+ * snippet for the complex logic and having an {@link InvocationPlugin} that performs any required
+ * null checks or range checks and then adds a node which is later lowered by the snippet. A major
+ * reason for this is that any complex control invariably has {@link MergeNode}s which are required
+ * to have a valid {@link FrameState}s when they comes out of the parser. For intrinsics the only
+ * valid {@link FrameState}s is the entry state and the state after the return and it can be hard to
+ * correctly assign states to the merges. There is also little benefit to introducing complex
+ * intrinsic graphs early because they are rarely amenable to high level optimizations.
  *
  * The recommended usage pattern is to construct the helper instance in a try/resource block, which
  * performs some sanity checking when the block is exited.
@@ -91,22 +100,22 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * </pre>
  *
  * The main idiom provided is {@link #emitReturnIf(LogicNode, boolean, ValueNode, double)} plus
- * variants. It models a side exit from a main sequence of logic.
- * {@link org.graalvm.compiler.nodes.FixedWithNextNode FixedWithNextNodes} are inserted in the main
- * control flow and until the final return value is emitted with
+ * variants. It models a side exit from a main sequence of logic. {@link FixedWithNextNode}s are
+ * inserted in the main control flow and until the final return value is emitted with
  * {@link #emitFinalReturn(JavaKind, ValueNode)}. If only a single value is returned the normal
  * {@link GraphBuilderContext#addPush(JavaKind, ValueNode)} can be used instead.
  */
 public class InvocationPluginHelper implements DebugCloseable {
     protected final GraphBuilderContext b;
-    protected final JavaKind wordKind;
+    private final JavaKind wordKind;
     private final JavaKind returnKind;
     private final ArrayList<ReturnData> returns = new ArrayList<>();
     private boolean emittedReturn;
+    private FixedWithNextNode fallbackEntry;
 
     public ValueNode arraylength(ValueNode receiverValue) {
-        // assert StampTool.isPointerAlwaysNull(receiverValue);
-        return b.add(new ArrayLengthNode(receiverValue));
+        assert StampTool.isPointerNonNull(receiverValue);
+        return b.add(ArrayLengthNode.create(receiverValue, b.getConstantReflection()));
     }
 
     @Override
@@ -114,6 +123,14 @@ public class InvocationPluginHelper implements DebugCloseable {
         if (returns.size() != 0 && !emittedReturn) {
             throw new InternalError("must call emitReturn before plugin returns");
         }
+    }
+
+    public JavaKind getWordKind() {
+        return wordKind;
+    }
+
+    public PiNode piCast(ValueNode value, GuardingNode nonnullGuard, Stamp stamp) {
+        return b.add(new PiNode(value, stamp, nonnullGuard.asNode()));
     }
 
     static class ReturnData {
@@ -166,10 +183,13 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     public ValueNode length(ValueNode x) {
+        assert StampTool.typeOrNull(x) != null && StampTool.typeOrNull(x).isArray() : x.stamp(NodeView.DEFAULT);
         return b.add(new ArrayLengthNode(x));
     }
 
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
+        assert StampTool.typeOrNull(array) != null && StampTool.typeOrNull(array).isArray() : array.stamp(NodeView.DEFAULT);
+        assert StampTool.typeOrNull(array).getComponentType().getJavaKind() == kind : array.stamp(NodeView.DEFAULT);
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
         ValueNode offset = ConstantNode.forInt(arrayBaseOffset);
         if (index != null) {
@@ -179,17 +199,42 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.add(new ComputeObjectAddressNode(array, asWord(offset)));
     }
 
+    /**
+     * Returns the address of the first element of an array.
+     */
+    public ValueNode arrayStart(ValueNode array, JavaKind kind) {
+        return arrayElementPointer(array, kind, null);
+    }
+
+    /**
+     * Shifts {@code index} by the proper amount based on the element kind.
+     */
     public ValueNode scale(ValueNode index, JavaKind kind) {
         int arrayIndexShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind));
         return shl(index, arrayIndexShift);
     }
 
+    /**
+     * Builds an {@link OffsetAddressNode} ensuring that the offset is also converted to a
+     * {@link Word}.
+     */
+    public AddressNode makeOffsetAddress(ValueNode base, ValueNode offset) {
+        return b.add(new OffsetAddressNode(base, asWord(offset)));
+    }
+
+    /**
+     * Ensures a primitive type is word sized.
+     */
     public ValueNode asWord(ValueNode index) {
         assert index.getStackKind().isPrimitive();
         if (index.getStackKind() != wordKind) {
             return SignExtendNode.create(index, wordKind.getBitCount(), NodeView.DEFAULT);
         }
         return index;
+    }
+
+    public ValueNode asWord(long index) {
+        return ConstantNode.forIntegerKind(wordKind, index);
     }
 
     private LogicNode createCompare(ValueNode origX, ValueNode origY, Condition.CanonicalizedCondition canonicalizedCondition) {
@@ -200,10 +245,10 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
-        return createCompare(canonicalizedCondition.getCanonicalCondition(), x, y);
+        return createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
     }
 
-    public LogicNode createCompare(CanonicalCondition cond, ValueNode x, ValueNode y) {
+    public LogicNode createCompare(ValueNode x, CanonicalCondition cond, ValueNode y) {
         assert !x.getStackKind().isNumericFloat();
         switch (cond) {
             case EQ:
@@ -225,12 +270,34 @@ public class InvocationPluginHelper implements DebugCloseable {
                         b.getOptions(), b.getAssumptions(), value, field, false, false));
     }
 
-    public void guard(ValueNode origX, Condition condition, ValueNode origY, DeoptimizationAction action, DeoptimizationReason deoptReason) {
-        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
-        LogicNode compare = createCompare(origX, origY, canonicalizedCondition);
-        b.add(new FixedGuardNode(compare, deoptReason, action, !canonicalizedCondition.mustNegate()));
+    /**
+     * Finds a Java field by name.
+     *
+     * @throws GraalError if the field isn't found.
+     */
+    public ResolvedJavaField getField(ResolvedJavaType type, String fieldName) {
+        for (ResolvedJavaField field : type.getInstanceFields(true)) {
+            if (field.getName().equals(fieldName)) {
+                return field;
+            }
+        }
+        throw new GraalError("missing field " + fieldName + " in type " + type);
     }
 
+    /**
+     * Gets the offset of a field. Normally InvocationPlugins are run in the target VM so nothing
+     * special needs to be done to handle these offsets but if a {@link Snippet} even triggers a
+     * plugin that uses a field offset them some extra machinery will be needed to delay the lookup.
+     */
+    public ValueNode getFieldOffset(ResolvedJavaType type, String fieldName) {
+        GraalError.guarantee(!IS_BUILDING_NATIVE_IMAGE || !b.parsingIntrinsic(), "these values must be deferred in substitutions and snippets");
+        return ConstantNode.forInt(getField(type, fieldName).getOffset());
+    }
+
+    /**
+     * Performs a range check for an intrinsic. This is a range check that represents a hard error
+     * in the intrinsic so it's permissible to throw an exception directly for this case.
+     */
     public GuardingNode intrinsicRangeCheck(ValueNode x, Condition condition, ValueNode y) {
         Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
         LogicNode compare = createCompare(x, y, canonicalizedCondition);
@@ -252,17 +319,17 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Build an {@link IfNode} that returns a value based on the condition and the negated flag.
+     * Builds an {@link IfNode} that returns a value based on the condition and the negated flag.
      * This can currently only be used for simple return values and doesn't allow {@link FixedNode
      * FixedNodes} to be part of the return path. All the return values are linked to a
      * {@link MergeNode} which terminates the graphs produced by the plugin.
      */
-    public AbstractBeginNode emitReturnIf(LogicNode condition, boolean negated, ValueNode returnValue, double returnProbability) {
+    private AbstractBeginNode emitReturnIf(LogicNode condition, boolean negated, ValueNode returnValue, double returnProbability) {
         BeginNode trueSuccessor = b.getGraph().add(new BeginNode());
         EndNode end = b.getGraph().add(new EndNode());
         trueSuccessor.setNext(end);
         addReturnValue(end, returnKind, returnValue);
-        ProfileData.BranchProbabilityData probability = ProfileData.BranchProbabilityData.injected(returnProbability, true);
+        ProfileData.BranchProbabilityData probability = ProfileData.BranchProbabilityData.injected(returnProbability, negated);
         IfNode node = new IfNode(condition, negated ? null : trueSuccessor, negated ? trueSuccessor : null, probability);
         IfNode ifNode = b.append(node);
         BeginNode otherSuccessor = b.append(new BeginNode());
@@ -280,31 +347,34 @@ public class InvocationPluginHelper implements DebugCloseable {
         if (returnValue.isUnregistered()) {
             returnValue = b.append(returnValue);
         }
-        EndNode end = b.append(new EndNode());
-        addReturnValue(end, kind, returnValue);
 
-        MergeNode returnMerge = b.append(new MergeNode());
-        ValuePhiNode returnPhi = null;
-        if (returnKind != JavaKind.Void) {
-            returnPhi = b.add(new ValuePhiNode(StampFactory.forKind(returnKind), returnMerge));
-        }
-        returnMerge.setStateAfter(b.getIntrinsicReturnState(kind, returnPhi));
-        for (ReturnData r : returns) {
-            returnMerge.addForwardEnd(r.end);
-            if (returnPhi != null) {
-                returnPhi.addInput(r.returnValue);
-            } else {
-                assert r.returnValue == null;
+        if (returns.size() > 0) {
+            EndNode end = b.append(new EndNode());
+            addReturnValue(end, kind, returnValue);
+            MergeNode returnMerge = b.append(new MergeNode());
+            ValuePhiNode returnPhi = null;
+            if (returnKind != JavaKind.Void) {
+                returnPhi = b.add(new ValuePhiNode(StampFactory.forKind(returnKind), returnMerge));
             }
+            returnMerge.setStateAfter(b.getInvocationPluginReturnState(kind, returnPhi));
+            for (ReturnData r : returns) {
+                returnMerge.addForwardEnd(r.end);
+                if (returnPhi != null) {
+                    returnPhi.addInput(r.returnValue);
+                } else {
+                    assert r.returnValue == null;
+                }
+            }
+            returnValue = returnPhi.singleValueOrThis();
         }
-        b.addPush(returnKind, returnPhi);
+        b.addPush(returnKind, returnValue);
         emittedReturn = true;
     }
 
     /**
-     * Connect an {@link EndNode} and return value into the final control flow merge.
+     * Connects an {@link EndNode} and return value into the final control flow merge.
      */
-    private void addReturnValue(EndNode end, JavaKind kind, ValueNode returnValueInput) {
+    protected void addReturnValue(EndNode end, JavaKind kind, ValueNode returnValueInput) {
         assert b.canMergeIntrinsicReturns();
         ValueNode returnValue = returnValueInput;
         if (returnValue.isUnregistered()) {
@@ -312,7 +382,78 @@ public class InvocationPluginHelper implements DebugCloseable {
             returnValue = b.add(returnValue);
         }
         assert !returnValue.isUnregistered() : returnValue;
-        assert kind == returnKind;
+        assert kind == returnKind : "mismatch in return kind";
         returns.add(new ReturnData(end, returnValue));
+    }
+
+    /**
+     * Creates a branch to the fallback path, building a {@link MergeNode} if necessary.
+     */
+    private BeginNode branchToFallback() {
+        if (fallbackEntry == null) {
+            BeginNode fallbackSuccessor = b.getGraph().add(new BeginNode());
+            EndNode end = b.getGraph().add(new EndNode());
+            Invoke invoke = b.invokeFallback(fallbackSuccessor, end);
+            if (invoke != null) {
+                fallbackEntry = fallbackSuccessor;
+                addReturnValue(end, returnKind, returnKind == JavaKind.Void ? null : invoke.asNode());
+            } else {
+                assert end.predecessor() == null;
+                end.safeDelete();
+            }
+            return fallbackSuccessor;
+        }
+        // Multiple paths lead to the fallback, so upgrade it to a MergeNode
+        if (!(fallbackEntry instanceof MergeNode)) {
+            assert fallbackEntry instanceof BeginNode;
+            BeginNode begin = (BeginNode) fallbackEntry;
+            FixedNode next = begin.next();
+            EndNode end = b.getGraph().add(new EndNode());
+            begin.setNext(end);
+            MergeNode merge = b.getGraph().add(new MergeNode());
+            merge.addForwardEnd(end);
+            merge.setNext(next);
+            fallbackEntry = merge;
+            merge.setStateAfter(b.getInvocationPluginBeforeState());
+        }
+        MergeNode fallbackMerge = (MergeNode) fallbackEntry;
+        BeginNode fallbackSuccessor = b.getGraph().add(new BeginNode());
+        EndNode end = b.getGraph().add(new EndNode());
+        fallbackSuccessor.setNext(end);
+        fallbackMerge.addForwardEnd(end);
+        return fallbackSuccessor;
+    }
+
+    public GuardingNode doFallbackIf(ValueNode x, Condition condition, ValueNode y, double returnProbability) {
+        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
+        LogicNode compare = createCompare(x, y, canonicalizedCondition);
+        return doFallbackIf(compare, canonicalizedCondition.mustNegate(), returnProbability);
+    }
+
+    public GuardingNode doFallbackIfNot(LogicNode condition, double probability) {
+        return doFallbackIf(condition, true, probability);
+    }
+
+    public GuardingNode doFallbackIf(LogicNode condition, double probability) {
+        return doFallbackIf(condition, false, probability);
+    }
+
+    /**
+     * Fallback to the original implementation based on the {@code condition}. Depending on the
+     * environment the fallback may be done through a {@link DeoptimizeNode} or through a real
+     * {@link Invoke}.
+     */
+    private GuardingNode doFallbackIf(LogicNode condition, boolean negated, double probability) {
+        BeginNode fallbackSuccessor = branchToFallback();
+        ProfileData.BranchProbabilityData probabilityData = ProfileData.BranchProbabilityData.injected(probability, negated);
+        IfNode node = new IfNode(condition, negated ? null : fallbackSuccessor, negated ? fallbackSuccessor : null, probabilityData);
+        IfNode ifNode = b.append(node);
+        BeginNode fallThroughSuccessor = b.append(new BeginNode());
+        if (negated) {
+            ifNode.setTrueSuccessor(fallThroughSuccessor);
+        } else {
+            ifNode.setFalseSuccessor(fallThroughSuccessor);
+        }
+        return fallThroughSuccessor;
     }
 }

@@ -46,6 +46,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -124,12 +125,6 @@ public class SubstrateOptions {
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
-
-    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
-    public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
-
-    @Option(help = "Print extra help, if available, based on comma-separated option names. Pass * to show all options that contain extra help.")//
-    public static final OptionKey<String> PrintFlagsWithExtraHelp = new OptionKey<>(null);
 
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(2) {
@@ -351,6 +346,9 @@ public class SubstrateOptions {
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
+    @Option(help = "Use compressed frame encoding for frames without local values.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
+
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
@@ -359,7 +357,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 9) {
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
                     /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                     GraalOptions.EmitStringSubstitutions.update(values, false);
                 }
@@ -422,7 +420,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
 
     @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
+    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
@@ -553,6 +551,22 @@ public class SubstrateOptions {
                 return (Boolean) values.get(this);
             }
             return !SharedLibrary.getValueOrDefault(values);
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
+    @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return ImageInfo.isExecutable();
         }
 
         @Override

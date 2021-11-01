@@ -76,8 +76,8 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void b(int imm28) {
-        super.b(imm28);
+    protected void b() {
+        super.b();
     }
 
     @Override

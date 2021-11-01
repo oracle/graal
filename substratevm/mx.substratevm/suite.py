@@ -108,8 +108,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
+                        "sha1": "1340a75f741014eab5795cf37b24551913854dec",
+                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
                     "<others>": {
@@ -147,6 +147,19 @@ suite = {
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
+        "com.oracle.svm.common": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.util"
+            ],
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
         "com.oracle.svm.util.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -174,7 +187,7 @@ suite = {
                 "headers",
             ],
             "dependencies": [
-                "com.oracle.svm.util",
+                "com.oracle.svm.common",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.36.1",
@@ -230,58 +243,13 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.core.jdk14": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.access.foreign",
-                ],
-            },
-            "javaCompliance": "14+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk15": {
+        "com.oracle.svm.core.jdk17": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core.jdk11"],
             "requiresConcealed" : {
                 "java.base" : [
-                    "jdk.internal.loader",
-                    "jdk.internal.misc",
-                    "sun.invoke.util",
-                ],
-            },
-            "javaCompliance": "15+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk16": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.loader",
-                    "jdk.internal.misc",
-                    "sun.invoke.util",
-                ],
-            },
-            "javaCompliance": "16+",
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-        },
-
-        "com.oracle.svm.core.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
+                    "jdk.internal.access.foreign",
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.platform",
@@ -387,7 +355,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.util",
+                "com.oracle.svm.common",
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "8+",
@@ -455,7 +423,7 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-        "com.oracle.svm.hosted.jdk14": {
+        "com.oracle.svm.hosted.jdk17": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -467,7 +435,7 @@ suite = {
                 "jdk.internal.vm.ci" :
                     ["jdk.vm.ci.meta"],
             },
-            "javaCompliance": "14+",
+            "javaCompliance": "17+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -1062,7 +1030,7 @@ suite = {
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
-            "javaCompliance": "1.8",
+            "javaCompliance": "8+",
         },
     },
 
@@ -1079,13 +1047,10 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.hosted.jdk8",
                 "com.oracle.svm.hosted.jdk11",
-                "com.oracle.svm.hosted.jdk14",
+                "com.oracle.svm.hosted.jdk17",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk11",
-                "com.oracle.svm.core.jdk14",
-                "com.oracle.svm.core.jdk15",
-                "com.oracle.svm.core.jdk16",
                 "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
@@ -1106,6 +1071,7 @@ suite = {
                 "OBJECTFILE",
                 "POINTSTO",
                 "compiler:GRAAL",
+                "NATIVE_IMAGE_BASE",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -1119,7 +1085,7 @@ suite = {
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
+                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1173,6 +1139,9 @@ suite = {
                         "sun.util.locale.provider",
                         "sun.util.resources",
                         "sun.invoke.util",
+                    ],
+                    "java.management": [
+                        "sun.management",
                     ],
                     "java.xml.crypto": [
                         "org.jcp.xml.dsig.internal.dom",
@@ -1247,13 +1216,13 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.junitsupport",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.base,org.graalvm.nativeimage.pointsto"
                 ],
                 "requires" : [
                     "static com.oracle.mxtool.junit",
                     "static junit",
                     "static hamcrest",
-                ],
+                ]
             },
         },
 
@@ -1421,6 +1390,26 @@ suite = {
             },
         },
 
+        "NATIVE_IMAGE_BASE": {
+            "subDir": "src",
+            "description" : "Native Image base that can be shared by native image building and pointsto.",
+            "dependencies": [
+                "com.oracle.svm.common",
+                "com.oracle.svm.util",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+            ],
+            "exclude": [
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.base",
+                "exports" : [
+                    "com.oracle.svm.util",
+                    "com.oracle.svm.common.option",
+                ],
+            }
+        },
 
         "POINTSTO": {
             "subDir": "src",
@@ -1431,13 +1420,13 @@ suite = {
             ],
             "distDependencies": [
                 "compiler:GRAAL",
+                "NATIVE_IMAGE_BASE",
             ],
             "exclude": [
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.pointsto",
               "exports" : [
-                "com.oracle.svm.util",
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
                 "com.oracle.graal.pointsto.reports",
@@ -1614,7 +1603,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.llvm",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.base",
                 ],
             },
             "maven" : False,

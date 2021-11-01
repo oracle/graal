@@ -1357,15 +1357,33 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
     }
 
+    /**
+     * Finds the first {@link Input} or {@link OptionalInput} in {@code node} whose value
+     * {@code == key} and replaces it with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
+        assert node.getNodeClass() == this;
         return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
     }
 
+    /**
+     * Finds the first {@link Successor} in {@code node} whose value is {@code key} and replaces it
+     * with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
+        assert node.getNodeClass() == this;
         return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
     }
 
-    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
+    private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
         int index = 0;
         long myMask = mask;
         while (myMask != 0) {
@@ -1388,7 +1406,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return false;
     }
 
-    public void registerAtInputsAsUsage(Node node) {
+    void registerAtInputsAsUsage(Node node) {
         long myMask = this.inputsIteration;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);

@@ -92,21 +92,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         TruffleSafepoint.poll((Node) osrNode);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
-            Node node = (Node) osrNode;
-            osrMetadata = node.atomic(() -> { // double checked locking
-                BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-                if (metadata == null) {
-                    OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
-                    } else {
-                        metadata = BytecodeOSRMetadata.DISABLED;
-                    }
-
-                    osrNode.setOSRMetadata(metadata);
-                }
-                return metadata;
-            });
+            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
         }
 
         // metadata can be set to DISABLED during initialization (above) or dynamically after
@@ -116,6 +102,24 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         } else {
             return osrMetadata.incrementAndPoll();
         }
+    }
+
+    private static BytecodeOSRMetadata initializeBytecodeOSRMetadata(BytecodeOSRNode osrNode) {
+        Node node = (Node) osrNode;
+        return node.atomic(() -> { // double checked locking
+            BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+            if (metadata == null) {
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
+                if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                } else {
+                    metadata = BytecodeOSRMetadata.DISABLED;
+                }
+
+                osrNode.setOSRMetadata(metadata);
+            }
+            return metadata;
+        });
     }
 
     @Override

@@ -65,14 +65,12 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int DEFAULT_TIME_WEIGHT = 25; // -XX:AdaptiveTimeWeight
 
     /* Constants to compute defaults for values which can be set through existing options. */
-    /** HotSpot: -XX:MaxHeapSize default without ergonomics. */
-    protected static final UnsignedWord SMALL_HEAP_SIZE = WordFactory.unsigned(96 * 1024 * 1024);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(128 * 1024 * 1024);
     protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
-    protected static final int LARGE_MEMORY_MAX_HEAP_PERCENT = 25; // -XX:MaxRAMPercentage
-    protected static final int SMALL_MEMORY_MAX_HEAP_PERCENT = 50; // -XX:MinRAMPercentage
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
 
+    private final int initialNewRatio;
     protected UnsignedWord survivorSize;
     protected UnsignedWord edenSize;
     protected UnsignedWord promoSize;
@@ -82,8 +80,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected volatile SizeParameters sizes;
     private final ReentrantLock sizesUpdateLock = new ReentrantLock();
 
-    protected AbstractCollectionPolicy(int initialTenuringThreshold) {
-        tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
+    protected AbstractCollectionPolicy(int initialNewRatio, int initialTenuringThreshold) {
+        this.initialNewRatio = initialNewRatio;
+        this.tenuringThreshold = UninterruptibleUtils.Math.clamp(initialTenuringThreshold, 1, HeapParameters.getMaxSurvivorSpaces() + 1);
     }
 
     @Override
@@ -141,7 +140,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public void updateSizeParameters() {
         PhysicalMemory.tryInitialize();
 
-        SizeParameters params = computeSizeParameters();
+        SizeParameters params = computeSizeParameters(sizes);
         SizeParameters previous = sizes;
         if (previous != null && params.equal(previous)) {
             return; // nothing to do
@@ -246,7 +245,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract long gcCount();
 
-    protected SizeParameters computeSizeParameters() {
+    protected SizeParameters computeSizeParameters(SizeParameters existing) {
         UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
@@ -261,20 +260,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         } else if (!PhysicalMemory.isInitialized()) {
             maxHeap = addressSpaceSize;
         } else {
-            UnsignedWord physicalMemorySize = PhysicalMemory.getCachedSize();
-            if (HeapParameters.Options.MaximumHeapSizePercent.hasBeenSet(RuntimeOptionValues.singleton())) {
-                maxHeap = physicalMemorySize.unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
-            } else {
-                UnsignedWord reasonableMax = physicalMemorySize.unsignedDivide(100).multiply(AbstractCollectionPolicy.LARGE_MEMORY_MAX_HEAP_PERCENT);
-                UnsignedWord reasonableMin = physicalMemorySize.unsignedDivide(100).multiply(AbstractCollectionPolicy.SMALL_MEMORY_MAX_HEAP_PERCENT);
-                if (reasonableMin.belowThan(AbstractCollectionPolicy.SMALL_HEAP_SIZE)) {
-                    // small physical memory, use a small fraction for the heap
-                    reasonableMax = reasonableMin;
-                } else {
-                    reasonableMax = UnsignedUtils.max(reasonableMax, AbstractCollectionPolicy.SMALL_HEAP_SIZE);
-                }
-                maxHeap = reasonableMax;
-            }
+            maxHeap = PhysicalMemory.getCachedSize().unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
         }
         UnsignedWord unadjustedMaxHeap = maxHeap;
         maxHeap = UnsignedUtils.clamp(alignDown(maxHeap), minAllSpaces, alignDown(addressSpaceSize));
@@ -302,14 +288,14 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         }
         minHeap = UnsignedUtils.clamp(alignUp(minHeap), minAllSpaces, maxHeap);
 
-        UnsignedWord initialHeap = AbstractCollectionPolicy.SMALL_HEAP_SIZE;
+        UnsignedWord initialHeap = AbstractCollectionPolicy.INITIAL_HEAP_SIZE;
         initialHeap = UnsignedUtils.clamp(alignUp(initialHeap), minHeap, maxHeap);
 
         UnsignedWord initialYoung;
         if (initialHeap.equal(maxHeap)) {
             initialYoung = maxYoung;
         } else {
-            initialYoung = initialHeap.unsignedDivide(AbstractCollectionPolicy.NEW_RATIO + 1);
+            initialYoung = initialHeap.unsignedDivide(initialNewRatio + 1);
             initialYoung = UnsignedUtils.clamp(alignUp(initialYoung), minYoungSpaces, maxYoung);
         }
         UnsignedWord initialSurvivor = WordFactory.zero();
@@ -328,7 +314,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord initialEden = initialYoung.subtract(initialSurvivor.multiply(2));
         initialEden = minSpaceSize(alignDown(initialEden));
 
-        return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
+        return SizeParameters.get(existing, maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
     }
 
     protected static final class SizeParameters {
@@ -339,7 +325,15 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         final UnsignedWord initialSurvivorSize;
         final UnsignedWord minHeapSize;
 
-        SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize,
+        static SizeParameters get(SizeParameters existing, UnsignedWord maxHeap, UnsignedWord maxYoung, UnsignedWord initialHeap,
+                        UnsignedWord initialEden, UnsignedWord initialSurvivor, UnsignedWord minHeap) {
+            if (existing != null && existing.matches(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap)) {
+                return existing;
+            }
+            return new SizeParameters(maxHeap, maxYoung, initialHeap, initialEden, initialSurvivor, minHeap);
+        }
+
+        private SizeParameters(UnsignedWord maxHeapSize, UnsignedWord maxYoungSize, UnsignedWord initialHeapSize,
                         UnsignedWord initialEdenSize, UnsignedWord initialSurvivorSize, UnsignedWord minHeapSize) {
             this.maxHeapSize = maxHeapSize;
             this.maxYoungSize = maxYoungSize;
@@ -385,8 +379,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean equal(SizeParameters other) {
-            return maxHeapSize.equal(other.maxHeapSize) && maxYoungSize.equal(other.maxYoungSize) && initialHeapSize.equal(other.initialHeapSize) &&
-                            initialEdenSize.equal(other.initialEdenSize) && initialSurvivorSize.equal(other.initialSurvivorSize) && minHeapSize.equal(other.minHeapSize);
+            return other == this || other.matches(maxHeapSize, maxYoungSize, initialHeapSize, initialEdenSize, initialSurvivorSize, minHeapSize);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        boolean matches(UnsignedWord maxHeap, UnsignedWord maxYoung, UnsignedWord initialHeap, UnsignedWord initialEden, UnsignedWord initialSurvivor, UnsignedWord minHeap) {
+            return maxHeapSize.equal(maxHeap) && maxYoungSize.equal(maxYoung) && initialHeapSize.equal(initialHeap) &&
+                            initialEdenSize.equal(initialEden) && initialSurvivorSize.equal(initialSurvivor) && minHeapSize.equal(minHeap);
         }
     }
 }

@@ -318,7 +318,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
         /*
-         * Lower the node into a ComputeObjectAddress node and an Add but ensure that it's below any
+         * Lower the node into a GetObjectAddressNode node and an Add but ensure that it's below any
          * potential safepoints and above it's uses.
          */
         for (Node use : n.usages().snapshot()) {

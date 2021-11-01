@@ -40,9 +40,6 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
-// Checkstyle: allow reflection
-import java.lang.reflect.Field;
-// Checkstyle: disallow reflection
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -131,6 +128,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -2015,25 +2013,22 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /**
      * Gets the value of {@code jdk.internal.misc.UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE} which
-     * was introduced in JDK 14 by JEP 352.
+     * was introduced after JDK 11 by JEP 352.
      *
-     * This method uses reflection to be compatible with JDKs prior to 14.
+     * This method uses reflection to be compatible with JDK 11 and earlier.
      */
     private static int initDataCacheLineFlushSize() {
-        if (JavaVersionUtil.JAVA_SPEC >= 14) {
-            Class<?> c;
-            try {
-                // Checkstyle: stop
-                c = Class.forName("jdk.internal.misc.UnsafeConstants");
-                // Checkstyle: resume
-                Field f = c.getDeclaredField("DATA_CACHE_LINE_FLUSH_SIZE");
-                f.setAccessible(true);
-                return (int) f.get(null);
-            } catch (Exception e) {
-                throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
-            }
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return 0;
         }
-        return 0;
+        try {
+            // Checkstyle: stop
+            Class<?> c = Class.forName("jdk.internal.misc.UnsafeConstants");
+            // Checkstyle: resume
+            return ReflectionUtil.readStaticField(c, "DATA_CACHE_LINE_FLUSH_SIZE");
+        } catch (ClassNotFoundException e) {
+            throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
+        }
     }
 
     private static int getDataCacheLineFlushSize() {

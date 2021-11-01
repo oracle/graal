@@ -41,6 +41,8 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -59,12 +61,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -84,6 +89,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
+    private boolean parsingIntrinsic;
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
@@ -278,7 +284,15 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public ResolvedJavaMethod getMethod() {
-        return method;
+        /*
+         * Invocation plugins expect to get the caller method that triggers the intrinsification.
+         * Since we are compiling the intrinsic on its own, we do not have any such caller method.
+         *
+         * In particular, returning `method` would be misleading because it is the method that is
+         * intrinsified, not the caller. The invocation plugin gets that method passed in as the
+         * `targetMethod` already.
+         */
+        return null;
     }
 
     @Override
@@ -303,7 +317,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public boolean parsingIntrinsic() {
-        return true;
+        return parsingIntrinsic;
     }
 
     @Override
@@ -322,7 +336,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @SuppressWarnings("try")
-    public StructuredGraph buildGraph(InvocationPlugin plugin) {
+    public final StructuredGraph buildGraph(InvocationPlugin plugin) {
+        parsingIntrinsic = plugin instanceof MethodSubstitutionPlugin;
         // The caller is expected to have filtered out decorator plugins since they cannot be
         // processed without special handling.
         assert !plugin.isDecorator() : plugin;
@@ -345,8 +360,13 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode retVal) {
+    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode retVal) {
         return getGraph().add(new FrameState(AFTER_BCI));
+    }
+
+    @Override
+    public FrameState getInvocationPluginBeforeState() {
+        return getGraph().start().stateAfter();
     }
 
     @Override
@@ -362,6 +382,19 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, Receiver receiver, ValueNode[] argsIncludingReceiver) {
         return false;
+    }
+
+    @Override
+    public boolean isParsingInvocationPlugin() {
+        return true;
+    }
+
+    @Override
+    public Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
+        assert isParsingInvocationPlugin();
+        DeoptimizeNode deopt = getGraph().add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
+        predecessor.setNext(deopt);
+        return null;
     }
 
     @Override

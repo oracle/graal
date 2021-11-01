@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -221,6 +222,33 @@ abstract class HostFieldDesc {
         @Override
         public String toString() {
             return "Field[" + field.toString() + "]";
+        }
+    }
+
+    static final class SyntheticArrayLengthField extends HostFieldDesc {
+        static final SyntheticArrayLengthField SINGLETON = new SyntheticArrayLengthField();
+
+        private SyntheticArrayLengthField() {
+            super(int.class, int.class, "length", true /* disallow writes */);
+        }
+
+        @Override
+        public Object get(Object receiver) {
+            try {
+                return Array.getLength(receiver);
+            } catch (IllegalArgumentException e) {
+                throw shouldNotReachHere(e);
+            }
+        }
+
+        @Override
+        public void set(Object receiver, Object value) {
+            shouldNotReachHere();
+        }
+
+        @Override
+        public String toString() {
+            return "Field[length]";
         }
     }
 }

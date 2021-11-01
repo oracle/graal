@@ -79,7 +79,6 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeVirtual.class)
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -162,7 +161,7 @@ public abstract class InvokeVirtual extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
         }
         /*
          * Surprisingly, INVOKEVIRTUAL can try to invoke interface methods, even non-default ones.
@@ -201,7 +200,6 @@ public abstract class InvokeVirtual extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKEVIRTUAL dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 

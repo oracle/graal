@@ -27,14 +27,12 @@ package org.graalvm.compiler.hotspot.meta;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_DECRYPTBLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.AESCRYPT_ENCRYPTBLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.COUNTERMODE_IMPL_CRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_KEY;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
@@ -113,6 +111,7 @@ import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.IllegalArgumentExceptionArgumentIsNotAnArrayStub;
 import org.graalvm.compiler.hotspot.stubs.IntegerExactOverflowExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.LongExactOverflowExceptionStub;
+import org.graalvm.compiler.hotspot.stubs.NegativeArraySizeExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.NullPointerExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.OutOfBoundsExceptionStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -477,6 +476,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new OutOfBoundsExceptionStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new NegativeArraySizeExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new DivisionByZeroExceptionStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), SAFEPOINT, NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new IntegerExactOverflowExceptionStub(options, providers,
@@ -568,9 +569,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
              */
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall);
-                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall);
-                registerForeignCall(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, c.aescryptDecryptBlockStub, NativeCall);
+                registerForeignCall(AESCRYPT_ENCRYPTBLOCK, c.aescryptEncryptBlockStub, NativeCall);
+                registerForeignCall(AESCRYPT_DECRYPTBLOCK, c.aescryptDecryptBlockStub, NativeCall);
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;
@@ -578,9 +578,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             }
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall);
-                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
-                registerForeignCall(DECRYPT_WITH_ORIGINAL_KEY, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
+                registerForeignCall(CIPHER_BLOCK_CHAINING_ENCRYPT_AESCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall);
+                registerForeignCall(CIPHER_BLOCK_CHAINING_DECRYPT_AESCRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall);
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
                     throw e;

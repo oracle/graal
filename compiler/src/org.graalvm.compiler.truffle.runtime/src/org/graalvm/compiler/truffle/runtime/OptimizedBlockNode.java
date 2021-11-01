@@ -86,11 +86,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         if (a == null) {
             if (CompilerDirectives.inInterpreter()) {
                 // no need to deoptimize if the block was never executed
-                if (arg == NO_ARGUMENT) {
-                    alwaysNoArgument = Truffle.getRuntime().createAssumption("Always zero block node argument.");
-                } else {
-                    alwaysNoArgument = NeverValidAssumption.INSTANCE;
-                }
+                alwaysNoArgument = makeAlwaysZeroAssumption(arg == NO_ARGUMENT);
             }
         } else if (a.isValid()) {
             if (arg == NO_ARGUMENT) {
@@ -101,6 +97,14 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
             }
         }
         return arg;
+    }
+
+    private static Assumption makeAlwaysZeroAssumption(boolean valid) {
+        if (valid) {
+            return Truffle.getRuntime().createAssumption("Always zero block node argument.");
+        } else {
+            return NeverValidAssumption.INSTANCE;
+        }
     }
 
     @Override

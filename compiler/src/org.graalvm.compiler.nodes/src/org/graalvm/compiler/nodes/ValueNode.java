@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes;
 
 import java.util.Iterator;
-import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
@@ -225,18 +224,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
     }
 
     @Override
-    protected void replaceAtUsages(Node other, Predicate<Node> filter, Node toBeDeleted) {
-        super.replaceAtUsages(other, filter, toBeDeleted);
-        assert checkReplaceAtUsagesInvariants(other);
-    }
-
-    @Override
-    protected void replaceAtAllUsages(Node other, Node toBeDeleted) {
-        super.replaceAtAllUsages(other, toBeDeleted);
-        assert checkReplaceAtUsagesInvariants(other);
-    }
-
-    private boolean checkReplaceAtUsagesInvariants(Node other) {
+    protected boolean checkReplaceAtUsagesInvariants(Node other) {
         assert other == null || other instanceof ValueNode;
         if (this.hasUsages() && !this.stamp(NodeView.DEFAULT).isEmpty() && !(other instanceof PhiNode) && other != null) {
             Stamp thisStamp = stamp(NodeView.DEFAULT);

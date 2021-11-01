@@ -59,9 +59,9 @@ public abstract class InvokeStatic extends Node {
     @Specialization
     Object callWithClassInitCheck(Object[] args,
                     @Cached InitCheck initCheck,
-                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeVirtual) {
+                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeStatic) {
         initCheck.execute(staticMethod.getDeclaringKlass());
-        return invokeVirtual.execute(args);
+        return invokeStatic.execute(args);
     }
 
     @ImportStatic(InvokeStatic.class)
@@ -104,7 +104,7 @@ public abstract class InvokeStatic extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
+            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
     }

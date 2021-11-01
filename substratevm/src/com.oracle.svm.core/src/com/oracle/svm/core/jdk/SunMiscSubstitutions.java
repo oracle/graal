@@ -145,10 +145,6 @@ final class Target_Unsafe_Core {
 
     @Substitute
     private int addressSize() {
-        /*
-         * JDK 14 now injects Unsafe contants via the Hotspot VM, so we just determine the size of
-         * pointers ourself.
-         */
         return ConfigurationValues.getTarget().wordSize;
     }
 
@@ -208,7 +204,7 @@ final class Target_Unsafe_Core {
 
     // JDK-8243287
     @Substitute
-    @TargetElement(onlyWith = JDK16OrEarlier.class)
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
         throw VMError.unsupportedFeature("Defining anonymous classes at runtime is not supported.");
     }
@@ -290,7 +286,7 @@ final class Target_Unsafe_Core {
 
     // JDK-8243287
     @Delete
-    @TargetElement(onlyWith = JDK11To16.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native Class<?> defineAnonymousClass0(Class<?> hostClass, byte[] data, Object[] cpPatches);
 
     @Delete

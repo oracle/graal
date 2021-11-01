@@ -43,9 +43,7 @@ labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
 labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
-  catch_files : [
-    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
-  ]
+  catch_files : ${catch_files}
 }
 
 linux : ${common} ${deps.linux}

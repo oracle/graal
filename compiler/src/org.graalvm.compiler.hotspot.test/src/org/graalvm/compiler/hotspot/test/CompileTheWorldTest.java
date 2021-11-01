@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
@@ -42,6 +43,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  */
 public class CompileTheWorldTest extends GraalCompilerTest {
 
+    @SuppressWarnings("try")
     @Test
     public void testJDK() throws Throwable {
         boolean originalBailoutAction = CompilationBailoutAsFailure.getValue(getInitialOptions());
@@ -57,20 +59,22 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         String methodFilters = null;
         String excludeMethodFilters = null;
         boolean verbose = false;
-        CompileTheWorld ctw = new CompileTheWorld(runtime,
-                        (HotSpotGraalCompiler) runtime.getCompiler(),
-                        CompileTheWorld.SUN_BOOT_CLASS_PATH,
-                        startAt,
-                        stopAt,
-                        maxClasses,
-                        methodFilters,
-                        excludeMethodFilters,
-                        verbose,
-                        harnessOptions,
-                        new OptionValues(initialOptions, HighTier.Options.Inline, false,
-                                        DebugOptions.DisableIntercept, true,
-                                        CompilationFailureAction, ExceptionAction.Silent));
-        ctw.compile();
+        try (AutoCloseable c = new TTY.Filter()) {
+            CompileTheWorld ctw = new CompileTheWorld(runtime,
+                            (HotSpotGraalCompiler) runtime.getCompiler(),
+                            CompileTheWorld.SUN_BOOT_CLASS_PATH,
+                            startAt,
+                            stopAt,
+                            maxClasses,
+                            methodFilters,
+                            excludeMethodFilters,
+                            verbose,
+                            harnessOptions,
+                            new OptionValues(initialOptions, HighTier.Options.Inline, false,
+                                            DebugOptions.DisableIntercept, true,
+                                            CompilationFailureAction, ExceptionAction.Silent));
+            ctw.compile();
+        }
         assert CompilationBailoutAsFailure.getValue(initialOptions) == originalBailoutAction;
         assert CompilationFailureAction.getValue(initialOptions) == originalFailureAction;
     }

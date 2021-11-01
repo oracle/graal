@@ -199,38 +199,6 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
     @NodeIntrinsic
     public static native boolean equals(Object array1, Object array2, int length, @ConstantNodeParameter JavaKind kind);
 
-    public static boolean equals(boolean[] array1, boolean[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Boolean);
-    }
-
-    public static boolean equals(byte[] array1, byte[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Byte);
-    }
-
-    public static boolean equals(char[] array1, char[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Char);
-    }
-
-    public static boolean equals(short[] array1, short[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Short);
-    }
-
-    public static boolean equals(int[] array1, int[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Int);
-    }
-
-    public static boolean equals(long[] array1, long[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Long);
-    }
-
-    public static boolean equals(float[] array1, float[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Float);
-    }
-
-    public static boolean equals(double[] array1, double[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Double);
-    }
-
     public ValueNode getArray1() {
         return array1;
     }
