@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -104,6 +106,7 @@ public abstract class InvokeInterface extends Node {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
+        @TruffleBoundary
         EspressoException reportNotAnImplementor(Klass receiverKlass) {
             ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
 
@@ -185,7 +188,7 @@ public abstract class InvokeInterface extends Node {
         int iTableIndex = resolutionSeed.getITableIndex();
         Method method = ((ObjectKlass) receiverKlass).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
         if (!method.isPublic()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            transferToInterpreterAndInvalidate();
             Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
