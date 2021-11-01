@@ -55,8 +55,8 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
     public static final String ID = "allocated-bytes";
     @Option(name = "", help = "Enable the Allocated Bytes Instrument (default: false).", category = OptionCategory.EXPERT) static final OptionKey<Boolean> enabled = new OptionKey<>(false);
     private static final ThreadMXBean threadBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
-    public final Set<Thread> threads = new HashSet<>();
-    public static final String GET_ALLOCATED_BYTES = "getAllocatedBytes";
+    private final Set<Thread> threads = new HashSet<>();
+    private static final String GET_ALLOCATED_BYTES = "getAllocatedBytes";
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -88,7 +88,7 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
                         interopLibrary.writeMember(polyglotBindings, GET_ALLOCATED_BYTES, new GetAllocatedBytesFunction());
                     }
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-                    throw new IllegalStateException("Exception during interop.", e);
+                    throw CompilerDirectives.shouldNotReachHere("Exception during interop.");
                 }
             }
 
