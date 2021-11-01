@@ -121,12 +121,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Used to quickly determine in which category a certain hub falls (e.g., instance or array).
      */
-    private int hubType;
+    private final int hubType;
 
     /**
      * Used to quickly determine if this class is a subclass of {@link Reference}.
      */
-    private byte referenceType;
+    private final byte referenceType;
 
     /**
      * Encoding of the object or array size. Decode using {@link LayoutEncoding}.
@@ -165,53 +165,49 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private short monitorOffset;
 
     /**
-     * Bit-set for various boolean flags, to reduce size of instances.
+     * Bit-set for various boolean flags, to reduce size of instances. It is important that this
+     * field is final, so that various methods are constant folded for constant classes already
+     * before the static analysis.
      */
-    private byte flags;
+    private final byte flags;
 
-    /**
-     * Has the type been discovered as instantiated by the static analysis?
-     */
-    private static final int IS_INSTANTIATED_FLAG_BIT = 0;
-
-    /**
-     * Is this a Hidden Class.
-     */
-    private static final int IS_HIDDED_FLAG_BIT = 1;
-
-    /**
-     * Is this a Record Class.
-     */
-    private static final int IS_RECORD_FLAG_BIT = 2;
-
-    /**
-     * Holds assertionStatus determined by {@link RuntimeAssertionsSupport}.
-     */
-    private static final int ASSERTION_STATUS_FLAG_BIT = 3;
-
+    /** Is this a primitive type. */
+    private static final int IS_PRIMITIVE_FLAG_BIT = 0;
+    /** Is this an interface. */
+    private static final int IS_INTERFACE_FLAG_BIT = 1;
+    /** Is this a Hidden Class. */
+    private static final int IS_HIDDED_FLAG_BIT = 2;
+    /** Is this a Record Class. */
+    private static final int IS_RECORD_FLAG_BIT = 3;
+    /** Holds assertionStatus determined by {@link RuntimeAssertionsSupport}. */
+    private static final int ASSERTION_STATUS_FLAG_BIT = 4;
     /**
      * Class/superclass/implemented interfaces has default methods. Necessary metadata for class
      * initialization, but even for classes/interfaces that are already initialized during image
      * generation, so it cannot be a field in {@link ClassInitializationInfo}.
      */
-    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 4;
-
+    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 5;
     /**
      * Directly declares default methods. Necessary metadata for class initialization, but even for
      * interfaces that are already initialized during image generation, so it cannot be a field in
      * {@link ClassInitializationInfo}.
      */
-    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 5;
+    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
+
+    /**
+     * Has the type been discovered as instantiated by the static analysis?
+     */
+    private boolean isInstantiated;
 
     /**
      * Boolean value or exception that happened at image-build time.
      */
-    private Object isLocalClass;
+    private final Object isLocalClass;
 
     /**
      * Boolean value or exception that happened at image-build time.
      */
-    private Object isAnonymousClass;
+    private final Object isAnonymousClass;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -275,7 +271,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Source file name if known; null otherwise.
      */
-    private String sourceFileName;
+    private final String sourceFileName;
 
     /**
      * The annotations of this class. This field holds either null (no annotations), an Annotation
@@ -352,7 +348,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
-                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
+                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -364,32 +361,26 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
-        setFlag(IS_HIDDED_FLAG_BIT, isHidden);
-        setFlag(IS_RECORD_FLAG_BIT, isRecord);
         this.nestHost = nestHost;
-        setFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus);
+
+        this.flags = NumUtil.safeToByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
+                        makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
+                        makeFlag(IS_HIDDED_FLAG_BIT, isHidden) |
+                        makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
+                        makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
+                        makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
+                        makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void setFlag(int flagBit, boolean value) {
+    private int makeFlag(int flagBit, boolean value) {
         int flagMask = 1 << flagBit;
-        flags = NumUtil.safeToByte((flags & ~flagMask) | (value ? flagMask : 0));
-
-        assert isFlagSet(flagBit) == value;
+        return value ? flagMask : 0;
     }
 
     private boolean isFlagSet(int flagBit) {
         int flagMask = 1 << flagBit;
         return (flags & flagMask) != 0;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo, boolean hasDefaultMethods, boolean declaresDefaultMethods) {
-        assert this.classInitializationInfo == null : "Initialization must be called only once";
-
-        this.classInitializationInfo = classInitializationInfo;
-        setFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods);
-        setFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -416,7 +407,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
         this.referenceMapIndex = (int) referenceMapIndex;
-        setFlag(IS_INSTANTIATED_FLAG_BIT, isInstantiated);
+        this.isInstantiated = isInstantiated;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -599,7 +590,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public boolean isInstantiated() {
-        return isFlagSet(IS_INSTANTIATED_FLAG_BIT);
+        return isInstantiated;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -654,13 +645,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean isInterface() {
-        return LayoutEncoding.isInterface(getLayoutEncoding());
+        return isFlagSet(IS_INTERFACE_FLAG_BIT);
     }
 
     @Substitute
     @Override
     public boolean isPrimitive() {
-        return LayoutEncoding.isPrimitive(getLayoutEncoding());
+        return isFlagSet(IS_PRIMITIVE_FLAG_BIT);
     }
 
     @Substitute

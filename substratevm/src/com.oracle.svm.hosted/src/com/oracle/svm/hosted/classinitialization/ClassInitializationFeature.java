@@ -325,7 +325,7 @@ public class ClassInitializationFeature implements GraalFeature {
             assert type.isInitialized();
             info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
-        hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
+        hub.setClassInitializationInfo(info);
     }
 
     private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {
