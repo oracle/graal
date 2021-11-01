@@ -26,7 +26,6 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethod;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
 import static com.oracle.svm.jvmtiagentbase.Support.clearException;
@@ -40,7 +39,6 @@ import static com.oracle.svm.jvmtiagentbase.Support.handleException;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
-import static com.oracle.svm.jvmtiagentbase.Support.newObjectL;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
@@ -696,7 +694,7 @@ final class BreakpointInterceptor {
     }
 
     private static String readLocaleTag(JNIEnvironment jni, JNIObjectHandle locale) {
-        JNIObjectHandle languageTag = callObjectMethod(jni, locale, agent.handles().getJavaUtilLocaleToLanguageTag(jni));
+        JNIObjectHandle languageTag = Support.callObjectMethod(jni, locale, agent.handles().getJavaUtilLocaleToLanguageTag(jni));
         if (clearException(jni)) {
             /*- return root locale */
             return "";
@@ -724,7 +722,7 @@ final class BreakpointInterceptor {
         List<String> classNames = new ArrayList<>();
         JNIObjectHandle curr = bundle;
         while (!nullHandle().equal(curr)) {
-            JNIObjectHandle locale = callObjectMethod(jni, curr, agent.handles().getJavaUtilResourceBundleGetLocale(jni));
+            JNIObjectHandle locale = Support.callObjectMethod(jni, curr, agent.handles().getJavaUtilResourceBundleGetLocale(jni));
             if (clearException(jni)) {
                 return null;
             }
@@ -733,9 +731,9 @@ final class BreakpointInterceptor {
                 /*- Root locale is serialized into "und" */
                 localeTag = "";
             }
-            JNIObjectHandle clazz = callObjectMethod(jni, curr, agent.handles().javaLangObjectGetClass);
+            JNIObjectHandle clazz = Support.callObjectMethod(jni, curr, agent.handles().javaLangObjectGetClass);
             if (!clearException(jni)) {
-                JNIObjectHandle classNameHandle = callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
+                JNIObjectHandle classNameHandle = Support.callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
                 if (!clearException(jni)) {
                     classNames.add(fromJniString(jni, classNameHandle));
                     locales.add(localeTag);
@@ -1056,7 +1054,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle serializeTargetClass = getObjectArgument(1);
         String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
 
-        JNIObjectHandle objectStreamClassInstance = newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
+        JNIObjectHandle objectStreamClassInstance = Support.newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
         boolean validObjectStreamClassInstance = nullHandle().notEqual(objectStreamClassInstance);
         if (clearException(jni)) {
             validObjectStreamClassInstance = false;
@@ -1076,7 +1074,7 @@ final class BreakpointInterceptor {
          * recursively. Call ObjectStreamClass.getClassDataLayout0() can get all of them.
          */
         JNIMethodId getClassDataLayout0MId = agent.handles().getJavaIoObjectStreamClassGetClassDataLayout0(jni, bp.clazz);
-        JNIObjectHandle dataLayoutArray = callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
+        JNIObjectHandle dataLayoutArray = Support.callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
         if (!clearException(jni) && nullHandle().notEqual(dataLayoutArray)) {
             int length = jniFunctions().getGetArrayLength().invoke(jni, dataLayoutArray);
             // If only 1 element is got from getClassDataLayout0(). it is base ObjectStreamClass
@@ -1091,7 +1089,7 @@ final class BreakpointInterceptor {
                     if (hasData) {
                         JNIObjectHandle oscInstanceInSlot = jniFunctions().getGetObjectField().invoke(jni, classDataSlot, descFId);
                         if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
-                            JNIObjectHandle oscClazz = callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
+                            JNIObjectHandle oscClazz = Support.callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
                             String oscClassName = getClassNameOrNull(jni, oscClazz);
                             transitiveSerializeTargets.add(oscClassName);
                         }
@@ -1137,7 +1135,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle customConstructorObj = getObjectArgument(2);
         JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
         JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
-        JNIObjectHandle declaredClassNameObj = callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
+        JNIObjectHandle declaredClassNameObj = Support.callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
         String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
 
         if (tracer != null) {
@@ -1336,9 +1334,9 @@ final class BreakpointInterceptor {
         JNIMethodId getPlatformLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getPlatformClassLoader", "()Ljava/lang/ClassLoader;", true);
         JNIMethodId getAppLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getBuiltinAppClassLoader", "()Ljava/lang/ClassLoader;", true);
         if (getPlatformLoader.isNonNull() && getAppLoader.isNonNull()) { // only on JDK 9 and later
-            JNIObjectHandle platformLoader = callObjectMethod(jni, classLoader, getPlatformLoader);
+            JNIObjectHandle platformLoader = Support.callObjectMethod(jni, classLoader, getPlatformLoader);
             checkNoException(jni);
-            JNIObjectHandle appLoader = callObjectMethod(jni, classLoader, getAppLoader);
+            JNIObjectHandle appLoader = Support.callObjectMethod(jni, classLoader, getAppLoader);
             checkNoException(jni);
             guarantee(platformLoader.notEqual(nullHandle()) && appLoader.notEqual(nullHandle()));
 
