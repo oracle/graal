@@ -7,13 +7,17 @@ permalink: /tools/vscode/micronaut-extension/
 
 # GraalVM Tools for Micronaut Extension
 
-[GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides support for developing applications based on the [Micronaut framework](https://micronaut.io/) in Visual Studio Code.
+[GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides support for developing applications based on the [Micronaut framework](https://micronaut.io/) in Visual Studio Code (VS Code).
 The extension is Technology Preview.
 
 The extension also enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
-There are, of course, other ways to create a new Micronaut application. If you provide a path to the [Micronaut CLI installation](https://micronaut-projects.github.io/micronaut-starter/latest/guide/#installation), you can create a project using the `mn` executable. If you prefer not to install the Micronaut CLI, and you are running on Linux or macOS, you can `curl` the project. Lastly, you can navigate to Micronaut Launch in a browser, create a new project, download it and open in VS Code.
+There are, of course, other ways to create a new Micronaut application.
+If you provide a path to the [Micronaut CLI installation](https://micronaut-projects.github.io/micronaut-starter/latest/guide/#installation), you can create a project using the `mn` executable.
+If you prefer not to install the Micronaut CLI, and you are running on Linux or macOS, you can `curl` the project.
+Lastly, you can navigate to [Micronaut Launch](https://micronaut.io/launch/) in a browser, create a new project, download it and open in VS Code.
 
-In combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM, and debug them directly from the VS Code development environment with different debugging protocols enabled with the extension. This extension for Micronaut was also developed to help developers build native images right from VS Code.
+In combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM and debug them directly from VS Code development environment with different debugging protocols, enabled with the extension.
+This extension for Micronaut is also developed to help developers build native images right from VS Code.
 
 #### Table of contents
 - [Installation and Setup](#installation-and-setup)
@@ -30,17 +34,19 @@ In combination with the [GraalVM Tools for Java extension](https://marketplace.v
 
 ## Installation and Setup
 
-Install the GraalVM Tools for Micronaut extension from the VS Code consolde by clicking on the Extensions icon in the Activity Bar (or invoke it with _Ctrl+Shift+X_). Search for "Micronaut" and install the package. Reload will be required.
+Install the GraalVM Tools for Micronaut extension from the VS Code consolde by clicking on the Extensions icon in the Activity Bar (or invoke it with _Ctrl+Shift+X_).
+Search for "Micronaut" and install the package.
+Reload will be required.
 
-> Note: The Micronaut extension also requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension, which provides support for editing and debugging polyglot programs running on GraalVM. Please install it the same way.
+> Note: The Micronaut extension requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension, which provides support for editing and debugging polyglot applications running on GraalVM. Please install it the same way.
 
-When installed, the extension might check whether there is a registered GraalVM instance, and eventually request to download it or point to a local installation (see [GraalVM Installation and Setup in VS Code](../graalvm/README.md#installation-and-setup)).
+When installed, the extension might check whether there is a registered GraalVM installation, and eventually request to download it or point to a local installation (see [GraalVM Installation and Setup in VS Code](../graalvm/README.md#installation-and-setup)).
 
 Upon installation, the Micronaut Tools Page window opens, which provides you with shortcuts to:
 - create a new Micronaut project or open an exisiting one
 - build a native executable of a Micronaut project
 - acquaint you with available features
-- redirect you to the documentation available
+- redirect you to the documentation
 
 ![Micronaut Tools Page](images/micronaut_tools_page.png)
 
@@ -50,10 +56,10 @@ The GraalVM Tools for Micronaut extension provides:
 * Micronaut project creation wizard
 * installation of Micronaut CLI
 * editing and debugging capabilities for Micronaut projects
-* code completion and navigation for Micronaut configuration (YAML) files and Java (available with [Apache NetBeans Language Server extension](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java)).
+* code completion and navigation for Micronaut configuration (YAML) files and Java (available with [Apache NetBeans Language Server extension](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java))
 * ability to build Micronaut projects ahead-of-time into native images with GraalVM
-* __Run main with Continuous Mode__ CodeLens runs Micronaut project and reloads it automatically when source code is changed. It is not available as Debugger.
-* __Launch Java: Continuous Mode__ is the name of the launch configuration.
+* __Run main with Continuous Mode__ CodeLens runs Micronaut project and reloads it automatically when source code is changed. It is not available as Debugger
+* __Launch Java: Continuous Mode__ which is the name of the launch configuration
 
 ### Micronaut VS Code Commands
 
@@ -64,8 +70,8 @@ To begin, invoke the Micronaut commands from View > Command Palette (Command Pal
 The following commands are available for Micronaut project development:
 
 * `Micronaut: Show Micronaut Tools Page` - show the Micronaut Tools Page
-* `Micronaut: Create Micronaut Project` - create a Micronaut project based on https://micronaut.io/launch
-* `Micronaut: Build ...` - build a Micronaut project with the user-selected goal/target
+* `Micronaut: Create Micronaut Project` - create a Micronaut project based on [project creation wizard](https://micronaut.io/launch)
+* `Micronaut: Build ...` - build a Micronaut project with the user-selected targets
 * `Micronaut: Build Native Image` - build a native executable of a Micronaut project
 * `Micronaut: Deploy ...` - build and deploy Docker image for Micronaut project
 
@@ -77,7 +83,8 @@ This extension contributes the following settings:
 
 ## Create Micronaut Project
 
-The Create Micronaut Project command in VS Code supports generating Micronaut applications, CLI applications, and other types of applications that a regular [Micronaut Launch](https://micronaut.io/launch/) application does. The wizard prompts users to:
+The Create Micronaut Project command in VS Code supports generating Micronaut applications, CLI applications, and other types of applications that a regular [Micronaut Launch](https://micronaut.io/launch/) application does.
+The wizard prompts users to:
 
   * pick the application type
   * pick the Micronaut version
@@ -100,7 +107,7 @@ The GUI part of the Micronaut extension adds a new view to the Explorer activity
 
 The Micronaut support for VS Code is integrated with GraalVM to get the most from the applications and provide you with rich Native Image capabilities.
 
-Having set up GraalVM as the default runtime and debug environment in VS Code, invoke the "View > Command Palette > Micronaut: Build..." action, where you can select the build targets (e.g., `clean`, `build`, `nativeImage`, etc.) from a list of available ones.
+[Having set GraalVM as the default runtime and debug environment](../graalvm/README.md#installation-and-setup) in VS Code, invoke the **View > Command Palette > Micronaut: Build...** action, where you can select the build targets (e.g., `clean`, `build`, `nativeImage`, etc.) from a list of available ones.
 For example, if your project is built with Maven, and you would like to package the compiled code as a GraalVM native image, select `nativeImage`.
 That will run the `mvnw package -Dpackaging=native-image` job.
 
@@ -111,7 +118,9 @@ For more details, continue reading to the [Micronaut documentation](https://guid
 ## Deploy Micronaut Projects to a Docker Registry
 
 The Micronaut support in VS Code allows to build and deploy Docker images to a Docker registry.
-Use action **View** > **Command Palette** > **Micronaut: Deploy...** and select **dockerPush** to deploy a dockerized Micronaut application or **dockerPushNative** to build and push docker with a native executable of Micronaut application.
+- To deploy a dockerized Micronaut application, invoke the action **View** > **Command Palette** > **Micronaut: Deploy...** action.
+- To deploy a dockerized Micronaut application, select the **dockerPush** action.
+- To build and push docker with a native executable of Micronaut application, invoke the **dockerPushNative** action.
 
 ![Micronaut Deploy Commands](images/micronaut-deploy-commands.png)
 
@@ -123,16 +132,16 @@ A particular Docker Registry can be configured in the build, see the [Micronaut 
 GraalVM Tools for Micronaut Extension added support for working with Kubernetes clusters based on Microsofts’s [Visual Studio Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools).
 It is now possible to deploy, run and debug a Micronaut application in a Kubernetes cluster from VS Code.
 
-This guide is focused on and tested with Oracle Container Engine for Kubernetes (OKE)](https://www.oracle.com/uk/cloud-native/container-engine-kubernetes/) and Oracle Container Registry, but Kubernetes features should work in other environments.
+This guide is focused on and tested with [Oracle Container Engine for Kubernetes (OKE)](https://www.oracle.com/uk/cloud-native/container-engine-kubernetes/) and Oracle Container Registry, but Kubernetes features should work in other container registries.
 OKE is a fully-managed, scalable, and highly available service that you can use to deploy your containerized applications to Oracle Cloud.
 
 This guide will walk you through the process of deploying a Micronaut application to OKE from VS Code and debugging it.
 
 ### Prerequisites
 - [Visual Studio Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools)
-- [Docker](https://docs.docker.com/engine/reference/run/)
 - [Oracle Cloud Account](https://www.oracle.com/uk/cloud/free/)
 - [Access to Oracle Container Engine for Kubernetes (OKE)](https://oracle.github.io/learning-library/oci-library/oci-hol/OKE/workshops/freetier/index.html?lab=intro)
+- [Docker](https://docs.docker.com/engine/reference/run/)
 
 ## Preparation to Access a Kubernetes Cluster in Oracle Container Registry
 
@@ -156,9 +165,9 @@ To be able to deploy Docker images to Oracle Container Registry, you need to set
 
 **Step 1: Create a Kubernetes cluster in OCI**
 
-Using the Oracle Cloud Console, create a Kubernetes cluster with default settings using the *Quick Create* workflow:
+Using the Oracle Cloud console, create a Kubernetes cluster with default settings using the *Quick Create* workflow:
 
-1. In the Oracle Cloud Console, open the navigation menu and click **Developer Services**.
+1. In the Oracle Cloud console, open the navigation menu and click **Developer Services**.
 2. Under Containers, click **Kubernetes Clusters (OKE)**.
 3. Then click **Create Cluster**.
 
@@ -167,7 +176,7 @@ For more information, check this [guide](https://docs.oracle.com/en-us/iaas/Cont
 **Step 2: Set up access to Kubernetes cluster**
 
 You can access your Kubernetes cluster and manage it using `kubectl`.
-The `kubectl` command-line tool must be configured to communicate with your cluster.
+The `kubectl` command line tool must be configured to communicate with your cluster.
 To do that you have to set up a Kubernetes configuration file, _kubeconfig_.
 The kubeconfig file (by default stored and can be found in the _$HOME/.kube/config_) provides the necessary details to access the cluster.
 
@@ -195,7 +204,7 @@ The list of available regions and their keys is available [here](https://docs.or
 
 > NOTE: If the Docker registry is private you will need a Docker registry secret.
 
-This [guide](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengpullingimagesfromocir.htm) describes how to create a Docker registry secret and describes how to specify the image to pull from Oracle Cloud Infrastructure Registry (along with the Docker secret to use) during application deployment to a cluster you've created using OKE.
+This [guide](https://docs.oracle.com/en-us/iaas/Content/ContEng/Tasks/contengpullingimagesfromocir.htm) describes how to create a Docker registry secret and how to specify the image to pull from Oracle Cloud Infrastructure Registry (along with the Docker secret to use) during application deployment to a cluster.
 
 ### Specify the Location for Docker Image in Oracle Container Registry
 
@@ -271,7 +280,7 @@ You can work on other projects, deploy them to another Kubernetes clusters, and 
 
 ## Debug Micronaut Applications in a Kubernetes Cluster
 
-In addition to being able to deploy and run Micronaut applications in Kubernetes, you can also debug your Java application in a cluster directly from VS Code.
+In addition to being able to deploy and run Micronaut applications in Kubernetes, you can also debug your Java application in a Kubernetes cluster directly from VS Code.
 
 > Note: To allow complete Java debugging experience, you need to ensure the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) is installed. It is not needed if you have installed [GraalVM Tools for Java Extension pack](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack), it already includes a full-fledged support for the Java and Micronaut.
 
@@ -279,7 +288,7 @@ With the connection made to a local port (thanks to [Kubernetes port forwarding 
 Having set some breakpoints in your applciation, do the following to start debugging:
 
 1. Go to View > Command Palette, search for **Micronaut: Debug in Kubernetes** action and invoke it.
-2. Confirm port forwarding. First time you start debugging your application deployed in Kubernetes, a popup window will open in the right bottom corner asking to confirm port forwarding. This will setup a `JAVA_TOOLS_OPTIONS` environment variable in the deployment script file.
+2. Confirm port forwarding. First time you start debugging your application, deployed in a Kubernetes cluster, a popup window will open in the right bottom corner asking to confirm port forwarding. This will setup a `JAVA_TOOLS_OPTIONS` environment variable in the deployment script file.
 3. Then you will be prompted to choose a port forwarding session:
 
    ![Choose a port forwarding session](images/k8s_port_forwarding.png)
