@@ -255,6 +255,10 @@ final class BreakpointInterceptor {
         return handleGetClasses(jni, bp, state);
     }
 
+    private static boolean getPermittedSubclasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+        return handleGetClasses(jni, bp, state);
+    }
+
     private static boolean handleGetClasses(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle self = getObjectArgument(0);
@@ -1520,7 +1524,9 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::constantBootstrapGetStaticFinal),
                     optionalBrk("java/lang/invoke/MethodType", "fromMethodDescriptorString",
                                     "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
-                                    BreakpointInterceptor::methodTypeFromDescriptor)
+                                    BreakpointInterceptor::methodTypeFromDescriptor),
+                    optionalBrk("java/lang/Class", "getPermittedSubclasses", "()[Ljava/lang/Class;",
+                                    BreakpointInterceptor::getPermittedSubclasses)
     };
 
     private static final BreakpointSpecification CLASSLOADER_LOAD_CLASS_BREAKPOINT_SPECIFICATION = optionalBrk("java/lang/ClassLoader", "loadClass",

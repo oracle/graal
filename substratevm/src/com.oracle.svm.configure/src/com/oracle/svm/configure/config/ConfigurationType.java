@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,7 @@ public class ConfigurationType implements JsonPrintable {
     private Map<ConfigurationMethod, ConfigurationMemberInfo> methods;
 
     private boolean allDeclaredClasses;
+    private boolean allPermittedSubclasses;
     private boolean allPublicClasses;
     private boolean allDeclaredFields;
     private boolean allPublicFields;
@@ -211,6 +212,7 @@ public class ConfigurationType implements JsonPrintable {
     private void setFlagsFromOther(ConfigurationType other, BiPredicate<Boolean, Boolean> flagPredicate,
                     BiFunction<ConfigurationMemberAccessibility, ConfigurationMemberAccessibility, ConfigurationMemberAccessibility> accessCombiner) {
         allDeclaredClasses = flagPredicate.test(allDeclaredClasses, other.allDeclaredClasses);
+        allPermittedSubclasses = flagPredicate.test(allPermittedSubclasses, other.allPermittedSubclasses);
         allPublicClasses = flagPredicate.test(allPublicClasses, other.allPublicClasses);
         allDeclaredFields = flagPredicate.test(allDeclaredFields, other.allDeclaredFields);
         allPublicFields = flagPredicate.test(allPublicFields, other.allPublicFields);
@@ -225,7 +227,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private boolean allFlagsFalse() {
-        return !(allDeclaredClasses || allPublicClasses || allDeclaredFields || allPublicFields ||
+        return !(allDeclaredClasses || allPermittedSubclasses || allPublicClasses || allDeclaredFields || allPublicFields ||
                         allDeclaredMethodsAccess != ConfigurationMemberAccessibility.NONE || allPublicMethodsAccess != ConfigurationMemberAccessibility.NONE ||
                         allDeclaredConstructorsAccess != ConfigurationMemberAccessibility.NONE || allPublicConstructorsAccess != ConfigurationMemberAccessibility.NONE);
     }
@@ -310,6 +312,10 @@ public class ConfigurationType implements JsonPrintable {
         allDeclaredClasses = true;
     }
 
+    public synchronized void setAllPermittedSubclasses() {
+        allPermittedSubclasses = true;
+    }
+
     public synchronized void setAllPublicClasses() {
         allPublicClasses = true;
     }
@@ -365,6 +371,7 @@ public class ConfigurationType implements JsonPrintable {
         optionallyPrintJsonBoolean(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredConstructors");
         optionallyPrintJsonBoolean(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicConstructors");
         optionallyPrintJsonBoolean(writer, allDeclaredClasses, "allDeclaredClasses");
+        optionallyPrintJsonBoolean(writer, allPermittedSubclasses, "allPermittedSubclasses");
         optionallyPrintJsonBoolean(writer, allPublicClasses, "allPublicClasses");
         optionallyPrintJsonBoolean(writer, allDeclaredMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllDeclaredMethods");
         optionallyPrintJsonBoolean(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicMethods");
@@ -393,7 +400,7 @@ public class ConfigurationType implements JsonPrintable {
             }
         }
 
-        writer.append('}').unindent().newline();
+        writer.unindent().newline().append('}');
     }
 
     private Set<ConfigurationMethod> getMethodsByAccessibility(ConfigurationMemberAccessibility accessibility) {
@@ -461,6 +468,10 @@ public class ConfigurationType implements JsonPrintable {
 
         public static boolean haveAllDeclaredClasses(ConfigurationType type) {
             return type.allDeclaredClasses;
+        }
+
+        public static boolean haveAllPermittedSubclasses(ConfigurationType type) {
+            return type.allPermittedSubclasses;
         }
 
         public static boolean haveAllPublicClasses(ConfigurationType type) {
