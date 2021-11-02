@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -411,14 +410,14 @@ public class FloatingReadPhase extends Phase {
 
         @SuppressWarnings("try")
         private void processFloatable(FloatableAccessNode accessNode, MemoryMapImpl state) {
-            // Bases can't be used for both init and other memory locations since init doesn't
-            // participate in the memory graph.
-            GraalError.guarantee(!initMemory.contains(accessNode.getAddress().getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
-
             StructuredGraph graph = accessNode.graph();
             LocationIdentity locationIdentity = accessNode.getLocationIdentity();
 
             if (accessNode.canFloat()) {
+                // Bases can't be used for both init and other memory locations since init doesn't
+                // participate in the memory graph.
+                GraalError.guarantee(!initMemory.contains(accessNode.getAddress().getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
+
                 assert accessNode.getNullCheck() == false;
                 MemoryKill lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
