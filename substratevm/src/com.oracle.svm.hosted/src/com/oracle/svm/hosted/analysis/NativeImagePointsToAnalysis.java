@@ -77,7 +77,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         illegalCalleesPattern = buildPrefixMatchPattern(illegalCallees);
 
         dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
-        unknownFieldHandler = new UnknownFieldHandler(metaAccess);
+        unknownFieldHandler = new PointsToUnknownFieldHandler(metaAccess);
     }
 
     @Override

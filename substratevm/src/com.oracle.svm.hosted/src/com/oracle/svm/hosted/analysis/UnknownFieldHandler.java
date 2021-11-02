@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -42,7 +42,7 @@ import java.util.Set;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-public class UnknownFieldHandler {
+public abstract class UnknownFieldHandler {
     private Set<AnalysisField> handledUnknownValueFields = new HashSet<>();
     private final AnalysisMetaAccess metaAccess;
 
@@ -50,7 +50,7 @@ public class UnknownFieldHandler {
         this.metaAccess = metaAccess;
     }
 
-    public void handleUnknownValueField(NativeImagePointsToAnalysis bb, AnalysisField field) {
+    public void handleUnknownValueField(BigBang bb, AnalysisField field) {
         if (handledUnknownValueFields.contains(field)) {
             return;
         }
@@ -125,51 +125,7 @@ public class UnknownFieldHandler {
         return aAnnotationTypes;
     }
 
-    /**
-     * Register a field as containing unknown object(s), i.e., is usually written only in hosted
-     * code. It can have multiple declared types provided via annotation.
-     */
-    private void handleUnknownObjectField(NativeImagePointsToAnalysis bb, AnalysisField aField, AnalysisType... declaredTypes) {
-        assert aField.getJavaKind() == JavaKind.Object;
-
-        aField.registerAsWritten(null);
-
-        /* Link the field with all declared types. */
-        for (AnalysisType fieldDeclaredType : declaredTypes) {
-            TypeFlow<?> fieldDeclaredTypeFlow = fieldDeclaredType.getTypeFlow(bb, true);
-            if (aField.isStatic()) {
-                fieldDeclaredTypeFlow.addUse(bb, aField.getStaticFieldFlow());
-            } else {
-                fieldDeclaredTypeFlow.addUse(bb, aField.getInitialInstanceFieldFlow());
-                if (fieldDeclaredType.isArray()) {
-                    AnalysisType fieldComponentType = fieldDeclaredType.getComponentType();
-                    aField.getInitialInstanceFieldFlow().addUse(bb, aField.getInstanceFieldFlow());
-                    // TODO is there a better way to signal that the elements type flow of a unknown
-                    // object field is not empty?
-                    if (!fieldComponentType.isPrimitive()) {
-                        /*
-                         * Write the component type abstract object into the field array elements
-                         * type flow, i.e., the array elements type flow of the abstract object of
-                         * the field declared type.
-                         *
-                         * This is required so that the index loads from this array return all the
-                         * possible objects that can be stored in the array.
-                         */
-                        TypeFlow<?> elementsFlow = fieldDeclaredType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
-                        fieldComponentType.getTypeFlow(bb, false).addUse(bb, elementsFlow);
-
-                        /*
-                         * In the current implementation it is not necessary to do it it recursively
-                         * for multidimensional arrays since we don't model individual array
-                         * elements, so from the point of view of the static analysis the field's
-                         * array elements value is non null (in the case of a n-dimensional array
-                         * that value is another array, n-1 dimensional).
-                         */
-                    }
-                }
-            }
-        }
-    }
+    protected abstract void handleUnknownObjectField(BigBang bb, AnalysisField aField, AnalysisType... declaredTypes);
 
     public void cleanupAfterAnalysis() {
         handledUnknownValueFields = null;
