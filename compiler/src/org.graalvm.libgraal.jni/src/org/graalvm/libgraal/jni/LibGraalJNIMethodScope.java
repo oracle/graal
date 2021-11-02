@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import java.lang.reflect.Method;
+
 import static org.graalvm.nativebridge.jni.JNIUtil.PopLocalFrame;
 import static org.graalvm.nativebridge.jni.JNIUtil.PushLocalFrame;
 
@@ -44,6 +46,17 @@ import static org.graalvm.nativebridge.jni.JNIUtil.PushLocalFrame;
  * created by libgraal will never be freed (i.e., a memory leak).
  */
 final class LibGraalJNIMethodScope extends JNIMethodScope {
+
+    private static final Method getCurrentJavaThreadMethod;
+    static {
+        Method m;
+        try {
+            m = HotSpotJVMCIRuntime.class.getMethod("getCurrentJavaThread");
+        } catch (NoSuchMethodException e) {
+            m = null;
+        }
+        getCurrentJavaThreadMethod = m;
+    }
 
     private static volatile int lastJavaPCOffset = -1;
 
@@ -69,8 +82,16 @@ final class LibGraalJNIMethodScope extends JNIMethodScope {
     }
 
     private static PointerBase getJavaFrameAnchor() {
-        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned(HotSpotJVMCIRuntime.runtime().getCurrentJavaThread()).add(getLastJavaPCOffset());
-        return WordFactory.pointer(currentThreadLastJavaPCOffset.read());
+        if (getCurrentJavaThreadMethod == null) {
+            throw new IllegalStateException("CurrentJavaThread not supported by JVMCI.");
+        }
+        try {
+            long currentJavaThreadAddr = (Long) getCurrentJavaThreadMethod.invoke(HotSpotJVMCIRuntime.runtime());
+            CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned(currentJavaThreadAddr).add(getLastJavaPCOffset());
+            return WordFactory.pointer(currentThreadLastJavaPCOffset.read());
+        } catch (ReflectiveOperationException reflectiveException) {
+            throw new RuntimeException("Failed to invoke HotSpotJVMCIRuntime::getCurrentJavaThread", reflectiveException);
+        }
     }
 
     private static int getLastJavaPCOffset() {
