@@ -612,7 +612,11 @@ public class AArch64Move {
                 break;
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat()) && result.getRegisterCategory().equals(SIMD)) {
-                    masm.fmov(32, result, input.asFloat());
+                    if (input.asFloat() == 0.0) {
+                        masm.neon.moviVI(AArch64ASIMDAssembler.ASIMDSize.HalfReg, result, 0);
+                    } else {
+                        masm.fmov(32, result, input.asFloat());
+                    }
                 } else if (result.getRegisterCategory().equals(CPU)) {
                     masm.mov(result, Float.floatToRawIntBits(input.asFloat()));
                 } else {
@@ -625,7 +629,11 @@ public class AArch64Move {
                 break;
             case Double:
                 if (AArch64MacroAssembler.isDoubleImmediate(input.asDouble()) && result.getRegisterCategory().equals(SIMD)) {
-                    masm.fmov(64, result, input.asDouble());
+                    if (input.asDouble() == 0.0) {
+                        masm.neon.moviVI(AArch64ASIMDAssembler.ASIMDSize.HalfReg, result, 0);
+                    } else {
+                        masm.fmov(64, result, input.asDouble());
+                    }
                 } else if (result.getRegisterCategory().equals(CPU)) {
                     masm.mov(result, Double.doubleToRawLongBits(input.asDouble()));
                 } else {

@@ -63,7 +63,7 @@ public final class AArch64MathCopySignOp extends AArch64LIRInstruction {
         Register signReg = asRegister(sign);
 
         int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        masm.fmov(size, resultReg, 0);
+        masm.neon.moviVI(ASIMDSize.HalfReg, resultReg, 0);
         masm.fneg(size, resultReg, resultReg);
         masm.neon.bslVVV(ASIMDSize.HalfReg, resultReg, signReg, magnitudeReg);
     }

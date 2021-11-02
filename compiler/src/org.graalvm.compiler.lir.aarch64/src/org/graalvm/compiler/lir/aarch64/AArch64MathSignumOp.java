@@ -66,7 +66,7 @@ public final class AArch64MathSignumOp extends AArch64LIRInstruction {
         Register floatScratch = asRegister(scratch);
 
         int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        masm.fmov(size, floatScratch, 0.0d);
+        masm.neon.moviVI(ASIMDSize.HalfReg, floatScratch, 0);
         masm.neon.facgtSSS(ElementSize.fromKind(result.getPlatformKind()), resultReg, inputReg, floatScratch);
         masm.neon.ushrSSI(ElementSize.DoubleWord, resultReg, resultReg, 1);
         masm.fmov(size, floatScratch, 1.0d);
