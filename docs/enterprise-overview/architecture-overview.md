@@ -115,6 +115,12 @@ Oracle GraalVM Enterprise Edition is licensed under the [Oracle Technology Netwo
 
 For production use, GraalVM Enterprise is available as part of the [Oracle Java SE Subscription](https://www.oracle.com/uk/java/java-se-subscription/) which includes 24x7x365 [Oracle premier support](https://www.oracle.com/support/premier/) and the access to [My Oracle Support (MOS)](https://www.oracle.com/support/).
 
+GraalVM Enterprise focuses on support for Java LTS releases for production deployments.
+GraalVM Enterprise Edition 21.3 is announced a Long-Term-Support (LTS) release.
+See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/enterprise/graalvm-enterprise-version-roadmap.md) for more information.
+
+Please be informed, that unlike Oracle JDK 17 released under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) allowing commercial and production use for 2 years, GraalVM Enterprise Edition license remains the same. 
+
 ## Experimental and Early Adopter Features
 
 Oracle GraalVM Enterprise Edition features are distributed as fully supported, early adopter, and experimental.
