@@ -24,17 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-public class TestClassEvent extends JFRTest {
+import java.io.IOException;
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+public class ThreadStateConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfThreadStates = input.readInt();
+        for (int i = 0; i < numberOfThreadStates; i++) {
+            addFoundId(input.readInt()); // ThreadStateId.
+            Assert.assertTrue("ThreadStateName is empty!", input.readUTF().isEmpty()); // ThreadStateName.
+        }
     }
 }

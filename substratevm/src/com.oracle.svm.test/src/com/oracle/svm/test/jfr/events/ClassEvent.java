@@ -24,17 +24,17 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.events;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.StackTrace;
 
-public class TestClassEvent extends JFRTest {
+@Label("Class Event")
+@Description("An event with a class payload")
+@StackTrace(false)
+public class ClassEvent extends Event {
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
-    }
+    @Label("Class") public Class<?> clazz;
 }

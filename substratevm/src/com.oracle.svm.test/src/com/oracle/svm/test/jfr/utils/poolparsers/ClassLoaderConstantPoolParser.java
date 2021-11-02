@@ -24,17 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import com.oracle.svm.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class TestClassEvent extends JFRTest {
+import java.io.IOException;
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+public class ClassLoaderConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfClassLoaders = input.readInt();
+        for (int i = 0; i < numberOfClassLoaders; i++) {
+            addFoundId(input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrTypes.Class.getId(), input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // ClassLoaderName.
+        }
     }
 }

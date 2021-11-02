@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,15 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
+import com.oracle.svm.test.jfr.events.StringEvent;
 import org.junit.Test;
 
-public class TestClassEvent extends JFRTest {
+public class TestStringEvent extends JFRTest {
 
     @Test
     public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
+        StringEvent event = new StringEvent();
+        event.message = "Event has been generated!";
         event.commit();
     }
 }

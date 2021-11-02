@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import java.io.IOException;
 
-public class TestClassEvent extends JFRTest {
+import jdk.jfr.Recording;
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
-    }
+/**
+ * Utility class to handle recording.
+ */
+public interface JFR {
+
+    Recording startRecording(String recordingName) throws Exception;
+
+    Recording startRecording(String recordingName, String configName) throws Exception;
+
+    void endRecording(Recording recording) throws Exception;
+
+    void cleanupRecording(Recording recording) throws IOException;
 }

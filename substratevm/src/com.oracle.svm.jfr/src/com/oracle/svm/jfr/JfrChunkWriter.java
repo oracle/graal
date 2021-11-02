@@ -54,13 +54,13 @@ import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
  * lock while they are paused at a safepoint.
  */
 public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
-    private static final byte[] FILE_MAGIC = {'F', 'L', 'R', '\0'};
-    private static final short JFR_VERSION_MAJOR = 2;
-    private static final short JFR_VERSION_MINOR = 0;
+    public static final byte[] FILE_MAGIC = {'F', 'L', 'R', '\0'};
+    public static final short JFR_VERSION_MAJOR = 2;
+    public static final short JFR_VERSION_MINOR = 0;
     private static final int CHUNK_SIZE_OFFSET = 8;
 
-    private static final long METADATA_TYPE_ID = 0;
-    private static final long CONSTANT_POOL_TYPE_ID = 1;
+    public static final long METADATA_TYPE_ID = 0;
+    public static final long CONSTANT_POOL_TYPE_ID = 1;
 
     private final JfrGlobalMemory globalMemory;
     private final ReentrantLock lock;

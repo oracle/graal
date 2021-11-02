@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,24 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import java.io.IOException;
 
-@Label("String Event")
-@Description("An event with a string payload")
-@StackTrace(false)
-public class StringEvent extends Event {
+import com.oracle.svm.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-    @Label("Message") public String message;
+public class ModuleConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfModules = input.readInt();
+        for (int i = 0; i < numberOfModules; i++) {
+            addFoundId(input.readLong()); // ModuleId.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // ModuleName.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Version.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Location.
+            addExpectedId(JfrTypes.ClassLoader.getId(), input.readLong()); // ClassLoaderId.
+        }
+    }
 }

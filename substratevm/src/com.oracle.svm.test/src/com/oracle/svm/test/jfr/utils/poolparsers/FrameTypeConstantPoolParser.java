@@ -24,17 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-@Label("Class Event")
-@Description("An event with a class payload")
-@StackTrace(false)
-public class ClassEvent extends Event {
+import java.io.IOException;
 
-    @Label("Class") public Class<?> clazz;
+public class FrameTypeConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfFrameTypes = input.readInt();
+        for (int i = 0; i < numberOfFrameTypes; i++) {
+            addFoundId(input.readInt()); // FrameTypeId.
+            Assert.assertTrue("FrameTypeName is empty!", input.readUTF().isEmpty()); // FrameTypeName.
+        }
+    }
 }

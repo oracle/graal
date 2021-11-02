@@ -24,17 +24,25 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import java.io.IOException;
 
-public class TestClassEvent extends JFRTest {
+import com.oracle.svm.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+public class ClassConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfClasses = input.readInt();
+        for (int i = 0; i < numberOfClasses; i++) {
+            addFoundId(input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.ClassLoader.getId(), input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // ClassName.
+            addExpectedId(JfrTypes.Package.getId(), input.readLong()); // PackageId.
+            Assert.assertTrue("Modifier value is not correct!", input.readLong() >= 0); // Modifier.
+        }
     }
 }

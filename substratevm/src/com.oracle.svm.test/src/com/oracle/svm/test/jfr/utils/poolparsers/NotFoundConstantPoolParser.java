@@ -24,17 +24,14 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class TestClassEvent extends JFRTest {
+public class NotFoundConstantPoolParser extends ConstantPoolParser {
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+    @Override
+    public void parse(RecordingInput input) {
+        throw new UnsupportedOperationException("Constant pool parser is not found!");
     }
 }

@@ -24,17 +24,20 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import org.junit.Test;
+import java.io.IOException;
 
-public class TestClassEvent extends JFRTest {
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-    @Test
-    public void test() throws Exception {
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
+public class SymbolConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfSymbols = input.readInt();
+        for (int i = 0; i < numberOfSymbols; i++) {
+            addFoundId(input.readLong()); // SymbolId.
+            input.readUTF(); // Symbol.
+        }
     }
 }
