@@ -45,7 +45,7 @@ vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_ja
   run: [
     ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
     ${vm_bench_common.upload}
-    ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=native-interpreter", "--metric=allocated-bytes"]
+    ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=jvm-interpreter", "--metric=allocated-bytes"]
     ${vm_bench_common.upload}
     ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
