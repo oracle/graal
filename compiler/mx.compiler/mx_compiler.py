@@ -529,9 +529,12 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         b.run(tasks, extraVMarguments)
 
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
-        # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java,com.oracle.truffle.api.object.dsl'], quietForNoPackages=True)
-
+        if jdk.javaCompliance >= '11':
+            # GR-34816
+            pass
+        else:
+            # metadata package was deprecated, exclude it
+            if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java,com.oracle.truffle.api.object.dsl'], quietForNoPackages=True)
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # run DaCapo benchmarks #
