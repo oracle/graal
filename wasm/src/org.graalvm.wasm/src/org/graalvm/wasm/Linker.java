@@ -302,7 +302,7 @@ public class Linker {
         final Runnable resolveAction = () -> block.resolveCallNode(controlTableOffset);
         final Sym[] dependencies = new Sym[]{
                         function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()) : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
+        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOffset(), controlTableOffset), dependencies, resolveAction);
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {

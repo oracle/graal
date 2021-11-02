@@ -336,7 +336,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return profileCount;
     }
 
-    public int startOfset() {
+    public int startOffset() {
         return startOffset;
     }
 
