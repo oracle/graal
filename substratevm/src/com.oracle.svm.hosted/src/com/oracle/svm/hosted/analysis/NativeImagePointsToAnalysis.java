@@ -26,21 +26,13 @@ package com.oracle.svm.hosted.analysis;
 
 import static com.oracle.graal.pointsto.reports.AnalysisReportsOptions.PrintAnalysisCallTree;
 import static com.oracle.svm.hosted.NativeImageOptions.MaxReachableTypes;
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
@@ -48,16 +40,12 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
@@ -67,16 +55,15 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
-    private Set<AnalysisField> handledUnknownValueFields;
 
     private final Pattern illegalCalleesPattern;
     private final Pattern targetCallersPattern;
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
+    private final UnknownFieldHandler unknownFieldHandler;
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures) {
@@ -89,8 +76,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         String[] illegalCallees = new String[]{"java\\.util\\.stream", "java\\.util\\.Collection\\.stream", "java\\.util\\.Arrays\\.stream"};
         illegalCalleesPattern = buildPrefixMatchPattern(illegalCallees);
 
-        handledUnknownValueFields = new HashSet<>();
         dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        unknownFieldHandler = new UnknownFieldHandler(metaAccess);
     }
 
     @Override
@@ -100,7 +87,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     protected void checkObjectGraph(ObjectScanner objectScanner) {
-        universe.getFields().forEach(this::handleUnknownValueField);
+        universe.getFields().forEach(field -> unknownFieldHandler.handleUnknownValueField(this, field));
         universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(dynamicHubInitializer::initializeMetaData);
 
         /* Scan hubs of all types that end up in the native image. */
@@ -115,7 +102,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
-        handledUnknownValueFields = null;
+        unknownFieldHandler.cleanupAfterAnalysis();
     }
 
     @Override
@@ -141,127 +128,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         SVMHost svmHost = (SVMHost) hostVM;
         JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
         objectScanner.scanConstant(hubConstant, ScanReason.HUB);
-    }
-
-    private void handleUnknownValueField(AnalysisField field) {
-        if (handledUnknownValueFields.contains(field)) {
-            return;
-        }
-        if (!field.isAccessed()) {
-            /*
-             * Field is not reachable yet, so do no process it. In particular, we must not register
-             * types listed in the @UnknownObjectField annotation as allocated when the field is not
-             * yet reachable
-             */
-            return;
-        }
-
-        UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
-        UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
-        if (unknownObjectField != null) {
-            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownObjectField annotated field " + field.format("%H.%n") + " cannot be final";
-            assert field.getJavaKind() == JavaKind.Object;
-
-            field.setCanBeNull(unknownObjectField.canBeNull());
-
-            List<AnalysisType> aAnnotationTypes = extractAnnotationTypes(field, unknownObjectField);
-
-            for (AnalysisType type : aAnnotationTypes) {
-                type.registerAsAllocated(null);
-            }
-
-            /*
-             * Use the annotation types, instead of the declared type, in the UnknownObjectField
-             * annotated fields initialization.
-             */
-            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[0]));
-
-        } else if (unknownPrimitiveField != null) {
-            assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
-            /*
-             * Register a primitive field as containing unknown values(s), i.e., is usually written
-             * only in hosted code.
-             */
-
-            field.registerAsWritten(null);
-        }
-
-        handledUnknownValueFields.add(field);
-    }
-
-    private List<AnalysisType> extractAnnotationTypes(AnalysisField field, UnknownObjectField unknownObjectField) {
-        List<Class<?>> annotationTypes = new ArrayList<>(Arrays.asList(unknownObjectField.types()));
-        for (String annotationTypeName : unknownObjectField.fullyQualifiedTypes()) {
-            try {
-                Class<?> annotationType = Class.forName(annotationTypeName);
-                annotationTypes.add(annotationType);
-            } catch (ClassNotFoundException e) {
-                throw shouldNotReachHere("Annotation type not found " + annotationTypeName);
-            }
-        }
-
-        List<AnalysisType> aAnnotationTypes = new ArrayList<>();
-        AnalysisType declaredType = field.getType();
-
-        for (Class<?> annotationType : annotationTypes) {
-            AnalysisType aAnnotationType = metaAccess.lookupJavaType(annotationType);
-
-            assert !WordBase.class.isAssignableFrom(annotationType) : "Annotation type must not be a subtype of WordBase: field: " + field + " | declared type: " + declaredType +
-                            " | annotation type: " + annotationType;
-            assert declaredType.isAssignableFrom(aAnnotationType) : "Annotation type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
-                            " | annotation type: " + annotationType;
-            assert aAnnotationType.isArray() || (aAnnotationType.isInstanceClass() && !Modifier.isAbstract(aAnnotationType.getModifiers())) : "Annotation type cannot be abstract: field: " + field +
-                            " | annotation type " + aAnnotationType;
-
-            aAnnotationTypes.add(aAnnotationType);
-        }
-        return aAnnotationTypes;
-    }
-
-    /**
-     * Register a field as containing unknown object(s), i.e., is usually written only in hosted
-     * code. It can have multiple declared types provided via annotation.
-     */
-    private void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
-        assert aField.getJavaKind() == JavaKind.Object;
-
-        aField.registerAsWritten(null);
-
-        /* Link the field with all declared types. */
-        for (AnalysisType fieldDeclaredType : declaredTypes) {
-            TypeFlow<?> fieldDeclaredTypeFlow = fieldDeclaredType.getTypeFlow(this, true);
-            if (aField.isStatic()) {
-                fieldDeclaredTypeFlow.addUse(this, aField.getStaticFieldFlow());
-            } else {
-                fieldDeclaredTypeFlow.addUse(this, aField.getInitialInstanceFieldFlow());
-                if (fieldDeclaredType.isArray()) {
-                    AnalysisType fieldComponentType = fieldDeclaredType.getComponentType();
-                    aField.getInitialInstanceFieldFlow().addUse(this, aField.getInstanceFieldFlow());
-                    // TODO is there a better way to signal that the elements type flow of a unknown
-                    // object field is not empty?
-                    if (!fieldComponentType.isPrimitive()) {
-                        /*
-                         * Write the component type abstract object into the field array elements
-                         * type flow, i.e., the array elements type flow of the abstract object of
-                         * the field declared type.
-                         *
-                         * This is required so that the index loads from this array return all the
-                         * possible objects that can be stored in the array.
-                         */
-                        TypeFlow<?> elementsFlow = fieldDeclaredType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(this, true);
-                        fieldComponentType.getTypeFlow(this, false).addUse(this, elementsFlow);
-
-                        /*
-                         * In the current implementation it is not necessary to do it it recursively
-                         * for multidimensional arrays since we don't model individual array
-                         * elements, so from the point of view of the static analysis the field's
-                         * array elements value is non null (in the case of a n-dimensional array
-                         * that value is another array, n-1 dimensional).
-                         */
-                    }
-                }
-            }
-        }
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
