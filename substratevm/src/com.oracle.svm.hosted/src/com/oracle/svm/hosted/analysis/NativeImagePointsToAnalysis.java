@@ -28,9 +28,7 @@ import static com.oracle.graal.pointsto.reports.AnalysisReportsOptions.PrintAnal
 import static com.oracle.svm.hosted.NativeImageOptions.MaxReachableTypes;
 
 import java.util.concurrent.ForkJoinPool;
-import java.util.regex.Pattern;
 
-import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -59,25 +57,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
 
-    private final Pattern illegalCalleesPattern;
-    private final Pattern targetCallersPattern;
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
     private final UnknownFieldHandler unknownFieldHandler;
+    private final CallChecker callChecker;
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures) {
         super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
-        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
-        targetCallersPattern = buildPrefixMatchPattern(targetCallers);
-
-        String[] illegalCallees = new String[]{"java\\.util\\.stream", "java\\.util\\.Collection\\.stream", "java\\.util\\.Arrays\\.stream"};
-        illegalCalleesPattern = buildPrefixMatchPattern(illegalCallees);
-
         dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
         unknownFieldHandler = new PointsToUnknownFieldHandler(metaAccess);
+        callChecker = new CallChecker();
+    }
+
+    @Override
+    public boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {
+        return callChecker.isCallAllowed(bb, caller, target, srcPosition);
     }
 
     @Override
@@ -151,54 +148,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
          */
 
         return !SVMHost.isUnknownClass(type);
-    }
-
-    /**
-     * Builds a pattern that checks if the tested string starts with any of the target prefixes,
-     * like so: {@code ^(str1(.*)|str2(.*)|str3(.*))}.
-     */
-    private static Pattern buildPrefixMatchPattern(String[] targetPrefixes) {
-        StringBuilder patternStr = new StringBuilder("^(");
-        for (int i = 0; i < targetPrefixes.length; i++) {
-            String prefix = targetPrefixes[i];
-            patternStr.append(prefix);
-            patternStr.append("(.*)");
-            if (i < targetPrefixes.length - 1) {
-                patternStr.append("|");
-            }
-        }
-        patternStr.append(')');
-        return Pattern.compile(patternStr.toString());
-    }
-
-    @Override
-    public boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod callee, NodeSourcePosition srcPosition) {
-        String calleeName = callee.getQualifiedName();
-        if (illegalCalleesPattern.matcher(calleeName).find()) {
-            String callerName = caller.getQualifiedName();
-            if (targetCallersPattern.matcher(callerName).find()) {
-                SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
-                AnalysisType callerType = caller.getDeclaringClass();
-                while (suppress == null && callerType != null) {
-                    suppress = callerType.getAnnotation(SuppressSVMWarnings.class);
-                    callerType = callerType.getEnclosingType();
-                }
-                if (suppress != null) {
-                    String[] reasons = suppress.value();
-                    for (String r : reasons) {
-                        if (r.equals("AllowUseOfStreamAPI")) {
-                            return true;
-                        }
-                    }
-                }
-                String message = "Illegal: Graal/Truffle use of Stream API: " + calleeName;
-                int bci = srcPosition.getBCI();
-                String trace = caller.asStackTraceElement(bci).toString();
-                bb.getUnsupportedFeatures().addMessage(callerName, caller, message, trace);
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
