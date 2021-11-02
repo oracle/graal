@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,17 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.events;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.StackTrace;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+@Label("String Event")
+@Description("An event with a string payload")
+@StackTrace(false)
+public class StringEvent extends Event {
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
-    }
+    @Label("Message") public String message;
 }

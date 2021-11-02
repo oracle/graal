@@ -24,21 +24,51 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
-import jdk.jfr.Recording;
+import com.oracle.svm.test.jfr.utils.JFRFileParser;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-/**
- * Utility class to handle recording.
- */
-public interface JFR {
-    Recording startRecording(String recordingName) throws Exception;
+public abstract class ConstantPoolParser {
 
-    Recording startRecording(String recordingName, String configName) throws Exception;
+    /**
+     * Set of ids found during parsing of current constant pool.
+     */
+    private final Set<Long> foundIds = new HashSet<>();
 
-    void endRecording(Recording recording) throws Exception;
+    /**
+     * List of ids found during parsing of other constant pools that are referencing this one.
+     */
+    private final Set<Long> expectedIds = new HashSet<>();
 
-    void cleanupRecording(Recording recording) throws IOException;
+    protected ConstantPoolParser() {
+        foundIds.add(0L);
+    }
+
+    protected final void addFoundId(long id) {
+        foundIds.add(id);
+    }
+
+    protected static void addExpectedId(long typeId, long id) {
+        ConstantPoolParser poolParser = JFRFileParser.getSupportedConstantPools().get(typeId);
+        poolParser.expectedIds.add(id);
+    }
+
+    public boolean compare() {
+        return foundIds.size() == 0 || foundIds.containsAll(expectedIds);
+    }
+
+    /**
+     * Parse the constant pool, beginning for {@code input} position.
+     */
+    public abstract void parse(RecordingInput input) throws IOException;
+
+    @Override
+    public String toString() {
+        return getClass().getName();
+    }
 }

@@ -24,20 +24,26 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import java.io.IOException;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+public class MethodConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfMethods = input.readInt();
+        for (int i = 0; i < numberOfMethods; i++) {
+            addFoundId(input.readLong()); // MethodId.
+            addExpectedId(JfrTypes.Class.getId(), input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // MethodName.
+            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Descriptor.
+            Assert.assertTrue("Modifier value is not correct!", input.readInt() >= 0); // Modifier.
+            input.readBoolean(); // Hidden.
+        }
     }
 }

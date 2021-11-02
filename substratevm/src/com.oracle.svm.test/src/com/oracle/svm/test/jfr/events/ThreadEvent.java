@@ -24,17 +24,17 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.events;
 
 import jdk.jfr.Description;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.StackTrace;
 
-@Label("Class Event")
-@Description("An event with a class payload")
+@Label("Thread Event")
+@Description("An event with a thread payload")
 @StackTrace(false)
-public class ClassEvent extends Event {
+public class ThreadEvent extends Event {
 
-    @Label("Class") public Class<?> clazz;
+    @Label("Thread") public Thread thread;
 }

@@ -24,20 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+import java.io.IOException;
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+public class FrameTypeConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfFrameTypes = input.readInt();
+        for (int i = 0; i < numberOfFrameTypes; i++) {
+            addFoundId(input.readInt()); // FrameTypeId.
+            Assert.assertFalse("FrameTypeName is empty!", input.readUTF().isEmpty()); // FrameTypeName.
+        }
     }
 }

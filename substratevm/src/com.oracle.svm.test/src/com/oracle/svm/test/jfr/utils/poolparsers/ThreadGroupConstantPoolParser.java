@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import org.junit.Test;
+import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-import jdk.jfr.Recording;
+import java.io.IOException;
 
-public class TestJFRCompiles extends JFRTest {
+public class ThreadGroupConstantPoolParser extends ConstantPoolParser {
 
-    @Test
-    public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
-
-        StringEvent event = new StringEvent();
-        event.message = "Event has been generated!";
-        event.commit();
-
-        jfr.endRecording(recording);
-        jfr.cleanupRecording(recording);
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfThreadGroups = input.readInt();
+        for (int i = 0; i < numberOfThreadGroups; i++) {
+            addFoundId(input.readLong()); // ThreadGroupId.
+            addExpectedId(JfrTypes.ThreadGroup.getId(), input.readLong()); // ParentThreadGroupId.
+            input.readUTF(); // ThreadGroupName.
+        }
     }
 }

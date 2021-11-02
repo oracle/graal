@@ -24,20 +24,14 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+public class NotFoundConstantPoolParser extends ConstantPoolParser {
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+    @Override
+    public void parse(RecordingInput input) {
+        throw new UnsupportedOperationException("Constant pool parser is not found!");
     }
 }

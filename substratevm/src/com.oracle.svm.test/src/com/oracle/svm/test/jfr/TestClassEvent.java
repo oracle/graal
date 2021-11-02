@@ -26,29 +26,15 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertNotNull;
-
+import com.oracle.svm.test.jfr.events.ClassEvent;
 import org.junit.Test;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
-
 public class TestClassEvent extends JFRTest {
+
     @Test
     public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestClassEvent");
-
         ClassEvent event = new ClassEvent();
         event.clazz = TestClassEvent.class;
         event.commit();
-
-        jfr.endRecording(recording);
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
-        }
     }
-
 }
