@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -246,13 +246,23 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 4);
-                resourceConfiguration.addBundle(condition, (String) args.get(0));
+                expectSize(args, 6);
+                String baseName = (String) args.get(0);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(4);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(5);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             case "getBundleImplJDK11OrLater": {
-                expectSize(args, 5);
-                resourceConfiguration.addBundle(condition, (String) args.get(2));
+                expectSize(args, 7);
+                String baseName = (String) args.get(2);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(5);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(6);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             default:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -159,6 +161,22 @@ public final class ResourcesFeature implements Feature {
                 return;
             }
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
+        }
+
+        @Override
+        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+        }
+
+        @Override
+        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+            if (configurationTypeResolver.resolveType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
     }
 
