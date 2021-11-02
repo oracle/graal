@@ -318,12 +318,8 @@ def svm_gate_body(args, tasks):
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                if svm_java8():
-                    javac_image(['--output-path', svmbuild_dir()])
-                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
-                else:
-                    # Building javac image currently only supported for Java 8
-                    javac_command = []
+                javac_image(['--output-path', svmbuild_dir()])
+                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
@@ -332,12 +328,8 @@ def svm_gate_body(args, tasks):
     with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                if svm_java8():
-                    javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
-                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
-                else:
-                    # Building javac image currently only supported for Java 8
-                    javac_command = ['-H:GenerateDebugInfo=1']
+                javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
+                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared', '-H:GenerateDebugInfo=1'])  # Build and run helloworld as shared library
                 cinterfacetutorial(['-H:GenerateDebugInfo=1'])
@@ -438,8 +430,14 @@ def native_unittests_task():
 
 
 def javac_image_command(javac_path):
-    return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
-            join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
+    return [join(javac_path, 'javac'), '-proc:none'] + (
+        ['-bootclasspath', join(mx_compiler.jdk.home, 'jre', 'lib', 'rt.jar')]
+        if svm_java8() else
+        # We need to set java.home as com.sun.tools.javac.file.Locations.<clinit> can't handle `null`.
+        # However, the actual value isn't important because we won't use system classes from JDK jimage,
+        # but from JDK jmods that we will pass as app modules.
+        ['-Djava.home=', '--system', 'none', '-p', join(mx_compiler.jdk.home, 'jmods')]
+    )
 
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, builder_on_modulepath=False):
@@ -731,7 +729,7 @@ def _javac_image(native_image, path, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+    native_image((['-cp', mx_compiler.jdk.toolsjar] if svm_java8() else []) + ["-H:Path=" + path, "com.sun.tools.javac.Main", "javac",
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
