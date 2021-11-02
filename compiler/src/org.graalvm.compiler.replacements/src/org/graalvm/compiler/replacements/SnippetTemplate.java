@@ -201,6 +201,257 @@ import jdk.vm.ci.meta.Signature;
  * constants to the snippet's {@link ConstantParameter} parameters.
  *
  * Snippet templates can be managed in a cache maintained by {@link AbstractTemplates}.
+ *
+ * <h1>Snippet Lowering of {@link WithExceptionNode}</h1>
+ *
+ * Lowering of {@link WithExceptionNode} is more complicated than for normal (fixed) nodes, because
+ * of the {@linkplain WithExceptionNode#exceptionEdge() exception edge}.
+ *
+ * <h2>Replacing a WithExceptionNode with a Snippet with an {@link UnwindNode}</h2>
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * The <em>replacee graph</em> is the graph that contains the node to be lowered and where the
+ * <em>snippet graph</em> will be inlined into. In the example below, the {@code WithException} node
+ * will be lowered via a snippet.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * A <em>snippet graph</em> is a complete graph starting with a {@link StartNode} and ending with a
+ * {@link ReturnNode} and or an {@link UnwindNode}. For simplicity, multiple {@linkplain ReturnNode
+ * ReturnNodes} are {@linkplain InliningUtil#mergeReturns merged} and replaced by a single return
+ * node.
+ *
+ * The following is the simplest possible example for a snippet with an {@link UnwindNode}. The
+ * snippet consists of an @code InvokeWithException'}.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *      Return'        Unwind'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * After inlining the snippet, the {@code WithException} node in the replacee graph is replaced by
+ * the snippet graph. The {@code Start'} is connected to the predecessor, the {@code Return'} to the
+ * {@linkplain WithExceptionNode#next() next} edge, and the {@code Unwind'} to the
+ * {@linkplain WithExceptionNode#exceptionEdge() exception edge}.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * It is important to note that we do not yet remove the original {@code Begin} and
+ * {@code WithException} node, although they are no longer needed. Doing so would require support
+ * from the {@link LoweringPhase}, which might still hold references to these nodes for subsequent
+ * lowering rounds. {@linkplain org.graalvm.compiler.nodes.BeginNode#simplify Simplifications} and
+ * {@linkplain ExceptionObjectNode#lower lowering} will take care of removing these nodes.
+ *
+ * <h3>Replacee Graph after lowering</h3>
+ *
+ * After the whole replacee graph has been lowered, the superfluous nodes are gone.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h2>Replacing a non-throwing WithExceptionNode with a Snippet with an {@link UnwindNode}</h2>
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * {@linkplain WithExceptionNode#replaceWithNonThrowing() Non-throwing} {@link WithExceptionNode}
+ * are nodes where the {@linkplain WithExceptionNode#exceptionEdge() exception edge} is an
+ * {@link UnreachableBeginNode} followed by an
+ * {@link org.graalvm.compiler.nodes.UnreachableControlSinkNode}. This pattern is used to encode
+ * that we have proven that the {@link WithExceptionNode} will never throw an exception.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       UnreachableBegin
+ *         |              |
+ *     nextSucc      UnreachableControlSink
+ *         |
+ *        ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * The <em>snippet graph</em> is the same as in the example above.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *      Return'        Unwind'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * In this case, we remove the {@code ExceptionObject'} from the snippet graph, and attach the
+ * original {@code UnreachableBegin} directly to the exception producing instruction from the
+ * snippet (the {@code InvokeWithException'} node in this example).
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      UnreachableBegin
+ *         |              |
+ *       Begin       UnreachableControlSink
+ *         |
+ *     nextSucc
+ *         |
+ *        ...
+ * </pre>
+ *
+ * <h2>Replacing a WithExceptionNode with a Snippet without an {@link UnwindNode}</h2>
+ *
+ * There are cases where snippets are known not to throw an exception, although the replacee is a
+ * {@link WithExceptionNode}.
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * Let us reuse the example from the first case.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * In this example, the snippet graph consists of a single {@code NonThrowingWork'} node.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *          NonThrowingWork'
+ *                |
+ *             Return'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * As outlined above, we cannot simply delete the nodes connected to the replacee because it would
+ * interfere with the {@link LoweringPhase}. Thus, we introduce an artificial
+ * {@code PlaceholderWithException'} that connects to the
+ * {@linkplain WithExceptionNode#exceptionEdge() exception edge}. This placeholder node removes the
+ * exception edge and itself in a subsequent {@linkplain PlaceholderWithExceptionNode#simplify
+ * canonicalization}.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+  *                |
+ *           NonThrowingWork'
+ *                 |
+ *      PlaceholderWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Replacee Graph after lowering</h3>
+ *
+ * After the whole replacee graph has been lowered, the graph looks like the following.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           NonThrowingWork'
+ *                 |
+ *             nextSucc
+ *                 |
+ *                ...
+ * </pre>
+ *
  */
 public class SnippetTemplate {
 
