@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import static com.oracle.graal.pointsto.reports.AnalysisReportsOptions.PrintAnalysisCallTree;
-import static com.oracle.svm.hosted.NativeImageOptions.MaxReachableTypes;
-
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -42,11 +39,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -104,16 +99,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void checkUserLimitations() {
-        int maxReachableTypes = MaxReachableTypes.getValue();
-        if (maxReachableTypes >= 0) {
-            CallTreePrinter callTreePrinter = new CallTreePrinter(this);
-            callTreePrinter.buildCallTree();
-            int numberOfTypes = callTreePrinter.classesSet(false).size();
-            if (numberOfTypes > maxReachableTypes) {
-                throw UserError.abort("Reachable %d types but only %d allowed (because the %s option is set). To see all reachable types use %s; to change the maximum number of allowed types use %s.",
-                                numberOfTypes, maxReachableTypes, MaxReachableTypes.getName(), PrintAnalysisCallTree.getName(), MaxReachableTypes.getName());
-            }
-        }
+        super.checkUserLimitations();
+        UserLimitationsChecker.check(this);
     }
 
     @Override
