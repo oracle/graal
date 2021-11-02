@@ -163,6 +163,10 @@ suite = {
             "sha1": "5026b67af00cc876db1ed194b91d7cc2ba06710d",
             "urls": ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
+          "aarch64": {
+            # GR-34811
+            "optional": True,
+          },
         },
         "windows": {
           "amd64": {

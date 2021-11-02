@@ -880,7 +880,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
-if not mx.is_windows():
+# GR-34811
+if not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64")):
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
         name='SubstrateVM LLVM',
