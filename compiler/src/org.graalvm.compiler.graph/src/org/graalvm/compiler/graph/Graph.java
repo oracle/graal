@@ -103,7 +103,8 @@ public class Graph {
     int nodesSize;
 
     /**
-     * The modification count driven by the {@link NodeEventListener} machinery;
+     * The modification count driven by the {@link NodeEventListener} machinery. This means it only
+     * captures adding or deleting nodes, or changing the inputs of nodes.
      */
     int modificationCount;
 
@@ -312,7 +313,7 @@ public class Graph {
         return id;
     }
 
-    int getNodeModCountmodCount(Node node) {
+    int getNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeModCounts.length) {
             return nodeModCounts[id];

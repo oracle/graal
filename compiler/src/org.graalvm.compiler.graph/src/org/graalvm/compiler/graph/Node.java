@@ -600,7 +600,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     public final int modCount() {
         if (isModificationCountsEnabled() && graph != null) {
-            return graph.getNodeModCountmodCount(this);
+            return graph.getNodeModCount(this);
         }
         return 0;
     }
