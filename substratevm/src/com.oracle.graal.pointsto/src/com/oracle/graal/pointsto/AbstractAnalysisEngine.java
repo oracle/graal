@@ -61,7 +61,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final HostVM hostVM;
     protected final ForkJoinPool executorService;
     private final Runnable heartbeatCallback;
-    private final UnsupportedFeatures unsupportedFeatures;
+    protected final UnsupportedFeatures unsupportedFeatures;
     protected final DebugContext debug;
     protected final OptionValues options;
     protected final AnalysisUniverse universe;
