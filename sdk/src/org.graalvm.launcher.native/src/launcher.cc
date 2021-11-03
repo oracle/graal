@@ -53,6 +53,9 @@
     #ifndef LAUNCHER_CLASSPATH
         #error launcher classpath undefined
     #endif
+    #define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", 5) == 0)
+    #define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", 8) == 0)
+    #define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", 15) == 0)
 #endif
 
 #ifndef LIBLANG_RELPATH
@@ -132,6 +135,98 @@ CreateJVM loadliblang(char *exe_dir) {
     return NULL;
 }
 
+void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_args) {
+    // at least 1, for the classpath (although it might not be there at all)
+    vm_args->nOptions = 1;
+    #ifdef JVM
+        // org.graalvm.launcher.class system property
+        vm_args->nOptions++;
+    #endif
+    // handle vm arguments
+    int user_launcher_cp_entries = 0;
+    for (int i = 0; i < argc; i++) {
+        #ifdef JVM
+            if (strcmp(argv[i], "--native") == 0) {
+                fprintf(stdout, "The native version of %s does not exist: cannot use '--native'.\n", argv[0]);
+                exit(-1);
+            }
+        #endif
+        if (IS_VM_CP_ARG(argv[i]) || IS_VM_CLASSPATH_ARG(argv[i])) {
+            user_launcher_cp_entries++;
+        } else if (IS_VM_ARG(argv[i])) {
+            vm_args->nOptions++;
+        }
+    }
+    char **user_cp_entries = NULL;
+    char **user_cp_iterator = NULL;
+    if (user_launcher_cp_entries) {
+        user_cp_entries = (char**)malloc(user_launcher_cp_entries * sizeof(char*));
+        user_cp_iterator = user_cp_entries;
+    }
+    // set vm arguments
+    vm_args->options = (JavaVMOption *)malloc(vm_args->nOptions * sizeof(JavaVMOption));
+    JavaVMOption *option_ptr = vm_args->options;
+    #ifdef JVM
+        option_ptr->optionString = "-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR;
+        option_ptr++;
+    #endif
+    int cp_option_cnt = 0;
+    for (int i = 0; i < argc; i++) {
+        if (IS_VM_ARG(argv[i])) {
+            if (IS_VM_CP_ARG(argv[i])) {
+                *user_cp_iterator = argv[i]+8;
+                user_cp_iterator++;
+            } else if (IS_VM_CLASSPATH_ARG(argv[i])) {
+                *user_cp_iterator = argv[i]+15;
+                user_cp_iterator++;
+            } else {
+                // we need to prepend the vm arg with an additional dash, so we can't just point to the original arg
+                int option_size = strlen(argv[i]+5) + 2;
+                option_ptr->optionString = (char *)malloc(option_size);
+                option_ptr->optionString[0] = '-';
+                strcat(option_ptr->optionString, argv[i]+5);
+                option_ptr++;
+            }
+        }
+    }
+    // set classpath
+    const char cp_property[] = "-Djava.class.path=";
+    int cp_size = sizeof(cp_property);
+    #ifdef JVM
+        // add the launcher classpath
+        const char *launcher_cp_entries[] = LAUNCHER_CLASSPATH;
+        int launcher_cp_cnt = sizeof(launcher_cp_entries) / sizeof(*launcher_cp_entries);
+        cp_size += (strlen(exe_dir) + sizeof(DIR_SEP_STR)) * launcher_cp_cnt + sizeof(CP_SEP_STR) * (launcher_cp_cnt-1) + 2;
+        for (int i = 0; i < launcher_cp_cnt; i++) {
+            cp_size += strlen(launcher_cp_entries[i]);
+        }
+    #endif
+    for (int i = 0; i < user_launcher_cp_entries; i++) {
+        cp_size += strlen(user_cp_entries[i]) + sizeof(CP_SEP_STR);
+    }
+    char *cp = (char *)malloc(cp_size);
+    // assemble the classpath string
+    strcpy(cp, cp_property);
+    #ifdef JVM
+        for (int i = 0; i < launcher_cp_cnt; i++) {
+            strcat(cp, exe_dir);
+            strcat(cp, DIR_SEP_STR);
+            strcat(cp, launcher_cp_entries[i]);
+            if (i < launcher_cp_cnt-1) {
+                strcat(cp, CP_SEP_STR);
+            }
+        }
+    #endif
+    for (int i = 0; i < user_launcher_cp_entries; i++) {
+        strcat(cp, CP_SEP_STR);
+        strcat(cp, user_cp_entries[i]);
+    }
+    if (user_launcher_cp_entries) {
+        free(user_cp_entries);
+    }
+    option_ptr->optionString = cp;
+}
+
 int main(int argc, char **argv) {
     char *exe_dir = exe_directory();
     CreateJVM createJVM = loadliblang(exe_dir);
@@ -142,34 +237,8 @@ int main(int argc, char **argv) {
     JavaVM *jvm;
     JNIEnv *env;
     JavaVMInitArgs vm_args;
-    JavaVMOption options[4];
-    #ifdef JVM
-        const char *cp_entries[] = LAUNCHER_CLASSPATH;
-        int cp_cnt = sizeof(cp_entries) / sizeof(*cp_entries);
-        int size = (strlen(exe_dir) + sizeof(DIR_SEP_STR)) * cp_cnt + sizeof(CP_SEP_STR) * (cp_cnt-1) + 1;
-        for (int i = 0; i < cp_cnt; i++) {
-            size += strlen(cp_entries[i]);
-        }
-        const char cp_property[] = "-Djava.class.path=";
-        size += sizeof(cp_property);
-        char *cp = (char *)malloc(size);
-        strcpy(cp, cp_property);
-        for (int i = 0; i < cp_cnt; i++) {
-            strcat(cp, exe_dir);
-            strcat(cp, DIR_SEP_STR);
-            strcat(cp, cp_entries[i]);
-            if (i < cp_cnt-1) {
-                strcat(cp, CP_SEP_STR);
-            }
-        }
-        options[0].optionString = cp;
-        options[1].optionString = "-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR;
-        vm_args.nOptions = 2;
-    #else
-        vm_args.nOptions = 0;
-    #endif
+    parse_vm_options(argc, argv, exe_dir, &vm_args);
     vm_args.version = JNI_VERSION_1_8;
-    vm_args.options = options;
     vm_args.ignoreUnrecognized = false;
 
     int res = createJVM(&jvm, (void**)&env, &vm_args);
@@ -202,14 +271,34 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    // create args string array
+    // backup native args
     long argv_native = (long)argv;
     int argc_native = argc;
+
+    // skip vm args in JVM mode
+    int skip = 0;
+    #ifdef JVM
+        for (int i = 0; i < argc; i++) {
+            if (IS_VM_ARG(argv[i])) {
+                skip++;
+            }
+        }
+    #endif
+
     argv++;
     argc--;
 
-    jobjectArray args = env->NewObjectArray(argc, byteArrayClass, NULL);
+    // create args string array
+    jobjectArray args = env->NewObjectArray(argc-skip, byteArrayClass, NULL);
+    skip = 0;
     for (int i = 0; i < argc; i++) {
+        #ifdef JVM
+            // skip vm args in JVM mode
+            if (IS_VM_ARG(argv[i])) {
+                skip++;
+                continue;
+            }
+        #endif
         int arraySize = strlen(argv[i]);
         jbyteArray arg = env->NewByteArray(arraySize);
         env->SetByteArrayRegion(arg, 0, arraySize, (jbyte *)(argv[i]));
@@ -218,7 +307,7 @@ int main(int argc, char **argv) {
             env->ExceptionDescribe();
             return -1;
         }
-        env->SetObjectArrayElement(args, i, arg);
+        env->SetObjectArrayElement(args, i-skip, arg);
         if (env->ExceptionCheck()) {
             fprintf(stderr, "Error in SetObjectArrayElement:\n");
             env->ExceptionDescribe();
