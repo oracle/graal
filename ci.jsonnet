@@ -7,9 +7,6 @@ local wasm = import 'wasm/ci.jsonnet';
 # Espresso
 local espresso = import 'espresso/ci.jsonnet';
 
-# Example
-local examples = import 'examples/ci.jsonnet';
-
 # Regex
 local regex = import 'regex/ci.jsonnet';
 
@@ -45,7 +42,6 @@ local add_excludes_guard(build) = build + {
     compiler.builds +
     wasm.builds +
     espresso.builds +
-    # examples.builds + # Examples gate are disabled.
     regex.builds +
     sdk.builds +
     sulong.builds +
