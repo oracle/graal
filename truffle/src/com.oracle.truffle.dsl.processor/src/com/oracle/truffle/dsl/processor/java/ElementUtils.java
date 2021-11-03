@@ -1579,13 +1579,9 @@ public class ElementUtils {
     @SuppressWarnings("cast")
     public static Collection<TypeMirror> uniqueTypes(Collection<TypeMirror> types) {
         if (types.isEmpty()) {
-            return new ArrayList<>(0);
+            return types;
         } else if (types.size() <= 1) {
-            if (types instanceof Collection) {
-                return types;
-            } else {
-                return new ArrayList<>(types);
-            }
+            return types;
         }
         Map<String, TypeMirror> uniqueTypeMap = new LinkedHashMap<>();
         for (TypeMirror type : types) {
