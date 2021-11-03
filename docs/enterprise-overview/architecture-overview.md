@@ -119,7 +119,7 @@ GraalVM Enterprise focuses on support for Java LTS releases for production deplo
 GraalVM Enterprise Edition 21.3 is announced a Long-Term-Support (LTS) release.
 See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/enterprise/graalvm-enterprise-version-roadmap.md) for more information.
 
-Please be informed, that unlike Oracle JDK 17 released under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) allowing commercial and production use for 2 years, GraalVM Enterprise Edition license remains the same. 
+Please note, that while Oracle JDK 17 is available under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) which allows commercial and production use for 2 years, GraalVM Enterprise Edition license remains unchanged. 
 
 ## Experimental and Early Adopter Features
 

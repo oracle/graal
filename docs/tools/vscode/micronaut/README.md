@@ -14,7 +14,7 @@ The extension also enables the [Micronaut Launch](https://micronaut.io/launch/) 
 There are, of course, other ways to create a new Micronaut application.
 If you provide a path to the [Micronaut CLI installation](https://micronaut-projects.github.io/micronaut-starter/latest/guide/#installation), you can create a project using the `mn` executable.
 If you prefer not to install the Micronaut CLI, and you are running on Linux or macOS, you can `curl` the project.
-Lastly, you can navigate to [Micronaut Launch](https://micronaut.io/launch/) in a browser, create a new project, download it and open in VS Code.
+You can also navigate to [Micronaut Launch](https://micronaut.io/launch/) in a browser, create a new project, download it and open in VS Code.
 
 In combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), you can run Micronaut projects on GraalVM and debug them directly from VS Code development environment with different debugging protocols, enabled with the extension.
 This extension for Micronaut is also developed to help developers build native images right from VS Code.
