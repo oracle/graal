@@ -46,6 +46,7 @@ import java.nio.ByteOrder;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+import com.oracle.truffle.api.TruffleOptions;
 import sun.misc.Unsafe;
 
 /**
@@ -138,7 +139,12 @@ public abstract class StaticProperty {
     }
 
     private boolean isPrimitive() {
-        return type == long.class || type == double.class || type == int.class || type == float.class || type == short.class || type == char.class || type == byte.class || type == boolean.class;
+        if (TruffleOptions.AOT && CompilerDirectives.inCompiledCode()) {
+            // GR-34688
+            return type == long.class || type == double.class || type == int.class || type == float.class || type == short.class || type == char.class || type == byte.class || type == boolean.class;
+        } else {
+            return type.isPrimitive();
+        }
     }
 
     private void checkObjectGetAccess() {
