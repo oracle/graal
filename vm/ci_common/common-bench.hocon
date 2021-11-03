@@ -93,7 +93,7 @@ vm_gate_polybench_linux: ${vm_bench_polybench_linux_common} ${vm_java_8} {
     ${vm_gate_polybench_linux.compiler_bench_cmd} ["--polybench-vm-config=native-standard", "--metric=partial-evaluation-time"]
     ${vm_gate_polybench_linux.warmup_bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
   ]
-  timelimit: "0:45:00"
+  timelimit: "1:00:00"
   targets: [gate]
   capabilities: ${vm_linux.capabilities}
   notify_emails: []
