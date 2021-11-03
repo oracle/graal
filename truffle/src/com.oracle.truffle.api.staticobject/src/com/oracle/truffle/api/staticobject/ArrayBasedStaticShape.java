@@ -80,7 +80,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(generator, parentPropertyLayout, staticProperties);
             ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout, checkShapes);
             T factory = generatedFactoryClass.cast(
-                            generatedFactoryClass.getConstructor(StaticShape.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(),
+                            generatedFactoryClass.getConstructor(ArrayBasedStaticShape.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(),
                                             propertyLayout.getObjectArraySize()));
             shape.setFactory(factory);
             return shape;

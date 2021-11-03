@@ -92,7 +92,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
-    private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(StaticShape.class);
+    private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(ArrayBasedStaticShape.class);
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -214,7 +214,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (; idx <= constructorParameters.length; idx++) {
             frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
         }
-        frameLocals[idx++] = Type.getInternalName(StaticShape.class); // shape
+        frameLocals[idx++] = Type.getInternalName(ArrayBasedStaticShape.class); // shape
         frameLocals[idx++] = INTEGER; // primitiveArraySize
         frameLocals[idx++] = INTEGER; // objectArraySize
         return frameLocals;
