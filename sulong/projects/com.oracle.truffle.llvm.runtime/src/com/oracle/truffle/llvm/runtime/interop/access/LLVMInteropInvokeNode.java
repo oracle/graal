@@ -31,6 +31,7 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -42,8 +43,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 
 @GenerateUncached
 public abstract class LLVMInteropInvokeNode extends LLVMNode {
@@ -54,14 +57,14 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
         return LLVMInteropInvokeNodeGen.create();
     }
 
-    @Specialization
+    @Specialization(guards = "!isSwift(type)")
     @GenerateAOT.Exclude
     Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments,
                     @Cached LLVMInteropMethodInvokeNode invoke,
-                    @Cached LLVMSelfArgumentPackNode selfPackNode,
+                    @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-        Object[] selfArgs = selfPackNode.execute(receiver, arguments);
+        Object[] selfArgs = selfPackNode.execute(receiver, arguments, true);
         Method methodObject = type.findMethodByArgumentsWithSelf(method, selfArgs);
         if (methodObject == null) {
             return doStruct(receiver, type, method, arguments, interop);
@@ -73,7 +76,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     /**
      * @param type
      */
-    @Specialization(guards = "!isClass(type)")
+    @Specialization(guards = {"!isClass(type)", "!isSwift(type)"})
     @GenerateAOT.Exclude
     Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
@@ -84,6 +87,38 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
 
     protected static boolean isClass(Object o) {
         return o instanceof LLVMInteropType.Clazz;
+    }
+
+    protected static boolean isSwift(Object o) {
+        return o instanceof LLVMInteropType.Clazz &&
+                        ((LLVMInteropType.Clazz) o).getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT;
+    }
+
+    /**
+     * @param type
+     */
+    @Specialization(guards = "isSwift(type)")
+    @GenerateAOT.Exclude
+    Object doSwift(LLVMPointer receiver, LLVMInteropType.Clazz type, String member, Object[] arguments,
+                    @Cached LLVMForeignReadNode read,
+                    @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfArgumentPackNode,
+                    @CachedLibrary(limit = "5") InteropLibrary interop)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
+        String functionFound = getContext().getGlobalScopeChain().getMangledName(type.name, member);
+        if (functionFound != null) {
+            long[] symbolOffsets = getContext().getGlobalScopeChain().getSymbolOffsets(functionFound);
+
+            if (symbolOffsets != null) {
+                LLVMPointer currentBase = receiver;
+                for (long idx : symbolOffsets) {
+                    currentBase = currentBase.increment(idx * 8);
+                    currentBase = LLVMPointer.cast(read.execute(currentBase, LLVMInteropType.ValueKind.POINTER.type));
+                }
+                final Object[] selfArgs = selfArgumentPackNode.execute(receiver, arguments, false);
+                return interop.execute(currentBase, selfArgs);
+            }
+        }
+        throw UnknownIdentifierException.create(functionFound);
     }
 
     /**

@@ -135,8 +135,11 @@ public final class BinaryParser {
                 ElfFile elfFile = ElfFile.create(bytes);
                 ElfSectionHeaderTable.Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
                 if (llvmbc == null) {
-                    // ELF File does not contain an .llvmbc section
-                    return null;
+                    llvmbc = elfFile.getSectionHeaderTable().getEntry("__LLVM,__bitcode");
+                    if (llvmbc == null) {
+                        // ELF File does not contain an .llvmbc section
+                        return null;
+                    }
                 }
                 ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
                 if (dynamicSection != null) {

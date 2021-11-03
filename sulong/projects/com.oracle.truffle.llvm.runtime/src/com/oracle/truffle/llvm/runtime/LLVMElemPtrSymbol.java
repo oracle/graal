@@ -41,8 +41,8 @@ public final class LLVMElemPtrSymbol extends LLVMSymbol {
     private final Type type;
     private final Supplier<LLVMExpressionNode> createGetElementPtrNode;
 
-    public LLVMElemPtrSymbol(String name, BitcodeID bitcodeID, int symbolIndex, boolean exported, Type type, LLVMSymbol base, Supplier<LLVMExpressionNode> createGetElementPtrNode) {
-        super(name, bitcodeID, symbolIndex, exported, base.isExternalWeak());
+    public LLVMElemPtrSymbol(String name, BitcodeID bitcodeID, int symbolIndex, boolean exported, Type type, Supplier<LLVMExpressionNode> createGetElementPtrNode) {
+        super(name, bitcodeID, symbolIndex, exported, false);
         this.type = type;
         this.createGetElementPtrNode = createGetElementPtrNode;
     }

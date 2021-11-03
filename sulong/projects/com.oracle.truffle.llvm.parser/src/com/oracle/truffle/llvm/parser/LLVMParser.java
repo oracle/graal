@@ -30,16 +30,19 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.CastConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
@@ -47,12 +50,14 @@ import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -113,6 +118,9 @@ public final class LLVMParser {
 
     private void defineFunctions(ModelModule model, List<FunctionSymbol> definedFunctions, List<FunctionSymbol> externalFunctions, DataLayout dataLayout) {
         for (FunctionDefinition function : model.getDefinedFunctions()) {
+            if ("_ZN5swift25_checkGenericRequirementsEN4llvm8ArrayRefINS_34TargetGenericRequirementDescriptorINS_9InProcessEEEEERNS0_15SmallVectorImplIPKvEENSt3__18functionIFPKNS_14TargetMetadataIS3_EEjjEEENSC_IFPKNS_18TargetWitnessTableIS3_EESG_jEEE".contentEquals(
+                            function.getName())) {
+            }
             if (function.isExternal()) {
                 externalFunctions.add(function);
             } else {
@@ -175,6 +183,9 @@ public final class LLVMParser {
         lazyConverter.setRootFunction(llvmFunction);
         runtime.getFileScope().register(llvmFunction);
         registerInPublicFileScope(llvmFunction);
+        if (functionSymbol.getName() != null && functionSymbol.getName().contains("checkGeneric")) {
+            LLVMAccessSymbolNode.checkGenericRequirements = llvmFunction;
+        }
         final boolean cxxInterop = LLVMLanguage.getContext().getEnv().getOptions().get(SulongEngineOption.CXX_INTEROP);
         if (cxxInterop) {
             model.getFunctionParser(functionDefinition).parseLinkageName(runtime);
@@ -221,11 +232,32 @@ public final class LLVMParser {
     }
 
     private void defineExpressionSymbol(String aliasName, boolean isAliasExported, GetElementPointerConstant elementPointerConstant, DataLayout targetDataLayout) {
-        LLVMSymbol baseSymbol = runtime.getFileScope().get(elementPointerConstant.getBasePointer().toString());
+        SymbolImpl impl = elementPointerConstant;
+        int index = -1;
+        while (impl instanceof GetElementPointerConstant) {
+            impl = ((GetElementPointerConstant) impl).getBasePointer();
+        }
+        if (impl instanceof GlobalSymbol) {
+            index = ((GlobalSymbol) impl).getIndex();
+        }
         Supplier<LLVMExpressionNode> createElemPtrNode = () -> elementPointerConstant.createNode(runtime, targetDataLayout, GetStackSpaceFactory.createAllocaFactory());
-        LLVMElemPtrSymbol expressionSymbol = new LLVMElemPtrSymbol(aliasName, runtime.getBitcodeID(), -1, isAliasExported,
-                        elementPointerConstant.getType(), baseSymbol, createElemPtrNode);
+        LLVMElemPtrSymbol expressionSymbol = new LLVMElemPtrSymbol(aliasName, runtime.getBitcodeID(), index, isAliasExported,
+                        elementPointerConstant.getType(), createElemPtrNode);
         runtime.getFileScope().register(expressionSymbol);
+        if (expressionSymbol.getName().endsWith("Tq")) {
+            // if symbolname ends with "Tq", it is a Swift function descriptor
+            // TODO (pichristoph) check if source language is swift
+            String methodName = expressionSymbol.getName().substring(0, expressionSymbol.getName().length() - 2);
+            System.out.println("register " + expressionSymbol.getName());
+            SymbolImpl[] indices = elementPointerConstant.getIndices();
+            long[] indexVals = new long[indices.length];
+            for (int i = 0; i < indexVals.length; i++) {
+                indexVals[i] = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[i]);
+            }
+            // swift: last index has offset of 5 TODO pichristoph check why off by 5
+            indexVals[indexVals.length - 1] -= 5;
+            runtime.getFileScope().setSymbolOffsets(methodName, indexVals);
+        }
     }
 
     private void defineAlias(String existingName, String newName, boolean newExported) {

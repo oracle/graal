@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.model.IRScope;
@@ -60,8 +61,14 @@ public class MetadataSubprogramOnly extends Metadata {
                 MDSubprogram mdSubprogram = (MDSubprogram) mdBaseNode;
                 String linkageName = MDString.getIfInstance(mdSubprogram.getLinkageName());
                 String displayName = MDString.getIfInstance(mdSubprogram.getName());
+                String scopeName = null;
+                if (mdSubprogram.getScope() instanceof MDCompositeType) {
+                    MDCompositeType scopeType = (MDCompositeType) mdSubprogram.getScope();
+                    scopeName = MDString.getIfInstance(scopeType.getName());
+                }
                 scope.exitLocalScope();
-                throw new MDSubprogramParsedException(linkageName, displayName);
+                throw new MDSubprogramParsedException(linkageName, displayName, scopeName);
+
             }
         }
     }
@@ -71,10 +78,16 @@ public class MetadataSubprogramOnly extends Metadata {
         private static final long serialVersionUID = 1L;
         public final String linkageName;
         public final String displayName;
+        public final String scopeName;
 
-        public MDSubprogramParsedException(String linkageName, String displayName) {
+        public MDSubprogramParsedException(String linkageName, String displayName, String scopeName) {
             this.linkageName = linkageName;
             this.displayName = displayName;
+            this.scopeName = scopeName;
+        }
+
+        public MDSubprogramParsedException(String linkageName, String displayName) {
+            this(linkageName, displayName, null);
         }
     }
 

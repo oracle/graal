@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -48,6 +49,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     protected final LLVMSymbol symbol;
+
+    @CompilationFinal private LLVMStackAccess stackAccess;
 
     LLVMAccessSymbolNode(LLVMSymbol symbol) {
         this.symbol = LLVMAlias.resolveAlias(symbol);

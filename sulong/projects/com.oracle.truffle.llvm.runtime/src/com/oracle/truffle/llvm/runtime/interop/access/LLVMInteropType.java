@@ -70,6 +70,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 import org.graalvm.collections.EconomicMap;
@@ -423,17 +424,24 @@ public abstract class LLVMInteropType implements TruffleObject {
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
+        private final DwLangNameRecord langNameRecord;
 
-        Clazz(String name, StructMember[] members, Method[] methods, long size) {
+        Clazz(String name, StructMember[] members, Method[] methods, long size, DwLangNameRecord langNameRecord) {
             super(name, members, size);
+            System.out.println("register class " + name);
             this.methods = methods;
             this.vtable = null;
             this.virtualMethodsInitialized = false;
             this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
+            this.langNameRecord = langNameRecord;
         }
 
         public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
             superclasses.add(new ClazzInheritance(superclass, offset, virtual));
+        }
+
+        public DwLangNameRecord getSourceLanguage() {
+            return langNameRecord;
         }
 
         public Method getMethod(int i) {
@@ -913,6 +921,15 @@ public abstract class LLVMInteropType implements TruffleObject {
                 return convertPointer((LLVMSourcePointerType) type);
             } else if (type instanceof LLVMSourceBasicType) {
                 return convertBasic((LLVMSourceBasicType) type);
+            } else if (type instanceof LLVMSourceClassLikeType && ((LLVMSourceClassLikeType) type).getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT) {
+                switch (((LLVMSourceClassLikeType) type).getName()) {
+                    case "Int":
+                        return LLVMInteropType.ValueKind.I64.type;
+                    case "Double":
+                        return LLVMInteropType.ValueKind.DOUBLE.type;
+                    default:
+                        return convertStructured(type);
+                }
             } else {
                 return convertStructured(type);
             }
@@ -989,7 +1006,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         private Clazz convertClass(LLVMSourceClassLikeType type) {
-            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
+            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8, type.getSourceLanguage());
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);

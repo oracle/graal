@@ -190,6 +190,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             Object global = getFallback();
             if (global instanceof Number) {
                 value = ((Number) global).longValue();
+            } else if (global == null) {
+                value = 0L; // global has not been initialized yet
             } else {
                 value = LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached().execute(global).asNative();
             }

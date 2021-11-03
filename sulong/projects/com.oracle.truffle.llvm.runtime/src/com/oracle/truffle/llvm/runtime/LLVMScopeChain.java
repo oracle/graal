@@ -120,6 +120,45 @@ public class LLVMScopeChain implements TruffleObject {
     }
 
     @TruffleBoundary
+    public LLVMElemPtrSymbol getGetElementPtrSymbol(String name) {
+        assert scope != null;
+        LLVMElemPtrSymbol elemPtrSymbol = scope.getGetElementPtrSymbol(name);
+        if (elemPtrSymbol == null && next != null) {
+            elemPtrSymbol = next.getGetElementPtrSymbol(name);
+        }
+        return elemPtrSymbol;
+    }
+
+    public long[] getSymbolOffsets(String name) {
+        assert scope != null;
+        long[] symbolOffsets = scope.getSymbolOffsets(name);
+        if (symbolOffsets == null && next != null) {
+            symbolOffsets = next.getSymbolOffsets(name);
+        }
+        return symbolOffsets;
+    }
+
+    @TruffleBoundary
+    public String getMangledName(String name) {
+        assert scope != null;
+        String mangledName = scope.getMangledName(name);
+        if (mangledName == null && next != null) {
+            mangledName = next.getMangledName(name);
+        }
+        return mangledName;
+    }
+
+    @TruffleBoundary
+    public String getMangledName(String scopeName, String name) {
+        assert scope != null;
+        String mangledName = scope.getMangledName(scopeName, name);
+        if (mangledName == null && next != null) {
+            mangledName = next.getMangledName(scopeName, name);
+        }
+        return mangledName;
+    }
+
+    @TruffleBoundary
     public synchronized void concatNextChain(LLVMScopeChain scopeChain) {
         assert scopeChain.getPrev() == null && this.getNext() == null;
         this.setNext(scopeChain);

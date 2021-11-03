@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug.type;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,16 +42,20 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
 
     private final List<LLVMSourceMethodType> methods;
 
+    protected final DwLangNameRecord language;
+
     @TruffleBoundary
-    public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+    public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location, DwLangNameRecord language) {
         super(name, size, align, offset, location);
         this.methods = new ArrayList<>();
+        this.language = language;
     }
 
     private LLVMSourceClassLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    List<LLVMSourceMethodType> methods, LLVMSourceLocation location) {
+                    List<LLVMSourceMethodType> methods, LLVMSourceLocation location, DwLangNameRecord language) {
         super(name, size, align, offset, dynamicMembers, staticMembers, location);
         this.methods = methods;
+        this.language = language;
     }
 
     public void addMethod(String name, String linkageName, LLVMSourceFunctionType function, long virtualIndex) {
@@ -59,9 +64,13 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
         methods.add(method);
     }
 
+    public DwLangNameRecord getSourceLanguage() {
+        return language;
+    }
+
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation());
+        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation(), language);
     }
 
     @Override
