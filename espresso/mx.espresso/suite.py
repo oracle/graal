@@ -72,6 +72,13 @@ suite = {
                 ]
             },
             {
+                "name": "sulong",
+                "subdir": True,
+                "urls": [
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
                 "name" : "java-benchmarks",
                 "subdir": True,
                 "urls": [
@@ -180,6 +187,7 @@ suite = {
 
         # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native": {
+            "class": "SulongToolchainNativeProject",
             "subDir": "src",
             "native": "shared_lib",
             "deliverable": "nespresso",
@@ -193,11 +201,13 @@ suite = {
                 "windows": {
                     "<others>": {
                         "cflags": ["-Wall"],
+                        "toolchain": "default",
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
+                        "toolchain": "native",
                     },
                 },
             },
@@ -230,6 +240,7 @@ suite = {
 
         # libjvm Espresso implementation
         "com.oracle.truffle.espresso.mokapot": {
+            "class": "SulongToolchainNativeProject",
             "subDir": "src",
             "native": "shared_lib",
             "deliverable": "jvm",
@@ -249,6 +260,7 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
+                        "toolchain": "native",
                     },
                 },
                 "linux": {
@@ -258,11 +270,13 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
+                        "toolchain": "native",
                     },
                 },
                 "windows": {
                     "<others>": {
                         "cflags": ["-Wall"],
+                        "toolchain": "default",
                     },
                 }
             },

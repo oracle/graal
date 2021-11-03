@@ -28,6 +28,7 @@ import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
+from mx_sulong import SulongToolchainNativeProject  # pylint: disable=unused-import
 
 
 _suite = mx.suite('espresso')
