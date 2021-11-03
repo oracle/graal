@@ -643,6 +643,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
             registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
             exceptionNode.setStateAfter(methodScope.exceptionState);
+            exceptionNode.setNodeSourcePosition(methodScope.callerBytecodePosition);
 
             exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
             return BeginNode.begin(exceptionNode);
