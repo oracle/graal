@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
@@ -39,18 +39,19 @@ public final class AssumptionGuardedValue<T> {
     final T value;
 
     public static <T> AssumptionGuardedValue<T> create(T value) {
+        CompilerAsserts.neverPartOfCompilation();
         if (value == null) {
             throw reportInvalidValue();
         }
         return new AssumptionGuardedValue<>(Truffle.getRuntime().createAssumption(), value);
     }
 
-    @TruffleBoundary
     private static NullPointerException reportInvalidValue() {
         throw new NullPointerException("null is reserved for invalid value");
     }
 
     public static <T> AssumptionGuardedValue<T> createInvalid() {
+        CompilerAsserts.neverPartOfCompilation();
         return new AssumptionGuardedValue<>(NeverValidAssumption.INSTANCE, null);
     }
 
