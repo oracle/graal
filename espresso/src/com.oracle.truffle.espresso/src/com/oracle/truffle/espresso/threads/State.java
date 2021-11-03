@@ -23,13 +23,21 @@
 
 package com.oracle.truffle.espresso.threads;
 
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER;
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_IN_NATIVE;
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_RUNNABLE;
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_TERMINATED;
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_WAITING_INDEFINITELY;
+import static com.oracle.truffle.espresso.jvmti.JvmtiConstants.JvmtiThreadStateFlags.JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT;
+
 public enum State {
     NEW(0),
-    RUNNABLE(4),
-    BLOCKED(1024),
-    WAITING(16),
-    TIMED_WAITING(32),
-    TERMINATED(2);
+    RUNNABLE(JVMTI_THREAD_STATE_RUNNABLE),
+    BLOCKED(JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER),
+    WAITING(JVMTI_THREAD_STATE_WAITING_INDEFINITELY),
+    TIMED_WAITING(JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT),
+    TERMINATED(JVMTI_THREAD_STATE_TERMINATED),
+    IN_NATIVE(JVMTI_THREAD_STATE_IN_NATIVE);
 
     public final int value;
 

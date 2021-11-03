@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -1385,19 +1386,18 @@ public final class Target_sun_misc_Unsafe {
         }
 
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        meta.getThreadAccess().fromRunnable(thread, time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
-        Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-        StaticObject guestBlocker = parkBlocker.getObject(thread);
-        // LockSupport.park(/* guest blocker */);
-        if (!StaticObject.isNull(guestBlocker)) {
-            unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
+        State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
+        try (Transition transition = Transition.transition(context, state)) {
+            Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
+            StaticObject guestBlocker = parkBlocker.getObject(thread);
+            // LockSupport.park(/* guest blocker */);
+            if (!StaticObject.isNull(guestBlocker)) {
+                unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
+            }
+            parkBoundary(self, isAbsolute, time, meta);
         }
-
-        parkBoundary(self, isAbsolute, time, meta);
-
-        meta.getThreadAccess().toRunnable(thread);
         unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 

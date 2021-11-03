@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -400,25 +401,25 @@ public final class InterpreterToVM implements ContextAccess {
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
             StaticObject thread = context.getCurrentThread();
-            meta.getThreadAccess().fromRunnable(thread, State.BLOCKED);
-            if (context.EnableManagement) {
-                // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
-                Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
-                Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
+            try (Transition transition = Transition.transition(context, State.BLOCKED)) {
+                if (context.EnableManagement) {
+                    // Locks bookkeeping.
+                    meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
+                    Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
+                    Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
+                }
+                final boolean report = context.shouldReportVMEvents();
+                if (report) {
+                    context.reportOnContendedMonitorEnter(obj);
+                }
+                monitorUnsafeEnter(lock);
+                if (report) {
+                    context.reportOnContendedMonitorEntered(obj);
+                }
+                if (context.EnableManagement) {
+                    meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
+                }
             }
-            final boolean report = context.shouldReportVMEvents();
-            if (report) {
-                context.reportOnContendedMonitorEnter(obj);
-            }
-            monitorUnsafeEnter(lock);
-            if (report) {
-                context.reportOnContendedMonitorEntered(obj);
-            }
-            if (context.EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
-            }
-            meta.getThreadAccess().toRunnable(thread);
         }
     }
 

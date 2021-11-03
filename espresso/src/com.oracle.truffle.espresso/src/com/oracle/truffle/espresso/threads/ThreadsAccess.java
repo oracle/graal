@@ -83,22 +83,37 @@ public final class ThreadsAccess implements ContextAccess {
 
     // region thread state transition
 
-    public void fromRunnable(StaticObject self, State state) {
-        assert meta.java_lang_Thread_threadStatus.getInt(self) == State.RUNNABLE.value;
-        setState(self, state);
-        checkDeprecation();
+    /**
+     * Returns the {@code Thread#threadStatus} field of the given guest thread.
+     */
+    public int getState(StaticObject guest) {
+        return meta.java_lang_Thread_threadStatus.getInt(guest);
     }
 
-    public void toRunnable(StaticObject self) {
+    int fromRunnable(StaticObject self, State state) {
+        assert (getState(self) & State.RUNNABLE.value) != 0;
+        int old = updateState(self, state);
+        checkDeprecation();
+        return old;
+    }
+
+    void restoreState(StaticObject self, int toRestore) {
         try {
             checkDeprecation();
         } finally {
-            setState(self, State.RUNNABLE);
+            setState(self, toRestore);
         }
     }
 
-    private void setState(StaticObject self, State state) {
-        meta.java_lang_Thread_threadStatus.setInt(self, state.value);
+    void setState(StaticObject self, int state) {
+        meta.java_lang_Thread_threadStatus.setInt(self, state);
+    }
+
+    private int updateState(StaticObject self, State state) {
+        int old = getState(self);
+        int value = old | state.value;
+        setState(self, value);
+        return old;
     }
 
     // endregion thread state transition
@@ -199,8 +214,16 @@ public final class ThreadsAccess implements ContextAccess {
      * Implementation of {@link Thread#isAlive()}.
      */
     public boolean isAlive(StaticObject guest) {
-        int state = meta.java_lang_Thread_threadStatus.getInt(guest);
+        int state = getState(guest);
         return state != State.NEW.value && state != State.TERMINATED.value;
+    }
+
+    /**
+     * Returns true if the given thread is in a non-blocking thread and executing java bytecodes.
+     */
+    public boolean isExecutingGuestCode(StaticObject guest) {
+        int state = getState(guest);
+        return state == State.RUNNABLE.value;
     }
 
     // endregion thread control
@@ -260,7 +283,6 @@ public final class ThreadsAccess implements ContextAccess {
         meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
         // Prepare host thread
         host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
-        meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
         host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
         if (isInterrupted(guest, false)) {
             host.interrupt();
@@ -322,7 +344,7 @@ public final class ThreadsAccess implements ContextAccess {
     private void setTerminateStatusAndNotify(StaticObject guest) {
         guest.getLock().lock();
         try {
-            meta.java_lang_Thread_threadStatus.setInt(guest, State.TERMINATED.value);
+            setState(guest, State.TERMINATED.value);
             // Notify waiting threads you are done working
             guest.getLock().signalAll();
         } finally {
