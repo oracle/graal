@@ -57,8 +57,10 @@ import org.graalvm.polyglot.PolyglotException;
 public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     private static final Constructor<AbstractLanguageLauncher> LAUNCHER_CTOR;
+    private boolean jniLaunch = false;
     private int nativeArgc;
     private long nativeArgv;
+    private int vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -124,7 +126,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param argv pointer to argv
      * @throws Exception if no launcher constructor has been set.
      */
-    public static void runLauncher(byte[][] args, int argc, long argv) throws Exception {
+    public static void runLauncher(byte[][] args, int argc, long argv, int vmArgIndices) throws Exception {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
@@ -134,15 +136,43 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             throw new Exception("Launcher constructor has not been set.");
         }
 
+        AbstractLanguageLauncher launcher = LAUNCHER_CTOR.newInstance();
+        launcher.jniLaunch = true;
+        launcher.nativeArgc = argc;
+        launcher.nativeArgv = argv;
+        launcher.vmArgs = vmArgIndices;
+
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
             arguments[i] = new String(args[i]);
         }
 
-        AbstractLanguageLauncher launcher = LAUNCHER_CTOR.newInstance();
-        launcher.nativeArgc = argc;
-        launcher.nativeArgv = argv;
         launcher.launch(arguments);
+    }
+
+    /**
+     * Check if the arguments parsing heuristic of the native launcher correctly identified the set
+     * of VM arguments. Throw an exception if it hasn't.
+     *
+     * @param originalArgs original set of arguments (except for argv[0], the program name)
+     * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
+     */
+    void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+        int launcherVmArgs = 0;
+        for (int i = 0; i < originalArgs.size(); i++) {
+            if (originalArgs.get(i).startsWith("--vm.")) {
+                for (String unrecognizedOption : unrecognizedArgs) {
+                    if (originalArgs.get(i).contentEquals(unrecognizedOption)) {
+                        // the native launcher counts from arg0 (program name), which is not passed
+                        launcherVmArgs |= (1 << i + 1);
+                    }
+                }
+            }
+        }
+
+        if (vmArgs != launcherVmArgs) {
+            throw new RuntimeException(String.format("Could not launch, misidentified vm arguments %d (heuristic) vs. %d (actual)", vmArgs, launcherVmArgs));
+        }
     }
 
     /**
@@ -178,6 +208,10 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
+
+        if (jniLaunch) {
+            validateVmArguments(originalArgs, unrecognizedArgs);
+        }
 
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;

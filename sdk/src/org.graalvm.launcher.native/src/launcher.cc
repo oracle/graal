@@ -53,9 +53,6 @@
     #ifndef LAUNCHER_CLASSPATH
         #error launcher classpath undefined
     #endif
-    #define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", 5) == 0)
-    #define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", 8) == 0)
-    #define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", 15) == 0)
 #endif
 
 #ifndef LIBLANG_RELPATH
@@ -73,6 +70,10 @@
 #define LIBLANG_RELPATH_STR STR(LIBLANG_RELPATH)
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
+
+#define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", 5) == 0)
+#define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", 8) == 0)
+#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", 15) == 0)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -135,7 +136,7 @@ CreateJVM loadliblang(char *exe_dir) {
     return NULL;
 }
 
-void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_args) {
+void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_args, int *vm_arg_indices) {
     // at least 1, for the classpath (although it might not be there at all)
     vm_args->nOptions = 1;
     #ifdef JVM
@@ -173,6 +174,7 @@ void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_a
     int cp_option_cnt = 0;
     for (int i = 0; i < argc; i++) {
         if (IS_VM_ARG(argv[i])) {
+            *vm_arg_indices = *vm_arg_indices | (1 << i);
             if (IS_VM_CP_ARG(argv[i])) {
                 *user_cp_iterator = argv[i]+8;
                 user_cp_iterator++;
@@ -237,7 +239,8 @@ int main(int argc, char **argv) {
     JavaVM *jvm;
     JNIEnv *env;
     JavaVMInitArgs vm_args;
-    parse_vm_options(argc, argv, exe_dir, &vm_args);
+    int vm_arg_indices;
+    parse_vm_options(argc, argv, exe_dir, &vm_args, &vm_arg_indices);
     vm_args.version = JNI_VERSION_1_8;
     vm_args.ignoreUnrecognized = false;
 
@@ -246,6 +249,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Creation of the JVM failed.\n");
         return -1;
     }
+
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {
         fprintf(stderr, "Byte array class not found.\n");
@@ -262,7 +266,7 @@ int main(int argc, char **argv) {
         }
         return -1;
     }
-    jmethodID mid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJ)V");
+    jmethodID mid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJI)V");
     if (mid == NULL) {
         fprintf(stderr, "Launcher entry point not found.\n");
         if (env->ExceptionCheck()) {
@@ -275,30 +279,12 @@ int main(int argc, char **argv) {
     long argv_native = (long)argv;
     int argc_native = argc;
 
-    // skip vm args in JVM mode
-    int skip = 0;
-    #ifdef JVM
-        for (int i = 0; i < argc; i++) {
-            if (IS_VM_ARG(argv[i])) {
-                skip++;
-            }
-        }
-    #endif
-
     argv++;
     argc--;
 
     // create args string array
-    jobjectArray args = env->NewObjectArray(argc-skip, byteArrayClass, NULL);
-    skip = 0;
+    jobjectArray args = env->NewObjectArray(argc, byteArrayClass, NULL);
     for (int i = 0; i < argc; i++) {
-        #ifdef JVM
-            // skip vm args in JVM mode
-            if (IS_VM_ARG(argv[i])) {
-                skip++;
-                continue;
-            }
-        #endif
         int arraySize = strlen(argv[i]);
         jbyteArray arg = env->NewByteArray(arraySize);
         env->SetByteArrayRegion(arg, 0, arraySize, (jbyte *)(argv[i]));
@@ -307,7 +293,7 @@ int main(int argc, char **argv) {
             env->ExceptionDescribe();
             return -1;
         }
-        env->SetObjectArrayElement(args, i-skip, arg);
+        env->SetObjectArrayElement(args, i, arg);
         if (env->ExceptionCheck()) {
             fprintf(stderr, "Error in SetObjectArrayElement:\n");
             env->ExceptionDescribe();
@@ -316,7 +302,7 @@ int main(int argc, char **argv) {
     }
 
     // invoke launcher entry point
-    env->CallStaticVoidMethod(launcherClass, mid, args, argc_native, argv_native);
+    env->CallStaticVoidMethod(launcherClass, mid, args, argc_native, argv_native, vm_arg_indices);
     if (env->ExceptionCheck()) {
         env->ExceptionDescribe();
         return -1;
