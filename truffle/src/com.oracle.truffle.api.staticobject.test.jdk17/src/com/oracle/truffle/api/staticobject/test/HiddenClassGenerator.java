@@ -56,7 +56,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_6;
 public class HiddenClassGenerator {
     public static byte[] getBytes() {
         ClassWriter cw = new ClassWriter(0);
-        cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, Type.getInternalName(HiddenClassGenerator.class), null, "java/lang/Object", new String[] {Type.getInternalName(HiddenClassInterface.class)});
+        cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, Type.getInternalName(HiddenClassGenerator.class), null, "java/lang/Object", new String[]{Type.getInternalName(HiddenClassInterface.class)});
         MethodVisitor mv;
 
         // Add constructor
