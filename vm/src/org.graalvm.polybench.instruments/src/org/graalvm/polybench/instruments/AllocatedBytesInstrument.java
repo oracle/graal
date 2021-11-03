@@ -81,6 +81,10 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
                 try {
                     InteropLibrary interopLibrary = InteropLibrary.getUncached();
                     Object polyglotBindings = env.getPolyglotBindings();
@@ -90,11 +94,6 @@ public final class AllocatedBytesInstrument extends TruffleInstrument {
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                     throw CompilerDirectives.shouldNotReachHere("Exception during interop.");
                 }
-            }
-
-            @Override
-            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-
             }
 
             @Override
