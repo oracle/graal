@@ -46,6 +46,7 @@ import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_llvm_config
+from mx_native import DefaultGnuToolchain as NinjaGnuToolchain, DefaultNativeProject
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -362,6 +363,7 @@ class ToolchainConfig(object):
         self.name = name
         self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
+        self.bootstrap_dist = bootstrap_dist
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
@@ -434,7 +436,7 @@ class ToolchainConfig(object):
         return [d if ":" in d else self.suite.name + ":" + d for d in self.dist]
 
 
-_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
+_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
                                    # registration runs before the suite is properly initialized
                                    tools={
@@ -444,6 +446,32 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULO
                                        "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
                                    suite=_suite)
+
+
+class SulongNinjaToolchain(NinjaGnuToolchain):
+    def __init__(self, name):
+        self.config = _get_toolchain(name)
+
+    def toolchain_bin(self, name):
+        return join(self.config.bootstrap_provider(), 'bin', mx.exe_suffix(name))
+
+
+class SulongToolchainNativeProject(DefaultNativeProject):
+    def __init__(self, suite, name, deps, workingSets, **kwargs):
+        toolchain_type = kwargs.pop('toolchain', 'native')
+        subDir = kwargs.pop('subDir', None)
+        if subDir is None:
+            d = join(suite.dir, name)
+        else:
+            d = join(suite.dir, subDir, name)
+        if 'native' not in kwargs:
+            mx.abort("Missing 'native' attribute for " + name)
+        kind = kwargs.pop('native')
+        super(SulongToolchainNativeProject, self).__init__(suite, name, subDir, [], deps, workingSets, d, kind, **kwargs)
+        if toolchain_type != 'default':
+            self.toolchain = SulongNinjaToolchain(toolchain_type)
+            if not mx.get_env('SULONG_BOOTSTRAP_GRAALVM'):
+                self.buildDependencies.append(self.toolchain.config.bootstrap_dist)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
