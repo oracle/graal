@@ -1243,6 +1243,7 @@ suite = {
       "distDependencies" : [
         "TRUFFLE_TEST",
       ],
+      "testDistribution" : True,
       "maven" : False,
     },
 
