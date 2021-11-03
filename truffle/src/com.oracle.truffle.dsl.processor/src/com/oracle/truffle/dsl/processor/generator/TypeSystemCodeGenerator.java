@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.generator;
 
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createTransferToInterpreterAndInvalidate;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.createConstantName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -55,14 +54,12 @@ import java.util.Collection;
 import java.util.List;
 
 import javax.lang.model.element.Modifier;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -226,10 +223,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return name + "Gen";
     }
 
-    private static String singletonName(TypeSystemData type) {
-        return createConstantName(getSimpleName(type.getTemplateType().asType()));
-    }
-
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, TypeSystemData typeSystem) {
         CodeTypeElement clazz = new TypeClassFactory(context, typeSystem).create();
@@ -251,8 +244,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeTypeElement clazz = GeneratorUtils.createClass(typeSystem, null, modifiers(PUBLIC, FINAL), name, typeSystem.getTemplateType().asType());
 
             clazz.add(GeneratorUtils.createConstructorUsingFields(modifiers(PROTECTED), clazz));
-            CodeVariableElement singleton = createSingleton(clazz);
-            clazz.add(singleton);
 
             for (TypeMirror type : typeSystem.getLegacyTypes()) {
                 if (ElementUtils.isVoid(type) || ElementUtils.isObject(type)) {
@@ -275,16 +266,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
                 clazz.add(createSpecializeImplictTypeMethodFlat(type));
             }
             return clazz;
-        }
-
-        private CodeVariableElement createSingleton(CodeTypeElement clazz) {
-            CodeVariableElement field = new CodeVariableElement(modifiers(PUBLIC, STATIC, FINAL), clazz.asType(), singletonName(typeSystem));
-            field.createInitBuilder().startNew(clazz.asType()).end();
-
-            CodeAnnotationMirror annotationMirror = new CodeAnnotationMirror((DeclaredType) context.getType(Deprecated.class));
-            field.getAnnotationMirrors().add(annotationMirror);
-
-            return field;
         }
 
         private CodeExecutableElement createSpecializeImplictTypeMethodFlat(TypeMirror type) {
