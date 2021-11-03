@@ -1187,25 +1187,18 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
         super(JvmFuncsFallbacksBuildTask, self).__init__(subject, args, parallelism)
 
         libjvm = mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix'))
-        self.native_project_dir = join(libjvm.dir, 'src')
-        self.jvm_funcs_path = join(self.native_project_dir, 'JvmFuncs.c')
+
         try:
             # Remove any remaining leftover src_gen subdirs in native_project_dir
-            native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
+            native_project_src_gen_dir = join(libjvm.dir, 'src', 'src_gen')
             if exists(native_project_src_gen_dir):
                 mx.rmtree(native_project_src_gen_dir)
         except OSError:
             pass
 
-        jvm_fallbacks_dir = join(self.subject.get_output_root(), 'src_gen')
-        self.jvm_fallbacks_path = join(jvm_fallbacks_dir, 'JvmFuncsFallbacks.c')
-
-        # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
-        rel_jvm_fallbacks_dir = relpath(jvm_fallbacks_dir, libjvm.dir)
-        src_dirs = list(libjvm.srcDirs)
-        if rel_jvm_fallbacks_dir not in src_dirs:
-            src_dirs.append(rel_jvm_fallbacks_dir)
-            libjvm.srcDirs = src_dirs
+        self.jvm_funcs_path = join(libjvm.dir, 'src', 'JvmFuncs.c')
+        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'src_gen', 'JvmFuncsFallbacks.c')
+        self.register_in_libjvm(libjvm)
 
         if svm_java8():
             staticlib_path = ['jre', 'lib']
@@ -1220,7 +1213,18 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
         staticlib_wildcard = staticlib_path + [mx_subst.path_substitutions.substitute('<staticlib:*>')]
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
+
         self.staticlibs = glob(staticlib_wildcard_path)
+
+    # Needed because SubstrateJvmFuncsFallbacksBuilder.getBuildTask gets called from mx.clean and mx.build
+    registered_in_libjvm = False
+
+    def register_in_libjvm(self, libjvm):
+        if not JvmFuncsFallbacksBuildTask.registered_in_libjvm:
+            JvmFuncsFallbacksBuildTask.registered_in_libjvm = True
+            # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
+            rel_jvm_fallbacks_dir = relpath(dirname(self.jvm_fallbacks_path), libjvm.dir)
+            libjvm.srcDirs.append(rel_jvm_fallbacks_dir)
 
     def newestOutput(self):
         return mx.TimeStampFile(self.jvm_fallbacks_path)
