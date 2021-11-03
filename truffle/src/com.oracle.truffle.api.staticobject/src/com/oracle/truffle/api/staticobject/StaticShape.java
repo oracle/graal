@@ -444,7 +444,7 @@ public abstract class StaticShape<T> {
                 // The array-based storage strategy stores the StaticShape in an extra field of the
                 // generated class. Therefore, the class loader that loads generated classes must
                 // have visibility of StaticShape.
-                if (tryLoad(storageFactoryInterface.getClassLoader(), StaticShape.class.getName()) == null) {
+                if (!isClassVisible(storageFactoryInterface.getClassLoader(), StaticShape.class)) {
                     throw new IllegalArgumentException(
                                     "The class loader of factory interface '" + storageFactoryInterface.getName() + "' must have visibility of '" + StaticShape.class.getName() + "'");
                 }
@@ -464,15 +464,16 @@ public abstract class StaticShape<T> {
             }
         }
 
-        private static Class<?> tryLoad(ClassLoader cl, String className) {
+        private static boolean isClassVisible(ClassLoader cl, Class<?> clazz) {
             if (cl == null) {
-                return null;
+                return clazz.getClassLoader() == null;
             } else {
                 try {
-                    return cl.loadClass(className);
+                    cl.loadClass(clazz.getName());
+                    return true;
                 } catch (ClassNotFoundException e) {
-                    // Swallow the exception and return null
-                    return null;
+                    // Swallow the exception
+                    return false;
                 }
             }
         }
