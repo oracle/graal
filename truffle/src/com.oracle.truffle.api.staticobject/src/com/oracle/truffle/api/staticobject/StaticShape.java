@@ -337,9 +337,10 @@ public abstract class StaticShape<T> {
          * @throws IllegalArgumentException if factoryInterface is not an interface, if the
          *             arguments of a method in factoryInterface do not match those of a visible
          *             constructor in superClass, if the return type of a method in factoryInterface
-         *             is not assignable from superClass, if superClass has abstract methods or if
-         *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
-         *             final method
+         *             is not assignable from superClass, if {@link StaticShape} is not visible to
+         *             the class loader of factoryInterface, if superClass has abstract methods or
+         *             if superClass is {@link Cloneable} and overrides {@link Object#clone()} with
+         *             a final method
          * @throws IllegalStateException if a static property was added to more than one builder or
          *             multiple times to the same builder, if this method is invoked more than
          *             once, or if one of the static property types is not visible to the class
@@ -413,7 +414,7 @@ public abstract class StaticShape<T> {
         }
 
         private static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
-            // Reflective accesses must be registered by TruffleFeature.StaticObjectSupport, or
+            // Reflective accesses must be registered by TruffleBaseFeature.StaticObjectSupport, or
             // these checks might be performed at image build time but not at run time.
             // This would probably lead to class generation at run time, which is not supported by
             // Native Image.
@@ -436,6 +437,12 @@ public abstract class StaticShape<T> {
                     throw new IllegalArgumentException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
                 }
             }
+            // The array-based storage strategy stores the StaticShape in an extra field of the
+            // generated class. Therefore, the class loader that loads generated classes must have
+            // visibility of StaticShape.
+            if (tryLoad(storageFactoryInterface.getClassLoader(), StaticShape.class.getName()) == null) {
+                throw new IllegalArgumentException("The class loader of factory interface '" + storageFactoryInterface.getName() + "' must have visibility of '" + StaticShape.class.getName() + "'");
+            }
             for (Class<?> c = storageSuperClass; c != null; c = c.getSuperclass()) {
                 for (Method m : c.getDeclaredMethods()) {
                     if (Modifier.isAbstract(m.getModifiers())) {
@@ -447,6 +454,19 @@ public abstract class StaticShape<T> {
                 Method clone = getCloneMethod(storageSuperClass);
                 if (clone != null && Modifier.isFinal(clone.getModifiers())) {
                     throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' implements Cloneable and declares a final 'clone()' method");
+                }
+            }
+        }
+
+        private static Class<?> tryLoad(ClassLoader cl, String className) {
+            if (cl == null) {
+                return null;
+            } else {
+                try {
+                    return cl.loadClass(className);
+                } catch (ClassNotFoundException e) {
+                    // Swallow the exception and return null
+                    return null;
                 }
             }
         }

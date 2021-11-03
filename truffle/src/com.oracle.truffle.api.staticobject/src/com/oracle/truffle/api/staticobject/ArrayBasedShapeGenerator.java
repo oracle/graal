@@ -92,6 +92,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
+    private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(StaticShape.class);
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -184,8 +185,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (Class<?> parameter : superConstructor.getParameterTypes()) {
             sb.append(Type.getDescriptor(parameter));
         }
-        sb.append("Ljava/lang/Object;II");
-        return sb.append(")V").toString();
+        sb.append(STATIC_SHAPE_DESCRIPTOR);
+        return sb.append("II)V").toString();
     }
 
     private static Object getFrameLocal(Class<?> clazz) {
@@ -213,7 +214,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (; idx <= constructorParameters.length; idx++) {
             frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
         }
-        frameLocals[idx++] = "java/lang/Object"; // shape
+        frameLocals[idx++] = Type.getInternalName(StaticShape.class); // shape
         frameLocals[idx++] = INTEGER; // primitiveArraySize
         frameLocals[idx++] = INTEGER; // objectArraySize
         return frameLocals;
@@ -243,7 +244,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             // this.shape = shape;
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, var);
-            mv.visitFieldInsn(PUTFIELD, storageName, "shape", "Ljava/lang/Object;");
+            mv.visitFieldInsn(PUTFIELD, storageName, "shape", STATIC_SHAPE_DESCRIPTOR);
 
             // primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null;
             mv.visitVarInsn(ALOAD, 0);
@@ -358,19 +359,19 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addFactoryFields(ClassVisitor cv) {
-        cv.visitField(ACC_PUBLIC | ACC_FINAL, "shape", "Ljava/lang/Object;", null, null).visitEnd();
+        cv.visitField(ACC_PUBLIC | ACC_FINAL, "shape", STATIC_SHAPE_DESCRIPTOR, null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "primitiveArraySize", "I", null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "objectArraySize", "I", null, null).visitEnd();
     }
 
     private static void addFactoryConstructor(ClassVisitor cv, String className) {
-        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(Ljava/lang/Object;II)V", null, null);
+        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(" + STATIC_SHAPE_DESCRIPTOR + "II)V", null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, 1);
-        mv.visitFieldInsn(PUTFIELD, className, "shape", "Ljava/lang/Object;");
+        mv.visitFieldInsn(PUTFIELD, className, "shape", STATIC_SHAPE_DESCRIPTOR);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ILOAD, 2);
         mv.visitFieldInsn(PUTFIELD, className, "primitiveArraySize", "I");
@@ -400,9 +401,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             }
             int maxLocals = maxStack - 1;
 
-            constructorDescriptor.append("Ljava/lang/Object;");
+            constructorDescriptor.append(STATIC_SHAPE_DESCRIPTOR);
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, factoryName, "shape", "Ljava/lang/Object;");
+            mv.visitFieldInsn(GETFIELD, factoryName, "shape", STATIC_SHAPE_DESCRIPTOR);
             maxStack++;
             for (String fieldName : ARRAY_SIZE_FIELDS) {
                 constructorDescriptor.append("I");
@@ -429,10 +430,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addStorageConstructors(storageWriter, storageClassName, storageSuperClass, storageSuperName);
         addStorageField(storageWriter, "primitive", "[B", true);
         addStorageField(storageWriter, "object", "[Ljava/lang/Object;", true);
-        // The generated class is loaded by a child of the class loader that loaded the factory
-        // class, which might not find classes from the Truffle API. Therefore, we cannot use a more
-        // precise descriptor to store the shape.
-        addStorageField(storageWriter, "shape", "Ljava/lang/Object;", true);
+        addStorageField(storageWriter, "shape", STATIC_SHAPE_DESCRIPTOR, true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
             addCloneMethod(storageSuperClass, storageWriter, storageClassName);
         }
