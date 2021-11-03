@@ -1047,6 +1047,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "pe-time"
         elif metric == "one-shot":
             return "one-shot"
+        elif metric == "allocated-bytes":
+            return "allocated-memory"
         else:
             return "time"
 
