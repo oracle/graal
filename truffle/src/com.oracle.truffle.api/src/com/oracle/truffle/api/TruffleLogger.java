@@ -1243,7 +1243,15 @@ public final class TruffleLogger {
                     }
                 }
             }
-            for (Map.Entry<String, Level> addedLevel : added.entrySet()) {
+            // In a multi context scenario there can be a logger with higher effective log level
+            // than a default one. When the newly configured context does not specify log level
+            // explicitly the effective log level of such a logger needs to be set to the default
+            // level.
+            Map<String, Level> addedWithDefaults = new HashMap<>(added);
+            for (String loggerName : newEffectiveLevels.keySet()) {
+                addedWithDefaults.putIfAbsent(loggerName, Level.INFO);
+            }
+            for (Map.Entry<String, Level> addedLevel : addedWithDefaults.entrySet()) {
                 final String loggerName = addedLevel.getKey();
                 final Level loggerLevel = addedLevel.getValue();
                 final Level currentLevel = newEffectiveLevels.get(loggerName);
