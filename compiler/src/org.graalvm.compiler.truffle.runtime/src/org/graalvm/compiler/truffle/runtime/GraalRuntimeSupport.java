@@ -314,16 +314,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public String getFieldName(Object resolvedJavaField) {
-        return ((ResolvedJavaField) resolvedJavaField).getName();
-    }
-
-    @Override
-    public int getFieldOffset(Object resolvedJavaField) {
-        return ((ResolvedJavaField) resolvedJavaField).getOffset();
-    }
-
-    @Override
     public AbstractFastThreadLocal getContextThreadLocal() {
         AbstractFastThreadLocal local = GraalTruffleRuntime.getRuntime().getFastThreadLocalImpl();
         if (local == null) {

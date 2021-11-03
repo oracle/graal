@@ -250,18 +250,6 @@ final class DefaultRuntimeAccessor extends Accessor {
             throw new UnsupportedOperationException();
         }
 
-        @SuppressWarnings("unused")
-        @Override
-        public String getFieldName(Object resolvedJavaField) {
-            throw new UnsupportedOperationException();
-        }
-
-        @SuppressWarnings("unused")
-        @Override
-        public int getFieldOffset(Object resolvedJavaField) {
-            throw new UnsupportedOperationException();
-        }
-
         @Override
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;

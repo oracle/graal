@@ -1083,10 +1083,6 @@ public abstract class Accessor {
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
 
-        public abstract String getFieldName(Object resolvedJavaField);
-
-        public abstract int getFieldOffset(Object resolvedJavaField);
-
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;
         }
