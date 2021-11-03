@@ -12,10 +12,6 @@ logPatterns = [
     ${compiler-suite-root}"/graal_dumps/*/*"
 ]
 
-#Examples
-#Examples gate also disabled.
-#include "examples/ci.hocon"
-
 jvm-config.default = "graal-core"
 libgraal_env = "libgraal"
 vm_subdir = "vm"
