@@ -49,7 +49,9 @@ import static javax.lang.model.element.Modifier.PROTECTED;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import javax.lang.model.element.Modifier;
@@ -262,7 +264,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
 
             }
 
-            List<TypeMirror> lookupTargetTypes = typeSystem.lookupTargetTypes();
+            Collection<TypeMirror> lookupTargetTypes = typeSystem.lookupTargetTypes();
             for (TypeMirror type : lookupTargetTypes) {
                 clazz.add(createExpectImplicitTypeMethodFlat(type));
                 clazz.add(createIsImplicitTypeMethodFlat(type, true));
@@ -289,7 +291,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC, STATIC), context.getType(int.class), name);
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
 
-            List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
+            Collection<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
 
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
@@ -317,7 +319,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             method.addParameter(new CodeVariableElement(context.getType(int.class), "state"));
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
             method.getThrownTypes().add(context.getTypes().UnexpectedResultException);
-            List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
+            Collection<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
 
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
@@ -357,7 +359,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             }
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
 
-            List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
+            Collection<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
 
             CodeTreeBuilder builder = method.createBuilder();
             boolean elseIf = false;
@@ -404,7 +406,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             method.addParameter(new CodeVariableElement(context.getType(Object.class), LOCAL_VALUE));
             CodeTreeBuilder builder = method.createBuilder();
 
-            List<TypeMirror> sourceTypes = typeSystem.lookupSourceTypes(type);
+            List<TypeMirror> sourceTypes = new ArrayList<>(typeSystem.lookupSourceTypes(type));
 
             builder.startReturn();
             String sep = "";
