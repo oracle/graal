@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -415,51 +414,46 @@ public abstract class StaticShape<T> {
         }
 
         private static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
-            // When running with Native Image, these checks are performed at image build time. No
-            // need to repeat them here.
-            if (!ImageInfo.inImageRuntimeCode()) {
-                // Reflective accesses must be registered by TruffleBaseFeature.StaticObjectSupport,
-                // or these checks might be performed at image build time but not at run time. This
-                // would probably lead to class generation at run time, which is not supported by
-                // Native Image.
-                CompilerAsserts.neverPartOfCompilation();
-                if (!storageFactoryInterface.isInterface()) {
-                    throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");
+            // Reflective accesses must be registered by TruffleBaseFeature.StaticObjectSupport, or
+            // these checks might be performed at image build time but not at run time.
+            // This would probably lead to class generation at run time, which is not supported by
+            // Native Image.
+            CompilerAsserts.neverPartOfCompilation();
+            if (!storageFactoryInterface.isInterface()) {
+                throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");
+            }
+            // since methods in the factory interface must have the storage super class as return
+            // type, calling `storageFactoryInterface.getMethods()` also verifies that the class
+            // loader of the factory interface can load the storage super class
+            for (Method m : storageFactoryInterface.getMethods()) {
+                // this also verifies that the class loader of the factory interface is the same or
+                // a child of the class loader of the storage super class
+                if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
+                    throw new IllegalArgumentException("The return type of '" + m + "' is not assignable from '" + storageSuperClass.getName() + "'");
                 }
-                // since methods in the factory interface must have the storage super class as
-                // return type, calling `storageFactoryInterface.getMethods()` also verifies that
-                // the class loader of the factory interface can load the storage super class
-                for (Method m : storageFactoryInterface.getMethods()) {
-                    // this also verifies that the class loader of the factory interface is the same
-                    // or a child of the class loader of the storage super class
-                    if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
-                        throw new IllegalArgumentException("The return type of '" + m + "' is not assignable from '" + storageSuperClass.getName() + "'");
-                    }
-                    try {
-                        storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
-                    } catch (NoSuchMethodException e) {
-                        throw new IllegalArgumentException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
-                    }
+                try {
+                    storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
+                } catch (NoSuchMethodException e) {
+                    throw new IllegalArgumentException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
                 }
-                // The array-based storage strategy stores the StaticShape in an extra field of the
-                // generated class. Therefore, the class loader that loads generated classes must
-                // have visibility of StaticShape.
-                if (!isClassVisible(storageFactoryInterface.getClassLoader(), StaticShape.class)) {
-                    throw new IllegalArgumentException(
-                                    "The class loader of factory interface '" + storageFactoryInterface.getName() + "' must have visibility of '" + StaticShape.class.getName() + "'");
-                }
-                for (Class<?> c = storageSuperClass; c != null; c = c.getSuperclass()) {
-                    for (Method m : c.getDeclaredMethods()) {
-                        if (Modifier.isAbstract(m.getModifiers())) {
-                            throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' has abstract methods");
-                        }
+            }
+            // The array-based storage strategy stores the StaticShape in an extra field of the
+            // generated class. Therefore, the class loader that loads generated classes must have
+            // visibility of StaticShape.
+            if (!isClassVisible(storageFactoryInterface.getClassLoader(), StaticShape.class)) {
+                throw new IllegalArgumentException("The class loader of factory interface '" + storageFactoryInterface.getName() + "' must have visibility of '" + StaticShape.class.getName() + "'");
+            }
+            for (Class<?> c = storageSuperClass; c != null; c = c.getSuperclass()) {
+                for (Method m : c.getDeclaredMethods()) {
+                    if (Modifier.isAbstract(m.getModifiers())) {
+                        throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' has abstract methods");
                     }
                 }
-                if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
-                    Method clone = getCloneMethod(storageSuperClass);
-                    if (clone != null && Modifier.isFinal(clone.getModifiers())) {
-                        throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' implements Cloneable and declares a final 'clone()' method");
-                    }
+            }
+            if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
+                Method clone = getCloneMethod(storageSuperClass);
+                if (clone != null && Modifier.isFinal(clone.getModifiers())) {
+                    throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' implements Cloneable and declares a final 'clone()' method");
                 }
             }
         }
