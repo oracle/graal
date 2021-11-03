@@ -274,9 +274,9 @@ public abstract class StaticShape<T> {
          * @see StaticShape.Builder#build(Class, Class)
          * @return the new {@link StaticShape}
          * @throws IllegalStateException if a static property was added to more than one builder or
-         *             multiple times to the same builder, if this method is invoked more than
-         *             once, or if one of the static property types is not visible to the class
-         *             loader that loaded the default factory interface.
+         *             multiple times to the same builder, if this method is invoked more than once,
+         *             or if one of the static property types is not visible to the class loader
+         *             that loaded the default factory interface.
          * @since 21.3.0
          */
         public StaticShape<DefaultStaticObjectFactory> build() {
@@ -297,9 +297,9 @@ public abstract class StaticShape<T> {
          * @param <T> the generic type of the parent {@linkplain StaticShape shape}
          * @return the new {@link StaticShape}
          * @throws IllegalStateException if a static property was added to more than one builder or
-         *             multiple times to the same builder, if this method is invoked more than
-         *             once, or if one of the static property types is not visible to the class
-         *             loader that loaded the default factory interface.
+         *             multiple times to the same builder, if this method is invoked more than once,
+         *             or if one of the static property types is not visible to the class loader
+         *             that loaded the default factory interface.
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
@@ -342,9 +342,9 @@ public abstract class StaticShape<T> {
          *             if superClass is {@link Cloneable} and overrides {@link Object#clone()} with
          *             a final method
          * @throws IllegalStateException if a static property was added to more than one builder or
-         *             multiple times to the same builder, if this method is invoked more than
-         *             once, or if one of the static property types is not visible to the class
-         *             loader that loaded the factory interface.
+         *             multiple times to the same builder, if this method is invoked more than once,
+         *             or if one of the static property types is not visible to the class loader
+         *             that loaded the factory interface.
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
