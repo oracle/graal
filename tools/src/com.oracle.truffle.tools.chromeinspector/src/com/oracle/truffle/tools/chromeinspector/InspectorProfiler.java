@@ -125,7 +125,6 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public Params stop() {
         long time = System.currentTimeMillis();
         Map<TruffleContext, CPUSamplerData> data;

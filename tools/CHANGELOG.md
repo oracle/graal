@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 22.0.0
+* Remove deprecated cpusampler APIs and CLIs
+* Allow short-hand usage of cpusampler (e.g. `latest_graalvm_home/bin/ruby --cpusampler=histogram -e 1+1`)
+
 ## Version 21.3.0
 * Reimplemented CPUSampler to use the Truffle language safepoints thus deprecating several API functions.
 * Added new option `--cpusampler.SampleContextInitialization` which includes code executed during context initialization in the general sampling profile instead of grouping it into a single entry.
