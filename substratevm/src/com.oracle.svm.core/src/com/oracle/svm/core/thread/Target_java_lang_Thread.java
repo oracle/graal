@@ -221,14 +221,18 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     static Thread currentThread() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Inject @TargetElement(onlyWith = LoomJDK.class)//
