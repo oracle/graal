@@ -28,6 +28,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Added the `--engine.ForceCodeSharing` and `--engine.DisableCodeSharing` option that allows to force enable and force disable code sharing. This option is useful for testing to enable or disable sharing across all contexts of a process.
 * Removed deprecated in `ArityException`.
 * Removed deprecated object DSL processor that was deprecated for several releases. 
+* Removed deprecated encapsulating node accessor methods in `NodeUtil`.
 
 * Added new APIs to `com.oracle.truffle.api.frame.Frame` and `com.oracle.truffle.api.frame.FrameDescriptor`:
  * Added a new "namespace" of index-based slots in `Frame` that is defined during construction of the frame descriptor and cannot be changed afterwards, and that is accessed using `int` indexes instead of `FrameSlot`s.
