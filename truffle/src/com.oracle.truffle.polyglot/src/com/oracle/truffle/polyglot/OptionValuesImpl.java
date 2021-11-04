@@ -77,7 +77,6 @@ final class OptionValuesImpl implements OptionValues {
     @Override
     public int hashCode() {
         int result = 31 + descriptors.hashCode();
-        result = 31 * result + Objects.hashCode(engine);
         result = 31 * result + values.hashCode();
         return result;
     }
