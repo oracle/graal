@@ -432,29 +432,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        if (!hasVTableIndex()) {
-            return false;
-        }
-        final Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        final boolean useLLVMBackend = SubstrateOptions.useLLVMBackend();
-        if (arch instanceof AMD64 && !useLLVMBackend) {
-            return isInVTable((HostedType) resolved);
-        }
-        return false;
-    }
-
-    private boolean isInVTable(HostedType type) {
-        // TODO: add comments
-        for (HostedType subtype : type.subTypes) {
-            boolean result = isInVTable(subtype);
-            if (result) {
-                return true;
-            }
-        }
-        if (!type.isInstantiated()) {
-            return false;
-        }
-        return vtableIndex < type.getVTable().length && type.getVTable()[vtableIndex] != null;
+        return hasVTableIndex();
     }
 
     @Override
