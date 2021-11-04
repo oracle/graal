@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import java.util.concurrent.Future;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -59,7 +60,7 @@ public class InspectHashMapTest extends AbstractFunctionValueTest {
 
     @Test
     public void testHashMapChildren() throws Exception {
-        runWith(new TestHashObject(TestHashObject.createTestMap(), false));
+        Future<?> run = runWith(new TestHashObject(TestHashObject.createTestMap(), false));
         checkHashArray();
 
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"5\"}}");
@@ -83,12 +84,13 @@ public class InspectHashMapTest extends AbstractFunctionValueTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
+        run.get();
         tester.finish();
     }
 
     @Test
     public void testHashMapSet() throws Exception {
-        runWith(new TestHashObject(TestHashObject.createTestMap(), true));
+        Future<?> run = runWith(new TestHashObject(TestHashObject.createTestMap(), true));
         checkHashArray();
 
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"5\"}}");
@@ -133,6 +135,7 @@ public class InspectHashMapTest extends AbstractFunctionValueTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
+        run.get();
         tester.finish();
     }
 
