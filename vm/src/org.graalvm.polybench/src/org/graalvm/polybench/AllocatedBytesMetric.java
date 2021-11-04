@@ -42,7 +42,7 @@ public final class AllocatedBytesMetric implements Metric {
 
     @Override
     public String name() {
-        return "allocated bytes";
+        return "allocated-bytes";
     }
 
     @Override
