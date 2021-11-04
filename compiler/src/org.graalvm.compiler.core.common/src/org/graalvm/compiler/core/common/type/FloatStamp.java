@@ -283,7 +283,8 @@ public class FloatStamp extends PrimitiveStamp {
     public boolean isCompatible(Constant constant) {
         if (constant instanceof PrimitiveConstant) {
             PrimitiveConstant prim = (PrimitiveConstant) constant;
-            return prim.getJavaKind().isNumericFloat();
+            JavaKind kind = prim.getJavaKind();
+            return kind.isNumericFloat() && kind.getBitCount() == getBits();
         }
         return false;
     }
