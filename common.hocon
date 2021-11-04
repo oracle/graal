@@ -1,9 +1,5 @@
 specVersion = "2"
 
-# oraclejdk* are released OracleJDK binaries
-# oraclejdk* are JDKs based on OracleJDK binaries
-# openjdk8 JDKs on Linux are built by Oracle Labs
-# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
 include "graal-common.json"
 

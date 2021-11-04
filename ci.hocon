@@ -1,5 +1,6 @@
 include "common.hocon"
 labsjdk11: ${labsjdk-ce-11}
+labsjdk17: ${labsjdk-ce-17}
 
 builds = []
 

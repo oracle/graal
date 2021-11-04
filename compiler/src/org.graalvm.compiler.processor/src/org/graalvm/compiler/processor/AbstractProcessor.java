@@ -54,7 +54,7 @@ import javax.tools.StandardLocation;
  * {@link javax.annotation.processing.AbstractProcessor} subclass that provides extra functionality.
  */
 @SuppressFBWarnings(value = "NM_SAME_SIMPLE_NAME_AS_SUPERCLASS", //
-                reason = "We want this type to be found when someone is writing a new Graal annotation processor")
+                justification = "We want this type to be found when someone is writing a new Graal annotation processor")
 public abstract class AbstractProcessor extends javax.annotation.processing.AbstractProcessor {
 
     /**
