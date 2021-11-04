@@ -406,7 +406,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             JfrTraceIdEpoch.getInstance().changeEpoch();
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
-            JfrThreadRepository.registerRunningThreads();
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
         }
     }
 

@@ -44,7 +44,7 @@ import jdk.jfr.Period;
 
 @Name("EndChunkPeriodEvents")
 @Period(value = "endChunk")
-public class EndChunkPeriodicEvents extends Event {
+public class EndChunkNativePeriodicEvents extends Event {
 
     private static String formatOSInformation() {
         String name = System.getProperty("os.name");

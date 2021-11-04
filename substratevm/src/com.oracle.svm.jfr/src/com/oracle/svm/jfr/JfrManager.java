@@ -44,8 +44,8 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jfr.events.EndChunkPeriodicEvents;
-import com.oracle.svm.jfr.events.EveryChunkPeriodicEvents;
+import com.oracle.svm.jfr.events.EndChunkNativePeriodicEvents;
+import com.oracle.svm.jfr.events.EveryChunkNativePeriodicEvents;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -89,8 +89,8 @@ public class JfrManager {
                 // Everything should already have been torn down by JVM.destroyJFR(), which is
                 // called in a shutdown hook. So in this method we should only unregister periodic
                 // events.
-                FlightRecorder.removePeriodicEvent(EveryChunkPeriodicEvents::emit);
-                FlightRecorder.removePeriodicEvent(EndChunkPeriodicEvents::emit);
+                FlightRecorder.removePeriodicEvent(EveryChunkNativePeriodicEvents::emit);
+                FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
             }
         };
     }
@@ -102,8 +102,8 @@ public class JfrManager {
     private static void periodicEventSetup() throws SecurityException {
         // The callbacks that are registered below, are invoked regularly to emit periodic native
         // events such as OSInformation or JVMInformation.
-        FlightRecorder.addPeriodicEvent(EveryChunkPeriodicEvents.class, EveryChunkPeriodicEvents::emit);
-        FlightRecorder.addPeriodicEvent(EndChunkPeriodicEvents.class, EndChunkPeriodicEvents::emit);
+        FlightRecorder.addPeriodicEvent(EveryChunkNativePeriodicEvents.class, EveryChunkNativePeriodicEvents::emit);
+        FlightRecorder.addPeriodicEvent(EndChunkNativePeriodicEvents.class, EndChunkNativePeriodicEvents::emit);
     }
 
     private static void initRecording() {

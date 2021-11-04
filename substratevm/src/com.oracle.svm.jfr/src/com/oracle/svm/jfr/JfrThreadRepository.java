@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -66,14 +67,20 @@ public final class JfrThreadRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Prevent any JFR events from triggering.")
-    public static void registerRunningThreads() {
-        for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-            // IsolateThreads without a Java thread just started executing and will register
-            // themselves later on.
-            Thread thread = JavaThreads.fromVMThread(isolateThread);
-            if (thread != null) {
-                SubstrateJVM.getThreadRepo().registerThread(thread);
+    public void registerRunningThreads() {
+        assert VMOperation.isInProgressAtSafepoint();
+        mutex.lockNoTransition();
+        try {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                // IsolateThreads without a Java thread just started executing and will register
+                // themselves later on.
+                Thread thread = JavaThreads.fromVMThread(isolateThread);
+                if (thread != null) {
+                    registerThread0(thread);
+                }
             }
+        } finally {
+            mutex.unlock();
         }
     }
 
@@ -85,44 +92,50 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
         mutex.lockNoTransition();
         try {
-            JfrThreadEpochData epochData = getEpochData(false);
-            if (epochData.threadBuffer.isNull()) {
-                // This will happen only on the first call.
-                epochData.threadBuffer = JfrBufferAccess.allocate(WordFactory.unsigned(INITIAL_BUFFER_SIZE), JfrBufferType.C_HEAP);
-            }
-
-            JfrVisited visitedThread = StackValue.get(JfrVisited.class);
-            visitedThread.setId(thread.getId());
-            visitedThread.setHash((int) thread.getId());
-            if (!epochData.visitedThreads.putIfAbsent(visitedThread)) {
-                return;
-            }
-
-            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
-
-            JfrNativeEventWriter.putLong(data, thread.getId());
-            JfrNativeEventWriter.putString(data, thread.getName());
-            JfrNativeEventWriter.putLong(data, thread.getId());
-            JfrNativeEventWriter.putString(data, thread.getName());
-            JfrNativeEventWriter.putLong(data, thread.getId());
-
-            ThreadGroup threadGroup = thread.getThreadGroup();
-            if (threadGroup != null) {
-                long threadGroupId = JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
-                JfrNativeEventWriter.putLong(data, threadGroupId);
-                registerThreadGroup(threadGroupId, threadGroup);
-            } else {
-                JfrNativeEventWriter.putLong(data, 0);
-            }
-            JfrNativeEventWriter.commit(data);
-
-            // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we
-            // need to update the repository pointer as well.
-            epochData.threadBuffer = data.getJfrBuffer();
+            registerThread0(thread);
         } finally {
             mutex.unlock();
         }
+    }
+
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    private void registerThread0(Thread thread) {
+        assert SubstrateJVM.isRecording();
+        JfrThreadEpochData epochData = getEpochData(false);
+        if (epochData.threadBuffer.isNull()) {
+            // This will happen only on the first call.
+            epochData.threadBuffer = JfrBufferAccess.allocate(WordFactory.unsigned(INITIAL_BUFFER_SIZE), JfrBufferType.C_HEAP);
+        }
+
+        JfrVisited visitedThread = StackValue.get(JfrVisited.class);
+        visitedThread.setId(thread.getId());
+        visitedThread.setHash((int) thread.getId());
+        if (!epochData.visitedThreads.putIfAbsent(visitedThread)) {
+            return;
+        }
+
+        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+        JfrNativeEventWriterDataAccess.initialize(data, epochData.threadBuffer);
+
+        JfrNativeEventWriter.putLong(data, thread.getId()); // JFR trace id
+        JfrNativeEventWriter.putString(data, thread.getName()); // Java or native thread name
+        JfrNativeEventWriter.putLong(data, thread.getId()); // OS thread id
+        JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
+        JfrNativeEventWriter.putLong(data, thread.getId()); // Java thread id
+
+        ThreadGroup threadGroup = thread.getThreadGroup();
+        if (threadGroup != null) {
+            long threadGroupId = JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
+            JfrNativeEventWriter.putLong(data, threadGroupId);
+            registerThreadGroup(threadGroupId, threadGroup);
+        } else {
+            JfrNativeEventWriter.putLong(data, 0);
+        }
+        JfrNativeEventWriter.commit(data);
+
+        // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we
+        // need to update the repository pointer as well.
+        epochData.threadBuffer = data.getJfrBuffer();
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")

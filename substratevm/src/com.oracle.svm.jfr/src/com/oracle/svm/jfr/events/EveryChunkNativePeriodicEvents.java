@@ -43,7 +43,7 @@ import java.lang.management.ThreadMXBean;
 
 @Name("EveryChunkPeriodEvents")
 @Period(value = "everyChunk")
-public class EveryChunkPeriodicEvents extends Event {
+public class EveryChunkNativePeriodicEvents extends Event {
 
     public static void emit() {
         ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();

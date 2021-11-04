@@ -275,7 +275,7 @@ public class SubstrateJVM {
 
         JavaVMOperation.enqueueBlockingSafepoint("Jfr begin recording", () -> {
             recording = true;
-            JfrThreadRepository.registerRunningThreads();
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
             // After changing the value of recording to true, JFR events can be triggered at any
             // time.
         });
