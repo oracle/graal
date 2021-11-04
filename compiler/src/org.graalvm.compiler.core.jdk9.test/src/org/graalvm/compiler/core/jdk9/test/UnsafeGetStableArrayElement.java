@@ -81,20 +81,26 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     static final  Object[]  STABLE_OBJECT_ARRAY = register(new  Object[4]);
 
     static {
+        // Tests will set/reset the first element of those arrays.
+        // Place a canary on the second element to catch issues involving reading more than the first element.
+        STABLE_BYTE_ARRAY[1] = 0x10;
+        STABLE_SHORT_ARRAY[1] = 0x10;
+        STABLE_CHAR_ARRAY[1] = 0x10;
+        STABLE_BOOLEAN_ARRAY[1] = true;
         Setter.reset();
     }
     static final Unsafe U = Unsafe.getUnsafe();
 
     static class Setter {
-        private static void setZ(boolean defaultVal) { STABLE_BOOLEAN_ARRAY[0] = defaultVal ? false :                true; }
-        private static void setB(boolean defaultVal) { STABLE_BYTE_ARRAY[0]    = defaultVal ?     0 :      Byte.MAX_VALUE; }
-        private static void setS(boolean defaultVal) { STABLE_SHORT_ARRAY[0]   = defaultVal ?     0 :     Short.MAX_VALUE; }
-        private static void setC(boolean defaultVal) { STABLE_CHAR_ARRAY[0]    = defaultVal ?     0 : Character.MAX_VALUE; }
-        private static void setI(boolean defaultVal) { STABLE_INT_ARRAY[0]     = defaultVal ?     0 :   Integer.MAX_VALUE; }
-        private static void setJ(boolean defaultVal) { STABLE_LONG_ARRAY[0]    = defaultVal ?     0 :      Long.MAX_VALUE; }
-        private static void setF(boolean defaultVal) { STABLE_FLOAT_ARRAY[0]   = defaultVal ?     0 :     Float.MAX_VALUE; }
-        private static void setD(boolean defaultVal) { STABLE_DOUBLE_ARRAY[0]  = defaultVal ?     0 :    Double.MAX_VALUE; }
-        private static void setL(boolean defaultVal) { STABLE_OBJECT_ARRAY[0]  = defaultVal ?  null :        new Object(); }
+        private static void setZ(boolean defaultVal) { STABLE_BOOLEAN_ARRAY[0] = defaultVal ? false : Test.nonDefaultZ(); }
+        private static void setB(boolean defaultVal) { STABLE_BYTE_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultB(); }
+        private static void setS(boolean defaultVal) { STABLE_SHORT_ARRAY[0]   = defaultVal ?     0 : Test.nonDefaultS(); }
+        private static void setC(boolean defaultVal) { STABLE_CHAR_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultC(); }
+        private static void setI(boolean defaultVal) { STABLE_INT_ARRAY[0]     = defaultVal ?     0 : Test.nonDefaultI(); }
+        private static void setJ(boolean defaultVal) { STABLE_LONG_ARRAY[0]    = defaultVal ?     0 : Test.nonDefaultJ(); }
+        private static void setF(boolean defaultVal) { STABLE_FLOAT_ARRAY[0]   = defaultVal ?     0 : Test.nonDefaultF(); }
+        private static void setD(boolean defaultVal) { STABLE_DOUBLE_ARRAY[0]  = defaultVal ?     0 : Test.nonDefaultD(); }
+        private static void setL(boolean defaultVal) { STABLE_OBJECT_ARRAY[0]  = defaultVal ?  null :       new Object(); }
 
         static void reset() {
             setZ(false);
@@ -120,6 +126,16 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static void changeD() { Setter.setD(true); }
         static void changeL() { Setter.setL(true); }
 
+        static boolean nonDefaultZ() { return true; }
+        // the integer values are selected to make sure sign/zero-extension behaviour is tested.
+        static byte    nonDefaultB() { return -1; }
+        static short   nonDefaultS() { return -1; }
+        static char    nonDefaultC() { return Character.MAX_VALUE; }
+        static int     nonDefaultI() { return -1; }
+        static long    nonDefaultJ() { return -1; }
+        static float   nonDefaultF() { return Float.MAX_VALUE; }
+        static double  nonDefaultD() { return Double.MAX_VALUE; }
+
         static boolean testZ_Z() { return U.getBoolean(STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
         static byte    testZ_B() { return U.getByte(   STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
         static short   testZ_S() { return U.getShort(  STABLE_BOOLEAN_ARRAY, ARRAY_BOOLEAN_BASE_OFFSET); }
@@ -137,6 +153,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testB_J() { return U.getLong(   STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
         static float   testB_F() { return U.getFloat(  STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
         static double  testB_D() { return U.getDouble( STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
+        static int     testB_Bw() { return U.getByte(   STABLE_BYTE_ARRAY, ARRAY_BYTE_BASE_OFFSET); }
 
         static boolean testS_Z() { return U.getBoolean(STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static byte    testS_B() { return U.getByte(   STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
@@ -146,6 +163,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testS_J() { return U.getLong(   STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static float   testS_F() { return U.getFloat(  STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
         static double  testS_D() { return U.getDouble( STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
+        static int     testS_Sw() { return U.getShort(  STABLE_SHORT_ARRAY, ARRAY_SHORT_BASE_OFFSET); }
 
         static boolean testC_Z() { return U.getBoolean(STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static byte    testC_B() { return U.getByte(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
@@ -155,6 +173,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static long    testC_J() { return U.getLong(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static float   testC_F() { return U.getFloat(  STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
         static double  testC_D() { return U.getDouble( STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
+        static int     testC_Cw() { return U.getChar(   STABLE_CHAR_ARRAY, ARRAY_CHAR_BASE_OFFSET); }
 
         static boolean testI_Z() { return U.getBoolean(STABLE_INT_ARRAY, ARRAY_INT_BASE_OFFSET); }
         static byte    testI_B() { return U.getByte(   STABLE_INT_ARRAY, ARRAY_INT_BASE_OFFSET); }
@@ -315,6 +334,29 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     }
 
     /**
+     * Similar to {@link #testMatched(Callable, Runnable)} with the additional check that the value
+     * read from the array is {@code nonDefaultValue}.
+     * 
+     * This is meant to be used for sub-int types to catch cases where more bytes than necessary are
+     * read from the stable array.
+     * 
+     * The return type of {@code c} should be {@code int} to catch issues since sub-int return types
+     * apply masking.
+     */
+    void testMatchedSubInt(Callable<?> c, Runnable setDefaultAction, int nonDefaultValue) throws Exception {
+        Object first = c.call();
+        Assert.assertEquals(nonDefaultValue, first);
+        CompiledMethod cm = compile(c);
+
+        if (setDefaultAction != null) {
+            setDefaultAction.run();
+            assertEQ(cm, first, cm.call());
+        }
+
+        Setter.reset();
+    }
+
+    /**
      * Tests this sequence:
      *
      * <pre>
@@ -357,6 +399,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         testMatched(Test::testB_J, Test::changeB);
         testMatched(Test::testB_F, Test::changeB);
         testMatched(Test::testB_D, Test::changeB);
+        testMatchedSubInt(Test::testB_Bw, Test::changeB, Test.nonDefaultB());
 
         // short[], aligned accesses
         testMatched(Test::testS_Z, Test::changeS);
@@ -367,6 +410,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         testMatched(Test::testS_J, Test::changeS);
         testMatched(Test::testS_F, Test::changeS);
         testMatched(Test::testS_D, Test::changeS);
+        testMatchedSubInt(Test::testS_Sw, Test::changeS, Test.nonDefaultS());
 
         // char[], aligned accesses
         testMatched(Test::testC_Z, Test::changeC);
@@ -377,6 +421,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         testMatched(Test::testC_J, Test::changeC);
         testMatched(Test::testC_F, Test::changeC);
         testMatched(Test::testC_D, Test::changeC);
+        testMatchedSubInt(Test::testC_Cw, Test::changeC, Test.nonDefaultC());
 
         // int[], aligned accesses
         testMatched(Test::testI_Z, Test::changeI);
