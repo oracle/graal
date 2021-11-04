@@ -61,14 +61,12 @@ final class OptionValuesImpl implements OptionValues {
     // prefix used for -D java system properties
     static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
 
-    private final PolyglotEngineImpl engine;
     private final OptionDescriptors descriptors;
     private final Map<OptionKey<?>, Object> values;
     private final Map<OptionKey<?>, String> unparsedValues;
 
-    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors, boolean preserveUnparsedValues) {
+    OptionValuesImpl(OptionDescriptors descriptors, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
-        this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
@@ -126,14 +124,14 @@ final class OptionValuesImpl implements OptionValues {
         return true;
     }
 
-    public void putAll(Map<String, String> providedValues, boolean allowExperimentalOptions) {
+    public void putAll(PolyglotEngineImpl engine, Map<String, String> providedValues, boolean allowExperimentalOptions) {
         for (String key : providedValues.keySet()) {
-            put(key, providedValues.get(key), allowExperimentalOptions);
+            put(engine, key, providedValues.get(key), allowExperimentalOptions);
         }
     }
 
-    public void put(String key, String value, boolean allowExperimentalOptions) {
-        OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
+    public void put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
+        OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
         OptionKey<?> optionKey = descriptor.getKey();
         Object previousValue;
         if (values.containsKey(optionKey)) {
@@ -163,7 +161,6 @@ final class OptionValuesImpl implements OptionValues {
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
-        this.engine = copy.engine;
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
         this.unparsedValues = copy.unparsedValues;
@@ -228,10 +225,10 @@ final class OptionValuesImpl implements OptionValues {
         return unparsedValues.get(key);
     }
 
-    private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions) {
+    private OptionDescriptor findDescriptor(PolyglotEngineImpl engine, String key, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = descriptors.get(key);
         if (descriptor == null) {
-            throw failNotFound(key);
+            throw failNotFound(engine, key);
         }
         if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw failExperimental(key);
@@ -245,11 +242,11 @@ final class OptionValuesImpl implements OptionValues {
         return PolyglotEngineException.illegalArgument(message);
     }
 
-    private RuntimeException failNotFound(String key) {
+    private RuntimeException failNotFound(PolyglotEngineImpl engine, String key) {
         OptionDescriptors allOptions;
         Exception errorOptions = null;
         try {
-            allOptions = engine == null ? this.descriptors : this.engine.getAllOptions();
+            allOptions = engine == null ? this.descriptors : engine.getAllOptions();
         } catch (Exception e) {
             errorOptions = e;
             allOptions = this.descriptors;
