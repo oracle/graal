@@ -1059,7 +1059,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX512F_MASK(null, null, null, EVEXFeatureAssertion.AVX512F_ALL, MASK, null, null, null),
         MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, XMM, XMM, null),
         MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, null, XMM, null),
-        MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, XMM, XMM, null),
+        MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512DQ_VL, MASK, null, XMM, null),
+        MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM);
 
         private final CPUFeature l128feature;
@@ -1247,6 +1248,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    P_66, M_0F38, W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VPMOVMSKB       = new VexRMOp("VPMOVMSKB",       P_66, M_0F,   WIG, 0xD7, VEXOpAssertion.AVX1_2_CPU_XMM);
         public static final VexRMOp VPMOVB2M        = new VexRMOp("VPMOVB2M",        P_F3, M_0F38, W0,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W0);
+        public static final VexRMOp VPMOVW2M        = new VexRMOp("VPMOVW2M",        P_F3, M_0F38, W1,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W1);
+        public static final VexRMOp VPMOVD2M        = new VexRMOp("VPMOVD2M",        P_F3, M_0F38, W0,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       W0);
+        public static final VexRMOp VPMOVQ2M        = new VexRMOp("VPMOVQ2M",        P_F3, M_0F38, W1,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       W1);
         public static final VexRMOp VPMOVSXBW       = new VexRMOp("VPMOVSXBW",       P_66, M_0F38, WIG, 0x20, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.HVM,       WIG);
         public static final VexRMOp VPMOVSXBD       = new VexRMOp("VPMOVSXBD",       P_66, M_0F38, WIG, 0x21, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.QVM,       WIG);
         public static final VexRMOp VPMOVSXBQ       = new VexRMOp("VPMOVSXBQ",       P_66, M_0F38, WIG, 0x22, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.OVM,       WIG);
@@ -2023,7 +2027,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexFloatCompareOp VCMPPS_AVX512 = new VexFloatCompareOp("VCMPPS", P_,   M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W0);
         public static final VexFloatCompareOp VCMPPD        = new VexFloatCompareOp("VCMPPD", P_66, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPPD_AVX512 = new VexFloatCompareOp("VCMPPD", P_66, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W1);
-        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F2, M_0F, WIG, 0xC2);
+        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSS_AVX512 = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, W0);
         public static final VexFloatCompareOp VCMPSD        = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSD_AVX512 = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, W1);
