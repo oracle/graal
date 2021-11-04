@@ -47,12 +47,10 @@ import java.util.stream.Collectors;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -223,13 +221,6 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
-
-    // region ThreadDeprecated
-    // Set on calling guest Thread.stop0(), or when closing context.
-    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
-    // endregion ThreadDeprecated
 
     @CompilationFinal private TruffleObject topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
@@ -894,28 +885,6 @@ public final class EspressoContext {
 
     public void interruptThread(StaticObject guestThread) {
         threads.interruptThread(guestThread);
-    }
-
-    public void invalidateNoThreadStop(String message) {
-        noThreadDeprecationCalled.invalidate();
-        noThreadStop.invalidate(message);
-    }
-
-    public boolean shouldCheckStop() {
-        return !noThreadStop.isValid();
-    }
-
-    public void invalidateNoSuspend(String message) {
-        noThreadDeprecationCalled.invalidate();
-        noSuspend.invalidate(message);
-    }
-
-    public boolean shouldCheckDeprecationStatus() {
-        return !noThreadDeprecationCalled.isValid();
-    }
-
-    public boolean shouldCheckSuspend() {
-        return !noSuspend.isValid();
     }
 
     public boolean isMainThreadCreated() {

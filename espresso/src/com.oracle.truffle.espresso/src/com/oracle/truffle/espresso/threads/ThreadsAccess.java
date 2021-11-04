@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.threads.KillStatus.NORMAL;
 import static com.oracle.truffle.espresso.threads.KillStatus.STOP;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -93,13 +94,13 @@ public final class ThreadsAccess implements ContextAccess {
     int fromRunnable(StaticObject self, State state) {
         assert (getState(self) & State.RUNNABLE.value) != 0;
         int old = updateState(self, state);
-        checkDeprecation();
+        fullSafePoint(self);
         return old;
     }
 
     void restoreState(StaticObject self, int toRestore) {
         try {
-            checkDeprecation();
+            fullSafePoint(self);
         } finally {
             setState(self, toRestore);
         }
@@ -124,31 +125,29 @@ public final class ThreadsAccess implements ContextAccess {
      * Implements support for thread deprecated methods ({@code Thread#stop()},
      * {@code Thread#suspend()}, {@code Thread#resume()}).
      * <p>
-     * The following performance concerns are to be considered:
-     * <ul>
-     * <li>If these deprecated methods are never called, this method should entirely fold.</li>
-     * <li>When called for the first time, a very large portion of the compiled code will be
-     * invalidated.</li>
-     * <li>After being called for the first time, in most cases, this method should amount to
-     * getting the current thread and reading a field</li>
-     * </ul>
+     * Called when a thread is changing state (From a runnable state to a blocking state, or
+     * vice-versa).
      */
-    public void checkDeprecation() {
-        // TODO: safepoints
-        if (!context.shouldCheckDeprecationStatus()) {
-            return;
-        }
-        StaticObject current = context.getCurrentThread();
+    public void fullSafePoint(StaticObject thread) {
+        assert thread == context.getCurrentThread();
+        handleStop(thread);
+        handleSuspend(thread);
+    }
+
+    void handleSuspend(StaticObject current) {
         DeprecationSupport support = getDeprecationSupport(current, false);
         if (support == null) {
             return;
         }
-        if (context.shouldCheckStop()) {
-            support.handleStop(meta);
+        support.handleSuspend();
+    }
+
+    void handleStop(StaticObject current) {
+        DeprecationSupport support = getDeprecationSupport(current, false);
+        if (support == null) {
+            return;
         }
-        if (context.shouldCheckSuspend()) {
-            support.handleSuspend();
-        }
+        support.handleStop();
     }
 
     /**
@@ -230,6 +229,17 @@ public final class ThreadsAccess implements ContextAccess {
 
     // region deprecated methods support
 
+    private static final class SuspendAction extends ThreadLocalAction {
+        public SuspendAction() {
+            super(true, false);
+        }
+
+        @Override
+        protected void perform(Access access) {
+
+        }
+    }
+
     /**
      * Suspends a thread. On return, guarantees that the given thread has seen the suspend request.
      */
@@ -239,7 +249,7 @@ public final class ThreadsAccess implements ContextAccess {
         }
         DeprecationSupport support = getDeprecationSupport(guest, true);
         assert support != null;
-        support.suspend(this);
+        support.suspend();
     }
 
     /**
@@ -259,11 +269,7 @@ public final class ThreadsAccess implements ContextAccess {
     public void stop(StaticObject guest, StaticObject throwable) {
         DeprecationSupport support = getDeprecationSupport(guest, true);
         assert support != null;
-        support.stop(throwable);
-        Thread host = getHost(guest);
-        if (host != null) {
-            host.interrupt();
-        }
+        support.stop(guest, this);
     }
 
     /**
@@ -383,27 +389,24 @@ public final class ThreadsAccess implements ContextAccess {
         return support;
     }
 
-    private static final class DeprecationSupport {
+    private final class DeprecationSupport {
 
         private final StaticObject thread;
 
         private volatile StaticObject throwable = null;
-        /*
-         * Non-volatile for general performance purposes. The cost is that the target thread might
-         * take longer to observe requests.;
-         */
-        private KillStatus status = NORMAL;
+
+        private volatile KillStatus status = NORMAL;
         private SuspendLock suspendLock = null;
 
         DeprecationSupport(StaticObject thread) {
             this.thread = thread;
         }
 
-        void suspend(ThreadsAccess threads) {
+        void suspend() {
             SuspendLock lock = this.suspendLock;
             if (lock == null) {
                 synchronized (this) {
-                    lock = new SuspendLock(threads, thread);
+                    lock = new SuspendLock(ThreadsAccess.this, thread);
                     this.suspendLock = lock;
                 }
             }
@@ -418,7 +421,19 @@ public final class ThreadsAccess implements ContextAccess {
             lock.resume();
         }
 
-        synchronized void stop(StaticObject death) {
+        private class StopAction extends ThreadLocalAction {
+
+            public StopAction() {
+                super(true, false);
+            }
+
+            @Override
+            protected void perform(Access access) {
+                handleStop();
+            }
+        }
+
+        synchronized void stop(StaticObject death, ThreadsAccess access) {
             KillStatus s = status;
             if (s == NORMAL || s == STOP) {
                 // Writing the throwable must be done before the kill status can be observed
@@ -438,6 +453,11 @@ public final class ThreadsAccess implements ContextAccess {
         private void updateKillState(KillStatus state) {
             assert Thread.holdsLock(this);
             status = state;
+            if (state != NORMAL) {
+                Thread host = getHost(thread);
+                getContext().getEnv().submitThreadLocal(new Thread[]{host}, new StopAction());
+                host.interrupt(); // best effort to wake up blocked thread.
+            }
         }
 
         @TruffleBoundary
@@ -450,7 +470,7 @@ public final class ThreadsAccess implements ContextAccess {
         }
 
         @TruffleBoundary
-        void handleStop(Meta meta) {
+        void handleStop() {
             switch (status) {
                 case NORMAL:
                 case EXITING:
@@ -459,6 +479,7 @@ public final class ThreadsAccess implements ContextAccess {
                     synchronized (this) {
                         // synchronize to make sure we are still stopped.
                         KillStatus s = status;
+                        Meta meta = getMeta();
                         if (s == STOP) {
                             updateKillState(NORMAL);
                             // check if death cause throwable is set, if not throw ThreadDeath

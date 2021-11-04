@@ -257,7 +257,6 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void suspend0(@JavaType(Object.class) StaticObject toSuspend,
                     @Inject EspressoContext context) {
-        context.invalidateNoSuspend("Calling Thread.suspend()");
         context.getThreadAccess().suspend(toSuspend);
     }
 
@@ -265,7 +264,6 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
                     @Inject EspressoContext context) {
-        context.invalidateNoThreadStop("Calling thread.stop()");
         context.getThreadAccess().stop(self, throwable);
     }
 

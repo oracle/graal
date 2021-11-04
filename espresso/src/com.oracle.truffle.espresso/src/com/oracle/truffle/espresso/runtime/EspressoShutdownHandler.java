@@ -212,7 +212,6 @@ class EspressoShutdownHandler implements ContextAccess {
         getVM().getJvmti().postVmDeath();
 
         getContext().prepareDispose();
-        getContext().invalidateNoThreadStop("Killing the VM");
         Thread initiatingThread = Thread.currentThread();
 
         getContext().getLogger().finer("Teardown: Phase 0: wait");
