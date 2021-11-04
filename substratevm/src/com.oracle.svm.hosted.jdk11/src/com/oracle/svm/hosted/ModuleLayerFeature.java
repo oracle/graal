@@ -97,7 +97,7 @@ public final class ModuleLayerFeature implements Feature {
     private Constructor<ModuleLayer> moduleLayerConstructor;
     private Field moduleLayerNameToModuleField;
     private Field moduleLayerParentsField;
-    private NameToModuleSynthesizer nameToModuleSynthesizer;
+    private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -110,7 +110,7 @@ public final class ModuleLayerFeature implements Feature {
         moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
         moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
         moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
-        nameToModuleSynthesizer = new NameToModuleSynthesizer();
+        moduleLayerFeatureUtils = new ModuleLayerFeatureUtils();
     }
 
     @Override
@@ -135,14 +135,20 @@ public final class ModuleLayerFeature implements Feature {
                         .map(t -> t.getJavaClass().getModule())
                         .distinct();
 
-        Set<String> allReachableModules = analysisReachableModules
+        Set<Module> analysisReachableNamedModules = analysisReachableModules
                         .filter(Module::isNamed)
                         .filter(m -> !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
+                        .collect(Collectors.toSet());
+
+        Set<String> allReachableModules = analysisReachableNamedModules
+                        .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
+
+        replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
     }
 
     /*
@@ -157,12 +163,77 @@ public final class ModuleLayerFeature implements Feature {
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(cl.modulepath(), reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
-            Map<String, Module> nameToModule = nameToModuleSynthesizer.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
+            Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
             patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
             return runtimeBootLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer.", ex);
         }
+    }
+
+    private void replicateVisibilityModifications(ModuleLayer runtimeBootLayer, ImageClassLoader cl, Set<Module> analysisReachableModules) {
+        List<Module> applicationModules = findApplicationModules(runtimeBootLayer, cl.applicationModulePath());
+
+        Map<String, HostedRuntimeModulePair> moduleLookupMap = analysisReachableModules
+                        .stream()
+                        .collect(Collectors.toMap(Module::getName, m -> new HostedRuntimeModulePair(m, runtimeBootLayer)));
+
+        Module builderModule = moduleLookupMap.get("org.graalvm.nativeimage.builder").hostedModule;
+        assert builderModule != null;
+
+        try {
+            for (Map.Entry<String, HostedRuntimeModulePair> e : moduleLookupMap.entrySet()) {
+                Module hostedModule = e.getValue().hostedModule;
+                if (hostedModule == builderModule) {
+                    continue;
+                }
+                Module runtimeModule = e.getValue().runtimeModule;
+                if (builderModule.canRead(hostedModule)) {
+                    for (Module appModule : applicationModules) {
+                        moduleLayerFeatureUtils.addReads(appModule, runtimeModule);
+                    }
+                }
+                for (String pn : hostedModule.getPackages()) {
+                    if (hostedModule.isOpen(pn, builderModule)) {
+                        for (Module appModule : applicationModules) {
+                            moduleLayerFeatureUtils.addOpens(runtimeModule, pn, appModule);
+                        }
+                    }
+                    if (hostedModule.isExported(pn, builderModule)) {
+                        for (Module appModule : applicationModules) {
+                            moduleLayerFeatureUtils.addExports(runtimeModule, pn, appModule);
+                        }
+                    }
+                }
+            }
+        } catch (IllegalAccessException ex) {
+            throw VMError.shouldNotReachHere("Failed to transfer hosted module relations to the runtime boot module layer.", ex);
+        }
+    }
+
+    private List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
+        List<Module> applicationModules = new ArrayList<>();
+        List<String> applicationModuleNames;
+        try {
+            ModuleFinder applicationModuleFinder = ModuleFinder.of(applicationModulePath.toArray(Path[]::new));
+            applicationModuleNames = applicationModuleFinder.findAll()
+                    .stream()
+                    .map(m -> m.descriptor().name())
+                    .filter(s -> !s.startsWith("org.graal"))
+                    .collect(Collectors.toList());
+        } catch (FindException | ResolutionException | SecurityException ex) {
+            throw VMError.shouldNotReachHere("Failed to locate application modules.", ex);
+        }
+
+        for (String moduleName : applicationModuleNames) {
+            Optional<Module> module = runtimeBootLayer.findModule(moduleName);
+            if (module.isEmpty()) {
+                throw VMError.shouldNotReachHere("Runtime boot module layer failed to include application module: " + moduleName);
+            }
+            applicationModules.add(module.get());
+        }
+
+        return applicationModules;
     }
 
     private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
@@ -219,7 +290,19 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private static final class NameToModuleSynthesizer {
+    private static final class HostedRuntimeModulePair {
+        final Module hostedModule;
+        final Module runtimeModule;
+
+        HostedRuntimeModulePair(Module hostedModule, ModuleLayer runtimeBootLayer) {
+            this.hostedModule = hostedModule;
+            this.runtimeModule = runtimeBootLayer.findModule(hostedModule.getName()).orElseThrow(VMError::shouldNotReachHere);
+        }
+    }
+
+    private static final class ModuleLayerFeatureUtils {
+        private final Module allUnnamedModule;
+        private final Set<Module> allUnnamedModuleSet;
         private final Module everyoneModule;
         private final Set<Module> everyoneSet;
         private final Constructor<Module> moduleConstructor;
@@ -229,7 +312,7 @@ public final class ModuleLayerFeature implements Feature {
         private final Field moduleExportedPackagesField;
         private final Method moduleFindModuleMethod;
 
-        NameToModuleSynthesizer() {
+        ModuleLayerFeatureUtils() {
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
                 ModuleSupport.openModuleByClass(Module.class, ModuleLayerFeature.class);
@@ -238,6 +321,10 @@ public final class ModuleLayerFeature implements Feature {
                 Field everyoneModuleField = findFieldByName(moduleClassFields, "EVERYONE_MODULE");
                 everyoneModuleField.setAccessible(true);
                 everyoneModule = (Module) everyoneModuleField.get(null);
+
+                Field allUnnamedModuleField = findFieldByName(moduleClassFields, "ALL_UNNAMED_MODULE");
+                allUnnamedModuleField.setAccessible(true);
+                allUnnamedModule = (Module) allUnnamedModuleField.get(null);
 
                 moduleLayerField = findFieldByName(moduleClassFields, "layer");
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
@@ -248,15 +335,18 @@ public final class ModuleLayerFeature implements Feature {
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
-                throw VMError.shouldNotReachHere("Failed to find the value of EVERYONE_MODULE field of Module class.", ex);
+                throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module class.", ex);
             }
-            everyoneSet = Set.of(everyoneModule);
+            allUnnamedModuleSet = new HashSet<>();
+            allUnnamedModuleSet.add(allUnnamedModule);
+            everyoneSet = new HashSet<>();
+            everyoneSet.add(everyoneModule);
             moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
             moduleFindModuleMethod = ReflectionUtil.lookupMethod(Module.class, "findModule", String.class, Map.class, Map.class, List.class);
         }
 
         private static Field findFieldByName(Field[] fields, String name) {
-            return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().get();
+            return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHere);
         }
 
         /**
@@ -379,6 +469,68 @@ public final class ModuleLayerFeature implements Feature {
             }
 
             return nameToModule;
+        }
+
+        @SuppressWarnings("unchecked")
+        void addReads(Module module, Module other) throws IllegalAccessException {
+            Set<Module> reads = (Set<Module>) moduleReadsField.get(module);
+            if (reads == null) {
+                reads = new HashSet<>();
+                moduleReadsField.set(module, reads);
+            }
+            reads.add(other == null ? allUnnamedModule : other);
+        }
+
+        @SuppressWarnings("unchecked")
+        void addExports(Module module, String pn, Module other) throws IllegalAccessException {
+            if (other != null && module.isExported(pn, other)) {
+                return;
+            }
+
+            Map<String, Set<Module>> exports = (Map<String, Set<Module>>) moduleExportedPackagesField.get(module);
+            if (exports == null) {
+                exports = new HashMap<>();
+                moduleExportedPackagesField.set(module, exports);
+            }
+
+            Set<Module> prev;
+            if (other == null) {
+                prev = exports.putIfAbsent(pn, allUnnamedModuleSet);
+            } else {
+                HashSet<Module> targets = new HashSet<>();
+                targets.add(other);
+                prev = exports.putIfAbsent(pn, targets);
+            }
+
+            if (prev != null) {
+                prev.add(other == null ? allUnnamedModule : other);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        void addOpens(Module module, String pn, Module other) throws IllegalAccessException {
+            if (other != null && module.isOpen(pn, other)) {
+                return;
+            }
+
+            Map<String, Set<Module>> opens = (Map<String, Set<Module>>) moduleOpenPackagesField.get(module);
+            if (opens == null) {
+                opens = new HashMap<>();
+                moduleOpenPackagesField.set(module, opens);
+            }
+
+            Set<Module> prev;
+            if (other == null) {
+                prev = opens.putIfAbsent(pn, allUnnamedModuleSet);
+            } else {
+                HashSet<Module> targets = new HashSet<>();
+                targets.add(other);
+                prev = opens.putIfAbsent(pn, targets);
+            }
+
+            if (prev != null) {
+                prev.add(other == null ? allUnnamedModule : other);
+            }
         }
     }
 }
