@@ -72,7 +72,6 @@ public class HiddenClassProperty extends StaticObjectModelTest {
     public void hiddenClass() throws Throwable {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
-            Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
 
             MethodHandles.Lookup lookup = MethodHandles.lookup();
