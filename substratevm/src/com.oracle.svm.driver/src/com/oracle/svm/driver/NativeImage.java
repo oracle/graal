@@ -64,7 +64,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.common.option.CommonOptions;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -72,6 +71,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
@@ -361,6 +361,7 @@ public class NativeImage {
          * @return true if Java modules system should be used
          */
         public boolean useJavaModules() {
+            /* GR-33851: Once Java 8 support is gone, this should be constant-folded to true. */
             try {
                 Class.forName("java.lang.Module");
             } catch (ClassNotFoundException e) {
