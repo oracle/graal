@@ -222,7 +222,7 @@ final class LibFFIClosure implements TruffleObject {
         @Child NativeArgumentLibrary nativeArguments;
 
         private EncodeRetNode(CachedTypeInfo retType) {
-            this.retType = retType.overrideClosureRetType();
+            this.retType = retType;
             this.nativeArguments = NativeArgumentLibrary.getFactory().create(this.retType);
         }
 
@@ -442,25 +442,34 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public int position() {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
+            return 0;
         }
 
         @Override
         public void position(int newPosition) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
+            assert newPosition == 0;
         }
 
         @Override
         public void putPointer(long ptr, int size) {
+            assert ret == null;
             ret = new NativeString(ptr);
         }
 
         @Override
         public void putObject(TypeTag tag, Object o, int size) {
-            assert tag == TypeTag.STRING;
-            ret = o;
+            assert ret == null;
+            switch (tag) {
+                case STRING:
+                    ret = o;
+                    break;
+                case KEEPALIVE:
+                    // nothing to do
+                    // putPointer will be called with the real value later
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere(tag.name());
+            }
         }
 
         @Override
@@ -538,14 +547,22 @@ final class LibFFIClosure implements TruffleObject {
 
     abstract static class UnboxStringNode extends Node {
 
+        private final CachedTypeInfo strType;
+        @Child NativeArgumentLibrary argLib;
+
+        UnboxStringNode(CachedTypeInfo strType) {
+            this.strType = strType;
+            this.argLib = NativeArgumentLibrary.getFactory().create(strType);
+            assert strType instanceof LibFFIType.StringType;
+        }
+
         protected abstract Object execute(Object obj) throws UnsupportedTypeException;
 
-        @Specialization(limit = "3")
-        protected Object nativeString(Object str,
-                        @CachedLibrary("str") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
+        @Specialization
+        protected Object nativeString(Object str) throws UnsupportedTypeException {
             RetStringBuffer retBuffer = new RetStringBuffer();
             CompilerDirectives.ensureVirtualized(retBuffer);
-            serialize.putString(str, retBuffer, 0);
+            argLib.serialize(strType, retBuffer, str);
             return retBuffer.ret;
         }
     }
@@ -586,7 +603,7 @@ final class LibFFIClosure implements TruffleObject {
         private StringRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
-            unboxString = UnboxStringNodeGen.create();
+            unboxString = UnboxStringNodeGen.create(signature.getRetType());
         }
 
         @Override
