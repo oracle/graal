@@ -146,6 +146,7 @@ public final class ModuleLayerFeature implements Feature {
                         .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
+        allReachableModules.add("org.graalvm.nativeimage.librarysupport");
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -244,7 +245,6 @@ public final class ModuleLayerFeature implements Feature {
             applicationModuleNames = applicationModuleFinder.findAll()
                     .stream()
                     .map(m -> m.descriptor().name())
-                    .filter(s -> !s.startsWith("org.graal"))
                     .collect(Collectors.toList());
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to locate application modules.", ex);
