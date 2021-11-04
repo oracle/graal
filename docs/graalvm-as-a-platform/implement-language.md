@@ -190,6 +190,27 @@ $JAVA_HOME/bin/java \
 In short, we place the launcher JAR on the class path and execute its main class, but we inform GraalVM of the presence of SimpleLanguage by using the `-Dtruffle.class.path.append` option and providing it the path to the fat language JAR.
 Having the language on a separate class path ensures a strong separation between the language implementation and its embedding context (in this case, the launcher).
 
+#### Disable Class Path Separation
+
+*NOTE! This should only be used during development.*
+
+For development purposes it is useful to disable the class path separation and enable having the language implementation on the application class path (for example, for testing
+the internals of the language).
+
+Since JDK 11-based distribution of GraalVM, the Java Module System isolation is used. 
+You can achieve the same behavior using `--add-exports` or `--upgrade-module-path`.
+The latter is preferable.
+
+The Language API JAR on Maven Central exports all API packages in its module-info.
+Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
+```shell
+-Dgraalvm.locatorDisabled=true --module-path=<yourModulePath>:${truffle.dir} --upgrade-module-path=${truffle.dir}/truffle-api.jar
+```
+
+A sample POM using `--upgrade-module-path` to export Language API packages can be found in the [Simple Language POM.xml](https://github.com/graalvm/simplelanguage/blob/master/language/pom.xml#L58) file.
+
+NOTE: Disabling the locator effectively removes all installed languages from a GraalVM distribution (since the locator locates the languages). To use them you have to manually add them to the module path.
+
 ### Other JVM Implementations
 
 Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](../../truffle/docs/README.md), other JVM implementations need additional JARs to be present on the class path.
