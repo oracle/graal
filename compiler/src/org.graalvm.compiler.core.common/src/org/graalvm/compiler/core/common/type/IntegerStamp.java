@@ -379,7 +379,8 @@ public final class IntegerStamp extends PrimitiveStamp {
     public boolean isCompatible(Constant constant) {
         if (constant instanceof PrimitiveConstant) {
             PrimitiveConstant prim = (PrimitiveConstant) constant;
-            return prim.getJavaKind().isNumericInteger();
+            JavaKind kind = prim.getJavaKind();
+            return kind.isNumericInteger() && kind.getBitCount() == getBits();
         }
         return false;
     }
