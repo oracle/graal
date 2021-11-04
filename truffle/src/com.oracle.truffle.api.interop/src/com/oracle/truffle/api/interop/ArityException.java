@@ -64,13 +64,6 @@ public final class ArityException extends InteropException {
         this.actualArity = actualArity;
     }
 
-    private ArityException(int expectedMinArity, int expectedMaxArity, int actualArity) {
-        super(null); // GR-23961 - after language adoption we should initialize the cause with null.
-        this.expectedMinArity = expectedMinArity;
-        this.expectedMaxArity = expectedMaxArity;
-        this.actualArity = actualArity;
-    }
-
     /**
      * {@inheritDoc}
      *
@@ -96,18 +89,6 @@ public final class ArityException extends InteropException {
             }
         }
         return String.format("Arity error - expected: %s actual: %s", expected, given);
-    }
-
-    /**
-     * Returns the number of arguments that the foreign object expects.
-     *
-     * @return the number of expected arguments
-     * @since 0.11
-     * @deprecated use {@link #getExpectedMinArity()} instead.
-     */
-    @Deprecated
-    public int getExpectedArity() {
-        return expectedMinArity;
     }
 
     /**
@@ -142,26 +123,6 @@ public final class ArityException extends InteropException {
     }
 
     /**
-     * @deprecated in 21.2 use {@link #create(int, int, int)} instead. Note the new method now
-     *             validates its arguments if assertions are enabled.
-     * @since 19.0
-     */
-    @Deprecated
-    public static ArityException create(int expectedArity, int actualArity) {
-        return new ArityException(expectedArity, expectedArity, actualArity);
-    }
-
-    /**
-     * @deprecated in 21.2 use {@link #create(int, int, int, Throwable)} instead. Note the new
-     *             method now validates its arguments if assertions are enabled.
-     * @since 20.2
-     */
-    @Deprecated
-    public static ArityException create(int expectedArity, int actualArity, Throwable cause) {
-        return new ArityException(expectedArity, expectedArity, actualArity, cause);
-    }
-
-    /**
      * Creates an {@link ArityException} to indicate that the wrong number of arguments were
      * provided. Throws an {@link IllegalArgumentException} if the arguments are invalid and
      * assertions (-ea) are enabled.
@@ -181,7 +142,7 @@ public final class ArityException extends InteropException {
      */
     public static ArityException create(int expectedMinArity, int expectedMaxArity, int actualArity) {
         assert validateArity(expectedMinArity, expectedMaxArity, actualArity);
-        return new ArityException(expectedMinArity, expectedMaxArity, actualArity);
+        return new ArityException(expectedMinArity, expectedMaxArity, actualArity, null);
     }
 
     /**
