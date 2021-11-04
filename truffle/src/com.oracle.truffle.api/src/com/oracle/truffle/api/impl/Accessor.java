@@ -234,10 +234,6 @@ public abstract class Accessor {
 
         public abstract Object createDefaultNodeObject(Node node);
 
-        public abstract Object createLegacyMetaObjectWrapper(Object receiver, Object result);
-
-        public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
-
         public abstract boolean isScopeObject(Object receiver);
 
         public abstract Object createDefaultIterator(Object receiver);
@@ -330,8 +326,6 @@ public abstract class Accessor {
         public abstract Env getEnvForInstrument(String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
-
-        public abstract Env getLegacyLanguageEnv(Object obj, boolean nullForHost);
 
         public abstract boolean hasCurrentContext();
 
@@ -534,7 +528,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value);
+        public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
@@ -701,8 +695,6 @@ public abstract class Accessor {
 
         public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
-        public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-
         public abstract void dispose(Env env);
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage.Env env);
@@ -716,20 +708,6 @@ public abstract class Accessor {
         public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
         public abstract boolean isVisible(Env env, Object value);
-
-        public abstract String legacyToString(Env env, Object obj);
-
-        public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
-
-        public abstract Object legacyFindMetaObject(Env env, Object value);
-
-        public abstract <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value);
-
-        public abstract SourceSection legacyFindSourceLocation(Env env, Object value);
-
-        public abstract <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value);
-
-        public abstract boolean isObjectOfLanguage(Env env, Object value);
 
         public abstract Object getContext(Env env);
 
@@ -765,7 +743,7 @@ public abstract class Accessor {
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
 
-        public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
+        public abstract void initializeMultiContext(TruffleLanguage<?> language);
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 

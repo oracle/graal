@@ -86,21 +86,6 @@ public class JavaStringCoercionTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowHostAccess(access).allowAllAccess(true).build(),
                         ProxyLanguage.setDelegate(new ProxyLanguage() {
 
-                            @Override
-                            protected boolean isObjectOfLanguage(Object object) {
-                                if (object instanceof UnboxableArrayObject) {
-                                    return true;
-                                }
-                                return super.isObjectOfLanguage(object);
-                            }
-
-                            @Override
-                            protected String toString(LanguageContext c, Object value) {
-                                if (value instanceof UnboxableArrayObject) {
-                                    return "UnboxableArray";
-                                }
-                                return super.toString(c, value);
-                            }
                         }));
     }
 

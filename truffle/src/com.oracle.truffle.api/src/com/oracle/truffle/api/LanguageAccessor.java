@@ -70,7 +70,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 final class LanguageAccessor extends Accessor {
 
@@ -168,9 +167,8 @@ final class LanguageAccessor extends Accessor {
 
         @SuppressWarnings("deprecation")
         @Override
-        public boolean initializeMultiContext(TruffleLanguage<?> language) {
+        public void initializeMultiContext(TruffleLanguage<?> language) {
             language.initializeMultipleContexts();
-            return language.initializeMultiContext();
         }
 
         @Override
@@ -197,12 +195,12 @@ final class LanguageAccessor extends Accessor {
         public Object getLanguageView(Env env, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
             } else {
                 Object result = env.getSpi().getLanguageView(c, value);
                 if (result == null) {
-                    return LanguageAccessor.engineAccess().getDefaultLanguageView(env.spi, c, value);
+                    return LanguageAccessor.engineAccess().getDefaultLanguageView(env.spi, value);
                 } else {
                     return result;
                 }
@@ -214,7 +212,7 @@ final class LanguageAccessor extends Accessor {
         public Object getLegacyScopedView(Env env, Node location, Frame frame, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return value;
             } else {
                 return env.getSpi().getScopedView(c, location, frame, value);
@@ -376,11 +374,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
-            return env.findExportedSymbol(globalName, onlyExplicit);
-        }
-
-        @Override
         public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) {
             return language.languageInfo;
         }
@@ -401,44 +394,6 @@ final class LanguageAccessor extends Accessor {
         @Override
         public boolean isVisible(TruffleLanguage.Env env, Object value) {
             return env.isVisible(value);
-        }
-
-        @Override
-        public String legacyToString(TruffleLanguage.Env env, Object value) {
-            return env.toStringIfVisible(value, false);
-        }
-
-        @Override
-        public Object legacyFindMetaObject(TruffleLanguage.Env env, Object obj) {
-            return env.findMetaObjectImpl(obj);
-        }
-
-        @Override
-        public SourceSection legacyFindSourceLocation(TruffleLanguage.Env env, Object obj) {
-            return env.findSourceLocation(obj);
-        }
-
-        @Override
-        public boolean isObjectOfLanguage(TruffleLanguage.Env env, Object value) {
-            return env.isObjectOfLanguage(value);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value) {
-            return language.findMetaObject(context, value);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value) {
-            return language.findSourceLocation(context, value);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj) {
-            return language.toString(context, obj);
         }
 
         @Override

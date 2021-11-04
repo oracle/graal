@@ -54,7 +54,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 /**
@@ -148,28 +147,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object getLanguageGlobal(LanguageContext context) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.getLanguageGlobal(context);
-        } else {
-            return null;
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.isObjectOfLanguage(object);
-        } else {
-            return false;
-        }
-    }
-
     @Override
     protected void finalizeContext(LanguageContext context) {
         if (wrapper) {
@@ -209,28 +186,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findMetaObject(context, value);
-        } else {
-            return value.toString();
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected SourceSection findSourceLocation(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findSourceLocation(context, value);
-        } else {
-            return super.findSourceLocation(context, value);
-        }
-    }
-
     @Override
     protected void initializeContext(LanguageContext context) throws Exception {
         if (wrapper) {
@@ -240,17 +195,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             super.initializeContext(context);
         }
 
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected boolean initializeMultiContext() {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.initializeMultiContext();
-        } else {
-            return super.initializeMultiContext();
-        }
     }
 
     @Override
@@ -310,17 +254,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.getOptionDescriptors();
         } else {
             return super.getOptionDescriptors();
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected String toString(LanguageContext context, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.toString(context, value);
-        } else {
-            return value.toString();
         }
     }
 

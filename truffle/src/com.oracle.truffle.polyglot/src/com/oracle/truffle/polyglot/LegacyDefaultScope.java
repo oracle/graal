@@ -70,16 +70,11 @@ abstract class LegacyDefaultScope implements Iterable<com.oracle.truffle.api.Sco
 
     abstract com.oracle.truffle.api.Scope createScope();
 
-    static Iterable<com.oracle.truffle.api.Scope> topScope(Object global) {
+    static Iterable<com.oracle.truffle.api.Scope> topScope() {
         return new LegacyDefaultScope() {
             @Override
             com.oracle.truffle.api.Scope createScope() {
-                Object globalObject;
-                if (global != null && InteropLibrary.getUncached().hasMembers(global)) {
-                    globalObject = global;
-                } else {
-                    globalObject = new EmptyGlobalBindings();
-                }
+                Object globalObject = new EmptyGlobalBindings();
                 return com.oracle.truffle.api.Scope.newBuilder("global", globalObject).build();
             }
         };

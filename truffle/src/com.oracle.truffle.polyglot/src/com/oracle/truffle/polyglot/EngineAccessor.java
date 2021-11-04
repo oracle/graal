@@ -211,8 +211,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value) {
-            return new DefaultLanguageView<>(truffleLanguage, context, value);
+        public Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value) {
+            return new DefaultLanguageView<>(truffleLanguage, value);
         }
 
         @Override
@@ -441,33 +441,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Env getLegacyLanguageEnv(Object obj, boolean nullForHost) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
-            if (context == null) {
-                return null;
-            }
-            PolyglotLanguage language = findLegacyLanguage(context, obj);
-            if (language == null) {
-                return null;
-            }
-            return context.getContext(language).env;
-        }
-
-        private static PolyglotLanguage findLegacyLanguage(PolyglotContextImpl context, Object value) {
-            PolyglotLanguage foundLanguage = null;
-            for (PolyglotLanguageContext searchContext : context.contexts) {
-                if (searchContext.isCreated()) {
-                    final TruffleLanguage.Env searchEnv = searchContext.env;
-                    if (EngineAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
-                        foundLanguage = searchContext.language;
-                        break;
-                    }
-                }
-            }
-            return foundLanguage;
-        }
-
-        @Override
         public Object getCurrentSharingLayer() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
@@ -619,11 +592,6 @@ final class EngineAccessor extends Accessor {
             Value value = context.context.polyglotBindings.get(symbolName);
             if (value != null) {
                 return context.getAPIAccess().getReceiver(value);
-            } else {
-                value = context.context.findLegacyExportedSymbol(symbolName);
-                if (value != null) {
-                    return context.getAPIAccess().getReceiver(value);
-                }
             }
             return null;
         }
@@ -722,7 +690,7 @@ final class EngineAccessor extends Accessor {
         @Override
         @SuppressWarnings("deprecation")
         public Iterable<com.oracle.truffle.api.Scope> createDefaultTopScope(Object global) {
-            return LegacyDefaultScope.topScope(global);
+            return LegacyDefaultScope.topScope();
         }
 
         @Override

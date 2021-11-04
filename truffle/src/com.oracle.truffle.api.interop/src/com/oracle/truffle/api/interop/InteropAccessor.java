@@ -115,19 +115,6 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
-        public Object createLegacyMetaObjectWrapper(Object receiver, Object result) {
-            return new LegacyMetaObjectWrapper(receiver, result);
-        }
-
-        @Override
-        public Object unwrapLegacyMetaObjectWrapper(Object receiver) {
-            if (receiver instanceof LegacyMetaObjectWrapper) {
-                return ((LegacyMetaObjectWrapper) receiver).delegate;
-            }
-            return receiver;
-        }
-
-        @Override
         public Object createDefaultIterator(Object receiver) {
             return new ArrayIterator(receiver);
         }

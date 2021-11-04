@@ -102,7 +102,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -692,17 +691,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * @since 19.0
-     * @deprecated in 1.0. Got renamed to {@link #initializeMultipleContexts()} instead. Instead of
-     *             returning a boolean configure {@link Registration#contextPolicy() context policy}
-     *             .
-     */
-    @Deprecated
-    protected boolean initializeMultiContext() {
-        return false;
-    }
-
-    /**
      * Initializes this language instance for use with multiple contexts. Whether a language
      * instance supports being used for multiple contexts depends on its
      * {@link Registration#contextPolicy() context policy}.
@@ -1021,41 +1009,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Called when some other language is seeking for a global symbol. This method is supposed to do
-     * lazy binding, e.g. there is no need to export symbols in advance, it is fine to wait until
-     * somebody asks for it (by calling this method).
-     * <p>
-     * The exported object can either be <code>TruffleObject</code> (e.g. a native object from the
-     * other language) to support interoperability between languages, {@link String} or one of the
-     * Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Short}, {@link Boolean},
-     * etc.).
-     * <p>
-     * The way a symbol becomes <em>exported</em> is language dependent. In general it is preferred
-     * to make the export explicit - e.g. call some function or method to register an object under
-     * specific name. Some languages may however decide to support implicit export of symbols (for
-     * example from global scope, if they have one). However explicit exports should always be
-     * preferred. Implicitly exported object of some name should only be used when there is no
-     * explicit export under such <code>globalName</code>. To ensure so the infrastructure first
-     * asks all known languages for <code>onlyExplicit</code> symbols and only when none is found,
-     * it does one more round with <code>onlyExplicit</code> set to <code>false</code>.
-     *
-     * @param context context to locate the global symbol in
-     * @param globalName the name of the global symbol to find
-     * @param onlyExplicit should the language seek for implicitly exported object or only consider
-     *            the explicitly exported ones?
-     * @return an exported object or <code>null</code>, if the symbol does not represent anything
-     *         meaningful in this language
-     * @since 0.8 or earlier
-     * @deprecated write to the {@link Env#getPolyglotBindings() polyglot bindings} object instead
-     *             when symbols need to be exported. Implicit exported values should be exposed
-     *             using {@link TruffleLanguage#getScope(Object)} instead.
-     */
-    @Deprecated
-    protected Object findExportedSymbol(C context, String globalName, boolean onlyExplicit) {
-        return null;
-    }
-
-    /**
      * Returns <code>true</code> if code of this language is allowed to be executed on this thread.
      * The method returns <code>false</code> to deny execution on this thread. The default
      * implementation denies access to more than one thread at the same time. The
@@ -1132,38 +1085,6 @@ public abstract class TruffleLanguage<C> {
      */
     @SuppressWarnings("unused")
     protected void disposeThread(C context, Thread thread) {
-    }
-
-    /**
-     * Returns global object for the language.
-     * <p>
-     * The object is expected to be <code>TruffleObject</code> (e.g. a native object from the other
-     * language) but technically it can be one of the Java primitive wrappers ({@link Integer},
-     * {@link Double}, {@link Short}, etc.).
-     *
-     * @param context context to find the language global in
-     * @return the global object or <code>null</code> if the language does not support such concept
-     * @since 0.8 or earlier
-     * @deprecated in 0.33 implement {@link #getScope(Object)} instead.
-     */
-    @Deprecated
-    protected Object getLanguageGlobal(C context) {
-        return null;
-    }
-
-    /**
-     * Checks whether the object is provided by this language.
-     *
-     * @param object the object to check
-     * @return <code>true</code> if this language can deal with such object in native way
-     * @since 0.8 or earlier
-     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
-     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object)}
-     *             instead.
-     */
-    @Deprecated
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
     }
 
     /**
@@ -1250,8 +1171,7 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("deprecation")
     @Deprecated
     protected Iterable<Scope> findTopScopes(C context) {
-        Object global = getLanguageGlobal(context);
-        return LanguageAccessor.engineAccess().createDefaultTopScope(global);
+        return LanguageAccessor.engineAccess().createDefaultTopScope(null);
     }
 
     /**
@@ -1302,27 +1222,6 @@ public abstract class TruffleLanguage<C> {
     protected Object getScope(C context) {
         Iterable<Scope> legacyScopes = findTopScopes(context);
         return LanguageAccessor.engineAccess().legacyScopes2ScopeObject(null, legacyScopes.iterator(), (Class<? extends TruffleLanguage<?>>) getClass());
-    }
-
-    /**
-     * Generates language specific textual representation of a value. Each language may have special
-     * formating conventions - even primitive values may not follow the traditional Java formating
-     * rules. As such when {@link org.graalvm.polyglot.Value#toString()} is requested, it consults
-     * the language that produced the value by calling this method. By default this method calls
-     * {@link Objects#toString(java.lang.Object)}.
-     *
-     * @param context the execution context for doing the conversion
-     * @param value the value to convert. Either primitive type or
-     *            {@link com.oracle.truffle.api.interop.TruffleObject}
-     * @return textual representation of the value in this language
-     * @since 0.8 or earlier
-     * @deprecated implement {@link #getLanguageView(Object, Object)} and
-     *             {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object)}
-     *             instead.
-     */
-    @Deprecated
-    protected String toString(C context, Object value) {
-        return Objects.toString(value);
     }
 
     /**
@@ -1517,58 +1416,6 @@ public abstract class TruffleLanguage<C> {
     @SuppressWarnings("unused")
     protected Object getScopedView(C context, Node location, Frame frame, Object value) {
         return value;
-    }
-
-    /**
-     * Find a metaobject of a value, if any. The metaobject represents a description of the object,
-     * reveals it's kind and it's features. Some information that a metaobject might define includes
-     * the base object's type, interface, class, methods, attributes, etc.
-     * <p>
-     * A programmatic {@link #toString(java.lang.Object, java.lang.Object) textual representation}
-     * should be provided for metaobjects, when possible. The metaobject may have properties
-     * describing their structure.
-     * <p>
-     * NOTE: Allocating the meta object must not be treated as or cause any
-     * {@link com.oracle.truffle.api.instrumentation.AllocationListener reported guest language
-     * value allocations}
-     * <p>
-     * When no metaobject is known, return <code>null</code>. The default implementation returns
-     * <code>null</code>. The metaobject should be an interop value. An interop value can be either
-     * a <code>TruffleObject</code> (e.g. a native object from the other language) to support
-     * interoperability between languages or a {@link String}.
-     * <p>
-     * It can be beneficial for performance to return the same value for each guest type (i.e. cache
-     * the metaobjects per context).
-     *
-     * @param context the execution context
-     * @param value a value to find the metaobject of
-     * @return the metaobject, or <code>null</code>
-     * @since 0.22
-     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
-     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object)}
-     *             instead.
-     */
-    @Deprecated
-    protected Object findMetaObject(C context, Object value) {
-        return null;
-    }
-
-    /**
-     * Find a source location where a value is declared, if any. This is often useful especially for
-     * retrieval of source locations of {@link #findMetaObject metaobjects}. The default
-     * implementation returns <code>null</code>.
-     *
-     * @param context the execution context
-     * @param value a value to get the source location for
-     * @return a source location of the object, or <code>null</code>
-     * @since 0.22
-     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
-     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getSourceLocation(Object)}
-     *             instead.
-     */
-    @Deprecated
-    protected SourceSection findSourceLocation(C context, Object value) {
-        return null;
     }
 
     CallTarget parse(Source source, String... argumentNames) {
@@ -2406,16 +2253,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 19.0
-         * @deprecated use either {@link #isPolyglotEvalAllowed()} or
-         *             {@link #isPolyglotBindingsAccessAllowed()} instead
-         */
-        @Deprecated
-        public boolean isPolyglotAccessAllowed() {
-            return isPolyglotEvalAllowed() || isPolyglotBindingsAccessAllowed();
-        }
-
-        /**
          * Returns <code>true</code> if polyglot evaluation is allowed, else <code>false</code>.
          * Guest languages should hide or disable all polyglot evaluation builtins if this flag is
          * set to <code>false</code>. Note that if polyglot evaluation access is disabled, then the
@@ -2469,25 +2306,6 @@ public abstract class TruffleLanguage<C> {
             checkDisposed();
             try {
                 return LanguageAccessor.engineAccess().isMimeTypeSupported(polyglotLanguageContext, mimeType);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
-        }
-
-        /**
-         * @throws IllegalStateException if polyglot context associated with this environment is not
-         *             entered
-         * @since 0.8 or earlier
-         * @deprecated use {@link #parseInternal(Source, String...)} or
-         *             {@link #parsePublic(Source, String...)} instead.
-         */
-        @TruffleBoundary
-        @Deprecated
-        public CallTarget parse(Source source, String... argumentNames) {
-            CompilerAsserts.neverPartOfCompilation();
-            checkDisposed();
-            try {
-                return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2710,20 +2528,6 @@ public abstract class TruffleLanguage<C> {
             Objects.requireNonNull(targetLanguage, "TargetLanguage must be non null.");
             try {
                 return LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
-        }
-
-        /**
-         * @since 0.26
-         * @deprecated
-         */
-        @Deprecated
-        @TruffleBoundary
-        public Map<String, LanguageInfo> getLanguages() {
-            try {
-                return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3633,46 +3437,6 @@ public abstract class TruffleLanguage<C> {
             return languageClass.cast(getSpi());
         }
 
-        Object findExportedSymbol(String globalName, boolean onlyExplicit) {
-            Object c = getLanguageContext();
-            if (c != UNSET_CONTEXT) {
-                return getSpi().findExportedSymbol(c, globalName, onlyExplicit);
-            } else {
-                return null;
-            }
-        }
-
-        Object getLanguageGlobal() {
-            Object c = getLanguageContext();
-            if (c != UNSET_CONTEXT) {
-                return getSpi().getLanguageGlobal(c);
-            } else {
-                return null;
-            }
-        }
-
-        Object findMetaObjectImpl(Object obj) {
-            Object c = getLanguageContext();
-            if (c != UNSET_CONTEXT) {
-                return getSpi().findMetaObject(c, obj);
-            } else {
-                return null;
-            }
-        }
-
-        SourceSection findSourceLocation(Object obj) {
-            Object c = getLanguageContext();
-            if (c != UNSET_CONTEXT) {
-                return getSpi().findSourceLocation(c, obj);
-            } else {
-                return null;
-            }
-        }
-
-        boolean isObjectOfLanguage(Object obj) {
-            return getSpi().isObjectOfLanguage(obj);
-        }
-
         @SuppressWarnings("deprecation")
         Iterable<Scope> findLocalScopes(Node node, Frame frame) {
             assert node != null;
@@ -3729,20 +3493,6 @@ public abstract class TruffleLanguage<C> {
                 return getSpi().isVisible(c, value);
             } else {
                 return false;
-            }
-        }
-
-        String toStringIfVisible(Object value, boolean checkVisibility) {
-            Object c = getLanguageContext();
-            if (c != UNSET_CONTEXT) {
-                if (checkVisibility) {
-                    if (!getSpi().isVisible(c, value)) {
-                        return null;
-                    }
-                }
-                return getSpi().toString(c, value);
-            } else {
-                return null;
             }
         }
 

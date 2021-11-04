@@ -125,14 +125,6 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
     }
 
     @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        if (value instanceof TestTruffleException) {
-            return new TestTruffleException.MetaObject();
-        }
-        return Objects.toString(value);
-    }
-
-    @Override
     protected Object getLanguageView(LanguageContext context, Object value) {
         return new ProxyInteropObject.InteropWrapper(value) {
             @Override
@@ -147,35 +139,12 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
             @Override
             protected boolean hasMetaObject() {
-                return findMetaObject(context, value) != null || super.hasMetaObject();
+                return true;
             }
 
             @Override
             protected Object getMetaObject() throws UnsupportedMessageException {
-                Object metaObject = findMetaObject(context, value);
-                if (!InteropLibrary.getUncached().isMetaObject(metaObject)) {
-                    metaObject = new MetaObject(metaObject);
-                }
-                return metaObject;
-            }
-
-            @Override
-            protected Object toDisplayString(boolean allowSideEffects) {
-                return TestDebugBuggyLanguage.this.toString(context, value);
-            }
-
-            @Override
-            protected boolean hasSourceLocation() {
-                return findSourceLocation(context, value) != null || InteropLibrary.getUncached().hasSourceLocation(value);
-            }
-
-            @Override
-            protected SourceSection getSourceLocation() throws UnsupportedMessageException {
-                SourceSection location = findSourceLocation(context, value);
-                if (location == null) {
-                    location = InteropLibrary.getUncached().getSourceLocation(value);
-                }
-                return location;
+                return new MetaObject(this);
             }
 
             class MetaObject extends ProxyInteropObject.InteropWrapper {
@@ -219,7 +188,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
                 @Override
                 protected Object toDisplayString(boolean allowSideEffects) {
-                    Object toString = TestDebugBuggyLanguage.this.toString(context, delegate);
+                    Object toString = Objects.toString(delegate);
                     if (value.toString().equals(toString)) {
                         return super.toDisplayString(allowSideEffects);
                     } else {
