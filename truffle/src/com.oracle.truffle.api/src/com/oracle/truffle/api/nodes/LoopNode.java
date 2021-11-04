@@ -143,20 +143,6 @@ public abstract class LoopNode extends Node {
      *
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
-     * @since 0.8 or earlier
-     * @deprecated use {@link #execute(VirtualFrame)} instead
-     */
-    @Deprecated
-    public abstract void executeLoop(VirtualFrame frame);
-
-    /**
-     * Invokes one loop invocation by repeatedly calling
-     * {@link RepeatingNode#executeRepeating(VirtualFrame) execute)} on the repeating node the loop
-     * was initialized with. Any exceptions that occur in the execution of the repeating node will
-     * just be forwarded to this method and will cancel the current loop invocation.
-     *
-     * @param frame the current execution frame or null if the repeating node does not require a
-     *            frame
      * @return a value <code>v</code> returned by
      *         {@link RepeatingNode#executeRepeating(VirtualFrame) execute} satisfying
      *         {@link RepeatingNode#shouldContinue shouldContinue(v)}<code> == false</code>, which

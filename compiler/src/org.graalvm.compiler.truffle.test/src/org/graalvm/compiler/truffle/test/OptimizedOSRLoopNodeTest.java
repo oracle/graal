@@ -459,7 +459,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             super.execute(frame);
-            loopNode2.executeLoop(frame);
+            loopNode2.execute(frame);
             return null;
         }
     }
@@ -518,7 +518,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             }
             boolean next = super.executeRepeating(frame);
             if (next) {
-                loopNode2.executeLoop(frame);
+                loopNode2.execute(frame);
             } else {
                 onBackedge.apply(this);
             }
@@ -736,7 +736,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             } else {
                 frame.setInt(param2, 0);
             }
-            loopNode.executeLoop(frame);
+            loopNode.execute(frame);
             return null;
         }
     }
