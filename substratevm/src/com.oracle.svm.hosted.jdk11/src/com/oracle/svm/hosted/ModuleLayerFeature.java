@@ -24,18 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
@@ -60,6 +48,18 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 /**
  * This feature:
