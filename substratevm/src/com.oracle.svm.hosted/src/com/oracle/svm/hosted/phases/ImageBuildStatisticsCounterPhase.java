@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -31,6 +32,7 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.phases.Phase;
 
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.util.ImageBuildStatistics.CheckCountLocation;
 
 import static com.oracle.svm.util.ImageBuildStatistics.singleton;
@@ -50,8 +52,27 @@ public class ImageBuildStatisticsCounterPhase extends Phase {
                 assert node.isAlive() : "ImageBuildStatisticsCounterPhase must be run after proper canonicalization to get the right numbers. Found not alive node: " + node;
                 BytecodeExceptionNode.BytecodeExceptionKind bytecodeExceptionKind = node instanceof BytecodeExceptionNode ? ((BytecodeExceptionNode) node).getExceptionKind()
                                 : ((ThrowBytecodeExceptionNode) node).getExceptionKind();
-                singleton().incByteCodeException(bytecodeExceptionKind, location, node.getNodeSourcePosition());
+                singleton().incByteCodeException(bytecodeExceptionKind, location, makeNonHostedSourcePosition(node.getNodeSourcePosition()));
             }
         }
+    }
+
+    /*
+     * We are in the hosted part, and need to compare current node source positions
+     * with those present after bytecode parser is done, so we unwrap information.
+     */
+    private NodeSourcePosition makeNonHostedSourcePosition(NodeSourcePosition hosted) {
+        NodeSourcePosition newNodeSourcePosition = unWrapped(hosted);
+        while (hosted.getCaller() != null) {
+            newNodeSourcePosition =  newNodeSourcePosition.addCaller(unWrapped(hosted.getCaller()));
+            hosted = hosted.getCaller();
+        }
+        return newNodeSourcePosition;
+    }
+
+    private NodeSourcePosition unWrapped(NodeSourcePosition hosted) {
+        HostedMethod hostedMethod = (HostedMethod) hosted.getMethod();
+        ResolvedJavaMethod resolvedJavaMethod = hostedMethod.getWrapped();
+        return new NodeSourcePosition(hosted.getSourceLanguage(), null, resolvedJavaMethod, hosted.getBCI());
     }
 }

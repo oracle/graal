@@ -1719,19 +1719,6 @@ public class NativeImageGenerator {
         System.out.println("]");
     }
 
-    void printImageBuildStatistics(String imageName, String fileName) {
-        Consumer<PrintWriter> reporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
-        String description = "image build statistics";
-        if (fileName != null) {
-            final File file = new File(fileName);
-            ReportUtils.report(description, file.getAbsoluteFile().toPath(), reporter);
-        } else {
-            String name = "image_build_statistics_" + ReportUtils.extractImageName(imageName);
-            String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-            ReportUtils.report(description, path, name, "json", reporter);
-        }
-    }
-
     private static String slotsToString(short[] slots) {
         if (slots == null) {
             return "null";

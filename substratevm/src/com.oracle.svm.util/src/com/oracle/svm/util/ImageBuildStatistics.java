@@ -34,13 +34,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.phases.common.NodeSourceCollection;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+import static org.graalvm.compiler.java.BytecodeParserOptions.CollectNodeSourcePosition;
 
 public class ImageBuildStatistics {
 
@@ -51,6 +54,7 @@ public class ImageBuildStatistics {
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
                     TrackNodeSourcePosition.update(values, true);
+                    CollectNodeSourcePosition.update(values, true);
                 }
             }
         };
@@ -105,15 +109,10 @@ public class ImageBuildStatistics {
     public static final class CounterValue {
         public CounterValue() {
             /*
-             * Count and store original node source positions and what was made from inlining and
-             * duplication separately.
+             * Count and store original node source positions.
              */
             originalCounter = new AtomicLong();
-            duplicationCounter = new AtomicLong();
-            inlineCounter = new AtomicLong();
             original = new ConcurrentLinkedQueue<>();
-            duplication = new ConcurrentLinkedQueue<>();
-            inline = new ConcurrentLinkedQueue<>();
         }
 
         private void incCounter() {
@@ -126,29 +125,26 @@ public class ImageBuildStatistics {
                  * We have already seen this exception at the given source location, duplication
                  * occurred.
                  */
-                duplicationCounter.incrementAndGet();
-                duplication.add(nodeSourcePosition);
             } else {
-                if (nodeSourcePosition.depth() == 1) {
-                    /*
-                     * Node source position with depth = 1 => we found new exception and no inlining
-                     * occurred yet.
-                     */
+                if (NodeSourceCollection.isOriginal(nodeSourcePosition)) {
                     originalCounter.incrementAndGet();
                     original.add(nodeSourcePosition);
-                } else {
+                } else if (NodeSourceCollection.hasOriginalPrefix(nodeSourcePosition)) {
                     /*
-                     * Node source position with depth > 1 => this is from inlining, maybe new one
+                     * This node source position is from inlining, maybe new one
                      * or duplication occurred after something inlined.
                      */
-                    if (inline.contains(nodeSourcePosition)) {
-                        /* Duplication of something made from inlining. */
-                        duplicationCounter.incrementAndGet();
-                        duplication.add(nodeSourcePosition);
+                } else {
+                    if (NodeSourceCollection.hasRootFromExceptionObject(nodeSourcePosition)) {
+                        /*
+                         * This node source position is from exception coming from a call.
+                         */
+                    } else if (NodeSourceCollection.hasOriginalRoot(nodeSourcePosition)) {
+                        /*
+                         * This node source position is coming from a virtual call.
+                         */
                     } else {
-                        /* Inlining occurred. */
-                        inlineCounter.incrementAndGet();
-                        inline.add(nodeSourcePosition);
+                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing.");
                     }
                 }
             }
@@ -159,11 +155,7 @@ public class ImageBuildStatistics {
         }
 
         private final AtomicLong originalCounter;
-        private final AtomicLong duplicationCounter;
-        private final AtomicLong inlineCounter;
         private final ConcurrentLinkedQueue<NodeSourcePosition> original;
-        private final ConcurrentLinkedQueue<NodeSourcePosition> duplication;
-        private final ConcurrentLinkedQueue<NodeSourcePosition> inline;
     }
 
     class ImageBuildCountersReport {
