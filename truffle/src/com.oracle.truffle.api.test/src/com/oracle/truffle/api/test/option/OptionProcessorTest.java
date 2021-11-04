@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.option;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -57,6 +58,7 @@ import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
@@ -294,6 +296,65 @@ public class OptionProcessorTest {
         assertEquals(OptionMap.empty(), descriptor.getKey().getDefaultValue());
     }
 
+    @Test
+    public void testOptionValueEqualsAndHashCode() {
+        // options are never equals if different engines are used.
+        Context c0 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
+        Context c1 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
+        assertNotEquals(getOptionValues(c0), getOptionValues(c1));
+        assertNotEquals(getOptionValues(c1), getOptionValues(c0));
+        assertNotEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
+        c0.close();
+        c1.close();
+
+        // need to use the same engine to support comparing option values.
+        Engine engine = Engine.create();
+        c0 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "foo").build();
+        c1 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "foo").build();
+        assertEquals(getOptionValues(c0), getOptionValues(c1));
+        assertEquals(getOptionValues(c1), getOptionValues(c0));
+        assertEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
+        c0.close();
+        c1.close();
+
+        c0 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "foo").build();
+        c1 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "bar").build();
+        assertNotEquals(getOptionValues(c0), getOptionValues(c1));
+        assertNotEquals(getOptionValues(c1), getOptionValues(c0));
+        assertNotEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
+        c0.close();
+        c1.close();
+
+        // an option not being set makes the option values not equal
+        c0 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "stable").build();
+        c1 = Context.newBuilder().engine(engine).build();
+        assertNotEquals(getOptionValues(c0), getOptionValues(c1));
+        assertNotEquals(getOptionValues(c1), getOptionValues(c0));
+        assertNotEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
+        c0.close();
+        c1.close();
+
+        // an option not being set makes the option values not equal
+        c0 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "stable").build();
+        c1 = Context.newBuilder().engine(engine).option("optiontestlang1.StableOption", "stable").build();
+        assertEquals(getOptionValues(c0), getOptionValues(c1));
+        assertEquals(getOptionValues(c1), getOptionValues(c0));
+        assertEquals(getOptionValues(c0).hashCode(), getOptionValues(c1).hashCode());
+        c0.close();
+        c1.close();
+
+    }
+
+    private static OptionValues getOptionValues(Context c) {
+        c.enter();
+        try {
+            c.initialize(OptionTestLang1.ID);
+            return OptionTestLang1.getCurrentContext().getOptions();
+        } finally {
+            c.leave();
+        }
+    }
+
     @Option.Group("prefix")
     public static class Prefix {
         @Option(help = "Prefix option help", category = OptionCategory.USER) //
@@ -356,8 +417,10 @@ public class OptionProcessorTest {
         otherValue;
     }
 
-    @Registration(id = "optiontestlang1", version = "1.0", name = "optiontestlang1")
+    @Registration(id = OptionTestLang1.ID, version = "1.0", name = OptionTestLang1.ID)
     public static class OptionTestLang1 extends TruffleLanguage<Env> {
+
+        public static final String ID = "optiontestlang1";
 
         @Option(help = "StringOption1 help", deprecated = true, deprecationMessage = "Deprecation message%nwith newline", category = OptionCategory.USER) //
         static final OptionKey<String> StringOption1 = new OptionKey<>("defaultValue");

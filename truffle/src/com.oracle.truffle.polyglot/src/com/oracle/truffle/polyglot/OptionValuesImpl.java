@@ -58,10 +58,7 @@ final class OptionValuesImpl implements OptionValues {
 
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
-    // TODO is this too long? Make sure to update Engine#setUseSystemProperties javadoc.
-    // Just using graalvm as prefix is not good enough as it is ambiguous with host compilation
-    // For example the property graalvm.compiler is an option for which compiler. The java compiler?
-    // or the truffle compiler?
+    // prefix used for -D java system properties
     static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
 
     private final PolyglotEngineImpl engine;
@@ -94,42 +91,40 @@ final class OptionValuesImpl implements OptionValues {
                 return true;
             }
             OptionValues other = ((OptionValues) obj);
-            if (getDescriptors().equals(other.getDescriptors())) {
-                if (!hasSetOptions() && !other.hasSetOptions()) {
-                    return true;
+            if (!getDescriptors().equals(other.getDescriptors())) {
+                return false;
+            }
+            if (!hasSetOptions() && !other.hasSetOptions()) {
+                return true;
+            }
+            if (other instanceof OptionValuesImpl) {
+                // faster comparison that only depends on the set values
+                OptionValuesImpl otherOptions = (OptionValuesImpl) other;
+                if (!values.equals(otherOptions.values)) {
+                    return false;
                 }
-                if (other instanceof OptionValuesImpl) {
-                    // faster comparison that only depends on the set values
-                    for (OptionKey<?> key : values.keySet()) {
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
+            } else {
+                // slow comparison for arbitrary option values
+                for (OptionDescriptor descriptor : getDescriptors()) {
+                    OptionKey<?> key = descriptor.getKey();
+                    if (!slowCompareKey(key, other)) {
+                        return false;
                     }
-                    for (OptionKey<?> key : ((OptionValuesImpl) other).values.keySet()) {
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-                } else {
-                    // slow comparison for arbitrary option values
-                    for (OptionDescriptor descriptor : getDescriptors()) {
-                        OptionKey<?> key = descriptor.getKey();
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
                 }
             }
+            return true;
+        }
+    }
+
+    private boolean slowCompareKey(OptionKey<?> key, OptionValues other) {
+        boolean set = hasBeenSet(key);
+        if (set != other.hasBeenSet(key)) {
             return false;
         }
+        if (set && !get(key).equals(other.get(key))) {
+            return false;
+        }
+        return true;
     }
 
     public void putAll(Map<String, String> providedValues, boolean allowExperimentalOptions) {
