@@ -55,20 +55,6 @@ public interface OptionValues {
     OptionDescriptors getDescriptors();
 
     /**
-     * Sets the value of {@code optionKey} to {@code value}.
-     *
-     * @throws UnsupportedOperationException because this operation has been deprecated and is no
-     *             longer supported, in order for OptionValues to be read-only.
-     *
-     * @since 19.0
-     * @deprecated {@link OptionValues} should be read-only. If the value of an option needs to be
-     *             altered after options are set, then the new value should be stored in the
-     *             language's context or instrument fields and read from there.
-     */
-    @Deprecated
-    <T> void set(OptionKey<T> optionKey, T value);
-
-    /**
      * Returns the value of a given option. {@link #hasBeenSet(OptionKey)} can be used to know
      * whether the value was explicitly set, or is the {@link OptionKey#getDefaultValue() default
      * value}.

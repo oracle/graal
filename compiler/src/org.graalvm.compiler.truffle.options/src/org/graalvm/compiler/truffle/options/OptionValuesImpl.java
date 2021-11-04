@@ -79,13 +79,6 @@ public final class OptionValuesImpl implements OptionValues {
         return descriptors;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    @TruffleBoundary
-    public <T> void set(OptionKey<T> optionKey, T value) {
-        throw new UnsupportedOperationException("OptionValues#set() is no longer supported");
-    }
-
     @Override
     @SuppressWarnings("unchecked")
     @TruffleBoundary
