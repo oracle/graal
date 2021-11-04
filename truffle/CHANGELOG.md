@@ -31,6 +31,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Removed deprecated encapsulating node accessor methods in `NodeUtil`.
 * Removed deprecated method `LoopNode.executeLoop`.
 * Removed many deprecated methods in `TruffleLanguage`, `TruffleLanguage.Env` and `TruffleInstrument.Env`. All of which were already deprecated for at least four releases.
+* Removed deprecated `GraphPrintVisitor`.
 
 * Added new APIs to `com.oracle.truffle.api.frame.Frame` and `com.oracle.truffle.api.frame.FrameDescriptor`:
  * Added a new "namespace" of index-based slots in `Frame` that is defined during construction of the frame descriptor and cannot be changed afterwards, and that is accessed using `int` indexes instead of `FrameSlot`s.
