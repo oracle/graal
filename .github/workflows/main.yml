@@ -106,6 +106,10 @@ jobs:
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
               NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
+          - env:
+              JDK: "labsjdk-ce-17"
+              GATE: "style,fullbuild"
+              PRIMARY: "espresso"
     steps:
     - uses: actions/checkout@v2
       with:
