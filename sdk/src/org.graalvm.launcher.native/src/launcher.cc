@@ -74,39 +74,58 @@
 #define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", 5) == 0)
 #define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", 8) == 0)
 #define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", 15) == 0)
+#define VM_ARGS "--vmargs="
+#define HAS_VM_ARGS(ARGC, ARGV) (strncmp(ARGV[(ARGC)-1], VM_ARGS, sizeof(VM_ARGS)) == 0)
 
 #if defined (__linux__)
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
     #include <limits.h>
+    #include <unistd.h>
+    #include <errno.h>
 #elif defined (__APPLE__)
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
+    #include <unistd.h>
+    #include <errno.h>
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
 #elif defined (_WIN32)
     #include <windows.h>
     #include <libloaderapi.h>
     #include <cstdlib>
+    #include <process.h>
+    #include <errno.h>
 #else
     #error platform not supported or undefined
 #endif
 
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 
-char *exe_directory() {
+char *exe_path() {
     #if defined (__linux__)
-        return dirname(realpath("/proc/self/exe", NULL));
+        return realpath("/proc/self/exe", NULL);
     #elif defined (__APPLE__)
         char path[PATH_MAX];
         uint32_t path_len = PATH_MAX;
         _NSGetExecutablePath(path, &path_len);
-        return dirname(realpath(path, NULL));
+        return realpath(path, NULL);
     #elif defined (_WIN32)
         char *path = (char *)malloc(_MAX_PATH);
         GetModuleFileNameA(NULL, path, _MAX_PATH);
+        return path;
+    #endif
+}
+
+char *exe_directory() {
+    #if defined (__linux__)
+        return dirname(exe_path());
+    #elif defined (__APPLE__)
+        return dirname(exe_path());
+    #elif defined (_WIN32)
+        char *path = exe_path();
         // get the directory part
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
@@ -136,7 +155,14 @@ CreateJVM loadliblang(char *exe_dir) {
     return NULL;
 }
 
-void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_args, int *vm_arg_indices) {
+void parse_vm_options(int *argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_args, int *vm_arg_indices) {
+    // check if vm arg indices have been set on relaunch already
+    bool relaunch = false;
+    if (HAS_VM_ARGS(*argc, argv)) {
+        *vm_arg_indices = (int)strtol(argv[(*argc)-1] + sizeof(VM_ARGS), NULL, 16);
+        *argc = (*argc)-1;
+        relaunch = true;
+    }
     // at least 1, for the classpath (although it might not be there at all)
     vm_args->nOptions = 1;
     #ifdef JVM
@@ -145,13 +171,16 @@ void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_a
     #endif
     // handle vm arguments
     int user_launcher_cp_entries = 0;
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i < *argc; i++) {
         #ifdef JVM
             if (strcmp(argv[i], "--native") == 0) {
                 fprintf(stdout, "The native version of %s does not exist: cannot use '--native'.\n", argv[0]);
                 exit(-1);
             }
         #endif
+        if (relaunch && !((1<<i) & *vm_arg_indices)) {
+            continue;
+        }
         if (IS_VM_CP_ARG(argv[i]) || IS_VM_CLASSPATH_ARG(argv[i])) {
             user_launcher_cp_entries++;
         } else if (IS_VM_ARG(argv[i])) {
@@ -172,9 +201,15 @@ void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_a
         option_ptr++;
     #endif
     int cp_option_cnt = 0;
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i < *argc; i++) {
         if (IS_VM_ARG(argv[i])) {
-            *vm_arg_indices = *vm_arg_indices | (1 << i);
+            if (relaunch) {
+                if (!((1<<i) & *vm_arg_indices)) {
+                    continue;
+                }
+            } else {
+                *vm_arg_indices = *vm_arg_indices | (1 << i);
+            }
             if (IS_VM_CP_ARG(argv[i])) {
                 *user_cp_iterator = argv[i]+8;
                 user_cp_iterator++;
@@ -229,7 +264,7 @@ void parse_vm_options(int argc, char **argv, char *exe_dir, JavaVMInitArgs *vm_a
     option_ptr->optionString = cp;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[], char *envp[]) {
     char *exe_dir = exe_directory();
     CreateJVM createJVM = loadliblang(exe_dir);
     if (!createJVM) {
@@ -240,7 +275,7 @@ int main(int argc, char **argv) {
     JNIEnv *env;
     JavaVMInitArgs vm_args;
     int vm_arg_indices;
-    parse_vm_options(argc, argv, exe_dir, &vm_args, &vm_arg_indices);
+    parse_vm_options(&argc, argv, exe_dir, &vm_args, &vm_arg_indices);
     vm_args.version = JNI_VERSION_1_8;
     vm_args.ignoreUnrecognized = false;
 
@@ -258,6 +293,22 @@ int main(int argc, char **argv) {
         }
         return -1;
     }
+    jclass throwableClass = env->FindClass("java/lang/Throwable");
+    if (throwableClass == NULL) {
+        fprintf(stderr, "Throwable class not found.\n");
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
+        return -1;
+    }
+    jmethodID getMessageMid = env->GetMethodID(throwableClass, "getMessage", "()Ljava/lang/String;");
+    if (getMessageMid == NULL) {
+        fprintf(stderr, "Throwable getMessage() method ID not found.\n");
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
+        return -1;
+    }
     jclass launcherClass = env->FindClass("org/graalvm/launcher/AbstractLanguageLauncher");
     if (launcherClass == NULL) {
         fprintf(stderr, "Launcher class not found.\n");
@@ -266,9 +317,17 @@ int main(int argc, char **argv) {
         }
         return -1;
     }
-    jmethodID mid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJI)V");
-    if (mid == NULL) {
+    jmethodID runLauncherMid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJI)V");
+    if (runLauncherMid == NULL) {
         fprintf(stderr, "Launcher entry point not found.\n");
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
+        return -1;
+    }
+    jfieldID vmArgsFid = env->GetStaticFieldID(launcherClass, "vmArgs", "I");
+    if (vmArgsFid == NULL) {
+        fprintf(stderr, "Launcher vm args field not found.\n");
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
@@ -276,7 +335,7 @@ int main(int argc, char **argv) {
     }
 
     // backup native args
-    long argv_native = (long)argv;
+    char** argv_native = argv;
     int argc_native = argc;
 
     argv++;
@@ -302,8 +361,34 @@ int main(int argc, char **argv) {
     }
 
     // invoke launcher entry point
-    env->CallStaticVoidMethod(launcherClass, mid, args, argc_native, argv_native, vm_arg_indices);
-    if (env->ExceptionCheck()) {
+    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, vm_arg_indices);
+    jthrowable t = env->ExceptionOccurred();
+    if (t) {
+        jobject tmsg = env->CallObjectMethod(t, getMessageMid);
+        const char *msg = env->GetStringUTFChars((jstring)tmsg, NULL);
+        if (strcmp(msg, "Misidentified VM arguments") == 0) {
+            env->ExceptionClear();
+            // read correct VM arguments from launcher object
+            int vm_args = env->GetIntField(launcherClass, vmArgsFid);
+            if (env->ExceptionCheck()) {
+                fprintf(stderr, "Error in GetIntField:\n");
+                env->ExceptionDescribe();
+                return -1;
+            }
+            // copy argv
+            char **argv_relaunch = (char**)malloc((argc_native+2) * sizeof(char*));
+            memcpy(argv_relaunch, argv_native, argc_native * sizeof(char*));
+            int vm_args_option_len = sizeof(VM_ARGS) + 9;
+            argv_relaunch[argc_native] = (char*)malloc(vm_args_option_len);
+            snprintf(argv_relaunch[argc_native], vm_args_option_len, VM_ARGS "%x", vm_args);
+            argv_relaunch[argc_native+1] = NULL;
+            // relaunch with correct VM arguments
+            const char *path = exe_path();
+            execve(path, argv_relaunch, envp);
+            // if we reach here, execve failed for sure
+            perror("execve failed");
+            return -1;
+        }
         env->ExceptionDescribe();
         return -1;
     }

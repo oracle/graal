@@ -60,7 +60,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     private boolean jniLaunch = false;
     private int nativeArgc;
     private long nativeArgv;
-    private int vmArgs;
+    private static int vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -124,6 +124,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param args the command line arguments as an encoding-agnostic byte array
      * @param argc the number of native command line arguments
      * @param argv pointer to argv
+     * @param vmArgIndices bitfield with vm argument indices identified by the native launcher set
      * @throws Exception if no launcher constructor has been set.
      */
     public static void runLauncher(byte[][] args, int argc, long argv, int vmArgIndices) throws Exception {
@@ -140,7 +141,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         launcher.jniLaunch = true;
         launcher.nativeArgc = argc;
         launcher.nativeArgv = argv;
-        launcher.vmArgs = vmArgIndices;
+        vmArgs = vmArgIndices;
 
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -171,7 +172,10 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         if (vmArgs != launcherVmArgs) {
-            throw new RuntimeException(String.format("Could not launch, misidentified vm arguments %d (heuristic) vs. %d (actual)", vmArgs, launcherVmArgs));
+            String errorMsg = String.format("Misidentified VM arguments %d (heuristic) vs. %d (actual)", vmArgs, launcherVmArgs);
+            // set field s.t. it can be read by the native launcher
+            vmArgs = launcherVmArgs;
+            throw new RuntimeException(errorMsg);
         }
     }
 
@@ -209,13 +213,13 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
-        if (jniLaunch) {
-            validateVmArguments(originalArgs, unrecognizedArgs);
-        }
-
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
             maybeNativeExec(originalArgs, unrecognizedArgs, false);
+        }
+
+        if (jniLaunch) {
+            validateVmArguments(originalArgs, unrecognizedArgs);
         }
 
         parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
