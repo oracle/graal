@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -441,7 +442,8 @@ public abstract class StaticShape<T> {
             // generated class. Therefore, the class loader that loads generated classes must have
             // visibility of StaticShape.
             if (!isClassVisible(storageFactoryInterface.getClassLoader(), StaticShape.class)) {
-                throw new IllegalArgumentException("The class loader of factory interface '" + storageFactoryInterface.getName() + "' must have visibility of '" + StaticShape.class.getName() + "'");
+                throw new IllegalArgumentException("The class loader of factory interface '" + storageFactoryInterface.getName() + "' (cl: '" + storageFactoryInterface.getClassLoader() +
+                                "') must have visibility of '" + StaticShape.class.getName() + "' (cl: '" + StaticShape.class.getClassLoader() + "')");
             }
             for (Class<?> c = storageSuperClass; c != null; c = c.getSuperclass()) {
                 for (Method m : c.getDeclaredMethods()) {
@@ -461,6 +463,18 @@ public abstract class StaticShape<T> {
         private static boolean isClassVisible(ClassLoader cl, Class<?> clazz) {
             if (cl == null) {
                 return clazz.getClassLoader() == null;
+            } else if (ImageInfo.inImageRuntimeCode()) {
+                ClassLoader clazzClassLoader = clazz.getClassLoader();
+                if (clazzClassLoader == null) {
+                    return true;
+                } else {
+                    for (ClassLoader classLoader = cl; cl != null; cl = cl.getParent()) {
+                        if (classLoader == clazzClassLoader) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
             } else {
                 try {
                     cl.loadClass(clazz.getName());
