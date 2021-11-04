@@ -64,19 +64,28 @@ class CPUSamplerCLI extends ProfilerCLI {
         HISTOGRAM,
         CALLTREE,
         JSON,
-        FLAMEGRAPH,
-    }
+        FLAMEGRAPH;
 
-    public static final Function<String, Output> STRING_TO_OUTPUT = new Function<String, Output>() {
-        @Override
-        public Output apply(String s) {
+        private static String valueList() {
+            StringBuilder message = new StringBuilder();
+            Output[] values = Output.values();
+            for (int i = 0; i < values.length; i++) {
+                Output value = values[i];
+                message.append(value.name().toLowerCase());
+                message.append(i < values.length - 1 ? ", " : "");
+            }
+            return message.toString();
+        }
+
+        private static Output fromString(String s) {
             try {
                 return Output.valueOf(s.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Output can be: histogram, calltree or json");
+                throw new IllegalArgumentException("Output can be: " + Output.valueList() + ".");
             }
         }
-    };
+
+    }
 
     static final OptionType<EnableOptionData> ENABLE_OPTION_TYPE = new OptionType<>("Enable",
                     s -> {
@@ -88,10 +97,10 @@ class CPUSamplerCLI extends ProfilerCLI {
                                 return new EnableOptionData(false, null);
                             default: {
                                 try {
-                                    Output output = STRING_TO_OUTPUT.apply(s);
+                                    Output output = Output.fromString(s);
                                     return new EnableOptionData(true, output);
                                 } catch (IllegalArgumentException e) {
-                                    throw new IllegalArgumentException("CPUSampler can be enabled with the following values: true, false, histogram, calltree, flamegraph");
+                                    throw new IllegalArgumentException("CPUSampler can be configured with the following values: true, false, " + Output.valueList() + ".");
                                 }
                             }
                         }
@@ -107,7 +116,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output", STRING_TO_OUTPUT);
+    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output", Output::fromString);
 
     static final OptionType<int[]> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
                     new Function<String, int[]>() {
@@ -204,24 +213,28 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static PrintStream chooseOutputStream(TruffleInstrument.Env env) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
         OptionValues options = env.getOptions();
-        if (OUTPUT_FILE.hasBeenSet(options)) {
-            new PrintStream(env.out()).println("Printing output to " + OUTPUT_FILE.getValue(options));
-            return out;
-        }
-        EnableOptionData enabled = ENABLED.getValue(options);
-        if (enabled.output == Output.FLAMEGRAPH) {
-            final File file = new File(DEFAULT_FLAMEGRAPH_FILE);
+        final String outputPath = getOutputPath(env, options);
+        if (outputPath != null) {
             try {
-                PrintStream printStream = new PrintStream(new FileOutputStream(file));
-                new PrintStream(env.out()).println("Printing output to " + DEFAULT_FLAMEGRAPH_FILE);
-                return printStream;
+                final File file = new File(outputPath);
+                new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
+                return new PrintStream(new FileOutputStream(file));
             } catch (FileNotFoundException e) {
                 throw handleFileNotFound();
             }
         }
-        return out;
+        return new PrintStream(env.out());
+    }
+
+    private static String getOutputPath(TruffleInstrument.Env env, OptionValues options) {
+        if (OUTPUT_FILE.hasBeenSet(options)) {
+            return OUTPUT_FILE.getValue(env.getOptions());
+        }
+        if (ENABLED.getValue(options).output == Output.FLAMEGRAPH) {
+            return DEFAULT_FLAMEGRAPH_FILE;
+        }
+        return null;
     }
 
     private static Output chooseOutput(OptionValues options) {
