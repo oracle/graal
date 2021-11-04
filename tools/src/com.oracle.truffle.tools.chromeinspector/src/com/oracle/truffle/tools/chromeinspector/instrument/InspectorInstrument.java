@@ -507,6 +507,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             return Base64.getEncoder().withoutPadding().encodeToString(tokenRaw).replace('/', '_').replace('+', '-');
         }
 
+        @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "avoiding a static field which would cache the random seed in a native image")
         private static byte[] generateSecureRawToken() {
             // 256 bits of entropy ought to be enough for everybody
             final byte[] tokenRaw = new byte[32];
