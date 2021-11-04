@@ -46,7 +46,6 @@ import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
@@ -133,17 +132,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.getLanguageView(context, value);
         } else {
             return super.getLanguageView(context, value);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Object getScopedView(LanguageContext context, Node location, Frame frame, Object value) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.getScopedView(context, location, frame, value);
-        } else {
-            return super.getScopedView(context, location, frame, value);
         }
     }
 
@@ -264,28 +252,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             return delegate.parse(request);
         } else {
             return super.parse(request);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(LanguageContext context) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findTopScopes(context);
-        } else {
-            return super.findTopScopes(context);
-        }
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Iterable<com.oracle.truffle.api.Scope> findLocalScopes(LanguageContext context, Node node, Frame frame) {
-        if (wrapper) {
-            delegate.languageInstance = this;
-            return delegate.findLocalScopes(context, node, frame);
-        } else {
-            return super.findLocalScopes(context, node, frame);
         }
     }
 

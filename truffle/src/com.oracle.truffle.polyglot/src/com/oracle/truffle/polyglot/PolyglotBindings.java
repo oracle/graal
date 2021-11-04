@@ -42,11 +42,13 @@ package com.oracle.truffle.polyglot;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -123,7 +125,7 @@ final class PolyglotBindings implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new DefaultScope.VariableNamesObject(getBindings().keySet());
+        return new Members(getBindings().keySet());
     }
 
     @ExportMessage(name = "isMemberReadable")
@@ -137,6 +139,40 @@ final class PolyglotBindings implements TruffleObject {
     @ExportMessage
     boolean isMemberInsertable(String member) {
         return !isMemberExisting(member);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class Members implements TruffleObject {
+
+        final String[] names;
+
+        Members(Set<String> names) {
+            this.names = names.toArray(new String[0]);
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return names.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return names[(int) index];
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < names.length;
+        }
     }
 
 }

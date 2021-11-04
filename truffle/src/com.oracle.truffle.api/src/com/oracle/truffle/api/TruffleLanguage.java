@@ -1088,93 +1088,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Find a hierarchy of local scopes enclosing the given {@link Node node}. Unless the node is in
-     * a global scope, it is expected that there is at least one scope provided, that corresponds to
-     * the enclosing function. The language might provide additional block scopes, closure scopes,
-     * etc. Global top scopes are provided by {@link #getScope(Object)}. The scope hierarchy should
-     * correspond with the scope nesting, from the inner-most to the outer-most. The scopes are
-     * expected to contain variables valid at the given node.
-     * <p>
-     * Scopes may depend on the information provided by the frame. <br/>
-     * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
-     * <p>
-     * When not overridden, the enclosing {@link RootNode}'s scope with variables read from its
-     * {@link FrameDescriptor}'s frame slots is provided by default.
-     * <p>
-     * The
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}
-     * provides result of this method to instruments.
-     *
-     * @param context the current context of the language
-     * @param node a node to find the enclosing scopes for. The node, is inside a {@link RootNode}
-     *            associated with this language.
-     * @param frame The current frame the node is in, or <code>null</code> for lexical access when
-     *            the program is not running, or is not suspended at the node's location.
-     * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
-     * @since 0.30
-     * @deprecated implement {@link com.oracle.truffle.api.interop.NodeLibrary} instead.
-     */
-    @Deprecated
-    @SuppressWarnings({"unchecked", "deprecation"})
-    protected Iterable<Scope> findLocalScopes(C context, Node node, Frame frame) {
-        assert node != null;
-        return LanguageAccessor.engineAccess().createDefaultLexicalScope(node, frame, (Class<? extends TruffleLanguage<?>>) getClass());
-    }
-
-    /**
-     * Find a hierarchy of top-most scopes of the language, if any. The scopes should be returned
-     * from the inner-most to the outer-most scope order. The language may return an empty iterable
-     * to indicate no scopes. The returned scope objects may be cached by the caller per language
-     * context. Therefore the method should always return equivalent top-scopes and variables
-     * objects for a given language context. Changes to the top scope by executing guest language
-     * code should be reflected by cached scope instances. It is recommended to store the top-scopes
-     * iterable directly in the language context for efficient access.
-     * <p>
-     * <h3>Interpretation</h3> In most languages, just evaluating an expression like
-     * <code>Math</code> is equivalent of a lookup with the identifier 'Math' in the top-most scopes
-     * of the language. Looking up the identifier 'Math' should have equivalent semantics as reading
-     * with the key 'Math' from the variables object of one of the top-most scopes of the language.
-     * In addition languages may optionally allow modification and insertion with the variables
-     * object of the returned top-scopes.
-     * <p>
-     * Languages may want to specify multiple top-scopes. It is recommended to stay as close as
-     * possible to the set of top-scopes that as is described in the guest language specification,
-     * if available. For example, in JavaScript, there is a 'global environment' and a 'global
-     * object' scope. While the global environment scope contains class declarations and is not
-     * insertable, the global object scope is used to insert new global variable values and is
-     * therefore insertable.
-     * <p>
-     * <h3>Use Cases</h3>
-     * <ul>
-     * <li>Top scopes are accessible to instruments with
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findTopScopes(java.lang.String)}
-     * . They are used by debuggers to access the top-most scopes of the language.
-     * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
-     * {@link Context#getBindings(String) bindings} object. When members of the bindings object are
-     * {@link Value#getMember(String) read} then the first scope where the key exists is read. If a
-     * member is {@link Value#putMember(String, Object) modified} in the bindings object, then the
-     * value will be written to the first scope where the key exists. If a new member is added to
-     * the bindings object then it is added to the first variables object where the key is
-     * insertable. If a member is removed, it is only tried to be removed from the first scope of
-     * where such a key exists. If {@link Value#getMemberKeys() member keys} are requested from the
-     * bindings object, then the variable object keys are returned sorted from first to last.
-     * </ul>
-     * <p>
-     * When not overridden then a single read-only scope named 'global' without any keys will be
-     * returned.
-     *
-     * @param context the current context of the language
-     * @return an iterable with scopes in their nesting order from the inner-most to the outer-most.
-     * @since 0.30
-     * @deprecated implement {@link #getScope(Object)} instead.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    protected Iterable<Scope> findTopScopes(C context) {
-        return LanguageAccessor.engineAccess().createDefaultTopScope(null);
-    }
-
-    /**
      * Get a top scope of the language, if any. The returned object must be an
      * {@link com.oracle.truffle.api.interop.InteropLibrary#isScope(Object) interop scope object}
      * and may have {@link com.oracle.truffle.api.interop.InteropLibrary#hasScopeParent(Object)
@@ -1218,10 +1131,8 @@ public abstract class TruffleLanguage<C> {
      * @return the scope object or <code>null</code> if the language does not support such concept
      * @since 20.3
      */
-    @SuppressWarnings({"deprecation", "unchecked"})
     protected Object getScope(C context) {
-        Iterable<Scope> legacyScopes = findTopScopes(context);
-        return LanguageAccessor.engineAccess().legacyScopes2ScopeObject(null, legacyScopes.iterator(), (Class<? extends TruffleLanguage<?>>) getClass());
+        return null;
     }
 
     /**
@@ -1374,48 +1285,6 @@ public abstract class TruffleLanguage<C> {
      */
     protected Object getLanguageView(C context, Object value) {
         return null;
-    }
-
-    /**
-     * Wraps the value to filter or add scoping specific information for values associated with the
-     * current language and location in the code. Allows the language to augment the perspective
-     * tools have on values depending on location and frame. This may be useful to apply local
-     * specific visibility rules. By default this method does return the passed value, not applying
-     * any scope information to the value. If a language does not implement any scoping and/or has
-     * not concept of visibility then this method typically can stay without an implementation. A
-     * typical implementation of this method may do the following:
-     * <ul>
-     * <li>Apply visiblity and scoping rules to the value hiding or removing members from the
-     * object.
-     * <li>Add or remove implicit members that are only available within this source location.
-     * </ul>
-     * <p>
-     * This method is only invoked with values that are associated with the current
-     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. For
-     * values without language the {@link #getLanguageView(Object, Object) language view} is
-     * requested first before the scoped view is requested. If this method needs an implementation
-     * then {@link #getLanguageView(Object, Object)} should be implemented as well.
-     * <p>
-     * Scoped views may be implemented in a very similar way to
-     * {@link #getLanguageView(Object, Object) language views}. Please refer to the examples from
-     * this method.
-     *
-     * @param context the current context.
-     * @param location the current source location. Guaranteed to be a node from a {@link RootNode}
-     *            associated with this language. Never <code>null</code>.
-     * @param frame the current active frame. Guaranteed to be a frame from a {@link RootNode}
-     *            associated with this language. Never <code>null</code>.
-     * @param value the value to provide scope information for. Never <code>null</code>. Always
-     *            associated with this language.
-     * @since 20.1
-     * @deprecated in 20.3, implement
-     *             {@link com.oracle.truffle.api.interop.NodeLibrary#getView(Object, Frame, Object)}
-     *             instead.
-     */
-    @Deprecated
-    @SuppressWarnings("unused")
-    protected Object getScopedView(C context, Node location, Frame frame, Object value) {
-        return value;
     }
 
     CallTarget parse(Source source, String... argumentNames) {
@@ -3435,17 +3304,6 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Invalid access to language " + languageClass + ".");
             }
             return languageClass.cast(getSpi());
-        }
-
-        @SuppressWarnings("deprecation")
-        Iterable<Scope> findLocalScopes(Node node, Frame frame) {
-            assert node != null;
-            return getSpi().findLocalScopes(context, node, frame);
-        }
-
-        @SuppressWarnings("deprecation")
-        Iterable<Scope> findTopScopes() {
-            return getSpi().findTopScopes(context);
         }
 
         void dispose() {

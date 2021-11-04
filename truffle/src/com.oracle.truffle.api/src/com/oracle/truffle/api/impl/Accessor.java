@@ -112,7 +112,6 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
@@ -277,6 +276,7 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
+
     }
 
     public abstract static class EngineSupport extends Support {
@@ -400,14 +400,6 @@ public abstract class Accessor {
         }
 
         public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> createDefaultLexicalScope(Node node, Frame frame, Class<? extends TruffleLanguage<?>> language);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> createDefaultTopScope(Object global);
-
-        public abstract Object getDefaultVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language);
-
-        public abstract Object getDefaultArguments(Object[] frameArguments, Class<? extends TruffleLanguage<?>> language);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -588,14 +580,6 @@ public abstract class Accessor {
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
 
-        public abstract Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope);
-
-        public abstract boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes);
-
-        public abstract Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language);
-
         public abstract OptionValues getEngineOptionValues(Object polyglotEngine);
 
         public abstract Collection<? extends CallTarget> findCallTargets(Object polyglotEngine);
@@ -737,10 +721,6 @@ public abstract class Accessor {
 
         public abstract void exitContext(Env localEnv, TruffleLanguage.ExitMode exitMode, int exitCode);
 
-        public abstract Iterable<com.oracle.truffle.api.Scope> findLegacyLocalScopes(Env env, Node node, Frame frame);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> findTopScopes(Env env);
-
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
 
         public abstract void initializeMultiContext(TruffleLanguage<?> language);
@@ -784,8 +764,6 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
         public abstract Path getPath(TruffleFile truffleFile);
-
-        public abstract Object getLegacyScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
 
         public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
 

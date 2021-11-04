@@ -980,69 +980,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @Test
-    public void testLegacyReceiver() throws IOException {
-        ReceiverLegacyTester tester = new ReceiverLegacyTester(instrumentEnv);
-        Source source = Source.create(InstrumentationTestLanguage.ID,
-                        "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
-                                        "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
-                                        "CALL(foo1)," +
-                                        "CALL_WITH(foo2, 42)," +
-                                        "CALL_WITH(foo1, 43))");
-        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
-        run(source);
-        tester.assertReceivers(null, null, "42", "43");
-    }
-
-    @SuppressWarnings("deprecation")
-    private static final class ReceiverLegacyTester implements ExecutionEventListener {
-
-        private TruffleInstrument.Env env;
-        private final List<String> receiverObjects = new ArrayList<>();
-
-        ReceiverLegacyTester(TruffleInstrument.Env env) {
-            this.env = env;
-        }
-
-        @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            addReceiverObject(context, frame.materialize());
-        }
-
-        @TruffleBoundary
-        private void addReceiverObject(EventContext context, MaterializedFrame frame) {
-            RootNode rootNode = context.getInstrumentedNode().getRootNode();
-            com.oracle.truffle.api.Scope frameScope = env.findLocalScopes(context.getInstrumentedNode(), frame).iterator().next();
-            Object receiver = frameScope.getReceiver();
-            if (receiver != null) {
-                assertEquals("THIS", frameScope.getReceiverName());
-                try {
-                    receiverObjects.add(InteropLibrary.getUncached().asString(
-                                    InteropLibrary.getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
-                } catch (UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            } else {
-                receiverObjects.add(null);
-            }
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-        }
-
-        @Override
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-        }
-
-        private void assertReceivers(String... objects) {
-            assertEquals(objects.length, receiverObjects.size());
-            for (int i = 0; i < objects.length; i++) {
-                assertEquals(objects[i], receiverObjects.get(i));
-            }
-        }
-    }
-
-    @Test
     public void testReceiver() throws IOException {
         ReceiverTester tester = new ReceiverTester(instrumentEnv);
         Source source = Source.create(InstrumentationTestLanguage.ID,
