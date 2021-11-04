@@ -49,8 +49,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
@@ -149,6 +151,29 @@ public final class ModuleLayerFeature implements Feature {
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
+        patchDynamicHubs(universe.getTypes(), accessImpl.bb.getHostVM(), runtimeBootLayer);
+    }
+
+    /*
+     * Updates module fields of all DynamicHubs with appropriate synthesized module instances
+     */
+    private void patchDynamicHubs(List<AnalysisType> types, SVMHost host, ModuleLayer runtimeBootLayer) {
+        for (AnalysisType type : types) {
+            if (!type.isReachable() || type.isArray()) {
+                continue;
+            }
+            Class<?> clazz = type.getJavaClass();
+            if (clazz.getModule().getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC)) {
+                continue;
+            }
+            DynamicHub hub = host.dynamicHub(type);
+            String moduleName = clazz.getModule().getName();
+            Optional<Module> module = runtimeBootLayer.findModule(moduleName);
+            if (module.isEmpty()) {
+                throw VMError.shouldNotReachHere("Runtime boot module layer failed to include reachable module: " + moduleName);
+            }
+            hub.setModule(module.get());
+        }
     }
 
     /*
