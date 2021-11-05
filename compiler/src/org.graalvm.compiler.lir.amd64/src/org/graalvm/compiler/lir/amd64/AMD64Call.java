@@ -205,7 +205,7 @@ public class AMD64Call {
             // erratum padding should be inserted before the mov instruction.
             before = masm.directCall(0L, scratch);
         } else {
-            before = masm.directCall(align, crb.target.arch.getMachineCodeCallDisplacementOffset(), crb.target.wordSize);
+            before = masm.directCall(align);
         }
         int after = masm.position();
         crb.recordDirectCall(before, after, callTarget, info);

@@ -2355,12 +2355,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     protected boolean ensureWithinBoundary(int opStart) {
         if (useBranchesWithin32ByteBoundary) {
-            assert !mayCrossBoundary(opStart, position());
+            int opEnd = position();
+            GraalError.guarantee(!mayCrossBoundary(opStart, opEnd), "instruction at %d of size %d bytes crosses a JCC erratum boundary", opStart, opEnd - opStart);
         }
         return true;
     }
 
-    protected final void testAndAlign(int bytesToEmit) {
+    /**
+     * If this assembler is configured to mitigate the Intel jcc erratum, emits nops at the current
+     * position such that an instruction of size {@code bytesToEmit} will not cross a
+     * {@value #JCC_ERRATUM_MITIGATION_BOUNDARY}.
+     *
+     * @return the number of nop bytes emitted
+     */
+    protected final int testAndAlign(int bytesToEmit) {
         if (useBranchesWithin32ByteBoundary) {
             int beforeNextOp = position();
             int afterNextOp = beforeNextOp + bytesToEmit;
@@ -2370,8 +2378,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 if (codePatchShifter != null) {
                     codePatchShifter.shift(beforeNextOp, bytesToShift);
                 }
+                return bytesToShift;
             }
         }
+        return 0;
     }
 
     public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
