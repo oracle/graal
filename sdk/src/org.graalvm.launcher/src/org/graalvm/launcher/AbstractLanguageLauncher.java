@@ -60,7 +60,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     private boolean jniLaunch = false;
     private int nativeArgc;
     private long nativeArgv;
-    private static int vmArgs;
+    private static boolean[] vmArgIndices;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -124,10 +124,9 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param args the command line arguments as an encoding-agnostic byte array
      * @param argc the number of native command line arguments
      * @param argv pointer to argv
-     * @param vmArgIndices bitfield with vm argument indices identified by the native launcher set
      * @throws Exception if no launcher constructor has been set.
      */
-    public static void runLauncher(byte[][] args, int argc, long argv, int vmArgIndices) throws Exception {
+    public static void runLauncher(byte[][] args, int argc, long argv) throws Exception {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
@@ -141,7 +140,6 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         launcher.jniLaunch = true;
         launcher.nativeArgc = argc;
         launcher.nativeArgv = argv;
-        vmArgs = vmArgIndices;
 
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -159,23 +157,25 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
     void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
-        int launcherVmArgs = 0;
+        vmArgIndices = new boolean[originalArgs.size()];
+        boolean relaunchRequired = false;
         for (int i = 0; i < originalArgs.size(); i++) {
             if (originalArgs.get(i).startsWith("--vm.")) {
                 for (String unrecognizedOption : unrecognizedArgs) {
                     if (originalArgs.get(i).contentEquals(unrecognizedOption)) {
-                        // the native launcher counts from arg0 (program name), which is not passed
-                        launcherVmArgs |= (1 << i + 1);
+                        vmArgIndices[i] = true;
+                        break;
                     }
+                }
+                // check if the arg has been misidentified by the heuristic
+                if (!vmArgIndices[i]) {
+                    relaunchRequired = true;
                 }
             }
         }
 
-        if (vmArgs != launcherVmArgs) {
-            String errorMsg = String.format("Misidentified VM arguments %d (heuristic) vs. %d (actual)", vmArgs, launcherVmArgs);
-            // set field s.t. it can be read by the native launcher
-            vmArgs = launcherVmArgs;
-            throw new RuntimeException(errorMsg);
+        if (relaunchRequired) {
+            throw new RuntimeException("Misidentified VM arguments, relaunch required");
         }
     }
 
