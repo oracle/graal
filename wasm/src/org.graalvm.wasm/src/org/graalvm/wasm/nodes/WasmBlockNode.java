@@ -1477,7 +1477,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         assert assertDirectCall(function, callNode);
         if (imported) {
             WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
-            TruffleContext truffleContext = functionInstance.context().environment().getContext();
+            TruffleContext truffleContext = functionInstance.getTruffleContext();
             Object prev = truffleContext.enter(this);
             try {
                 return callNode.call(args);
