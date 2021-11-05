@@ -136,10 +136,6 @@ public final class ClassRedefinition {
         }
     }
 
-    public boolean inProgress() {
-        return locked;
-    }
-
     public boolean isRedefineThread() {
         return redefineThread == Thread.currentThread();
     }
@@ -368,7 +364,9 @@ public final class ClassRedefinition {
             collectedChanges.addNewMethods(newMethods);
         }
 
-        collectedChanges.addRemovedMethods(oldMethods);
+        for (Method oldMethod : oldMethods) {
+            collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
+        }
 
         if (!oldMethods.isEmpty()) {
             result = ClassChange.REMOVE_METHOD;
@@ -450,7 +448,7 @@ public final class ClassRedefinition {
             Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldParserMethod.getSignature().toString());
             if (matcher.matches()) {
                 newSpecialMethods.add(newMethod);
-                collectedChanges.addRemovedMethods(oldMethod);
+                collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
             } else {
                 bodyChanges.put(oldMethod, newMethod);
             }

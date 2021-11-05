@@ -1240,6 +1240,7 @@ public final class ObjectKlass extends Klass {
         ParserKlass parserKlass = packet.parserKlass;
         DetectedChange change = packet.detectedChange;
         KlassVersion oldVersion = klassVersion;
+        LinkedKlass oldLinkedKlass = oldVersion.linkedKlass;
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), oldVersion.pool.getClassLoader());
 
         // create new assumption for the new KlassVersion
@@ -1251,7 +1252,7 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < superInterfaces.length; i++) {
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
-        LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, getLinkedKlass());
+        LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, oldLinkedKlass);
 
         // methods
         Method[][] itable = oldVersion.itable;
@@ -1268,19 +1269,22 @@ public final class ObjectKlass extends Klass {
             JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
 
             // look in tables for copied methods that also needs to be invalidated
-            if (!method.isStatic() && !method.isPrivate() && !Name._init_.equals(method.getName())) {
+            int flags = newMethod.getFlags();
+            if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
                 checkCopyMethods(redefineAssumption, method, itable, redefineContent, ids);
                 checkCopyMethods(redefineAssumption, method, vtable, redefineContent, ids);
                 checkCopyMethods(redefineAssumption, method, mirandaMethods, redefineContent, ids);
             }
         }
 
-        Set<Method> removedMethods = change.getRemovedMethods();
+        Set<Method.MethodVersion> removedMethods = change.getRemovedMethods();
         List<ParserMethod> addedMethods = change.getAddedMethods();
         Set<Method> unchangedMethods = change.getUnchangedMethods();
 
         LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
-        declaredMethods.removeAll(removedMethods);
+        for (Method.MethodVersion removedMethod : removedMethods) {
+            declaredMethods.remove(removedMethod.getMethod());
+        }
 
         for (Method unchangedMethod : unchangedMethods) {
             unchangedMethod.invalidate(redefineAssumption, ids);
@@ -1290,13 +1294,12 @@ public final class ObjectKlass extends Klass {
         // which might have ripple implications on all subclasses
         boolean virtualMethodsModified = false;
 
-        for (Method removedMethod : removedMethods) {
+        for (Method.MethodVersion removedMethod : removedMethods) {
             virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
             ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
             checkSuperMethods(parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
-            removedMethod.removedByRedefinition();
-            removedMethod.getMethodVersion().getAssumption().invalidate();
-            JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getDeclaringKlass().getName() + "." + removedMethod.getName());
+            removedMethod.getMethod().removedByRedefinition();
+            JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
         }
 
         for (ParserMethod addedMethod : addedMethods) {
