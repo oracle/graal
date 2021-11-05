@@ -365,6 +365,7 @@ class ToolchainConfig(object):
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.bootstrap_dist = bootstrap_dist
         self.tools = tools
+        self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
         self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
@@ -412,7 +413,12 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
+        if tool in self._supported_tools():
+            return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
+        elif tool in self.llvm_binutil_tools:
+            return os.path.join(self.bootstrap_provider(), 'bin', _exe_sub(tool.lower()))
+        else:
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_subdir(self):
         return self.name
@@ -453,7 +459,7 @@ class SulongNinjaToolchain(DefaultGccLikeToolchain):
         self.config = _get_toolchain(name)
 
     def toolchain_bin(self, name):
-        return join(self.config.bootstrap_provider(), 'bin', mx.exe_suffix(name))
+        return self.config.get_toolchain_tool(name)
 
 
 class SulongToolchainNativeProject(DefaultNativeProject):
