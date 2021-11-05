@@ -57,6 +57,11 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
+### 2021
+- David Justo, Shaoqing Yi, Lukas Stadler, Nadia Polikarpova, Arun Kumar
+[**Towards a polyglot framework for factorized ML**](https://dl.acm.org/doi/abs/10.14778/3476311.3476372)
+In _Proceedings of the VLDB Endowment 14, Issue 12 (VLDB 2021 Industry Track)_
+
 ### 2020
 
 - Fabio Niephaus, Patrick Rein, Jakob Edding, Jonas Hering, Bastian König, Kolya Opahle, Nico Scordialo, Robert Hirschfeld
