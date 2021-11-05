@@ -658,19 +658,24 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
-     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
-     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
-     * method must have not observable side-effects unless
+     * Reads the value of a given member.
+     * <p>
+     * In case of a method-like member, we recommend that languages return a bound method (or an
+     * artificial receiver-method binding) to improve cross-language portability. In this case, the
+     * member should be {@link #isMemberReadable(Object, String) readable} and
+     * {@link #isMemberInvocable(Object, String) invocable} and the result of reading the member
+     * should be {@link #isExecutable(Object) executable} and bound to the receiver.
+     * <p>
+     * This message must have not observable side-effects unless
      * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
      *
      * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
      *             empty receiver with no readable members supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
      *             for all arguments instead.
-     * @throws UnknownIdentifierException if the given member is not
-     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
-     *             given name does not exist.
+     * @throws UnknownIdentifierException if the given member cannot be read, e.g. because it is not
+     *             (or no longer) {@link #isMemberReadable(Object, String) readable} such as when
+     *             the member with the given name does not exist or has been removed.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
      */
