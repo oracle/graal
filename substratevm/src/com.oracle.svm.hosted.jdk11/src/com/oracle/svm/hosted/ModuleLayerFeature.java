@@ -146,7 +146,6 @@ public final class ModuleLayerFeature implements Feature {
                         .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
-        allReachableModules.add("org.graalvm.nativeimage.librarysupport");
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -243,9 +242,9 @@ public final class ModuleLayerFeature implements Feature {
         try {
             ModuleFinder applicationModuleFinder = ModuleFinder.of(applicationModulePath.toArray(Path[]::new));
             applicationModuleNames = applicationModuleFinder.findAll()
-                    .stream()
-                    .map(m -> m.descriptor().name())
-                    .collect(Collectors.toList());
+                            .stream()
+                            .map(m -> m.descriptor().name())
+                            .collect(Collectors.toList());
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to locate application modules.", ex);
         }
@@ -253,7 +252,8 @@ public final class ModuleLayerFeature implements Feature {
         for (String moduleName : applicationModuleNames) {
             Optional<Module> module = runtimeBootLayer.findModule(moduleName);
             if (module.isEmpty()) {
-                throw VMError.shouldNotReachHere("Runtime boot module layer failed to include application module: " + moduleName);
+                // Module is not reachable
+                continue;
             }
             applicationModules.add(module.get());
         }
