@@ -115,7 +115,6 @@ import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -141,7 +140,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -523,8 +521,7 @@ public class HotSpotGraphBuilderPlugins {
                  * check. Such a DynamicNewInstanceNode is also never constant folded to a
                  * NewInstanceNode.
                  */
-                ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
-                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(b.nullCheckedValue(clazzLegal, DeoptimizationAction.None), true));
+                DynamicNewInstanceNode.createAndPush(b, clazz);
                 return true;
             }
         });
