@@ -163,6 +163,9 @@ public final class ModuleLayerFeature implements Feature {
                 continue;
             }
             Class<?> clazz = type.getJavaClass();
+            if (!clazz.getModule().isNamed()) {
+                continue;
+            }
             if (clazz.getModule().getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC)) {
                 continue;
             }
@@ -203,7 +206,7 @@ public final class ModuleLayerFeature implements Feature {
                         .stream()
                         .collect(Collectors.toMap(Module::getName, m -> new HostedRuntimeModulePair(m, runtimeBootLayer)));
 
-        Module builderModule = moduleLookupMap.get("org.graalvm.nativeimage.builder").hostedModule;
+        Module builderModule = ModuleLayerFeature.class.getModule();
         assert builderModule != null;
 
         try {
