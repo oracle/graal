@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1190,6 +1190,15 @@ public class BreakpointTest extends AbstractDebugTest {
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
         tester.close();
         tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().allowExperimentalOptions(true).option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+    }
+
+    @Test
+    public void testOutOfRootBreakpointPositions() {
+        String source = "  \n" +
+                        " B1_     < {F R1_[SB]\n" +
+                        "B2_R2_{S}  } \n" +
+                        "\n";
         tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
     }
 
