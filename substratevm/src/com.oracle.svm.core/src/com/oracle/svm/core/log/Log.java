@@ -88,6 +88,7 @@ public abstract class Log implements AutoCloseable {
      * doesn't do any logging. These are both final subclasses to make things easier to inline.
      */
     private static RealLog log = new RealLog();
+    private static UninterruptibleLog uninterruptibleLog = new UninterruptibleLog();
     private static final NoopLog noopLog = new NoopLog();
     private static final PrintStream logStream = new PrintStream(new LogOutputStream());
 
@@ -105,6 +106,14 @@ public abstract class Log implements AutoCloseable {
     @Fold
     public static Log log() {
         return log;
+    }
+
+    /**
+     * Return the singleton UninterruptibleLog instance.
+     */
+    @Fold
+    public static UninterruptibleLog uninterruptibleLog() {
+        return uninterruptibleLog;
     }
 
     /**
