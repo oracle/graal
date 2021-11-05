@@ -248,6 +248,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (hasFixedValue) {
                         VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
                     }
+                    if (defaultValue != null) {
+                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with default value" + msgTail, apiOptionName, rawOptionName));
+                    }
                 }
                 boolean defaultFinal = booleanOption || hasFixedValue;
                 apiOptions.put(apiOptionName,
@@ -300,7 +303,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     optionName = APIOption.Utils.groupName(optionInfo.group) + variant;
                 }
                 String headArg = argQueue.peek();
-                if (optionInfo.defaultFinal && headArg.equals(optionName)) {
+                if ((optionInfo.defaultFinal || optionInfo.defaultValue != null) && headArg.equals(optionName)) {
                     option = optionInfo;
                     optionNameAndOptionValue = new String[]{optionName};
                     break found;
