@@ -2613,6 +2613,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
                 '-DLIBLANG_RELPATH=' + _libjvm_path,
             ]
+            if len(self.language_library_config.option_vars) > 0:
+                _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
+
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
             # path from language launcher to library

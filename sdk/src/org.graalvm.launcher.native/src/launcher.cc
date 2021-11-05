@@ -172,8 +172,15 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
         }
     }
 
-    // allocate option array - overapproximate the number of options (argc max) to avoid iterating argv twice
-    vmInitArgs->options = (JavaVMOption *)malloc(argc * sizeof(JavaVMOption));
+    // set optional vm args from LanguageLibraryConfig.option_vars
+    int launcherOptionCount = 0;
+    #ifdef LAUNCHER_OPTION_VARS
+        const char *launcherOptionVars[] = LAUNCHER_OPTION_VARS;
+        launcherOptionCount = sizeof(launcherOptionVars) / sizeof(*launcherOptionVars);
+    #endif
+
+    // allocate option array - overapproximate the number of options (argc max + optional option_vars) to avoid iterating argv twice
+    vmInitArgs->options = (JavaVMOption *)malloc((argc + launcherOptionCount) * sizeof(JavaVMOption));
     JavaVMOption *curOpt = vmInitArgs->options;
 
     // in pure JVM mode, set org.graalvm.launcher.class system property
@@ -188,15 +195,16 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     cp << "-Djava.class.path=";
     #ifdef JVM
         // add the launcher classpath
-        const char *launcher_cp_entries[] = LAUNCHER_CLASSPATH;
-        int launcher_cp_cnt = sizeof(launcher_cp_entries) / sizeof(*launcher_cp_entries);
-        for (int i = 0; i < launcher_cp_cnt; i++) {
-            cp << exeDir << DIR_SEP_STR << launcher_cp_entries[i];
-            if (i < launcher_cp_cnt-1) {
+        const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
+        int launcherCpCnt = sizeof(launcherCpEntries) / sizeof(*launcherCpEntries);
+        for (int i = 0; i < launcherCpCnt; i++) {
+            cp << exeDir << DIR_SEP_STR << launcherCpEntries[i];
+            if (i < launcherCpCnt-1) {
                 cp << CP_SEP_STR;
             }
         }
     #endif
+
     // handle vm arguments and user classpath
     for (int i = 0; i < argc; i++) {
         if (relaunch && !vmArgIndices[i]) {
@@ -214,8 +222,27 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
             vmInitArgs->nOptions++;
         }
     }
+
+    // handle optional vm args from LanguageLibraryConfig.option_vars
+    #ifdef LAUNCHER_OPTION_VARS
+    for (int i = 0; i < launcherOptionCount; i++) {
+        if (IS_VM_CP_ARG(launcherOptionVars[i])) {
+            cp << CP_SEP_STR << launcherOptionVars[i]+8;
+        } else if (IS_VM_CLASSPATH_ARG(launcherOptionVars[i])) {
+            cp << CP_SEP_STR << launcherOptionVars[i]+15;
+        } else if (IS_VM_ARG(launcherOptionVars[i])) {
+            std::stringstream opt;
+            opt << '-' << launcherOptionVars[i]+5;
+            curOpt->optionString = strdup(opt.str().c_str());
+            curOpt++;
+            vmInitArgs->nOptions++;
+        }
+    }
+    #endif
+
     // set classpath argument
     curOpt->optionString = strdup(cp.str().c_str());
+    curOpt++;
     vmInitArgs->nOptions++;
 }
 

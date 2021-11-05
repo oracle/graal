@@ -200,7 +200,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, **kwargs):
+    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
         """
         :param str language
         :param str main_class
@@ -212,6 +212,7 @@ class LanguageLibraryConfig(LibraryConfig):
         self.default_symlinks = None
         self.relative_home_paths = {}
         self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
+        self.option_vars = [] if option_vars is None else option_vars
 
 class GraalVmComponent(object):
     def __init__(self,
