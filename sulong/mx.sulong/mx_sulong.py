@@ -46,7 +46,7 @@ import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_llvm_config
-from mx_native import DefaultGnuToolchain as NinjaGnuToolchain, DefaultNativeProject
+from mx_native import DefaultGccLikeToolchain, DefaultNativeProject
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -448,7 +448,7 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
                                    suite=_suite)
 
 
-class SulongNinjaToolchain(NinjaGnuToolchain):
+class SulongNinjaToolchain(DefaultGccLikeToolchain):
     def __init__(self, name):
         self.config = _get_toolchain(name)
 
