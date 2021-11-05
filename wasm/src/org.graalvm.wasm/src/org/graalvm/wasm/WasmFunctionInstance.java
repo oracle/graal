@@ -40,15 +40,17 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
@@ -106,13 +108,14 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     @ExportMessage
     Object execute(Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached WasmIndirectCallNode callNode) {
         TruffleContext c = getTruffleContext();
-        Object prev = c.enter(null);
+        Object prev = c.enter(self);
         try {
             return callNode.execute(target, arguments);
         } finally {
-            c.leave(null, prev);
+            c.leave(self, prev);
         }
     }
 }
