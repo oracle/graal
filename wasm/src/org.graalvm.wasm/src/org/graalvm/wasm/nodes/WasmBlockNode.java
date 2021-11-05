@@ -1475,9 +1475,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         CompilerAsserts.partialEvaluationConstant(imported);
         DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
         assert assertDirectCall(function, callNode);
-        if (!imported) {
-            return callNode.call(args);
-        } else {
+        if (imported) {
             WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
             TruffleContext truffleContext = functionInstance.context().environment().getContext();
             Object prev = truffleContext.enter(this);
@@ -1486,6 +1484,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             } finally {
                 truffleContext.leave(this, prev);
             }
+        } else {
+            return callNode.call(args);
         }
     }
 
