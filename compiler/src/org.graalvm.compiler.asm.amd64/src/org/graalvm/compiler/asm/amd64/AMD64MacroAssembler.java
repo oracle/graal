@@ -399,31 +399,28 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     /**
      * Emit a direct call to a fixed address, which will be patched later during code installation.
      *
-     * @param align indicates whether the displacement bytes (offset by
-     *            {@code callDisplacementOffset}) of this call instruction should be aligned to
-     *            {@code wordSize}.
+     * @param align indicates whether the call displacement must be 4-byte aligned
      * @return where the actual call instruction starts.
      */
-    public final int directCall(boolean align, int callDisplacementOffset, int wordSize) {
-        emitAlignmentForDirectCall(align, callDisplacementOffset, wordSize);
-        testAndAlign(5);
-        // After padding to mitigate JCC erratum, the displacement may be unaligned again. The
-        // previous pass is essential because JCC erratum padding may not trigger without the
-        // displacement alignment.
-        emitAlignmentForDirectCall(align, callDisplacementOffset, wordSize);
+    public final int directCall(boolean align) {
+        emitAlignmentForDirectCall(align);
+        if (testAndAlign(5) != 0) {
+            // If JCC erratum padding was emitted, the displacement may be unaligned again. The
+            // first call to emitAlignmentForDirectCall is essential as it may trigger the
+            // JCC erratum padding.
+            emitAlignmentForDirectCall(align);
+        }
         int beforeCall = position();
         call();
         return beforeCall;
     }
 
-    private void emitAlignmentForDirectCall(boolean align, int callDisplacementOffset, int wordSize) {
+    private void emitAlignmentForDirectCall(boolean align) {
         if (align) {
-            // make sure that the displacement word of the call ends up word aligned
-            int offset = position();
-            offset += callDisplacementOffset;
-            int modulus = wordSize;
-            if (offset % modulus != 0) {
-                nop(modulus - offset % modulus);
+            // make sure that the 4-byte call displacement will be 4-byte aligned
+            int displacementPos = position() + target.arch.getMachineCodeCallDisplacementOffset();
+            if (displacementPos % 4 != 0) {
+                nop(4 - displacementPos % 4);
             }
         }
     }
