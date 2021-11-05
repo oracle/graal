@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 import java.util.EnumMap;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -39,6 +40,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -625,20 +627,26 @@ public abstract class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    invoke.setBci(arraycopy.bci());
-                    invoke.setStateDuring(null);
-                    invoke.setStateAfter(null);
-                    if (arraycopy.stateDuring() != null) {
-                        invoke.setStateDuring(arraycopy.stateDuring());
-                    } else {
-                        assert arraycopy.stateAfter() != null : arraycopy;
-                        invoke.setStateAfter(arraycopy.stateAfter());
-                    }
+                    assert !BytecodeFrame.isPlaceholderBci(arraycopy.bci()) : arraycopy;
+                    assert !arraycopy.graph().getGuardsStage().areFrameStatesAtSideEffects() || assertEquals(arraycopy.bci(), invoke.bci());
+                    assert assertEquals(arraycopy.stateDuring(), invoke.stateDuring());
+                    assert arraycopy.stateDuring() != null || arraycopy.stateAfter() != null : arraycopy;
+                    assert assertEquals(arraycopy.stateAfter(), invoke.stateAfter());
                 } else if (originalNode instanceof InvokeWithExceptionNode) {
                     throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 }
             }
             GraphUtil.killCFG(arraycopy);
+        }
+
+        private static boolean assertEquals(int expected, int actual) {
+            assert actual == expected : "Expected " + expected + ", got " + actual;
+            return true;
+        }
+
+        private static boolean assertEquals(FrameState expected, FrameState actual) {
+            assert (expected == null && actual == null) || actual.dataFlowEquals(expected) : "Expected " + expected + ", got " + actual;
+            return true;
         }
 
         private ResolvedJavaMethod originalArraycopy() throws GraalError {
