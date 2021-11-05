@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import static org.graalvm.word.LocationIdentity.any;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -84,6 +82,8 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -91,8 +91,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-
-import static org.graalvm.word.LocationIdentity.any;
 
 public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider implements SubstrateLoweringProvider {
 
@@ -152,11 +150,11 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
         StructuredGraph graph = loadMethodNode.graph();
         SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
-        ReadNode methodPointer = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
+        ReadNode methodPointer = createReadVirtualMethod(graph, loadMethodNode.getHub(), method);
         graph.replaceFixed(loadMethodNode, methodPointer);
     }
 
-    private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method, ResolvedJavaType receiverType) {
+    private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method) {
         int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
         assert vtableEntryOffset > 0;
         /*

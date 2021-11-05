@@ -40,11 +40,8 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -66,7 +63,6 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
@@ -219,22 +215,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);
             }
-        }
-    }
-
-    private void addNonDataRelocation(RelocatableBuffer buffer, RelocatedPointer pointer, long offset) {
-        assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
-        assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
-
-        ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
-        HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : imageHeap.getUniverse().lookup(method);
-        if (hMethod.isCompiled()) {
-            // Only compiled methods inserted in vtables require relocation.
-            int pointerSize = ConfigurationValues.getTarget().wordSize;
-            ObjectFile.RelocationKind relocationKind = pointerSize == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4;
-            buffer.addRelocationWithoutAddend((int) offset, relocationKind, pointer);
-        } else {
-            GraalError.shouldNotReachHere(String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
         }
     }
 

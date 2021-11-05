@@ -126,7 +126,6 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImage extends AbstractImage {
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
@@ -656,10 +655,8 @@ public abstract class NativeImage extends AbstractImage {
                 baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
         } else if (target instanceof ConstantReference) {
-            VMConstant constant = ((ConstantReference) target).getConstant();
             // Direct object reference in code that must be patched (not a linker relocation)
-
-            Object object = SubstrateObjectConstant.asObject(constant);
+            Object object = SubstrateObjectConstant.asObject(((ConstantReference) target).getConstant());
             long address = heap.getObjectInfo(object).getAddress();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;

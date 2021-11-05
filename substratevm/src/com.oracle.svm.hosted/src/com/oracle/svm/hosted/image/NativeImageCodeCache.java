@@ -198,9 +198,14 @@ public abstract class NativeImageCodeCache {
 
     private void addConstantToHeap(Constant constant, Object reason) {
         if (constant instanceof SubstrateMethodPointerConstant) {
+            /*
+             * This constant represents a pointer to a method, and as such, should not be added to
+             * the heap
+             */
             return;
         }
         Object obj = SubstrateObjectConstant.asObject(constant);
+
         if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
             throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName() + "." +
                             (reason != null ? " Method: " + reason : ""));

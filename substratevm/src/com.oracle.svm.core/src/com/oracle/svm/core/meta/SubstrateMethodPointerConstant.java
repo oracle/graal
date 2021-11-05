@@ -61,11 +61,11 @@ public class SubstrateMethodPointerConstant implements VMConstant {
             return false;
         }
         SubstrateMethodPointerConstant that = (SubstrateMethodPointerConstant) obj;
-        return this == obj || this.pointer.equals(that.pointer);
+        return this == obj || this.pointer == that.pointer;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(pointer);
+        return Objects.hashCode(pointer.getMethod());
     }
 }

@@ -34,7 +34,6 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -43,8 +42,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
@@ -55,8 +52,6 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -437,12 +432,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public Constant getEncoding() {
-        boolean useLLVMBackend = SubstrateOptions.useLLVMBackend();
-        final Architecture arch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        if (arch instanceof AMD64 && !useLLVMBackend) {
-            return new SubstrateMethodPointerConstant(methodPointer);
-        }
-        throw shouldNotReachHere("Method pointer constants are currently only supported for AMD64.");
+        return new SubstrateMethodPointerConstant(methodPointer);
     }
 
     @Override

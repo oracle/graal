@@ -33,7 +33,6 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
@@ -948,49 +947,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return new MoveFromConstOp(dst, constant);
         }
 
-        public static final class LoadMethodPointerConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
-            public static final LIRInstructionClass<LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(LoadMethodPointerConstantOp.class);
-            private final SubstrateMethodPointerConstant constant;
-            @Def({REG, HINT}) protected AllocatableValue result;
-
-            protected LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
-                super(TYPE);
-                this.constant = constant;
-                this.result = result;
-            }
-
-            @Override
-            public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-                int pointerSize = ConfigurationValues.getTarget().wordSize;
-                Register resultReg = asRegister(result);
-                if (masm.target.inlineObjects) {
-                    crb.recordInlineDataInCode(constant);
-                    if (pointerSize == 4) {
-                        masm.movl(resultReg, 0, true);
-                    } else {
-                        masm.movq(resultReg, 0L, true);
-                    }
-                } else {
-                    AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(constant, pointerSize);
-                    if (pointerSize == 4) {
-                        masm.movl(resultReg, address);
-                    } else {
-                        masm.movq(resultReg, address);
-                    }
-                }
-            }
-
-            @Override
-            public AllocatableValue getResult() {
-                return result;
-            }
-
-            @Override
-            public SubstrateMethodPointerConstant getConstant() {
-                return constant;
-            }
-        }
-
         /*
          * The constant denotes the result produced by this node. Thus if the constant is
          * compressed, the result must be compressed and vice versa. Both compressed and
@@ -1051,7 +1007,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 }
             }
         }
-
     }
 
     private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
