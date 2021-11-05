@@ -283,7 +283,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
     }
