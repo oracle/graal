@@ -69,15 +69,22 @@ maven_base_11_native: ${maven_base_native} {
   }
 }
 
+vm_unittest: {
+  environment: {
+      "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+      "MX_TEST_RESULT_TAGS": "vm"
+  }
+}
+
 builds += [
-  ${vm_java_8} ${gate_vm_linux} {
+  ${vm_java_8} ${gate_vm_linux} ${vm_unittest} {
     run: [
       [mx, build]
       [mx, unittest, --suite, vm]
     ]
     name: gate-vm-unittest-linux-amd64
   }
-  ${windows-amd64} ${oraclejdk8} ${devkits.windows-oraclejdk8} ${gate_vm_windows} {
+  ${windows-amd64} ${oraclejdk8} ${devkits.windows-oraclejdk8} ${gate_vm_windows} ${vm_unittest} {
     run: [
         [mx, build]
         [mx, unittest, --suite, vm]
