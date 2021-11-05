@@ -113,6 +113,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -340,7 +341,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
             graalFeature.prepareMethodForRuntimeCompilation(method, config);
         }
 
-        initializeMethodBlocklist(config.getMetaAccess());
+        initializeMethodBlocklist(config.getMetaAccess(), access);
 
         /*
          * Stack frames that are visited by Truffle-level stack walking must have full frame
@@ -496,7 +497,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
-    private void initializeMethodBlocklist(MetaAccessProvider metaAccess) {
+    private void initializeMethodBlocklist(MetaAccessProvider metaAccess, FeatureAccess featureAccess) {
         blocklistMethod(metaAccess, Object.class, "clone");
         blocklistMethod(metaAccess, Object.class, "equals", Object.class);
         blocklistMethod(metaAccess, Object.class, "hashCode");
@@ -580,6 +581,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         blocklistAllMethods(metaAccess, ToLongBiFunction.class);
         blocklistAllMethods(metaAccess, ToLongFunction.class);
         blocklistAllMethods(metaAccess, UnaryOperator.class);
+
+        /* Block list string concatenation. */
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            blocklistAllMethods(metaAccess, featureAccess.findClassByName("java.lang.StringConcatHelper"));
+        }
 
         /*
          * Core Substrate VM classes that very certainly should not be reachable for runtime
