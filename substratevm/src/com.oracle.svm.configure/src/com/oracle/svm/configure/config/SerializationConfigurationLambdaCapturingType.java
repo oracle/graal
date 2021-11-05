@@ -25,7 +25,6 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Objects;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -34,21 +33,17 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
-public class SerializationConfigurationType implements JsonPrintable, Comparable<SerializationConfigurationType> {
-    private final String qualifiedCustomTargetConstructorJavaName;
+public class SerializationConfigurationLambdaCapturingType implements JsonPrintable, Comparable<SerializationConfigurationLambdaCapturingType> {
     private final ConfigurationCondition condition;
     private final String qualifiedJavaName;
 
-    public SerializationConfigurationType(ConfigurationCondition condition, String qualifiedJavaName, String qualifiedCustomTargetConstructorJavaName) {
+    public SerializationConfigurationLambdaCapturingType(ConfigurationCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
-        assert qualifiedCustomTargetConstructorJavaName == null || qualifiedCustomTargetConstructorJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert qualifiedCustomTargetConstructorJavaName == null || !qualifiedCustomTargetConstructorJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         Objects.requireNonNull(condition);
         this.condition = condition;
         Objects.requireNonNull(qualifiedJavaName);
         this.qualifiedJavaName = qualifiedJavaName;
-        this.qualifiedCustomTargetConstructorJavaName = qualifiedCustomTargetConstructorJavaName;
     }
 
     @Override
@@ -56,12 +51,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
 
-        writer.quote(SerializationConfigurationParser.NAME_KEY).append(':').quote(qualifiedJavaName);
-        if (qualifiedCustomTargetConstructorJavaName != null) {
-            writer.append(',').newline();
-            writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')
-                            .quote(qualifiedCustomTargetConstructorJavaName);
-        }
+        writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(qualifiedJavaName);
         writer.unindent().newline().append('}');
     }
 
@@ -73,31 +63,22 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        SerializationConfigurationType that = (SerializationConfigurationType) o;
-        return condition.equals(condition) &&
-                        qualifiedJavaName.equals(that.qualifiedJavaName) &&
-                        Objects.equals(qualifiedCustomTargetConstructorJavaName, that.qualifiedCustomTargetConstructorJavaName);
+        SerializationConfigurationLambdaCapturingType that = (SerializationConfigurationLambdaCapturingType) o;
+        return condition.equals(that.condition) &&
+                        qualifiedJavaName.equals(that.qualifiedJavaName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(condition, qualifiedJavaName, qualifiedCustomTargetConstructorJavaName);
+        return Objects.hash(condition, qualifiedJavaName);
     }
 
     @Override
-    public int compareTo(SerializationConfigurationType other) {
+    public int compareTo(SerializationConfigurationLambdaCapturingType other) {
         int compareName = qualifiedJavaName.compareTo(other.qualifiedJavaName);
         if (compareName != 0) {
             return compareName;
         }
-
-        int compareCondition = condition.compareTo(condition);
-
-        if (compareCondition != 0) {
-            return compareCondition;
-        }
-
-        Comparator<String> nullsFirstCompare = Comparator.nullsFirst(Comparator.naturalOrder());
-        return nullsFirstCompare.compare(qualifiedCustomTargetConstructorJavaName, other.qualifiedCustomTargetConstructorJavaName);
+        return condition.compareTo(other.condition);
     }
 }

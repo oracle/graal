@@ -66,6 +66,7 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.java.LambdaUtils;
 
 public final class CallTreePrinter {
 
@@ -311,7 +312,7 @@ public final class CallTreePrinter {
             String name = method.getDeclaringClass().toJavaName(true);
             if (packageNameOnly) {
                 name = packagePrefix(name);
-                if (name.contains("$$Lambda$")) {
+                if (name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                     /* Also strip synthetic package names added for lambdas. */
                     name = packagePrefix(name);
                 }

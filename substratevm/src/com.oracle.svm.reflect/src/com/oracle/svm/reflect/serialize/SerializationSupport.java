@@ -27,6 +27,7 @@ package com.oracle.svm.reflect.serialize;
 
 import java.io.Serializable;
 // Checkstyle: stop
+import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 // Checkstyle: resume
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -82,6 +84,7 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     private final Constructor<?> stubConstructor;
+    private final Class<?> serializedLambdaClass;
 
     private static final class SerializationLookupKey {
         private final Class<?> declaringClass;
@@ -117,6 +120,7 @@ public class SerializationSupport implements SerializationRegistry {
     public SerializationSupport(Constructor<?> stubConstructor) {
         constructorAccessors = new ConcurrentHashMap<>();
         this.stubConstructor = stubConstructor;
+        this.serializedLambdaClass = SerializedLambda.class;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -126,18 +130,20 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     @Override
-    public Object getSerializationConstructorAccessor(Class<?> declaringClass, Class<?> rawTargetConstructorClass) {
-        Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
+    public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
+        Class<?> declaringClass = rawDeclaringClass;
 
+        if (declaringClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+            declaringClass = serializedLambdaClass;
+        }
+
+        Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;
         Object constructorAccessor = constructorAccessors.get(new SerializationLookupKey(declaringClass, targetConstructorClass));
 
         if (constructorAccessor != null) {
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
-            if (targetConstructorClassName.contains("$$Lambda$")) {
-                throw VMError.unsupportedFeature("Can't serialize " + targetConstructorClassName + ". Lambda class serialization is currently not supported");
-            }
             throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
                             " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
                             " to serialization-config.json fixes the problem.");

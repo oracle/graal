@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
@@ -40,36 +41,76 @@ import com.oracle.svm.configure.json.JsonWriter;
 
 public class SerializationConfiguration implements ConfigurationBase, RuntimeSerializationSupport {
 
-    private final Set<SerializationConfigurationType> serializations = ConcurrentHashMap.newKeySet();
+    private final Set<SerializationConfigurationType> serializationTypes = ConcurrentHashMap.newKeySet();
+    private final Set<SerializationConfigurationLambdaCapturingType> lambdaSerializationCapturingTypes = ConcurrentHashMap.newKeySet();
 
     public SerializationConfiguration() {
     }
 
     public SerializationConfiguration(SerializationConfiguration other) {
-        serializations.addAll(other.serializations);
+        serializationTypes.addAll(other.serializationTypes);
+        lambdaSerializationCapturingTypes.addAll(other.lambdaSerializationCapturingTypes);
     }
 
     public void removeAll(SerializationConfiguration other) {
-        serializations.removeAll(other.serializations);
+        serializationTypes.removeAll(other.serializationTypes);
+        lambdaSerializationCapturingTypes.removeAll(other.lambdaSerializationCapturingTypes);
     }
 
     public boolean contains(ConfigurationCondition condition, String serializationTargetClass, String customTargetConstructorClass) {
-        return serializations.contains(createConfigurationType(condition, serializationTargetClass, customTargetConstructorClass));
+        return serializationTypes.contains(createConfigurationType(condition, serializationTargetClass, customTargetConstructorClass)) ||
+                        lambdaSerializationCapturingTypes.contains(createLambdaCapturingClassConfigurationType(condition, serializationTargetClass));
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
-        writer.append('[').indent();
+        writer.append('{').indent().newline();
+        printSerializationClasses(writer, "types");
+        writer.append(",").newline();
+        printSerializationClasses(writer, "lambdaCapturingTypes");
+        writer.unindent().newline();
+        writer.append('}');
+    }
+
+    private void printSerializationClasses(JsonWriter writer, String types) throws IOException {
+        writer.quote(types).append(":");
+        writer.append('[');
+        writer.indent();
+
+        if (types.equals("types")) {
+            printSerializationTypes(writer);
+        } else {
+            printLambdaCapturingSerializationTypes(writer);
+        }
+
+        writer.unindent().newline();
+        writer.append("]");
+    }
+
+    private void printSerializationTypes(JsonWriter writer) throws IOException {
         String prefix = "";
-        List<SerializationConfigurationType> list = new ArrayList<>(serializations);
-        Collections.sort(list);
-        for (SerializationConfigurationType type : list) {
+
+        List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializationTypes);
+        Collections.sort(listOfCapturedClasses);
+
+        for (SerializationConfigurationType type : listOfCapturedClasses) {
             writer.append(prefix).newline();
             type.printJson(writer);
             prefix = ",";
         }
-        writer.unindent().newline();
-        writer.append(']');
+    }
+
+    private void printLambdaCapturingSerializationTypes(JsonWriter writer) throws IOException {
+        String prefix = "";
+
+        List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
+        Collections.sort(listOfCapturingClasses);
+
+        for (SerializationConfigurationLambdaCapturingType type : listOfCapturingClasses) {
+            writer.append(prefix).newline();
+            type.printJson(writer);
+            prefix = ",";
+        }
     }
 
     @Override
@@ -86,17 +127,27 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
 
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
-        serializations.add(createConfigurationType(condition, className, customTargetConstructorClassName));
+        serializationTypes.add(createConfigurationType(condition, className, customTargetConstructorClassName));
+    }
+
+    @Override
+    public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+        lambdaSerializationCapturingTypes.add(createLambdaCapturingClassConfigurationType(condition, lambdaCapturingClassName.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0]));
     }
 
     @Override
     public boolean isEmpty() {
-        return serializations.isEmpty();
+        return serializationTypes.isEmpty() && lambdaSerializationCapturingTypes.isEmpty();
     }
 
     private static SerializationConfigurationType createConfigurationType(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
         String convertedCustomTargetConstructorClassName = customTargetConstructorClassName == null ? null : SignatureUtil.toInternalClassName(customTargetConstructorClassName);
         return new SerializationConfigurationType(condition, convertedClassName, convertedCustomTargetConstructorClassName);
+    }
+
+    private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(ConfigurationCondition condition, String className) {
+        String convertedClassName = SignatureUtil.toInternalClassName(className);
+        return new SerializationConfigurationLambdaCapturingType(condition, convertedClassName);
     }
 }

@@ -48,4 +48,5 @@ public interface RuntimeSerializationSupport {
 
     void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
 
+    void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName);
 }
