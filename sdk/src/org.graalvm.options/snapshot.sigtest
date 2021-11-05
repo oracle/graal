@@ -134,8 +134,6 @@ hfds DEFAULTTYPES,EMPTY_VALIDATOR,converter,isOptionMap,name,validator
 hcls Converter
 
 CLSS public abstract interface org.graalvm.options.OptionValues
-meth public abstract <%0 extends java.lang.Object> void set(org.graalvm.options.OptionKey<{%%0}>,{%%0})
- anno 0 java.lang.Deprecated()
 meth public abstract <%0 extends java.lang.Object> {%%0} get(org.graalvm.options.OptionKey<{%%0}>)
 meth public abstract boolean hasBeenSet(org.graalvm.options.OptionKey<?>)
 meth public abstract org.graalvm.options.OptionDescriptors getDescriptors()

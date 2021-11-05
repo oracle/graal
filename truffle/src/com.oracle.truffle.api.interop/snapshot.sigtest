@@ -3,17 +3,11 @@
 
 CLSS public final com.oracle.truffle.api.interop.ArityException
 meth public int getActualArity()
-meth public int getExpectedArity()
- anno 0 java.lang.Deprecated()
 meth public int getExpectedMaxArity()
 meth public int getExpectedMinArity()
 meth public java.lang.String getMessage()
-meth public static com.oracle.truffle.api.interop.ArityException create(int,int)
- anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.interop.ArityException create(int,int,int)
 meth public static com.oracle.truffle.api.interop.ArityException create(int,int,int,java.lang.Throwable)
-meth public static com.oracle.truffle.api.interop.ArityException create(int,int,java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 supr com.oracle.truffle.api.interop.InteropException
 hfds actualArity,expectedMaxArity,expectedMinArity,serialVersionUID
 
