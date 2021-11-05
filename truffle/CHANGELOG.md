@@ -27,6 +27,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Added the `--engine.TraceCodeSharing` option that allows to log debug information on code sharing.
 * Added the `--engine.ForceCodeSharing` and `--engine.DisableCodeSharing` option that allows to force enable and force disable code sharing. This option is useful for testing to enable or disable sharing across all contexts of a process.
 * Removed deprecated in `ArityException`.
+* Removed deprecated methods in `ArityException`.
 * Removed deprecated object DSL processor that was deprecated for several releases. 
 * Removed deprecated encapsulating node accessor methods in `NodeUtil`.
 * Removed deprecated method `LoopNode.executeLoop`.
