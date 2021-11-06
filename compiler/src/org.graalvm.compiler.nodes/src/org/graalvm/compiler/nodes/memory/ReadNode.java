@@ -88,7 +88,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             // Read without usages or guard can be safely removed.
             return null;
         }
-        if (!getNullCheck()) {
+        if (!getUsedAsNullCheck()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
         } else {
             // if this read is a null check, then replacing it with the value is incorrect for
@@ -107,7 +107,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        return (getNullCheck() && type == InputType.Guard) ? true : super.isAllowedUsageType(type);
+        return (getUsedAsNullCheck() && type == InputType.Guard) ? true : super.isAllowedUsageType(type);
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CanonicalizerTool tool) {

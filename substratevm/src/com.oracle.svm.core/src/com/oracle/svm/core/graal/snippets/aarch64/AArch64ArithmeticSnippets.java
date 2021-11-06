@@ -284,7 +284,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
     private AArch64ArithmeticSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
 
-        super(options, factories, providers, snippetReflection, lowerings);
+        super(options, factories, providers, snippetReflection, lowerings, false);
         frem = snippet(AArch64ArithmeticSnippets.class, "fremSnippet");
         drem = snippet(AArch64ArithmeticSnippets.class, "dremSnippet");
 

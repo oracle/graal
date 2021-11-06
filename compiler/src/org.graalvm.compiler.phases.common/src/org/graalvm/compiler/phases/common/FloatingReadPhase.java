@@ -419,7 +419,7 @@ public class FloatingReadPhase extends Phase {
                 // participate in the memory graph.
                 GraalError.guarantee(!initMemory.contains(accessNode.getAddress().getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
 
-                assert accessNode.getNullCheck() == false;
+                assert accessNode.getUsedAsNullCheck() == false;
                 MemoryKill lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
                     FloatingAccessNode floatingNode = accessNode.asFloatingNode();

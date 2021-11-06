@@ -316,7 +316,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         if (BenchmarkCounters.enabled) {
-            Value[] incrementValues = (Value[]) Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray();
+            Value[] incrementValues = Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray(Value[]::new);
             return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
         }
         throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
