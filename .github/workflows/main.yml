@@ -45,38 +45,38 @@ jobs:
       matrix:
         include:
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test"
               PRIMARY: "compiler"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test,helloworld"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,test,helloworld_debug"
               PRIMARY: "substratevm"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,bootstraplite"
               PRIMARY: "compiler"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,sulong"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK: "openjdk8"
+              JDK: "labsjdk-ce-17"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
