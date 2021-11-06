@@ -71,15 +71,19 @@
   darwin_amd64:: darwin_amd64 + sulong_deps.darwin,
   windows_amd64:: windows_amd64 + sulong_deps.windows,
 
+  sulong_notifications:: {
+    notify_groups:: ["sulong"],
+  },
+
   gate:: {
     targets+: ["gate"],
   },
 
-  daily:: {
+  daily:: $.sulong_notifications {
     targets+: ["daily"],
   },
 
-  weekly:: {
+  weekly:: $.sulong_notifications {
     targets+: ["weekly"],
   },
 
@@ -129,10 +133,6 @@
       assert std.isString(tags) : "gateTags(tags): the `tags` parameter must be a string" + $.nameOrEmpty(self);
       [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
   } + self.Description("Run mx gate --tags " + tags),
-
-  sulong_weekly_notifications:: {
-    notify_groups:: ["sulong"],
-  },
 
   sulong_gateTest_default_tools:: {
     environment+: {
