@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -342,7 +343,7 @@ public class SubstrateGraphKit extends GraphKit {
             stateSplit.setStateAfter(frameState.create(bci, stateSplit));
         }
 
-        AbstractBeginNode noExceptionEdge = add(withExceptionNode.createNextBegin());
+        AbstractBeginNode noExceptionEdge = add(new BeginNode());
         withExceptionNode.setNext(noExceptionEdge);
         ExceptionObjectNode exceptionEdge = createExceptionObjectNode(frameState, bci);
         withExceptionNode.setExceptionEdge(exceptionEdge);

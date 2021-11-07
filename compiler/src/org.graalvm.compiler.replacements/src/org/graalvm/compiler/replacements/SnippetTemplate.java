@@ -118,6 +118,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnreachableControlSinkNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -1570,21 +1571,43 @@ public class SnippetTemplate {
     }
 
     /**
-     * Verifies that a {@link WithExceptionNode} does not have memory usages. It shouldn't because
-     * if it is a memory kill, its {@link WithExceptionNode#next()} and
-     * {@link WithExceptionNode#exceptionEdge()} edges should start with a memory kill as well
-     * ({@link org.graalvm.compiler.nodes.KillingBeginNode}, {@link ExceptionObjectNode}) or be
-     * {@linkplain org.graalvm.compiler.nodes.UnreachableBeginNode unreachable}.
-     *
-     * Knowing that there are no memory usages simplifies the handling of {@link WithExceptionNode}
-     * after {@link FloatingReadPhase} because we can simply ignore the memory graph. If this
-     * changes in the future, we need to rewire the memory graph on the exception edge, just as we
-     * do for the return path of the snippet for replacees other than {@link WithExceptionNode}.
-     * This guarantee ensures that we do not forget that.
+     * Verifies that a {@link WithExceptionNode} has only memory usages via the
+     * {@link WithExceptionNode#next()} edge. On the {@link WithExceptionNode#exceptionEdge()} there
+     * must be a {@link MemoryKill} (or an {@link UnreachableBeginNode}), otherwise we would not
+     * know from which edge a memory usage is coming from.
      */
     private static void verifyWithExceptionNode(ValueNode node) {
-        if (node instanceof WithExceptionNode) {
-            GraalError.guarantee(node.hasNoUsages() || !node.hasUsagesOfType(InputType.Memory), "%s should not have any memory usages", node);
+        if (node instanceof WithExceptionNode && node instanceof MemoryKill) {
+            WithExceptionNode withExceptionNode = (WithExceptionNode) node;
+            AbstractBeginNode exceptionEdge = withExceptionNode.exceptionEdge();
+            if (exceptionEdge instanceof UnreachableBeginNode) {
+                // exception edge is unreachable - we are good
+                return;
+            }
+            GraalError.guarantee(exceptionEdge instanceof MemoryKill, "The exception edge of %s is not a memory kill %s", node, exceptionEdge);
+            if (exceptionEdge instanceof SingleMemoryKill) {
+                SingleMemoryKill exceptionEdgeKill = (SingleMemoryKill) exceptionEdge;
+                if (exceptionEdgeKill.getKilledLocationIdentity().isAny()) {
+                    // exception edge kills any - we are good
+                    return;
+                }
+                // if the exception edge does not kill any, it must kill the same location
+                GraalError.guarantee(withExceptionNode instanceof SingleMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                SingleMemoryKill withExceptionKill = (SingleMemoryKill) withExceptionNode;
+                GraalError.guarantee(withExceptionKill.getKilledLocationIdentity().equals(exceptionEdgeKill.getKilledLocationIdentity()),
+                                "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentity(), exceptionEdgeKill,
+                                exceptionEdgeKill.getKilledLocationIdentity());
+            } else if (exceptionEdge instanceof MultiMemoryKill) {
+                // for multi memory kills the locations must match
+                MultiMemoryKill exceptionEdgeKill = (MultiMemoryKill) exceptionEdge;
+                GraalError.guarantee(withExceptionNode instanceof MultiMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                MultiMemoryKill withExceptionKill = (MultiMemoryKill) withExceptionNode;
+                GraalError.guarantee(Arrays.equals(withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill.getKilledLocationIdentities()),
+                                "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill,
+                                exceptionEdgeKill.getKilledLocationIdentities());
+            } else {
+                GraalError.shouldNotReachHere("Unexpected exception edge: " + exceptionEdge);
+            }
         }
     }
 

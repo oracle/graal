@@ -400,7 +400,6 @@ public class GraphDecoder {
         public final int stateAfterOrderId;
         public final int nextOrderId;
 
-        public final int nextNextOrderId;
         public final int exceptionOrderId;
         public final int exceptionStateOrderId;
         public final int exceptionNextOrderId;
@@ -408,16 +407,14 @@ public class GraphDecoder {
         public CallTargetNode callTarget;
         public FixedWithNextNode invokePredecessor;
 
-        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId, int nextNextOrderId,
-                        int exceptionOrderId,
-                        int exceptionStateOrderId, int exceptionNextOrderId) {
+        protected InvokeData(Invoke invoke, ResolvedJavaType contextType, int invokeOrderId, int callTargetOrderId, int stateAfterOrderId, int nextOrderId,
+                        int exceptionOrderId, int exceptionStateOrderId, int exceptionNextOrderId) {
             this.invoke = invoke;
             this.contextType = contextType;
             this.invokeOrderId = invokeOrderId;
             this.callTargetOrderId = callTargetOrderId;
             this.stateAfterOrderId = stateAfterOrderId;
             this.nextOrderId = nextOrderId;
-            this.nextNextOrderId = nextNextOrderId;
             this.exceptionOrderId = exceptionOrderId;
             this.exceptionStateOrderId = exceptionStateOrderId;
             this.exceptionNextOrderId = exceptionNextOrderId;
@@ -813,14 +810,13 @@ public class GraphDecoder {
         int nextOrderId = readOrderId(methodScope);
 
         if (invoke instanceof InvokeWithExceptionNode) {
-            int nextNextOrderId = readOrderId(methodScope);
             int exceptionOrderId = readOrderId(methodScope);
             int exceptionStateOrderId = readOrderId(methodScope);
             int exceptionNextOrderId = readOrderId(methodScope);
-            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, nextNextOrderId, exceptionOrderId, exceptionStateOrderId,
+            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, exceptionOrderId, exceptionStateOrderId,
                             exceptionNextOrderId);
         } else {
-            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, -1, -1, -1, -1);
+            return new InvokeData(invoke, contextType, invokeOrderId, callTargetOrderId, stateAfterOrderId, nextOrderId, -1, -1, -1);
         }
     }
 
@@ -1537,6 +1533,22 @@ public class GraphDecoder {
                 }
             }
         }
+    }
+
+    protected NodeClass<?> getNodeClass(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
+        if (nodeOrderId == GraphEncoder.NULL_ORDER_ID) {
+            return null;
+        }
+        FixedNode node = (FixedNode) lookupNode(loopScope, nodeOrderId);
+        if (node != null) {
+            return node.getNodeClass();
+        }
+
+        long readerByteIndex = methodScope.reader.getByteIndex();
+        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
+        NodeClass<?> nodeClass = methodScope.encodedGraph.getNodeClasses()[methodScope.reader.getUVInt()];
+        methodScope.reader.setByteIndex(readerByteIndex);
+        return nodeClass;
     }
 
     protected FixedNode makeStubNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId) {
