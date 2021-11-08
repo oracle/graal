@@ -187,9 +187,9 @@ suite = {
 
         # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native": {
-            "class": "SulongToolchainNativeProject",
             "subDir": "src",
             "native": "shared_lib",
+            "manifestType": "sulong-native",
             "deliverable": "nespresso",
             "platformDependent": True,
             "use_jdk_headers": True,
@@ -240,9 +240,9 @@ suite = {
 
         # libjvm Espresso implementation
         "com.oracle.truffle.espresso.mokapot": {
-            "class": "SulongToolchainNativeProject",
             "subDir": "src",
             "native": "shared_lib",
+            "manifestType": "sulong-native",
             "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
