@@ -157,7 +157,7 @@ public final class ModuleLayerFeature implements Feature {
     /*
      * Updates module fields of all DynamicHubs with appropriate synthesized module instances
      */
-    private void patchDynamicHubs(List<AnalysisType> types, SVMHost host, ModuleLayer runtimeBootLayer) {
+    private static void patchDynamicHubs(List<AnalysisType> types, SVMHost host, ModuleLayer runtimeBootLayer) {
         for (AnalysisType type : types) {
             if (!type.isReachable() || type.isArray()) {
                 continue;
@@ -239,7 +239,7 @@ public final class ModuleLayerFeature implements Feature {
         }
     }
 
-    private List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
+    private static List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
         List<Module> applicationModules = new ArrayList<>();
         List<String> applicationModuleNames;
         try {
