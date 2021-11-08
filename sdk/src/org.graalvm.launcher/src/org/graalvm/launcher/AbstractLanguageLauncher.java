@@ -57,7 +57,7 @@ import org.graalvm.polyglot.PolyglotException;
 public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     private static final Constructor<AbstractLanguageLauncher> LAUNCHER_CTOR;
-    private boolean jniLaunch = false;
+    private boolean jniLaunch;
     private int nativeArgc;
     private long nativeArgv;
     private static boolean[] vmArgIndices;
@@ -153,13 +153,15 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     /**
      * Check if the arguments parsing heuristic of the native launcher correctly identified the set
-     * of VM arguments. Throw an exception if it hasn't.
+     * of VM arguments. Throw a {@code RelaunchException} if it hasn't. The exception will be picked
+     * up by the native launcher, which will read the {@code vmArgIndices} and restart the VM with
+     * the correct set of VM arguments.
      *
      * @param originalArgs original set of arguments (except for argv[0], the program name)
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
-    void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
-        if (System.getenv("VMARGS") != null) {
+    final static void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+        if (System.getenv("TRUFFLE_LAUNCHER_VMARGS") != null) {
             // vm arguments have been explicitly set, bypassing the heuristic
             return;
         }
@@ -181,10 +183,14 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         if (relaunchRequired) {
+            // the exception will be picked up by the native language library launcher
             throw new RelaunchException();
         }
     }
 
+    /**
+     * Used by the native launcher to detect that a relaunch of the VM is needed.
+     */
     protected static final class RelaunchException extends RuntimeException {
         private static final long serialVersionUID = -4014071914987464223L;
 

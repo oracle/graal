@@ -75,9 +75,12 @@
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
 
-#define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", 5) == 0)
-#define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", 8) == 0)
-#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", 15) == 0)
+#define VM_ARG_OFFSET 5
+#define VM_CP_ARG_OFFSET 8
+#define VM_CLASSPATH_ARG_OFFSET 15
+#define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", VM_ARG_OFFSET) == 0)
+#define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", VM_CP_ARG_OFFSET) == 0)
+#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", VM_CLASSPATH_ARG_OFFSET) == 0)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -162,7 +165,7 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     // check if vm arg indices have been set on relaunch already
     bool relaunch = false;
     std::vector<bool> vmArgIndices;
-    if (char *vmArgInfo = getenv("VMARGS")) {
+    if (char *vmArgInfo = getenv("TRUFFLE_LAUNCHER_VMARGS")) {
         relaunch = true;
         char *cur = vmArgInfo;
         int len = strlen(vmArgInfo);
@@ -219,12 +222,12 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
             continue;
         }
         if (IS_VM_CP_ARG(argv[i])) {
-            cp << CP_SEP_STR << argv[i]+8;
+            cp << CP_SEP_STR << argv[i]+VM_CP_ARG_OFFSET;
         } else if (IS_VM_CLASSPATH_ARG(argv[i])) {
-            cp << CP_SEP_STR << argv[i]+15;
+            cp << CP_SEP_STR << argv[i]+VM_CLASSPATH_ARG_OFFSET;
         } else if (IS_VM_ARG(argv[i])) {
             std::stringstream opt;
-            opt << '-' << argv[i]+5;
+            opt << '-' << argv[i]+VM_ARG_OFFSET;
             curOpt->optionString = strdup(opt.str().c_str());
             curOpt++;
             vmInitArgs->nOptions++;
@@ -235,12 +238,12 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     #ifdef LAUNCHER_OPTION_VARS
     for (int i = 0; i < launcherOptionCount; i++) {
         if (IS_VM_CP_ARG(launcherOptionVars[i])) {
-            cp << CP_SEP_STR << launcherOptionVars[i]+8;
+            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CP_ARG_OFFSET;
         } else if (IS_VM_CLASSPATH_ARG(launcherOptionVars[i])) {
-            cp << CP_SEP_STR << launcherOptionVars[i]+15;
+            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CLASSPATH_ARG_OFFSET;
         } else if (IS_VM_ARG(launcherOptionVars[i])) {
             std::stringstream opt;
-            opt << '-' << launcherOptionVars[i]+5;
+            opt << '-' << launcherOptionVars[i]+VM_ARG_OFFSET;
             curOpt->optionString = strdup(opt.str().c_str());
             curOpt++;
             vmInitArgs->nOptions++;
@@ -375,7 +378,7 @@ int main(int argc, char *argv[]) {
                     vmArgInfo << i+1;
                 }
             }
-            if (setenv("VMARGS", strdup(vmArgInfo.str().c_str()), 1) == -1) {
+            if (setenv("TRUFFLE_LAUNCHER_VMARGS", strdup(vmArgInfo.str().c_str()), 1) == -1) {
                 perror("setenv failed");
                 return -1;
             }
