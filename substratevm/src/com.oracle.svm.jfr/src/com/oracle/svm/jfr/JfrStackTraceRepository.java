@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +24,41 @@
  */
 package com.oracle.svm.jfr;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
+ * Repository that collects all metadata about stacktraces.
  */
-public final class JfrNativeEventWriterDataAccess {
+public class JfrStackTraceRepository implements JfrConstantPool {
 
-    /**
-     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the given buffer.
-     */
-    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
-    public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
-        assert buffer.isNonNull();
+    private int depth = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
 
-        data.setJfrBuffer(buffer);
-        data.setStartPos(buffer.getPos());
-        data.setCurrentPos(buffer.getPos());
-        data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrStackTraceRepository() {
     }
 
-    /**
-     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the current thread's
-     * native buffer.
-     */
-    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
-    public static void initializeThreadLocalNativeBuffer(JfrNativeEventWriterData data) {
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        JfrBuffer nativeBuffer = jfrThreadLocal.getNativeBuffer();
-        initialize(data, nativeBuffer);
+    public void teardown() {
+    }
+
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    public long getStackTraceId(@SuppressWarnings("unused") int skipCount, @SuppressWarnings("unused") boolean previousEpoch) {
+        assert depth >= 0;
+        return 0;
+    }
+
+    public void setStackTraceDepth(int depth) {
+        if (depth < 0 || depth > SubstrateOptions.MaxJavaStackTraceDepth.getValue()) {
+            throw new IllegalArgumentException("StackTrace depth (" + depth + ") is not in a valid range!");
+        }
+        this.depth = depth;
+    }
+
+    @Override
+    public int write(@SuppressWarnings("unused") JfrChunkWriter writer) {
+        return EMPTY;
     }
 }

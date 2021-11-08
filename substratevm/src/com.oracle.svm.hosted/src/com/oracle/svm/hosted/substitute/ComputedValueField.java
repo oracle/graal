@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
@@ -96,6 +97,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal,
                     boolean disableCaching) {
+        assert original != null;
+        assert targetClass != null;
+
         this.original = original;
         this.annotated = annotated;
         this.kind = kind;
@@ -436,6 +440,18 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return original.getAnnotation(annotationClass);
+    }
+
+    public boolean isCompatible(ResolvedJavaField o) {
+        if (this.equals(o)) {
+            return true;
+        } else if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        ComputedValueField that = (ComputedValueField) o;
+        return isFinal == that.isFinal && disableCaching == that.disableCaching && original.equals(that.original) && kind == that.kind &&
+                        Objects.equals(targetClass, that.targetClass) && Objects.equals(targetField, that.targetField) && Objects.equals(constantValue, that.constantValue);
     }
 
     @Override

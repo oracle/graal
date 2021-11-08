@@ -45,6 +45,6 @@ public class JfrFrameTypeSerializer implements JfrConstantPool {
             writer.writeCompressedInt(i);
             writer.writeString(values[i].getText());
         }
-        return 1;
+        return NON_EMPTY;
     }
 }

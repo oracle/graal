@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr.events;
+package com.oracle.svm.jfr;
 
-import jdk.jfr.Category;
-import jdk.jfr.DataAmount;
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.Name;
-import jdk.jfr.Period;
-import jdk.jfr.StackTrace;
-import jdk.jfr.internal.Type;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@Label("Physical Memory")
-@Description("OS Physical Memory")
-@Category("Operating System, Memory")
-@StackTrace(false)
-@Name(Type.EVENT_NAME_PREFIX + "PhysicalMemory")
-@Period(value = "everyChunk")
-public class PhysicalMemory extends Event {
+/**
+ * Used to serialize all possible thread states into the chunk.
+ */
+public class JfrThreadStateSerializer implements JfrConstantPool {
 
-    @Label("Total Size") @Description("Total amount of physical memory available to OS") @DataAmount long totalSize;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrThreadStateSerializer() {
+    }
 
-    @Label("Used Size") @Description("Total amount of physical memory in use") @DataAmount long usedSize;
+    @Override
+    public int write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrTypes.ThreadState.getId());
 
-    public static void emitPhysicalMemory() {
-        PhysicalMemory pmInfo = new PhysicalMemory();
+        JfrThreadState[] threadStates = JfrThreadState.values();
+        writer.writeCompressedLong(threadStates.length);
+        for (int i = 0; i < threadStates.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(threadStates[i].getText());
+        }
 
-        pmInfo.totalSize = com.oracle.svm.core.heap.PhysicalMemory.size().rawValue();
-        // usedSize is not implemented at the moment.
-        pmInfo.commit();
+        return NON_EMPTY;
     }
 }
