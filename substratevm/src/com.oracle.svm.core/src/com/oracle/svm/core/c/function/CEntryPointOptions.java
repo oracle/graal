@@ -206,21 +206,39 @@ public @interface CEntryPointOptions {
      */
     Class<? extends Epilogue> epilogue() default LeaveEpilogue.class;
 
+    /**
+     * @deprecated Use {@link org.graalvm.nativeimage.c.function.CEntryPoint.Publish}.
+     */
+    @Deprecated
     enum Publish {
         /**
          * Do not publish the entry point method.
          */
-        NotPublished,
+        NotPublished(CEntryPoint.Publish.NotPublished),
         /**
          * Create a symbol for the entry point method in the native image.
          */
-        SymbolOnly,
+        SymbolOnly(CEntryPoint.Publish.SymbolOnly),
         /**
          * Create a symbol for the entry point method in the native image, and if building a shared
          * library image, also include a C declaration in the generated C header file.
          */
-        SymbolAndHeader,
+        SymbolAndHeader(CEntryPoint.Publish.SymbolAndHeader);
+
+        private final CEntryPoint.Publish conversion;
+
+        Publish(CEntryPoint.Publish conversion) {
+            this.conversion = conversion;
+        }
+
+        public CEntryPoint.Publish convert() {
+            return conversion;
+        }
     }
 
+    /**
+     * @deprecated Use {@link org.graalvm.nativeimage.c.function.CEntryPoint#publishAs()}.
+     */
+    @Deprecated
     Publish publishAs() default Publish.SymbolAndHeader;
 }
