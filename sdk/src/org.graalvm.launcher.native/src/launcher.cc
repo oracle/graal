@@ -105,6 +105,7 @@
 #endif
 
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
+extern char **environ;
 
 char *exe_path() {
     #if defined (__linux__)
@@ -167,8 +168,15 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
         int len = strlen(vmArgInfo);
         while (cur < vmArgInfo + len) {
             long l = strtol(cur, &cur, 10);
-            // +1 because the vm arg indices do not include argv[0]
-            vmArgIndices[l+1] = true;
+            if (*cur = ':') {
+                cur++;
+            } else {
+                break;
+            }
+            if (l > vmArgIndices.size()) {
+                vmArgIndices.reserve(l + 1);
+            }
+            vmArgIndices[l] = true;
         }
     }
 
@@ -207,7 +215,7 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
 
     // handle vm arguments and user classpath
     for (int i = 0; i < argc; i++) {
-        if (relaunch && !vmArgIndices[i]) {
+        if (relaunch && i < vmArgIndices.size() && !vmArgIndices[i]) {
             continue;
         }
         if (IS_VM_CP_ARG(argv[i])) {
@@ -246,7 +254,7 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     vmInitArgs->nOptions++;
 }
 
-int main(int argc, char *argv[], char *envp[]) {
+int main(int argc, char *argv[]) {
     char *exeDir = exe_directory();
     CreateJVM createJVM = loadliblang(exeDir);
     if (!createJVM) {
@@ -275,17 +283,9 @@ int main(int argc, char *argv[], char *envp[]) {
         }
         return -1;
     }
-    jclass throwableClass = env->FindClass("java/lang/Throwable");
-    if (throwableClass == NULL) {
-        std::cerr << "Throwable class not found." << std::endl;
-        if (env->ExceptionCheck()) {
-            env->ExceptionDescribe();
-        }
-        return -1;
-    }
-    jmethodID getMessageMid = env->GetMethodID(throwableClass, "getMessage", "()Ljava/lang/String;");
-    if (getMessageMid == NULL) {
-        std::cerr << "Throwable getMessage() method ID not found." << std::endl;
+    jclass relaunchExceptionClass = env->FindClass("org/graalvm/launcher/AbstractLanguageLauncher$RelaunchException");
+    if (relaunchExceptionClass == NULL) {
+        std::cerr << "RelaunchException class not found." << std::endl;
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
@@ -346,9 +346,7 @@ int main(int argc, char *argv[], char *envp[]) {
     env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native);
     jthrowable t = env->ExceptionOccurred();
     if (t) {
-        jobject tmsg = env->CallObjectMethod(t, getMessageMid);
-        const char *msg = env->GetStringUTFChars((jstring)tmsg, NULL);
-        if (strcmp(msg, "Misidentified VM arguments") == 0) {
+        if (env->IsInstanceOf(t, relaunchExceptionClass)) {
             env->ExceptionClear();
             // read correct VM arguments from launcher object
             jbooleanArray vmArgs = (jbooleanArray)env->GetStaticObjectField(launcherClass, vmArgsFid);
@@ -366,9 +364,15 @@ int main(int argc, char *argv[], char *envp[]) {
 
             // set environment variable
             std::stringstream vmArgInfo;
+            bool first = true;
             for (int i = 0; i < argc; i++) {
                 if (vmArgElements[i]) {
-                    vmArgInfo << i+1 << ':';
+                    if (first) {
+                        first = false;
+                    } else {
+                        vmArgInfo << ':';
+                    }
+                    vmArgInfo << i+1;
                 }
             }
             if (setenv("VMARGS", strdup(vmArgInfo.str().c_str()), 1) == -1) {
@@ -377,7 +381,7 @@ int main(int argc, char *argv[], char *envp[]) {
             }
             // relaunch with correct VM arguments
             const char *path = exe_path();
-            execve(path, argv_native, envp);
+            execve(path, argv_native, environ);
             // if we reach here, execve failed for sure
             perror("execve failed");
             return -1;

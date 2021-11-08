@@ -109,6 +109,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
                 throw e;
             } catch (PolyglotException e) {
                 handlePolyglotException(e);
+            } catch (RelaunchException e) {
+                throw e;
             } catch (Throwable t) {
                 throw abort(t);
             }
@@ -157,12 +159,16 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
     void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+        if (System.getenv("VMARGS") != null) {
+            // vm arguments have been explicitly set, bypassing the heuristic
+            return;
+        }
         vmArgIndices = new boolean[originalArgs.size()];
         boolean relaunchRequired = false;
         for (int i = 0; i < originalArgs.size(); i++) {
             if (originalArgs.get(i).startsWith("--vm.")) {
                 for (String unrecognizedOption : unrecognizedArgs) {
-                    if (originalArgs.get(i).contentEquals(unrecognizedOption)) {
+                    if (originalArgs.get(i).equals(unrecognizedOption)) {
                         vmArgIndices[i] = true;
                         break;
                     }
@@ -175,7 +181,16 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         if (relaunchRequired) {
-            throw new RuntimeException("Misidentified VM arguments, relaunch required");
+            throw new RelaunchException();
+        }
+    }
+
+    protected static final class RelaunchException extends RuntimeException {
+        private static final long serialVersionUID = -4014071914987464223L;
+
+        @Override
+        public String getMessage() {
+            return "Misidentified VM arguments, relaunch required";
         }
     }
 

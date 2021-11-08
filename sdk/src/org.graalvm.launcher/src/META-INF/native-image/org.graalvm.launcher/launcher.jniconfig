@@ -3,6 +3,12 @@
     "name": "org.graalvm.launcher.AbstractLanguageLauncher",
     "methods": [
       { "name": "runLauncher" }
+    ],
+    "fields": [
+      { "name": "vmArgIndices" }
     ]
+  },
+  {
+    "name": "org.graalvm.launcher.AbstractLanguageLauncher$RelaunchException"
   }
 ]
