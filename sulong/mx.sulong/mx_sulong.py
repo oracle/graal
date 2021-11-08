@@ -46,7 +46,7 @@ import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
 import mx_sulong_llvm_config
-from mx_native import DefaultGccLikeToolchain, DefaultNativeProject
+from mx_native import GccLikeNinjaManifestGenerator, register_ninja_manifest_generator_factory, NinjaManifestGeneratorFactory
 
 # re-export custom mx project classes so they can be used from suite.py
 from mx_cmake import CMakeNinjaProject #pylint: disable=unused-import
@@ -349,6 +349,27 @@ def _exe_sub(program):
     return mx_subst.path_substitutions.substitute("<exe:{}>".format(program))
 
 
+class SulongToolchainNinjaManifestGenerator(GccLikeNinjaManifestGenerator):
+    def __init__(self, project, output, toolchain_config):
+        super(SulongToolchainNinjaManifestGenerator, self).__init__(project, output)
+        self.toolchain_config = toolchain_config
+
+    def toolchain_bin(self, name):
+        return self.toolchain_config.get_toolchain_tool(name)
+
+
+class SulongToolchainNinjaManifestGeneratorFactory(NinjaManifestGeneratorFactory):
+    def __init__(self, toolchain_config):
+        self.toolchain_config = toolchain_config
+
+    def create_generator(self, project, output):
+        return SulongToolchainNinjaManifestGenerator(project, output, self.toolchain_config)
+
+    def extra_build_deps(self):
+        deps = super(SulongToolchainNinjaManifestGeneratorFactory, self).extra_build_deps()
+        return deps + [self.toolchain_config.bootstrap_dist]
+
+
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
     _llvm_tool_map = ["ar", "nm", "objcopy", "objdump", "ranlib", "readelf", "readobj", "strip"]
@@ -379,6 +400,7 @@ class ToolchainConfig(object):
         if self.name in _toolchains:
             mx.abort("Toolchain '{}' registered twice".format(self.name))
         _toolchains[self.name] = self
+        register_ninja_manifest_generator_factory('sulong-' + name, SulongToolchainNinjaManifestGeneratorFactory(self))
 
     def _toolchain_helper(self, args=None, out=None):
         parser = ArgumentParser(prog='mx ' + self.mx_command, description='launch toolchain commands',
@@ -452,32 +474,6 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
                                        "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
                                    suite=_suite)
-
-
-class SulongNinjaToolchain(DefaultGccLikeToolchain):
-    def __init__(self, name):
-        self.config = _get_toolchain(name)
-
-    def toolchain_bin(self, name):
-        return self.config.get_toolchain_tool(name)
-
-
-class SulongToolchainNativeProject(DefaultNativeProject):
-    def __init__(self, suite, name, deps, workingSets, **kwargs):
-        toolchain_type = kwargs.pop('toolchain', 'native')
-        subDir = kwargs.pop('subDir', None)
-        if subDir is None:
-            d = join(suite.dir, name)
-        else:
-            d = join(suite.dir, subDir, name)
-        if 'native' not in kwargs:
-            mx.abort("Missing 'native' attribute for " + name)
-        kind = kwargs.pop('native')
-        super(SulongToolchainNativeProject, self).__init__(suite, name, subDir, [], deps, workingSets, d, kind, **kwargs)
-        if toolchain_type != 'default':
-            self.toolchain = SulongNinjaToolchain(toolchain_type)
-            if not mx.get_env('SULONG_BOOTSTRAP_GRAALVM'):
-                self.buildDependencies.append(self.toolchain.config.bootstrap_dist)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
