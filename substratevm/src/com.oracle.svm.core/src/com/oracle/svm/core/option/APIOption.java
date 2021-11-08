@@ -79,7 +79,8 @@ public @interface APIOption {
      * Provide a custom separator that should be used to separate the option name from its option
      * values. The default separator is {@code '='}. If {@code WHITESPACE_SEPARATOR} is used the
      * option value has to be passed as the next argument (i.e., separated by whitespace on the
-     * command line).
+     * command line). It is also allowed to provide more than one separator. See e.g. the options
+     * defined in {@code com.oracle.svm.hosted.NativeImageClassLoaderOptions}
      */
     char[] valueSeparator() default {'='};
 
