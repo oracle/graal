@@ -45,8 +45,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.polyglot.Context;
@@ -60,7 +62,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     private boolean jniLaunch;
     private int nativeArgc;
     private long nativeArgv;
-    private static boolean[] vmArgIndices;
+    private static String vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -165,27 +167,29 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             // vm arguments have been explicitly set, bypassing the heuristic
             return;
         }
-        vmArgIndices = new boolean[originalArgs.size()];
-        boolean relaunchRequired = false;
-        for (int i = 0; i < originalArgs.size(); i++) {
-            if (originalArgs.get(i).startsWith("--vm.")) {
-                for (String unrecognizedOption : unrecognizedArgs) {
-                    if (originalArgs.get(i).equals(unrecognizedOption)) {
-                        vmArgIndices[i] = true;
-                        break;
-                    }
-                }
-                // check if the arg has been misidentified by the heuristic
-                if (!vmArgIndices[i]) {
-                    relaunchRequired = true;
-                }
+
+        Set<String> heuristicVmArgs = new HashSet<>();
+        Set<String> actualVmArgs = new HashSet<>();
+
+        for (String arg : originalArgs) {
+            if (arg.startsWith("--vm.")) {
+                heuristicVmArgs.add(arg);
+            }
+        }
+        for (String arg : unrecognizedArgs) {
+            if (arg.startsWith("--vm.")) {
+                actualVmArgs.add(arg);
             }
         }
 
-        if (relaunchRequired) {
-            // the exception will be picked up by the native language library launcher
-            throw new RelaunchException();
+        if (heuristicVmArgs.equals(actualVmArgs)) {
+            // we are good, the heuristic correctly identified all vm arguments
+            return;
         }
+
+        vmArgs = String.join(" ", actualVmArgs);
+
+        throw new RelaunchException();
     }
 
     /**

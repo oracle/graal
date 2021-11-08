@@ -5,7 +5,7 @@
       { "name": "runLauncher" }
     ],
     "fields": [
-      { "name": "vmArgIndices" }
+      { "name": "vmArgs" }
     ]
   },
   {
