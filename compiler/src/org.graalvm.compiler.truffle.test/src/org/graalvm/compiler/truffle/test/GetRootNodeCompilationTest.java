@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.replacements.PEGraphDecoder.Options.MaximumLoopExplosionCount;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -31,6 +33,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -89,8 +92,9 @@ public class GetRootNodeCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void bailoutTooManyParents() {
-        compileRootNode(() -> new TestRootNode(new TooManyParentsNode(999)), 10000);
-        expectBailout(() -> compileRootNode(() -> new TestRootNode(new TooManyParentsNode(1000)), 10000));
+        int parentLimit = MaximumLoopExplosionCount.getValue(getGraalOptions());
+        compileRootNode(() -> new TestRootNode(new TooManyParentsNode(parentLimit - 1)), 10000);
+        expectBailout(() -> compileRootNode(() -> new TestRootNode(new TooManyParentsNode(parentLimit)), 10000));
     }
 
     @Test
@@ -107,6 +111,12 @@ public class GetRootNodeCompilationTest extends PartialEvaluationTest {
     public void bailoutGraphTooLarge() {
         // sanity check: make sure we actually bail out if we exceed the maximum node count
         expectBailout(() -> compileRootNode(() -> createTreeOfDepth(100), 120));
+    }
+
+    @Override
+    protected OptionValues getGraalOptions() {
+        // Lower MaximumLoopExplosionCount to prevent stack overflow during adoption.
+        return new OptionValues(super.getGraalOptions(), MaximumLoopExplosionCount, 1000);
     }
 
     private static void expectBailout(Runnable test) {

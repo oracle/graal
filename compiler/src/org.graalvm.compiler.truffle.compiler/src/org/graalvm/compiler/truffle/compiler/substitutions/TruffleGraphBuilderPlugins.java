@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
+import static org.graalvm.compiler.replacements.PEGraphDecoder.Options.MaximumLoopExplosionCount;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import java.util.ArrayList;
@@ -681,7 +682,7 @@ public class TruffleGraphBuilderPlugins {
                     throw b.bailout("getRootNode() receiver is not a compile-time constant or is null.");
                 }
 
-                final int parentLimit = 1000;
+                final int parentLimit = MaximumLoopExplosionCount.getValue(b.getOptions());
                 JavaConstant parentNode = thisValue.asJavaConstant();
                 JavaConstant prevNode;
                 int parentsVisited = 0;
