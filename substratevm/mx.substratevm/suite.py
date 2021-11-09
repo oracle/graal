@@ -178,8 +178,6 @@ suite = {
                 "java.base" : ["jdk.internal.module"],
             },
             "javaCompliance": "11+",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget" : "com.oracle.svm.util",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -1545,6 +1543,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
                 "com.oracle.svm.util",
+                "com.oracle.svm.util.jdk11",
             ],
             "distDependencies": [
                 "compiler:GRAAL",
