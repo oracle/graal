@@ -47,7 +47,6 @@ import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 @AutomaticFeature
 public final class DynamicProxyFeature implements Feature {
     private int loadedConfigurations;
-    private DynamicProxySupport dynamicProxySupport;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -59,7 +58,7 @@ public final class DynamicProxyFeature implements Feature {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
+        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);

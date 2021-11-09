@@ -85,7 +85,7 @@ class JniProcessor extends AbstractProcessor {
         }
         String declaringClass = (String) entry.get("declaring_class");
         String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
-        ConfigurationMemberDeclaration memberKind = (declaringClass != null) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
+        ConfigurationMemberDeclaration declaration = (declaringClass != null) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
         TypeConfiguration config = configuration;
         switch (function) {
             case "GetStaticMethodID":
@@ -94,7 +94,7 @@ class JniProcessor extends AbstractProcessor {
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
                 if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
-                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, memberKind);
+                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
                     }
@@ -105,7 +105,7 @@ class JniProcessor extends AbstractProcessor {
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, memberKind, false);
+                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
                 if (!declaringClassOrClazz.equals(clazz)) {
                     config.getOrCreateType(condition, clazz);
                 }
@@ -116,7 +116,7 @@ class JniProcessor extends AbstractProcessor {
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
                 if (!advisor.shouldIgnoreJniMethodLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
-                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, memberKind);
+                    config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     assert declaringClassOrClazz.equals(clazz) : "Constructor can only be accessed via declaring class";
                 }
                 break;
@@ -126,7 +126,7 @@ class JniProcessor extends AbstractProcessor {
             case "FromReflectedField": {
                 expectSize(args, 1);
                 String name = (String) args.get(0);
-                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, memberKind, false);
+                config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
                 break;
             }
             case "ToReflectedMethod":
@@ -135,7 +135,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, memberKind);
+                config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                 break;
             }
             case "NewObjectArray": {

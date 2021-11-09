@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.reflect.target;
+
+// Checkstyle: allow reflection
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
-// Checkstyle: stop
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
-// Checkstyle: resume
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
@@ -38,7 +38,17 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 
+/**
+ * This class provides a "fake" constant pool to be used while parsing encoded annotation values in
+ * reflection methods. The annotation encoding used by the JDK encodes values by their constant pool
+ * indices, whereas the Native Image implementation stores offsets in the
+ * {@link com.oracle.svm.core.code.CodeInfoEncoder.Encoders} class and string caches. Since the
+ * runtime does not handle JDK constant pools, this substitution enables reusing much of the JDK
+ * decoding logic for free.
+ */
 @SuppressWarnings({"unused", "static-method", "hiding"})
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
 public final class Target_jdk_internal_reflect_ConstantPool {
