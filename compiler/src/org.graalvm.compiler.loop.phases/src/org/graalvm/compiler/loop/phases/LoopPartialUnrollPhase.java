@@ -49,13 +49,6 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
     @SuppressWarnings("try")
     private void unroll(StructuredGraph graph, CoreProviders context) {
-        /*
-         * We run a canonicalizer without simplification here because simplifications after
-         * inserting pre/main/post can make loops non-counted: For example the ifNode swap
-         * optimization can cause the counted condition being swapped with another one destroying
-         * counted loop info.
-         */
-        final CanonicalizerPhase canonicalizerWithoutSimplification = canonicalizer.copyWithoutSimplification();
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         boolean changed = true;
         EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides = null;
@@ -89,7 +82,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                 dataCounted.deleteUnusedNodes();
 
                 if (!listener.getNodes().isEmpty()) {
-                    canonicalizerWithoutSimplification.applyIncremental(graph, context, listener.getNodes());
+                    canonicalizer.applyIncremental(graph, context, listener.getNodes());
                     listener.getNodes().clear();
                 }
 
