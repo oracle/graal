@@ -138,24 +138,15 @@ public abstract class StaticProperty {
         throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + type.getName() + "' cannot be accessed as '" + (accessType == null ? "null" : accessType.getName()) + "'");
     }
 
-    private boolean isPrimitive() {
-        if (TruffleOptions.AOT && CompilerDirectives.inCompiledCode()) {
-            // GR-34688
-            return type == long.class || type == double.class || type == int.class || type == float.class || type == short.class || type == char.class || type == byte.class || type == boolean.class;
-        } else {
-            return type.isPrimitive();
-        }
-    }
-
     private void checkObjectGetAccess() {
-        if (isPrimitive()) {
+        if (type.isPrimitive()) {
             throwIllegalArgumentException(Object.class);
         }
     }
 
     private void checkObjectSetAccess(Object value) {
         if (value == null) {
-            if (isPrimitive()) {
+            if (type.isPrimitive()) {
                 throwIllegalArgumentException(null);
             }
         } else if (!type.isInstance(value)) {
