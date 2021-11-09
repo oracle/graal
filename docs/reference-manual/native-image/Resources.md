@@ -63,9 +63,9 @@ See also the [guide on assisted configuration of Java resources and other dynami
 ## Locales
 
 It is also possible to specify which locales should be included in the image and what should be the default one.
-For example, to switch the default locale to German and also include French and English, one can use the following hosted options.
+For example, to switch the default locale to Swiss German and also include French and English, one can use the following hosted options.
 ```shell
-native-image -H:DefaultLocale=de -H:IncludeLocales=fr,en
+native-image -Duser.country=CH -Duser.language=de -H:IncludeLocales=fr,en
 ```
 The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All
 locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting
