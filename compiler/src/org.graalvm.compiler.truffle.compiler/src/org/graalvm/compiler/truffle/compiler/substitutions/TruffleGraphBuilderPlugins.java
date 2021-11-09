@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
+import static org.graalvm.compiler.replacements.PEGraphDecoder.Options.MaximumLoopExplosionCount;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import java.util.ArrayList;
@@ -137,6 +138,7 @@ public class TruffleGraphBuilderPlugins {
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types, primitiveBoxTypes);
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types, primitiveBoxTypes);
         registerTruffleSafepointPlugins(plugins, metaAccess, canDelayIntrinsification);
+        registerNodePlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -657,6 +659,50 @@ public class TruffleGraphBuilderPlugins {
                     return true;
                 }
                 return false;
+            }
+        });
+    }
+
+    /**
+     * @see com.oracle.truffle.api.nodes.Node
+     */
+    public static void registerNodePlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification,
+                    ConstantReflectionProvider constantReflection, KnownTruffleTypes types) {
+        final ResolvedJavaType nodeType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.nodes.Node");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(nodeType));
+        r.register1("getRootNodeImpl", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+
+                ValueNode thisValue = receiver.get();
+                if (!thisValue.isJavaConstant() || thisValue.isNullConstant()) {
+                    throw b.bailout("getRootNode() receiver is not a compile-time constant or is null.");
+                }
+
+                final int parentLimit = MaximumLoopExplosionCount.getValue(b.getOptions());
+                JavaConstant parentNode = thisValue.asJavaConstant();
+                JavaConstant prevNode;
+                int parentsVisited = 0;
+                do {
+                    if (parentsVisited++ > parentLimit) {
+                        // Protect against parent cycles and extremely long parent chains.
+                        throw b.bailout("getRootNode() did not terminate in " + parentLimit + " iterations.");
+                    }
+                    prevNode = parentNode;
+                    parentNode = constantReflection.readFieldValue(types.fieldNodeParent, prevNode);
+                } while (parentNode.isNonNull());
+
+                JavaConstant rootNode = prevNode;
+                ConstantNode result = ConstantNode.forConstant(rootNode, metaAccess, b.getGraph());
+                // getRootNodeImpl() returns null if parent is not an instance of RootNode.
+                if (rootNode.isNonNull() && !types.classRootNode.isAssignableFrom(result.stamp(NodeView.DEFAULT).javaType(metaAccess))) {
+                    result = ConstantNode.defaultForKind(JavaKind.Object, b.getGraph());
+                }
+                b.addPush(JavaKind.Object, result);
+                return true;
             }
         });
     }
