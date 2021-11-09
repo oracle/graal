@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 suite = {
     "mxversion": "5.310.0",
     "name": "substratevm",
@@ -1117,6 +1116,7 @@ suite = {
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
+                    "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

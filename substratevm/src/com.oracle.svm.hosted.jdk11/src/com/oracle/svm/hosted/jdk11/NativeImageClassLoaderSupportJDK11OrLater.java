@@ -160,7 +160,9 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     }
 
     @Override
-    protected void processClassLoaderOptions(OptionValues optionValues) {
+    protected void processClassLoaderOptions() {
+        OptionValues optionValues = getParsedHostedOptions();
+
         processOption(optionValues, NativeImageClassLoaderOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);

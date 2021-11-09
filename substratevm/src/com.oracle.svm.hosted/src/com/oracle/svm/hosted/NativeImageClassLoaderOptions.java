@@ -47,4 +47,11 @@ public class NativeImageClassLoaderOptions {
     @Option(help = "Value " + AddReadsFormat + " updates <module> to read <target-module>, regardless of module declaration." +
                     " <target-module> can be ALL-UNNAMED to read all unnamed modules.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddReads = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+    public static class ApplyNativeImageClassLoaderOptions implements NativeImageClassLoaderPostProcessing {
+        @Override
+        public void apply(AbstractNativeImageClassLoaderSupport support) {
+            support.processClassLoaderOptions();
+        }
+    }
 }
