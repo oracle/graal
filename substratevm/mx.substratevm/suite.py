@@ -483,7 +483,6 @@ suite = {
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",
-            "multiReleaseJarVersion": "11",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
