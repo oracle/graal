@@ -130,7 +130,7 @@ final class TestContext implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         checkState(State.NEW, State.INITIALIZED);
         state = State.CLOSED;
         if (context != null) {
