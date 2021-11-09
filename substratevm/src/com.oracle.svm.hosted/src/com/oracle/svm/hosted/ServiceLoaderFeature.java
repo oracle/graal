@@ -44,7 +44,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -113,19 +113,21 @@ public class ServiceLoaderFeature implements Feature {
     }
 
     /**
-     * Services that should not be processes here, for example because they are handled by
+     * Services that should not be processed here, for example because they are handled by
      * specialized features.
      */
     private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+                    // image builder internal ServiceLoader interfaces
+                    "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
+                    "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
+                    "org.graalvm.nativeimage.Platform",
                     /*
                      * Loaded in java.util.random.RandomGeneratorFactory.FactoryMapHolder, which is
                      * initialized at image build time.
                      */
                     "java.util.random.RandomGenerator",
-                    "java.security.Provider",                       // see SecurityServicesFeature
-                    "sun.util.locale.provider.LocaleDataMetaInfo",  // see LocaleSubstitutions
-                    "org.graalvm.nativeimage.Platform"  // shouldn't be reachable after
-                                                        // intrinsification
+                    "java.security.Provider",                     // see SecurityServicesFeature
+                    "sun.util.locale.provider.LocaleDataMetaInfo" // see LocaleSubstitutions
     ));
 
     // NOTE: Platform class had to be added to this list since our analysis discovers that
