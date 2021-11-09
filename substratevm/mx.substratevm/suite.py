@@ -197,55 +197,33 @@ suite = {
                 "com.oracle.svm.common",
             ],
             "requires" : [
-                "java.desktop",
                 "java.logging",
-                "java.instrument",
-                "java.management",
                 "java.scripting",
                 "jdk.management",
                 "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "com.sun.crypto.provider",
-                    "jdk.internal.org.objectweb.asm",
-                    "jdk.internal.loader",
-                    "jdk.internal.logger",
-                    "jdk.internal.misc",
-                    "jdk.internal.module",
-                    "jdk.internal.perf",
-                    "jdk.internal.reflect",
                     "sun.invoke.util",
                     "sun.net",
                     "sun.reflect.annotation",
                     "sun.reflect.generics.reflectiveObjects",
-                    "sun.reflect.generics.repository",
                     "sun.reflect.generics.tree",
                     "sun.security.jca",
-                    "sun.security.util",
-                    "sun.security.provider",
                     "sun.security.ssl",
-                    "sun.reflect.generics.repository",
-                    "sun.text.spi",
+                    "sun.security.util",
                     "sun.util",
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
                 ],
-                "java.management": [
-                    "sun.management",
-                    "com.sun.jmx.mbeanserver",
-                ],
                 "java.desktop": [
                     "sun.java2d",
                     "sun.java2d.pipe",
                 ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
+                "java.management": [
+                    "com.sun.jmx.mbeanserver",
+                    "sun.management",
                 ],
             },
             "javaCompliance": "11+",
@@ -321,7 +299,6 @@ suite = {
                 "com.oracle.svm.core",
             ],
             "requires" : [
-                "java.management",
                 "jdk.management",
             ],
             "requiresConcealed" : {
@@ -332,11 +309,7 @@ suite = {
                     "sun.management",
                 ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -355,11 +328,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
-                    "jdk.vm.ci.code",
                     "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -377,11 +346,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
-                    "jdk.vm.ci.code",
                     "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -415,14 +380,8 @@ suite = {
                 "com.oracle.svm.core.graal.aarch64",
             ],
             "requires" : [
-                "java.management",
                 "jdk.management",
             ],
-            "requiresConcealed" : {
-                "java.management": [
-                    "sun.management",
-                ],
-            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",
             "annotationProcessors": [
@@ -439,19 +398,11 @@ suite = {
                 "com.oracle.svm.core.graal.amd64",
             ],
             "requires" : [
-                "java.management",
                 "jdk.management",
             ],
             "requiresConcealed" : {
-                "java.management": [
-                    "sun.management",
-                ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -487,11 +438,8 @@ suite = {
             ],
             "requires" : [
                 "java.desktop",
-                "java.logging",
                 "java.instrument",
-                "java.management",
                 "java.security.sasl",
-                "java.scripting",
                 "java.smartcardio",
                 "java.xml.crypto",
                 "jdk.management",
@@ -499,45 +447,15 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "com.sun.crypto.provider",
                     "jdk.internal.org.objectweb.asm",
-                    "jdk.internal.loader",
-                    "jdk.internal.logger",
-                    "jdk.internal.misc",
-                    "jdk.internal.module",
-                    "jdk.internal.perf",
-                    "jdk.internal.reflect",
-                    "sun.invoke.util",
-                    "sun.net",
                     "sun.reflect.annotation",
-                    "sun.reflect.generics.reflectiveObjects",
-                    "sun.reflect.generics.repository",
-                    "sun.reflect.generics.tree",
                     "sun.security.jca",
-                    "sun.security.util",
                     "sun.security.provider",
-                    "sun.security.ssl",
                     "sun.security.x509",
-                    "sun.reflect.generics.repository",
-                    "sun.text.spi",
-                    "sun.util",
-                    "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
                 ],
-                "java.management": [
-                    "sun.management",
-                    "com.sun.jmx.mbeanserver",
-                ],
-                "java.desktop": [
-                    "sun.java2d",
-                    "sun.java2d.pipe",
-                ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -779,10 +697,8 @@ suite = {
                 "com.oracle.svm.hosted",
             ],
             "requires" : [
-                "java.management",
                 "jdk.management",
             ],
-            
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.36.1",
             "workingSets": "SVM",
@@ -899,17 +815,12 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "sun.invoke.util",
                     "sun.reflect.annotation",
-                    "sun.reflect.generics.reflectiveObjects",
                     "sun.reflect.generics.repository",
-                    "sun.reflect.generics.tree",
                 ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
                     "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.runtime",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -965,8 +876,8 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "sun.nio.ch",
                     "jdk.internal.ref",
+                    "sun.nio.ch",
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
@@ -988,10 +899,6 @@ suite = {
             ],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.common",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
                     "jdk.vm.ci.runtime",
                 ],
             },
@@ -1010,9 +917,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.graal",
             ],
-            "requiresConcealed" : {
-                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
-            },
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "annotationProcessors": [
