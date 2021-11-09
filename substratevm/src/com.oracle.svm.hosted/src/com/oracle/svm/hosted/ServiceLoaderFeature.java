@@ -117,6 +117,11 @@ public class ServiceLoaderFeature implements Feature {
      * specialized features.
      */
     private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+                    /*
+                     * Loaded in java.util.random.RandomGeneratorFactory.FactoryMapHolder, which is
+                     * initialized at image build time.
+                     */
+                    "java.util.random.RandomGenerator",
                     "java.security.Provider",                       // see SecurityServicesFeature
                     "sun.util.locale.provider.LocaleDataMetaInfo",  // see LocaleSubstitutions
                     "org.graalvm.nativeimage.Platform"  // shouldn't be reachable after
