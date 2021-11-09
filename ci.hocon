@@ -6,19 +6,12 @@ builds = []
 
 binaries-repository = "lafo"
 
-#Truffle
-include "truffle/ci.hocon"
-
 #Compiler
 compiler-suite-root = "./compiler"
 logPatterns = [
     "*.bgv"
     ${compiler-suite-root}"/graal_dumps/*/*"
 ]
-
-#Examples
-#Examples gate also disabled.
-#include "examples/ci.hocon"
 
 jvm-config.default = "graal-core"
 libgraal_env = "libgraal"
