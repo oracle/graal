@@ -124,7 +124,7 @@ public interface Assumption {
      */
     @ExplodeLoop
     static boolean isValidAssumption(Assumption[] assumptions) {
-        CompilerDirectives.isPartialEvaluationConstant(assumptions);
+        CompilerAsserts.partialEvaluationConstant(assumptions);
         if (assumptions == null) {
             return false;
         }
