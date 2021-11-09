@@ -378,10 +378,19 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
             // set environment variable
-            if (setenv("TRUFFLE_LAUNCHER_VMARGS", strdup(vmArgs), 1) == -1) {
-                perror("setenv failed");
-                return -1;
-            }
+            #if defined (_WIN32)
+	        std::stringstream ss;
+		ss << "TRUFFLE_LAUNCHER_VMARGS=" << vmArgs;
+	        if(_putenv(ss.str().c_str()) == -1) {
+		    std::cerr << "Error in _putenv" << std::endl;
+		    return -1;
+		}
+            #else
+                if (setenv("TRUFFLE_LAUNCHER_VMARGS", strdup(vmArgs), 1) == -1) {
+                    perror("setenv failed");
+                    return -1;
+                }
+            #endif
             // relaunch with correct VM arguments
             const char *path = exe_path();
             execve(path, argv_native, environ);

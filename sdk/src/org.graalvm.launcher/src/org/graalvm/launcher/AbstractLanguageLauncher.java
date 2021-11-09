@@ -62,7 +62,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     private boolean jniLaunch;
     private int nativeArgc;
     private long nativeArgv;
-    private static String vmArgs;
+    @SuppressWarnings("unused") private static String vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -162,7 +162,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param originalArgs original set of arguments (except for argv[0], the program name)
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
-    final static void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+    protected static final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
         if (System.getenv("TRUFFLE_LAUNCHER_VMARGS") != null) {
             // vm arguments have been explicitly set, bypassing the heuristic
             return;
