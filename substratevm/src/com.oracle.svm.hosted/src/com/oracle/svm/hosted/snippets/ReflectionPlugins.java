@@ -211,7 +211,6 @@ public final class ReflectionPlugins {
 
     private void registerClassPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, Class.class,
-                        "isInterface", "isPrimitive",
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
