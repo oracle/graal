@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,40 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 
 /**
- * Unwinds the current frame to an exception handler in the caller frame.
+ * {@link ControlSinkNode}that might have a {@link MemoryMapNode} attached. This map can be used to
+ * update the memory graph during inlining.
  */
-@NodeInfo(cycles = CYCLES_8, size = SIZE_8, cyclesRationale = "stub call", sizeRationale = "stub call")
-public final class UnwindNode extends MemoryMapControlSinkNode implements Lowerable, LIRLowerable {
+@NodeInfo
+public abstract class MemoryMapControlSinkNode extends ControlSinkNode implements IterableNodeType {
+    public static final NodeClass<MemoryMapControlSinkNode> TYPE = NodeClass.create(MemoryMapControlSinkNode.class);
 
-    public static final NodeClass<UnwindNode> TYPE = NodeClass.create(UnwindNode.class);
-    @Input ValueNode exception;
+    @OptionalInput(Extension) MemoryMapNode memoryMap;
 
-    public ValueNode exception() {
-        return exception;
+    protected MemoryMapControlSinkNode(NodeClass<? extends MemoryMapControlSinkNode> c) {
+        this(c, null);
     }
 
-    public UnwindNode(ValueNode exception) {
-        super(TYPE);
-        assert exception.getStackKind() == JavaKind.Object;
-        this.exception = exception;
+    protected MemoryMapControlSinkNode(NodeClass<? extends MemoryMapControlSinkNode> c, MemoryMapNode memoryMap) {
+        super(c, StampFactory.forVoid());
+        this.memoryMap = memoryMap;
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitUnwind(gen.operand(exception()));
+    public void setMemoryMap(MemoryMapNode memoryMap) {
+        updateUsages(this.memoryMap, memoryMap);
+        this.memoryMap = memoryMap;
     }
+
+    public MemoryMapNode getMemoryMap() {
+        return memoryMap;
+    }
+
 }

@@ -24,12 +24,9 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Extension;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
@@ -40,11 +37,10 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_4, cyclesRationale = "Restore frame + ret", sizeRationale = "Restore frame + ret")
-public final class ReturnNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
+public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLowerable {
 
     public static final NodeClass<ReturnNode> TYPE = NodeClass.create(ReturnNode.class);
     @OptionalInput ValueNode result;
-    @OptionalInput(Extension) MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;
@@ -55,9 +51,8 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
     }
 
     public ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
-        super(TYPE, StampFactory.forVoid());
+        super(TYPE, memoryMap);
         this.result = result;
-        this.memoryMap = memoryMap;
     }
 
     @Override
@@ -68,15 +63,6 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable, I
         } else {
             gen.getLIRGeneratorTool().emitReturn(result.getStackKind(), gen.operand(result));
         }
-    }
-
-    public void setMemoryMap(MemoryMapNode memoryMap) {
-        updateUsages(this.memoryMap, memoryMap);
-        this.memoryMap = memoryMap;
-    }
-
-    public MemoryMapNode getMemoryMap() {
-        return memoryMap;
     }
 
     private boolean verifyReturn(TargetDescription target) {

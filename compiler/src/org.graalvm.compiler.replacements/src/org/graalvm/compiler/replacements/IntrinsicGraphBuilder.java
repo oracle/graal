@@ -218,7 +218,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
      * Currently unimplemented here, but implemented in subclasses that need it.
      */
     protected void mergeUnwinds() {
-        if (getGraph().getNodes().filter(UnwindNode.class).count() > 1) {
+        if (getGraph().getNodes(UnwindNode.TYPE).snapshot().size() > 1) {
             throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder");
         }
     }
