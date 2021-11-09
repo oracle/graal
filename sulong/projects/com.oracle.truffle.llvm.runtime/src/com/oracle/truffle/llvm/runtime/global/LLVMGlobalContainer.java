@@ -83,7 +83,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
 
     @CompilationFinal private State contents;
 
-    private Object fallbackContents;
+    private Object fallbackContents = 0L;
 
     public LLVMGlobalContainer() {
         State state = new State(0L, 0);
@@ -109,6 +109,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     public void set(Object value) {
+        assert value != null;
         while (true) {
             State c = contents;
 
