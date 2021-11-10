@@ -61,8 +61,8 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
@@ -138,7 +138,7 @@ final class Target_java_lang_StackWalker {
 
         final Thread thread = Thread.currentThread();
 
-        if (JavaContinuations.useLoom() && this.continuation != null) {
+        if (LoomSupport.isEnabled() && this.continuation != null) {
             // walking a yielded continuation
             spliterator = new ContinuationSpliterator(this.contScope, this.continuation);
         } else {
@@ -146,13 +146,12 @@ final class Target_java_lang_StackWalker {
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
-            if (JavaContinuations.useLoom() && (this.contScope != null || JavaThreads.isVirtual(thread))) {
+            if (LoomSupport.isEnabled() && (this.contScope != null || JavaThreads.isVirtual(thread))) {
                 // has a delimitation scope
-                VMError.guarantee(JavaContinuations.useLoom());
                 Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
                 Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);
                 if (topContinuation != null) {
-                    JavaStackWalker.initWalk(walk, sp, JavaContinuations.getSP(topContinuation));
+                    JavaStackWalker.initWalk(walk, sp, LoomSupport.getSP(topContinuation));
                 } else {
                     // the delimitation scope is not present in current continuation chain or null
                     JavaStackWalker.initWalk(walk, sp);
@@ -253,7 +252,7 @@ final class Target_java_lang_StackWalker {
         private Target_java_lang_Continuation continuation;
 
         ContinuationSpliterator(Target_java_lang_ContinuationScope contScope, Target_java_lang_Continuation continuation) {
-            VMError.guarantee(JavaContinuations.useLoom());
+            VMError.guarantee(LoomSupport.isEnabled());
             this.contScope = contScope;
             this.continuation = continuation;
             if (this.continuation.internalContinuation != null) {
@@ -289,7 +288,7 @@ final class Target_java_lang_StackWalker {
             VMError.guarantee(curStoredContinuation != null);
             sp = StoredContinuationImpl.payloadFrameStart(curStoredContinuation);
             endSp = sp.add(TypeConversion.asU4(StoredContinuationImpl.readAllFrameSize(curStoredContinuation)));
-            ip = JavaContinuations.getIP(continuation);
+            ip = LoomSupport.getIP(continuation);
             curFrameIndex = 0;
             curFrameCount = StoredContinuationImpl.readFrameCount(curStoredContinuation);
         }

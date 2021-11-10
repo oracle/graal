@@ -58,7 +58,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -99,13 +99,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
 
     protected static void onMonitorLocked() {
-        if (JavaContinuations.useLoom()) {
+        if (LoomSupport.isEnabled()) {
             lockedMonitors.set(lockedMonitors.get() + 1);
         }
     }
 
     protected static void onMonitorUnlocked() {
-        if (JavaContinuations.useLoom()) {
+        if (LoomSupport.isEnabled()) {
             lockedMonitors.set(lockedMonitors.get() - 1);
         }
     }
@@ -379,7 +379,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     @Override
     public int countThreadLock(IsolateThread vmThread) {
-        VMError.guarantee(JavaContinuations.useLoom(), "This method is only supported when continuations are enabled.");
+        VMError.guarantee(LoomSupport.isEnabled(), "This method is only supported when continuations are enabled.");
         return lockedMonitors.get(vmThread);
     }
 

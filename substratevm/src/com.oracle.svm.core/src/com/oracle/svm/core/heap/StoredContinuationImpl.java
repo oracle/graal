@@ -50,6 +50,7 @@ import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.util.VMError;
@@ -254,7 +255,7 @@ public final class StoredContinuationImpl {
         }
 
         if (!isCurrentThread) {
-            JavaContinuations.setIP(contRef, visitor.leafIP);
+            LoomSupport.setIP(contRef, visitor.leafIP);
         }
         VMError.guarantee(resultLeafSP.isNonNull());
 

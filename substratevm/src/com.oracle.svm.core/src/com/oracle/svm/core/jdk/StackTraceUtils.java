@@ -40,7 +40,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -137,7 +137,7 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (JavaContinuations.useLoom() && clazz == Target_java_lang_Continuation.class) {
+        if (LoomSupport.isEnabled() && clazz == Target_java_lang_Continuation.class) {
             // Skip intrinsics in JDK
             if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
                 return false;

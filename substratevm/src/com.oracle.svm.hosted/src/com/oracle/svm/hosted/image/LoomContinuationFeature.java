@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -42,7 +42,7 @@ import com.oracle.svm.util.ReflectionUtil;
 public class LoomContinuationFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        if (JavaContinuations.useLoom()) {
+        if (LoomSupport.isEnabled()) {
             FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) arg;
             access.registerAsInHeap(StoredContinuation.class);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));

@@ -187,12 +187,12 @@ public final class Target_java_lang_Thread {
          */
         this.threadData = new ThreadData();
 
-        JavaContinuations.LoomCompatibilityUtil.initThreadFields(this,
+        LoomSupport.CompatibilityUtil.initThreadFields(this,
                         (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup,
                         null, 0,
                         Thread.NORM_PRIORITY, asDaemon, ThreadStatus.RUNNABLE);
 
-        if (JavaContinuations.useLoom()) {
+        if (LoomSupport.isEnabled()) {
             tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         } else {
             tid = nextThreadID();
@@ -341,6 +341,15 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
+        /*
+         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
+         * starts because we are creating child threads asynchronously (there is no coordination
+         * between parent and child threads).
+         *
+         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
+         * child thread starts, or it could hang in case that the child thread is already dead.
+         */
+        LoomSupport.CompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
         parentThreadId = Thread.currentThread().getId();
         long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
@@ -358,7 +367,7 @@ public final class Target_java_lang_Thread {
          * Thread.join() on the launched thread, but the thread could also already have changed its
          * state itself. Atomically switch from NEW to RUNNABLE if it has not.
          */
-        JavaContinuations.LoomCompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
+        LoomSupport.CompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute

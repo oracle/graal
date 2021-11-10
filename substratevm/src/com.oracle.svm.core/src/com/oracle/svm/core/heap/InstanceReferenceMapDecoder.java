@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.thread.JavaContinuations;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -33,6 +32,7 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.TypedMemoryReader;
 
@@ -43,7 +43,7 @@ public class InstanceReferenceMapDecoder {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
 
-        if (JavaContinuations.useLoom() && referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
+        if (LoomSupport.isEnabled() && referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
             return StoredContinuationImpl.walkStoredContinuationFromPointer(baseAddress, visitor, holderObject);
         }
 

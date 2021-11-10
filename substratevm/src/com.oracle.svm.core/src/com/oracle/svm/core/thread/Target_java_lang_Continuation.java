@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -37,9 +41,6 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 @TargetClass(className = "java.lang.Continuation", onlyWith = LoomJDK.class)
 public final class Target_java_lang_Continuation {
@@ -64,7 +65,7 @@ public final class Target_java_lang_Continuation {
      * Frame pointer of
      * {@link Target_java_lang_Continuation#enterSpecial(Target_java_lang_Continuation, boolean)} if
      * continuation is running, else frame pointer of
-     * {@link JavaContinuations#yield(Target_java_lang_Continuation)}.
+     * {@link LoomSupport#yield(Target_java_lang_Continuation)}.
      */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Pointer sp = WordFactory.nullPointer();
@@ -137,7 +138,7 @@ public final class Target_java_lang_Continuation {
     @Substitute
     @NeverInline("access stack pointer")
     private static int isPinned0(Target_java_lang_ContinuationScope scope) {
-        return JavaContinuations.isPinned(
+        return LoomSupport.isPinned(
                         SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class),
                         scope, true);
     }
@@ -166,14 +167,14 @@ public final class Target_java_lang_Continuation {
     private static int doYield(int scopes) {
         assert scopes == 0;
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
-        Target_java_lang_Continuation cont = JavaContinuations.getContinuation(tjlt);
+        Target_java_lang_Continuation cont = LoomSupport.getContinuation(tjlt);
 
-        int pinnedReason = JavaContinuations.isPinned(tjlt, cont.getScope(), true);
+        int pinnedReason = LoomSupport.isPinned(tjlt, cont.getScope(), true);
         if (pinnedReason != 0) {
             return pinnedReason;
         }
 
-        return JavaContinuations.yield(cont);
+        return LoomSupport.yield(cont);
     }
 
     @Substitute
@@ -240,13 +241,13 @@ public final class Target_java_lang_Continuation {
 
         if (innermost != cont) {
             Target_java_lang_ContinuationScope scope = cont.getScope();
-            int pinned = JavaContinuations.isPinned(thread, cont.getScope(), false);
+            int pinned = LoomSupport.isPinned(thread, cont.getScope(), false);
             if (pinned != 0) {
                 return pinned;
             }
             cont.yieldInfo = scope;
         }
-        int preemptResult = JavaContinuations.tryPreempt(this, SubstrateUtil.cast(thread, Thread.class));
+        int preemptResult = LoomSupport.tryPreempt(this, SubstrateUtil.cast(thread, Thread.class));
         if (preemptResult == 0) {
             flags = FLAG_SAFEPOINT_YIELD;
         }
