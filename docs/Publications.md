@@ -297,7 +297,7 @@ In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Prog
 -  Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://dl.acm.org/doi/abs/10.1145/3475738.3480939?sid=SCITRUS)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 
--  Florian Latifi, David Leopoldseder, Christian Wimmer, Hanspeter Moessenboeck [**CompGen: Generation of Fast Compilers in a Multi-Language VM**](https://conf.researchr.org/details/dls-2021/dls-2021-papers/5/CompGen-Generation-of-Fast-JIT-Compilers-in-a-Multi-language-VM)
+- Florian Latifi, David Leopoldseder, Christian Wimmer, Hanspeter Moessenboeck [**CompGen: Generation of Fast Compilers in a Multi-Language VM**](https://doi.org/10.1145/3486602.3486930)
 In _Proceedings Dynamic Language Symposium, DLS co-located with SPLASH conference 2021_
 
 - Matt D'Souzam, Gilles Duboscq, [**Lightweight On-Stack Replacement in Languages with Unstructured Loops**](https://dl.acm.org/doi/10.1145/3486606.3486782)
