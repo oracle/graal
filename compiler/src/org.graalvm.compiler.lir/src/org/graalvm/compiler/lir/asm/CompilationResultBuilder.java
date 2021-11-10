@@ -159,9 +159,6 @@ public class CompilationResultBuilder {
     private final DebugContext debug;
     private final EconomicMap<Constant, Data> dataCache;
 
-    private Consumer<LIRInstruction> beforeOp;
-    private Consumer<LIRInstruction> afterOp;
-
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
      * architectures where certain branch instructions have limited displacement such as ARM tbz.
@@ -574,13 +571,7 @@ public class CompilationResultBuilder {
             }
 
             try {
-                if (beforeOp != null) {
-                    beforeOp.accept(op);
-                }
                 emitOp(op);
-                if (afterOp != null) {
-                    afterOp.accept(op);
-                }
             } catch (GraalError e) {
                 throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
@@ -634,11 +625,6 @@ public class CompilationResultBuilder {
         }
         lir = null;
         currentBlockIndex = 0;
-    }
-
-    public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
-        this.beforeOp = beforeOp;
-        this.afterOp = afterOp;
     }
 
     public OptionValues getOptions() {
