@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -414,16 +413,13 @@ public abstract class StaticShape<T> {
             return id;
         }
 
+        // Reflectively invoked also from TruffleBaseFeature.StaticObjectSupport
         private static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
-            // Reflective accesses must be registered by TruffleBaseFeature.StaticObjectSupport, or
-            // these checks might be performed at image build time but not at run time.
-            // This would probably lead to class generation at run time, which is not supported by
-            // Native Image.
             CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
                 throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");
             }
-            // since methods in the factory interface must have the storage super class as return
+            // Since methods in the factory interface must have the storage super class as return
             // type, calling `storageFactoryInterface.getMethods()` also verifies that the class
             // loader of the factory interface can load the storage super class
             for (Method m : storageFactoryInterface.getMethods()) {
@@ -463,18 +459,6 @@ public abstract class StaticShape<T> {
         private static boolean isClassVisible(ClassLoader cl, Class<?> clazz) {
             if (cl == null) {
                 return clazz.getClassLoader() == null;
-            } else if (ImageInfo.inImageRuntimeCode()) {
-                ClassLoader clazzClassLoader = clazz.getClassLoader();
-                if (clazzClassLoader == null) {
-                    return true;
-                } else {
-                    for (ClassLoader classLoader = cl; cl != null; cl = cl.getParent()) {
-                        if (classLoader == clazzClassLoader) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
             } else {
                 try {
                     cl.loadClass(clazz.getName());

@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -562,38 +563,29 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         private static void generate(Class<?> storageSuperClass, Class<?> factoryInterface,
                         BeforeAnalysisAccess access) {
             try {
-                VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
+                validateClasses(storageSuperClass, factoryInterface);
+                // Checkstyle: stop do not use ClassLoader objects
+                ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+                // Checkstyle: resume
+                getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
             } catch (ReflectiveOperationException e) {
                 if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
-                    // Do not generate classes that will fail validation at run time.
-                    registerReflectionAccessesForRuntimeValidation(storageSuperClass, factoryInterface);
-                    return;
+                    Target_com_oracle_truffle_api_staticobject_StaticShape_Builder.ExceptionCache.set(storageSuperClass, factoryInterface, (IllegalArgumentException) e.getCause());
+                } else {
+                    throw VMError.shouldNotReachHere(e);
                 }
-                throw VMError.shouldNotReachHere(e);
-            }
-
-            // Checkstyle: stop
-            ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-            // Checkstyle: resume
-            Object generator;
-            try {
-                String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
-                GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere(e);
             }
         }
 
-        // Checkstyle: stop
-        private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
+        private static void validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+            VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
+        }
+
+        // Checkstyle: stop do not use ClassLoader objects
+        private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
             ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
             if (cl == null) {
-                ClassLoader newCL;
-                try {
-                    newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
+                ClassLoader newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
                 cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
                 if (cl == null) {
                     cl = newCL;
@@ -603,7 +595,15 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
         // Checkstyle: resume
 
-        // Checkstyle: stop
+        /*
+         * Triggers shape generation.
+         */
+        private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+            String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
+            GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+        }
+
+        // Checkstyle: stop do not use dynamic class loading
         private static Class<?> loadClass(String name) {
             try {
                 return Class.forName(name);
@@ -612,20 +612,31 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             }
         }
         // Checkstyle: resume
+    }
+}
 
-        private static void registerReflectionAccessesForRuntimeValidation(Class<?> storageSuperClass,
-                        Class<?> factoryInterface) {
-            for (Method m : factoryInterface.getMethods()) {
-                RuntimeReflection.register(m);
-            }
-            for (Constructor<?> c : storageSuperClass.getDeclaredConstructors()) {
-                RuntimeReflection.register(c);
-            }
-            for (Class<?> clazz = storageSuperClass; clazz != null; clazz = clazz.getSuperclass()) {
-                for (Method m : clazz.getDeclaredMethods()) {
-                    RuntimeReflection.register(m);
-                }
-            }
+/*
+ * Cache validation exceptions triggered at build time and throw them at run time.
+ */
+@TargetClass(className = "com.oracle.truffle.api.staticobject.StaticShape", innerClass = "Builder", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_StaticShape_Builder {
+    static final class ExceptionCache {
+        private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, IllegalArgumentException> cache = new ConcurrentHashMap<>();
+
+        static IllegalArgumentException get(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
+            return cache.get(Pair.create(storageSuperClass, storageFactoryInterface));
+        }
+
+        static void set(Class<?> storageSuperClass, Class<?> storageFactoryInterface, IllegalArgumentException e) {
+            cache.putIfAbsent(Pair.create(storageSuperClass, storageFactoryInterface), e);
+        }
+    }
+
+    @Substitute
+    static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
+        IllegalArgumentException exception = ExceptionCache.get(storageSuperClass, storageFactoryInterface);
+        if (exception != null) {
+            throw exception;
         }
     }
 }
