@@ -112,7 +112,7 @@ public abstract class InvokeVirtual extends Node {
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
                                         "resolutionSeed.getLeafAssumption()",
-                                        "resolvedMethod.getAssumption()"
+                                        "resolvedMethod.getRedefineAssumption()"
                         })
         Object callLeaf(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
@@ -129,7 +129,7 @@ public abstract class InvokeVirtual extends Node {
         @Specialization(limit = "LIMIT", //
                         replaces = "callLeaf", //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,

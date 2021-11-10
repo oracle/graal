@@ -46,8 +46,8 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
             underlying = Truffle.getRuntime().createAssumption(assumptionName);
         }
 
-        LeafTypeAssumptionImpl(ObjectKlass klass) {
-            this(klass.getNameAsString() + " is a leaf type");
+        LeafTypeAssumptionImpl(ObjectKlass.KlassVersion klass) {
+            this(klass.getKlass().getNameAsString() + " is a leaf type");
         }
 
         @Override
@@ -62,7 +62,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
 
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return FinalIsAlwaysLeaf;
         }

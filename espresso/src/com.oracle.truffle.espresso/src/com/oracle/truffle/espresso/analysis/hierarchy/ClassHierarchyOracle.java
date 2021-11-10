@@ -47,11 +47,11 @@ public interface ClassHierarchyOracle {
      * @param newKlass -- newly created class
      * @return the assumption, indicating whether the class is a leaf in class hierarchy.
      */
-    LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
+    LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass);
 
     /**
      * @return the assumption, valid iff {@code klass} is a leaf in class hierarchy. Automatically
-     *         invalidated in {@link #createAssumptionForNewKlass(ObjectKlass)} when a child of
+     *         invalidated in {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a child of
      *         {@code klass} is created.
      */
     LeafTypeAssumption isLeafClass(ObjectKlass klass);

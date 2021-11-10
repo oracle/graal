@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  */
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         markAncestorsAsNonLeaf(newKlass);
 
         if (newKlass.isFinalFlagSet()) {
@@ -44,8 +44,8 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
         return new LeafTypeAssumptionImpl(newKlass);
     }
 
-    private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
-        ObjectKlass currentParent = newClass.getSuperKlass();
+    private static void markAncestorsAsNonLeaf(ObjectKlass.KlassVersion newClass) {
+        ObjectKlass currentParent = newClass.getKlass().getSuperKlass();
         while (currentParent != null && currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().isValid()) {
             currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().invalidate();
             currentParent = currentParent.getSuperKlass();

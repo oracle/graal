@@ -93,7 +93,7 @@ public abstract class InvokeInterface extends Node {
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,

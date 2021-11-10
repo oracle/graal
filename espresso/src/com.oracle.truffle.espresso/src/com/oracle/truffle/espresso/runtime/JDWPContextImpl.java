@@ -812,7 +812,7 @@ public final class JDWPContextImpl implements JDWPContext {
         for (ObjectKlass invalidatedClass : invalidatedClasses) {
             if (!redefinedClasses.contains(invalidatedClass)) {
                 JDWP.LOGGER.fine(() -> "Updating invalidated class " + invalidatedClass.getName());
-                invalidatedClass.refresh(ids);
+                invalidatedClass.swapKlassVersion(ids);
             }
         }
 

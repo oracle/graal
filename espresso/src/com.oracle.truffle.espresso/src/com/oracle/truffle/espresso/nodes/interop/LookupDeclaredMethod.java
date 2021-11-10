@@ -47,7 +47,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
                     "publicOnly == cachedPublicOnly",
                     "isStatic == cachedIsStatic",
                     "arity == cachedArity",
-                    "methodVersion != null"}, limit = "LIMIT", assumptions = "methodVersion.getAssumption()")
+                    "methodVersion != null"}, limit = "LIMIT", assumptions = "methodVersion.getRedefineAssumption()")
     Method.MethodVersion doCached(Klass klass,
                     String key,
                     boolean publicOnly,
