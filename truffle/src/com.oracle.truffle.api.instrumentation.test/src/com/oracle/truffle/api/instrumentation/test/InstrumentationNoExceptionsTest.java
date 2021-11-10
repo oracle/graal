@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.fail;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,9 +61,6 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 
 /**
  * We test that instrument exceptions do not affect application execution.
@@ -290,8 +291,37 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
             throw new MyInstrumentException();
         }).build();
+
         testExceptionInInstrument((ins) -> ins.attachLoadSourceSectionListener(buggySourceSectionFilter, (s) -> {
         }, true));
+    }
+
+    /*
+     * Test for bug GR-32764.
+     */
+    @Test
+    public void testExceptionInLoadSourceSectionFilterPredicateNotEntered() throws Exception {
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).out(out).err(err);
+        setupEnv(builder.build(), new TestDecentInstrument());
+
+        SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
+            throw new MyInstrumentException();
+        }).build();
+
+        context.leave();
+        try {
+            try {
+                instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(buggySourceSectionFilter, (s) -> {
+                }, true);
+
+                // maybe was logged instead?
+                fail();
+            } catch (MyInstrumentException e) {
+                // expected
+            }
+        } finally {
+            context.enter();
+        }
     }
 
     @Test
