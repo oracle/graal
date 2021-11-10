@@ -436,7 +436,7 @@ public abstract class Accessor {
 
         public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);
 
-        public abstract boolean isInstrumentExceptionsAreThrown(Object polyglotEngine);
+        public abstract boolean isInstrumentExceptionsAreThrown(Object polyglotInstrument);
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 

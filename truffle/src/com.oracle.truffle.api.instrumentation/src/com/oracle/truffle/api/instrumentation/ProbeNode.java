@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import java.io.PrintStream;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashSet;
@@ -48,6 +47,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -55,12 +55,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.EngineInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -634,8 +634,9 @@ public final class ProbeNode extends Node {
     }
 
     /**
-     * Handles exceptions from non-language instrumentation code that must not be allowed to alter
-     * guest language execution semantics. Normal response is to log and continue.
+     * Previously, by default, all instruments did log their exceptions. They now by default throw,
+     * but we still want to respect if engine.InstrumentExceptionsAreThrown is explicitly set to
+     * false. This can be a workaround if an instrument fails but the execution should continue.
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
@@ -643,19 +644,20 @@ public final class ProbeNode extends Node {
             // Terminates guest language execution immediately
             throw (ThreadDeath) t;
         }
-        final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
-        if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {
+        // we only want to ever log for probes of instruments
+        if (!(b.getInstrumenter() instanceof InstrumentClientInstrumenter)) {
             throw sthrow(RuntimeException.class, t);
         }
-        // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
-
+        Object probeInstrument = instrumenter.getEnv().getPolyglotInstrument();
+        if (InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(probeInstrument)) {
+            throw sthrow(RuntimeException.class, t);
+        }
+        // fetch default logger for instrument of the current probe
+        TruffleLogger logger = InstrumentAccessor.engineAccess().getLogger(probeInstrument, null);
         String message = String.format("Event %s failed for instrument class %s and listener/factory %s.", //
                         eventName, instrumenter.getInstrumentClassName(), b.getElement());
-
-        Exception exception = new Exception(message, t);
-        PrintStream stream = new PrintStream(instrumenter.getEnv().err());
-        exception.printStackTrace(stream);
+        logger.log(Level.SEVERE, message, t);
     }
 
     /** @since 0.12 */
