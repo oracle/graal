@@ -1118,7 +1118,8 @@ public abstract class Launcher {
      *
      * @param originalArgs the original arguments from main(), unmodified.
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
-     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
+     *            recognized by maybeExec are removed from the list.
      * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */

@@ -59,10 +59,25 @@ import org.graalvm.polyglot.PolyglotException;
 public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     private static final Constructor<AbstractLanguageLauncher> LAUNCHER_CTOR;
+    /**
+     * Set to true if the launcher has been started via the {@code runLauncher} JNI entry point
+     */
     private boolean jniLaunch;
+    /**
+     * Native argument count, set if the launcher has been started via {@code runLauncher}
+     */
     private int nativeArgc;
+    /**
+     * Pointer to the native argument value array, set if the launcher has been started via
+     * {@code runLauncher}
+     */
     private long nativeArgv;
-    @SuppressWarnings("unused") private static String vmArgs;
+    /**
+     * Actual VM arguments, set if validateVmArguments fails s.t. the native launcher can obtain the
+     * actual VM arguments for a relaunch. Static field since the native launcher does not have a
+     * reference to the Launcher instance.
+     */
+    @SuppressWarnings("unused") private static String[] vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -156,20 +171,20 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
     /**
      * Check if the arguments parsing heuristic of the native launcher correctly identified the set
      * of VM arguments. Throw a {@code RelaunchException} if it hasn't. The exception will be picked
-     * up by the native launcher, which will read the {@code vmArgIndices} and restart the VM with
-     * the correct set of VM arguments.
+     * up by the native launcher, which will read the {@code vmArgs}, put them in environment
+     * variables and restart the VM with the correct set of VM arguments.
      *
      * @param originalArgs original set of arguments (except for argv[0], the program name)
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
     protected static final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
-        if (System.getenv("TRUFFLE_LAUNCHER_VMARGS") != null) {
+        if (System.getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS") != null) {
             // vm arguments have been explicitly set, bypassing the heuristic
             return;
         }
 
-        Set<String> heuristicVmArgs = new HashSet<>();
-        Set<String> actualVmArgs = new HashSet<>();
+        List<String> heuristicVmArgs = new ArrayList<>();
+        List<String> actualVmArgs = new ArrayList<>();
 
         for (String arg : originalArgs) {
             if (arg.startsWith("--vm.")) {
@@ -182,12 +197,14 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             }
         }
 
-        if (heuristicVmArgs.equals(actualVmArgs)) {
-            // we are good, the heuristic correctly identified all vm arguments
+        Set<String> heuristic = new HashSet<>(heuristicVmArgs);
+        Set<String> actual = new HashSet<>(actualVmArgs);
+
+        if (heuristic.equals(actual)) {
             return;
         }
 
-        vmArgs = String.join(" ", actualVmArgs);
+        vmArgs = actualVmArgs.toArray(new String[actualVmArgs.size()]);
 
         throw new RelaunchException();
     }
@@ -238,13 +255,13 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
+        if (jniLaunch) {
+            validateVmArguments(originalArgs, unrecognizedArgs);
+        }
+
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
             maybeNativeExec(originalArgs, unrecognizedArgs, false);
-        }
-
-        if (jniLaunch) {
-            validateVmArguments(originalArgs, unrecognizedArgs);
         }
 
         parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
