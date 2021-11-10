@@ -2411,6 +2411,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     /**
      * Returns the caller frame, 'depth' levels up. If securityStackWalk is true, some Espresso
      * frames are skipped according to {@link #isIgnoredBySecurityStackWalk}.
+     * 
+     * May return null if there is no Java frame on the stack.
      */
     @TruffleBoundary
     private FrameInstance getCallerFrame(int depth, boolean securityStackWalk, Meta meta) {
@@ -2427,7 +2429,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // [.] [ (skipped intermediate frames) ]
         // ...
         // [n] [ caller ]
-        FrameInstance callerFrame = Truffle.getRuntime().iterateFrames(
+        return Truffle.getRuntime().iterateFrames(
                         new FrameInstanceVisitor<FrameInstance>() {
                             private int n;
 
@@ -2445,12 +2447,6 @@ public final class VM extends NativeEnv implements ContextAccess {
                                 return null;
                             }
                         });
-
-        if (callerFrame != null) {
-            return callerFrame;
-        }
-
-        throw EspressoError.shouldNotReachHere(String.format("Caller frame not found at depth %d", depth));
     }
 
     /**
