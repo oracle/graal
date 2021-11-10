@@ -30,12 +30,11 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 
 import java.util.EnumMap;
 
-import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -48,6 +47,10 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -65,6 +68,7 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -107,6 +111,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @see Templates#lower(ArrayCopyNode, boolean, LoweringTool)
  */
 public abstract class ArrayCopySnippets implements Snippets {
+
+    public static void registerSystemArraycopyPlugin(InvocationPlugins.Registration r) {
+        registerSystemArraycopyPlugin(r, false);
+    }
+
+    public static void registerSystemArraycopyPlugin(InvocationPlugins.Registration r, boolean forceAnyLocation) {
+        r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
+                ValueNode nonNullSrc = b.nullCheckedValue(src);
+                ValueNode nonNullDst = b.nullCheckedValue(dst);
+                b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length, forceAnyLocation));
+                return true;
+            }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
+    }
 
     protected enum ArrayCopyTypeCheck {
         UNDEFINED_ARRAY_TYPE_CHECK,
@@ -156,20 +181,19 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @SuppressWarnings("unused")
     @Snippet
-    public void delayedExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+    public void delayedExactArraycopyWithExpandedLoopSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length,
+                    @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
-        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
-        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
-        checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
+        checkArrayTypes(src, dest, arrayTypeCheck);
+        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         elementKindCounter.inc();
         elementKindCopiedCounter.add(length);
 
         // Don't lower until floating guards are fixed.
-        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
+        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(src, srcPos, dest, destPos, length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
                         elementKind);
     }
 
@@ -178,19 +202,17 @@ public abstract class ArrayCopySnippets implements Snippets {
      * array copy.
      */
     @Snippet
-    public void arraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+    public void arraycopyExactStubCallSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
-        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
-        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
-        checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
+        checkArrayTypes(src, dest, arrayTypeCheck);
+        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         elementKindCounter.inc();
         elementKindCopiedCounter.add(length);
 
-        ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, locationIdentity, heapWordSize());
+        ArrayCopyCallNode.arraycopy(src, srcPos, dest, destPos, length, elementKind, locationIdentity, heapWordSize());
     }
 
     /**
@@ -202,16 +224,14 @@ public abstract class ArrayCopySnippets implements Snippets {
      * @see #checkcastArraycopySnippet
      */
     @Snippet
-    public void delayedCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+    public void delayedCheckcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
-        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
-        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
-        checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
+        checkArrayTypes(src, dest, arrayTypeCheck);
+        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, srcPos, dest, destPos, length, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -222,16 +242,14 @@ public abstract class ArrayCopySnippets implements Snippets {
      * @see #genericArraycopySnippet
      */
     @Snippet
-    public void delayedGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
+    public void delayedGenericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
-        Object nonNullSrc = GraalDirectives.guardingNonNull(src);
-        Object nonNullDest = GraalDirectives.guardingNonNull(dest);
-        checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
-        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, counters);
+        checkArrayTypes(src, dest, arrayTypeCheck);
+        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
         incrementLengthCounter(length, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, srcPos, dest, destPos, length, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -239,7 +257,7 @@ public abstract class ArrayCopySnippets implements Snippets {
      * only used in cases where we already know that the operation will throw an exception.
      */
     @Snippet
-    public static void arraycopyNativeExceptionSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter Counters counters) {
+    public static void arraycopyNativeExceptionSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter Counters counters) {
         // all checks are done in the native method, so no need to emit additional checks here
         incrementLengthCounter(length, counters);
         counters.systemArraycopyCounter.inc();
@@ -257,7 +275,7 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
-    public void exactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+    public void exactArraycopyWithExpandedLoopSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation, @ConstantParameter Counters counters) {
         doExactArraycopyWithExpandedLoopSnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
     }
@@ -265,14 +283,14 @@ public abstract class ArrayCopySnippets implements Snippets {
     /**
      * @see #exactArraycopyWithExpandedLoopSnippet
      */
-    protected abstract void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation,
-                    Counters counters);
+    protected abstract void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind,
+                    LocationIdentity arrayLocation, Counters counters);
 
     /**
      * Performs an array copy via fast checkcast stub.
      */
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
-    public void checkcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+    public void checkcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
                     @ConstantParameter Counters counters) {
         doCheckcastArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
@@ -291,7 +309,7 @@ public abstract class ArrayCopySnippets implements Snippets {
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
-    public void genericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
+    public void genericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation,
                     @ConstantParameter Counters counters) {
         doGenericArraycopySnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);

@@ -131,7 +131,7 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -546,18 +546,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-                b.add(new ArrayCopyNode(b.bci(), src, srcPos, dst, dstPos, length));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-        });
+        ArrayCopySnippets.registerSystemArraycopyPlugin(r);
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
