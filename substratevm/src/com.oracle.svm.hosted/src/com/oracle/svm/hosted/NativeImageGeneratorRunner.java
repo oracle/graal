@@ -205,7 +205,7 @@ public class NativeImageGeneratorRunner {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             /* Instantiate module-aware NativeImageClassLoaderSupport */
             try {
-                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk11.NativeImageClassLoaderSupportJDK11OrLater");
+                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater");
                 Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
                 return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
             } catch (ReflectiveOperationException e) {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jdk11;
+package com.oracle.svm.hosted.jdk;
 
 import java.io.File;
 import java.io.IOException;
