@@ -31,6 +31,17 @@ echo %PATH%
 echo %JAVA_HOME%
 ```
 
+Alternatively, you can set up environment variables through a Windows GUI:
+
+1. Go to Windows Start Menu - Settings - ... - Advanced.
+2. Click Environment Variables. In the section System Variables find the `JAVA_HOME` variable and select it.
+3. Click Edit.
+4. Click New.
+5. Click Browse and reach the folder to add. Confirm by clicking OK.
+6. Restart Command Prompt to reload the environment variables.
+
+Repeat the same for the `PATH` environment variable.
+
 For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-windows/).
 
 ## Installation Note
