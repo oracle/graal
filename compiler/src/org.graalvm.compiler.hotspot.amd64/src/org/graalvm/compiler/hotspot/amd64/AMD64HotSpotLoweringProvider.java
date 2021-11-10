@@ -68,10 +68,9 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        convertSnippets = new AMD64ConvertSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        mathSnippets = new AMD64X87MathSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        providers.getReplacements().registerSnippetTemplateCache(
-                        new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget()));
+        convertSnippets = new AMD64ConvertSnippets.Templates(options, providers);
+        mathSnippets = new AMD64X87MathSnippets.Templates(options, providers);
+        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, providers));
         super.initialize(options, factories, providers, config, allocationSnippetTemplates);
     }
 

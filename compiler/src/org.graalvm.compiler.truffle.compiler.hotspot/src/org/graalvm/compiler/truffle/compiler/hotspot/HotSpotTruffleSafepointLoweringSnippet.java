@@ -61,7 +61,6 @@ import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPha
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -107,11 +106,8 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
         private final SnippetInfo pollSnippet = snippet(HotSpotTruffleSafepointLoweringSnippet.class, "pollSnippet", PENDING_HANDSHAKE_LOCATION);
         private final int pendingHandshakeOffset;
 
-        Templates(OptionValues options,
-                        Iterable<DebugHandlersFactory> factories,
-                        HotSpotProviders providers,
-                        TargetDescription target, int pendingHandshakeOffset) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        Templates(OptionValues options, HotSpotProviders providers, int pendingHandshakeOffset) {
+            super(options, providers);
             this.pendingHandshakeOffset = pendingHandshakeOffset;
         }
 
@@ -171,7 +167,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                         Iterable<DebugHandlersFactory> factories) {
             GraalError.guarantee(templates == null, "cannot re-initialize %s", this);
             if (config.invokeJavaMethodAddress != 0 && config.jvmciReserved0Offset != -1) {
-                this.templates = new Templates(options, factories, providers, providers.getCodeCache().getTarget(), config.jvmciReserved0Offset);
+                this.templates = new Templates(options, providers, config.jvmciReserved0Offset);
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
                     GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);

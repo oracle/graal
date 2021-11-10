@@ -60,7 +60,7 @@ public class AArch64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
+        integerArithmeticSnippets = new AArch64IntegerArithmeticSnippets(options, providers);
         super.initialize(options, factories, providers, config, allocationSnippetTemplates);
     }
 

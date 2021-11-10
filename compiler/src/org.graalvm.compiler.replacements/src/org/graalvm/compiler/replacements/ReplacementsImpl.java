@@ -264,16 +264,25 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     private static final AtomicInteger nextDebugContextId = new AtomicInteger();
 
-    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
+    @Override
+    public DebugContext openSnippetDebugContext(Description description, DebugContext outer, OptionValues options) {
         if (DebugStubsAndSnippets.getValue(options)) {
-            return openSnippetDebugContext(idPrefix, method, options);
+            return openDebugContext(options, outer, description);
         }
         return DebugContext.disabled(options);
     }
 
     public DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
-        DebugContext outer = DebugContext.forCurrentThread();
         Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
+        return openSnippetDebugContext(description, DebugContext.forCurrentThread(), options);
+    }
+
+    public DebugContext openDebugContext(String idPrefix, ResolvedJavaMethod method, OptionValues options) {
+        Description description = new Description(method, idPrefix + nextDebugContextId.incrementAndGet());
+        return openDebugContext(options, DebugContext.forCurrentThread(), description);
+    }
+
+    private DebugContext openDebugContext(OptionValues options, DebugContext outer, Description description) {
         return new Builder(options, debugHandlersFactory).globalMetrics(outer.getGlobalMetrics()).description(description).build();
     }
 
@@ -286,7 +295,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
         StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(method) : null;
         if (graph == null || (trackNodeSourcePosition && !graph.trackNodeSourcePosition())) {
-            try (DebugContext debug = openDebugContext("Snippet_", method, options);
+            try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options);
                             DebugCloseable a = SnippetPreparationTime.start(debug)) {
                 StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, recursiveEntry, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
                 DebugContext.counter("SnippetNodeCount[%#s]", method).add(newGraph.getDebug(), newGraph.getNodeCount());
@@ -373,7 +382,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 ResolvedJavaMethod substitute = msPlugin.getSubstitute(metaAccess);
                 StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(substitute) : null;
                 if (graph == null || graph.trackNodeSourcePosition() != trackNodeSourcePosition) {
-                    try (DebugContext debug = openDebugContext("Substitution_", method, options)) {
+                    try (DebugContext debug = openSnippetDebugContext("Substitution_", method, options)) {
                         graph = makeGraph(debug, msPlugin.getBytecodeProvider(), substitute, null, method, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
                         if (!UseSnippetGraphCache.getValue(options)) {
                             return graph;
@@ -387,7 +396,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 result = graph;
             } else {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
-                try (DebugContext debug = openDebugContext("Substitution_", method, options)) {
+                try (DebugContext debug = openSnippetDebugContext("Substitution_", method, options)) {
                     result = new IntrinsicGraphBuilder(options, debug, providers, code, invokeBci, allowAssumptions).buildGraph(plugin);
                 }
             }

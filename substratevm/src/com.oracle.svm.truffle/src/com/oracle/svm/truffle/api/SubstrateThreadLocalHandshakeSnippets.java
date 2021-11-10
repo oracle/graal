@@ -31,9 +31,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -66,9 +64,9 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     @NodeIntrinsic(value = ForeignCallNode.class)
     private static native void foreignPoll(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object location);
 
-    public SubstrateThreadLocalHandshakeSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    public SubstrateThreadLocalHandshakeSnippets(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+        super(options, providers);
         lowerings.put(TruffleSafepointNode.class, new SafepointLowering());
     }
 

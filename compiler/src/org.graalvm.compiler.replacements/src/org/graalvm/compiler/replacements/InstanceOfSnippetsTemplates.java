@@ -28,9 +28,7 @@ import static org.graalvm.compiler.nodes.calc.CompareNode.createCompareNode;
 
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -56,8 +54,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.UsageReplacer;
 
-import jdk.vm.ci.code.TargetDescription;
-
 /**
  * Helper class for lowering {@link InstanceOfNode}s with snippets. The majority of the complexity
  * in such a lowering derives from the fact that {@link InstanceOfNode} is a floating node. A
@@ -73,8 +69,8 @@ import jdk.vm.ci.code.TargetDescription;
  */
 public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-        super(options, factories, providers, snippetReflection, target);
+    public InstanceOfSnippetsTemplates(OptionValues options, Providers providers) {
+        super(options, providers);
     }
 
     /**

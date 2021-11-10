@@ -35,8 +35,6 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -57,7 +55,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
-import org.graalvm.compiler.replacements.SnippetCounter.Group.Factory;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -66,7 +63,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -448,9 +444,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
 
-        public Templates(ArrayCopySnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, Factory factory, Providers providers,
-                        SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, factories, providers, snippetReflection, target);
+        public Templates(ArrayCopySnippets receiver, Group.Factory factory, OptionValues options, Providers providers) {
+            super(options, providers);
             this.counters = new Counters(factory);
 
             useOriginalArraycopy = receiver.useOriginalArraycopy();
@@ -618,10 +613,10 @@ public abstract class ArrayCopySnippets implements Snippets {
         private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
             SnippetTemplate template = template(arraycopy, args);
-            UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
-            for (Node originalNode : replacements.getKeys()) {
+            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
+            for (Node originalNode : duplicates.getKeys()) {
                 if (originalNode instanceof InvokeNode) {
-                    InvokeNode invoke = (InvokeNode) replacements.get(originalNode);
+                    InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
                     assert invoke.asNode().graph() == graph;
                     CallTargetNode call = invoke.callTarget();
 
@@ -641,7 +636,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 } else if (originalNode instanceof InvokeWithExceptionNode) {
                     throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 } else if (originalNode instanceof ArrayCopyWithDelayedLoweringNode) {
-                    ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) replacements.get(originalNode);
+                    ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) duplicates.get(originalNode);
                     assert arraycopy.stateAfter() != null : arraycopy;
                     slowPath.setBci(arraycopy.getBci());
                 }

@@ -35,7 +35,6 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
@@ -54,8 +53,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.word.Word;
-
-import jdk.vm.ci.code.TargetDescription;
 
 public class AssertionSnippets implements Snippets {
 
@@ -91,8 +88,8 @@ public class AssertionSnippets implements Snippets {
         private final SnippetInfo assertion = snippet(AssertionSnippets.class, "assertion");
         private final SnippetInfo stubAssertion = snippet(AssertionSnippets.class, "stubAssertion");
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
         }
 
         public void lower(AssertionNode assertionNode, LoweringTool tool) {
