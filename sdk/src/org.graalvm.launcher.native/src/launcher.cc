@@ -75,12 +75,15 @@
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
 
-#define VM_ARG_OFFSET 5
-#define VM_CP_ARG_OFFSET 8
-#define VM_CLASSPATH_ARG_OFFSET 15
-#define IS_VM_ARG(ARG) (strncmp(ARG, "--vm.", VM_ARG_OFFSET) == 0)
-#define IS_VM_CP_ARG(ARG) (strncmp(ARG, "--vm.cp=", VM_CP_ARG_OFFSET) == 0)
-#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, "--vm.classpath=", VM_CLASSPATH_ARG_OFFSET) == 0)
+#define VM_ARG_PREFIX "--vm."
+#define VM_CP_ARG_PREFIX "--vm.cp="
+#define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
+#define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
+#define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
+#define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
+#define IS_VM_ARG(ARG) (strcmp(ARG, VM_ARG_PREFIX) == 0)
+#define IS_VM_CP_ARG(ARG) (strcmp(ARG, VM_CP_ARG_PREFIX) == 0)
+#define IS_VM_CLASSPATH_ARG(ARG) (strcmp(ARG, VM_CLASSPATH_ARG_PREFIX) == 0)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -126,18 +129,18 @@ char *exe_path() {
 }
 
 char *exe_directory() {
-    #if defined (__linux__)
-        return dirname(exe_path());
-    #elif defined (__APPLE__)
-        return dirname(exe_path());
-    #elif defined (_WIN32)
-        char *path = exe_path();
+    char *path = exe_path();
+    #if defined (_WIN32)
         // get the directory part
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
         _splitpath_s(path, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
         _makepath_s(path, _MAX_PATH, drive, dir, NULL, NULL);
         return path;
+    #else
+        char *dir = strdup(dirname(path));
+        free(path);
+        return dir;
     #endif
 }
 
@@ -176,7 +179,7 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
         vmOptionEntries = argc;
     } else {
         char *cur = vmArgInfo;
-        while ((cur = strstr(cur, "--vm.")) != NULL) {
+        while ((cur = strstr(cur, VM_ARG_PREFIX)) != NULL) {
             vmOptionEntries++;
             if (cur != vmArgInfo) {
                 // terminate the individual arguments
@@ -229,9 +232,9 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     }
 
     // handle relaunch arguments
-    if (vmArgInfo) {
+    else {
         char *cur = vmArgInfo;
-        while ((cur = strstr(cur, "--vm.")) != NULL) {
+        while ((cur = strstr(cur, VM_ARG_PREFIX)) != NULL) {
             if (IS_VM_CP_ARG(cur)) {
                 cp << CP_SEP_STR << cur+VM_CP_ARG_OFFSET;
             } else if (IS_VM_CLASSPATH_ARG(cur)) {
@@ -282,6 +285,7 @@ int main(int argc, char *argv[]) {
     JavaVMInitArgs vmInitArgs;
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs);
+    free(exeDir);
     vmInitArgs.version = JNI_VERSION_1_8;
     vmInitArgs.ignoreUnrecognized = false;
 
