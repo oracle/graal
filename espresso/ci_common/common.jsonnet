@@ -77,30 +77,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
   // precise targets and capabilities
-  jdk8_gate_linux               : base.jdk8   + self.gate          + self.linux,
-  jdk8_gate_darwin              : base.jdk8   + self.gate          + self.darwin,
-  jdk8_gate_windows             : base.jdk8   + self.gate          + base.windows_8,
-  jdk8_bench_linux              : base.jdk8   + self.bench         + self.x52,
-  jdk8_bench_darwin             : base.jdk8   + self.bench         + self.darwin,
-  jdk8_bench_windows            : base.jdk8   + self.bench         + base.windows_8,
-  jdk8_daily_linux              : base.jdk8   + self.daily         + self.linux,
-  jdk8_daily_darwin             : base.jdk8   + self.daily         + self.darwin,
-  jdk8_daily_windows            : base.jdk8   + self.daily         + base.windows_8,
-  jdk8_daily_bench_linux        : base.jdk8   + self.dailyBench    + self.x52,
-  jdk8_daily_bench_darwin       : base.jdk8   + self.dailyBench    + self.darwin,
-  jdk8_daily_bench_windows      : base.jdk8   + self.dailyBench    + base.windows_8,
-  jdk8_weekly_linux             : base.jdk8   + self.weekly        + self.linux,
-  jdk8_weekly_darwin            : base.jdk8   + self.weekly        + self.darwin,
-  jdk8_weekly_windows           : base.jdk8   + self.weekly        + base.windows_8,
-  jdk8_weekly_bench_linux       : base.jdk8   + self.weeklyBench   + self.x52,
-  jdk8_weekly_bench_darwin      : base.jdk8   + self.weeklyBench   + self.darwin,
-  jdk8_weekly_bench_windows     : base.jdk8   + self.weeklyBench   + base.windows_8,
-  jdk8_on_demand_linux          : base.jdk8   + self.onDemand      + self.linux,
-  jdk8_on_demand_darwin         : base.jdk8   + self.onDemand      + self.darwin,
-  jdk8_on_demand_windows        : base.jdk8   + self.onDemand      + base.windows_8,
-  jdk8_on_demand_bench_linux    : base.jdk8   + self.onDemandBench + self.x52,
-  jdk8_on_demand_bench_darwin   : base.jdk8   + self.onDemandBench + self.darwin,
-  jdk8_on_demand_bench_windows  : base.jdk8   + self.onDemandBench + base.windows_8,
   jdk11_gate_linux              : base.jdk11  + self.gate          + self.linux,
   jdk11_gate_darwin             : base.jdk11  + self.gate          + self.darwin,
   jdk11_gate_windows            : base.jdk11  + self.gate          + base.windows_11,
@@ -201,14 +177,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   espresso_minheap_benchmark(env, suite, guest_jvm_config):
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
 
-  espresso_interpreter_benchmark(env, suite):
-    self.espresso_benchmark(env, suite, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']),
+  espresso_interpreter_benchmark(env, suite, host_jvm=_host_jvm(env)):
+    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']),
 
-  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
+  scala_dacapo_warmup_benchmark(env, host_jvm=_host_jvm(env), guest_jvm_config='default', extra_args=[]):
     self.espresso_benchmark(
       env,
       self.scala_dacapo_jvm_fast(warmup=true),
-      host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env),
+      host_jvm=host_jvm, host_jvm_config=_host_jvm_config(env),
       guest_jvm='espresso', guest_jvm_config=guest_jvm_config,
       fork_file='ci_common/scala-dacapo-warmup-forks.json',
       extra_args=extra_args,
@@ -237,6 +213,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   builds: [
         // Gates
-        that.jdk8_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', name='gate-espresso-style-jdk8-linux-amd64'),
+        that.jdk11_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', name='gate-espresso-style-jdk11-linux-amd64'),
   ],
 }
