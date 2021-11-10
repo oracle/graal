@@ -1010,7 +1010,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             ]
         elif metric_name == "allocated-memory":
                 rules += [
-                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
                     "metric.name": "allocated-memory",
@@ -1018,7 +1018,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
                     "metric.score-function": "id",
-                    "metric.iteration": ("$iteration", int),
+                    "metric.iteration": ("<iteration>", int),
                 }),
             ]
         else:
