@@ -291,7 +291,7 @@ Describes the design of self-optimizing and self-specializing interpreter, and t
 - Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso [**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
 In _Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)_
 
-- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://dl.acm.org/doi/10.1145/3475738.3480943?cid=99659472659)
+- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
 In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
 
 -  Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://dl.acm.org/doi/abs/10.1145/3475738.3480939?sid=SCITRUS)
