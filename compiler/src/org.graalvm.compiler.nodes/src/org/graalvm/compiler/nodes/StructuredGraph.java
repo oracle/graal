@@ -360,6 +360,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
+    /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
+    private boolean stateAfterClearedForTesting = false;
 
     /**
      * Different node types verified during {@linkplain FrameStateVerification}. See
@@ -1186,6 +1188,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return frameStateVerification;
     }
 
+    public boolean isStateAfterClearedForTesting() {
+        return stateAfterClearedForTesting;
+    }
+
     public void weakenFrameStateVerification(FrameStateVerification newFrameStateVerification) {
         if (frameStateVerification == FrameStateVerification.NONE) {
             return;
@@ -1207,7 +1213,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         weakenFrameStateVerification(FrameStateVerification.NONE);
     }
 
-    public void clearAllStateAfter() {
+    /**
+     * For use in tests to clear all stateAfter frame states.
+     */
+    public void clearAllStateAfterForTestingOnly() {
+        stateAfterClearedForTesting = true;
         weakenFrameStateVerification(FrameStateVerification.NONE);
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {

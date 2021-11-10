@@ -104,6 +104,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -112,7 +113,6 @@ import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -2207,7 +2207,13 @@ public class SnippetTemplate {
         }
 
         if (stateAfter == null && stateDuring == null && stateBefore == null) {
-            /* No state available to transfer */
+            /*
+             * There should only be no state available to transfer during testing or if the
+             * replacee's graph itself is a substitution.
+             */
+            StructuredGraph graph = replacee.graph();
+            boolean condition = graph.isStateAfterClearedForTesting() || graph.isSubstitution();
+            GraalError.guarantee(condition, "No state available to transfer");
             return;
         }
         final ExceptionObjectNode exceptionObject;

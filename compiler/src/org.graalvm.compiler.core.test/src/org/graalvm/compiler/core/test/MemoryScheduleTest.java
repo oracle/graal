@@ -709,7 +709,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             new GuardLoweringPhase().apply(graph, midContext);
 
             if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                graph.clearAllStateAfter();
+                graph.clearAllStateAfterForTestingOnly();
                 // disable state split verification
                 graph.setGuardsStage(GuardsStage.AFTER_FSA);
             }
