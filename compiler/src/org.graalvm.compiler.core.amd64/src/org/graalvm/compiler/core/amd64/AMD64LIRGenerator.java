@@ -135,28 +135,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
     }
 
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected static final boolean canStoreConstant(JavaConstant c) {
-        // there is no immediate move of 64-bit constants on Intel
-        switch (c.getJavaKind()) {
-            case Long:
-                return NumUtil.isInt(c.asLong());
-            case Double:
-                return false;
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
-    }
-
     @Override
     protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;

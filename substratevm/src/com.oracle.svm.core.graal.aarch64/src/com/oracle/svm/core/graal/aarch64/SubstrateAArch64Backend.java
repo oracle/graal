@@ -444,7 +444,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void emitPrefetchAllocate(Value address) {
-            append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
+            append(new AArch64PrefetchOp(asAddressValue(address, AArch64Address.ANY_SIZE), PrefetchMode.PSTL1KEEP));
         }
 
         @Override
