@@ -113,7 +113,27 @@
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 extern char **environ;
 bool debug = false;
+bool relaunch = false;
 
+// platform-independent environment setter
+int setenv(std::string key, std::string value) {
+    #if defined (_WIN32)
+        std::stringstream ss;
+        ss << key << "=" << value;
+        if(_putenv(ss.str().c_str()) == -1) {
+            std::cerr << "_putenv failed" << std::endl;
+            return -1;
+        }
+    #else
+        if (setenv(key.c_str(), value.c_str(), 1) == -1) {
+            perror("setenv failed");
+            return -1;
+        }
+    #endif
+    return 0;
+}
+
+// get the path to the current executable
 char *exe_path() {
     #if defined (__linux__)
         return realpath("/proc/self/exe", NULL);
@@ -129,6 +149,7 @@ char *exe_path() {
     #endif
 }
 
+// get the directory of the current executable
 char *exe_directory() {
     char *path = exe_path();
     #if defined (_WIN32)
@@ -145,6 +166,7 @@ char *exe_directory() {
     #endif
 }
 
+// load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
 CreateJVM loadliblang(char *exeDir) {
     std::stringstream liblangPath;
     liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
@@ -165,6 +187,7 @@ CreateJVM loadliblang(char *exeDir) {
     return NULL;
 }
 
+// parse the VM arguments that should be passed to JNI_CreateJavaVM
 void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmInitArgs) {
     std::vector<std::string> vmArgs;
 
@@ -172,7 +195,10 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     int vmArgCount = 0;
     char *vmArgInfo = getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS");
     if (vmArgInfo != NULL) {
+        relaunch = true;
         vmArgCount = strtol(vmArgInfo, NULL, 10);
+        // clear the env variable
+        setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", "");
     }
 
     // set optional vm args from LanguageLibraryConfig.option_vars
@@ -238,6 +264,8 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
                 opt << '-' << cur+VM_ARG_OFFSET;
                 vmArgs.push_back(opt.str());
             }
+            // clean up env variable
+            setenv(envKey, "");
         }
     }
 
@@ -271,23 +299,6 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
         curOpt->optionString = strdup(arg.c_str());
         curOpt++;
     }
-}
-
-int setenv(std::string key, std::string value) {
-    #if defined (_WIN32)
-        std::stringstream ss;
-        ss << key << "=" << value;
-        if(_putenv(ss.str().c_str()) == -1) {
-            std::cerr << "_putenv failed" << std::endl;
-            return -1;
-        }
-    #else
-        if (setenv(key.c_str(), value.c_str(), 1) == -1) {
-            perror("setenv failed");
-            return -1;
-        }
-    #endif
-    return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -342,7 +353,7 @@ int main(int argc, char *argv[]) {
         }
         return -1;
     }
-    jmethodID runLauncherMid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJ)V");
+    jmethodID runLauncherMid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJZ)V");
     if (runLauncherMid == NULL) {
         std::cerr << "Launcher entry point not found." << std::endl;
         if (env->ExceptionCheck()) {
@@ -386,7 +397,7 @@ int main(int argc, char *argv[]) {
     }
 
     // invoke launcher entry point
-    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native);
+    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, relaunch);
     jthrowable t = env->ExceptionOccurred();
     if (t) {
         if (env->IsInstanceOf(t, relaunchExceptionClass)) {

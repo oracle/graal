@@ -72,6 +72,11 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * {@code runLauncher}.
      */
     private long nativeArgv;
+    /**
+     * Indicates if this launcher instance is the result of a relaunch, where actual VM arguments
+     * have been identified and set previously.
+     */
+    private boolean relaunch;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -137,9 +142,10 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param args the command line arguments as an encoding-agnostic byte array
      * @param argc the number of native command line arguments
      * @param argv pointer to argv
+     * @param relaunch indicates if this is a relaunch with previously identified vm arguments
      * @throws Exception if no launcher constructor has been set.
      */
-    public static void runLauncher(byte[][] args, int argc, long argv) throws Exception {
+    public static void runLauncher(byte[][] args, int argc, long argv, boolean relaunch) throws Exception {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
@@ -153,6 +159,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         launcher.jniLaunch = true;
         launcher.nativeArgc = argc;
         launcher.nativeArgv = argv;
+        launcher.relaunch = relaunch;
 
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -171,8 +178,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param originalArgs original set of arguments (except for argv[0], the program name)
      * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
      */
-    protected static final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
-        if (System.getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS") != null) {
+    protected final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+        if (relaunch) {
             // vm arguments have been explicitly set, bypassing the heuristic
             return;
         }
