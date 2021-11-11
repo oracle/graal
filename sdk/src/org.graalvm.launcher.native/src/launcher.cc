@@ -134,40 +134,43 @@ int setenv(std::string key, std::string value) {
 }
 
 // get the path to the current executable
-char *exe_path() {
+std::string exe_path() {
     #if defined (__linux__)
-        return realpath("/proc/self/exe", NULL);
+        char *realPath = realpath("/proc/self/exe", NULL);
     #elif defined (__APPLE__)
         char path[PATH_MAX];
         uint32_t path_len = PATH_MAX;
         _NSGetExecutablePath(path, &path_len);
-        return realpath(path, NULL);
+        char *realPath = realpath(path, NULL)
     #elif defined (_WIN32)
-        char *path = (char *)malloc(_MAX_PATH);
-        GetModuleFileNameA(NULL, path, _MAX_PATH);
-        return path;
+        char *realPath = (char *)malloc(_MAX_PATH);
+        GetModuleFileNameA(NULL, realPath, _MAX_PATH);
     #endif
+    std::string p(realPath);
+    free(realPath);
+    return p;
 }
 
 // get the directory of the current executable
-char *exe_directory() {
-    char *path = exe_path();
+std::string exe_directory() {
+    char *path = strdup(exe_path().c_str());
     #if defined (_WIN32)
         // get the directory part
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
+        char result[_MAX_DRIVE + _MAX_DIR];
         _splitpath_s(path, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
-        _makepath_s(path, _MAX_PATH, drive, dir, NULL, NULL);
-        return path;
+        _makepath_s(result, _MAX_PATH, drive, dir, NULL, NULL);
     #else
-        char *dir = strdup(dirname(path));
-        free(path);
-        return dir;
+        char *result = dirname(path);
     #endif
+    std::string exeDir(result);
+    free(path);
+    return exeDir;
 }
 
 // load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
-CreateJVM loadliblang(char *exeDir) {
+CreateJVM loadliblang(std::string exeDir) {
     std::stringstream liblangPath;
     liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
     if (debug) {
@@ -188,7 +191,7 @@ CreateJVM loadliblang(char *exeDir) {
 }
 
 // parse the VM arguments that should be passed to JNI_CreateJavaVM
-void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmInitArgs) {
+void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs) {
     std::vector<std::string> vmArgs;
 
     // check if vm args have been set on relaunch already
@@ -303,7 +306,7 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
 
 int main(int argc, char *argv[]) {
     debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
-    char *exeDir = exe_directory();
+    std::string exeDir = exe_directory();
     CreateJVM createJVM = loadliblang(exeDir);
     if (!createJVM) {
         std::cerr << "Could not load language library." << std::endl;
@@ -314,7 +317,6 @@ int main(int argc, char *argv[]) {
     JavaVMInitArgs vmInitArgs;
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs);
-    free(exeDir);
     vmInitArgs.version = JNI_VERSION_1_8;
     vmInitArgs.ignoreUnrecognized = false;
 
@@ -448,8 +450,8 @@ int main(int argc, char *argv[]) {
                 }
             }
             // relaunch with correct VM arguments
-            const char *path = exe_path();
-            execve(path, argv_native, environ);
+            std::string path = exe_path();
+            execve(path.c_str(), argv_native, environ);
             // if we reach here, execve failed for sure
             perror("execve failed");
             return -1;
