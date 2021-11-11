@@ -24,34 +24,65 @@
  */
 package com.oracle.svm.jfr.events;
 
+import java.util.concurrent.TimeUnit;
+
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.Threading;
+import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.jfr.JfrEvents;
 import com.oracle.svm.jfr.JfrNativeEventWriter;
 import com.oracle.svm.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.jfr.JfrThreadState;
 import com.oracle.svm.jfr.JfrTicks;
 import com.oracle.svm.jfr.SubstrateJVM;
 
-public class ThreadStartEvent {
+public final class ExecutionSampleEvent {
+
+    private static long intervalMillis;
+    private static final ExecutionSampleEventCallback CALLBACK = new ExecutionSampleEventCallback();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    public static void tryToRegisterExecutionSampleEventCallback() {
+        if (SubstrateJVM.get().isEnabled(JfrEvents.ExecutionSample) && intervalMillis > 0) {
+            ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(intervalMillis, TimeUnit.MILLISECONDS, CALLBACK);
+        }
+    }
+
+    public static void setSamplingInterval(long intervalMillis) {
+        ExecutionSampleEvent.intervalMillis = intervalMillis;
+    }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(IsolateThread isolateThread) {
+    public static void writeExecutionSample(IsolateThread isolateThread, Thread.State threadState) {
         SubstrateJVM svm = SubstrateJVM.get();
-        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvents.ThreadStart)) {
+        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvents.ExecutionSample)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStart.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvents.ExecutionSample.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvents.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
+            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvents.ExecutionSample.getId(), 0));
+            JfrNativeEventWriter.putLong(data, JfrThreadState.getId(threadState));
             JfrNativeEventWriter.endEventWrite(data, false);
+        }
+    }
+
+    private static final class ExecutionSampleEventCallback implements Threading.RecurringCallback {
+
+        @Override
+        public void run(Threading.RecurringCallbackAccess access) {
+            IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
+            Thread javaThread = JavaThreads.fromVMThread(isolateThread);
+            ExecutionSampleEvent.writeExecutionSample(isolateThread, javaThread.getState());
         }
     }
 }

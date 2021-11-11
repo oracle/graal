@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +23,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.test.jdk11.jfr;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.StackTrace;
 
-/**
- * List the different types of stack frames that can be part of a stack trace.
- */
-public enum JfrFrameType {
-    FRAME_AOT_COMPILED("AOT compiled"),
-    FRAME_JIT_COMPILED("JIT compiled"),
-    FRAME_NATIVE("Native");
+@Label("Thread Event")
+@Description("An event with a thread payload")
+@StackTrace(false)
+public class ThreadEvent extends Event {
 
-    private final String text;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    JfrFrameType(String text) {
-        this.text = text;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        // First entry needs to have id 0.
-        return ordinal();
-    }
+    @Label("Thread") public Thread thread;
 }
