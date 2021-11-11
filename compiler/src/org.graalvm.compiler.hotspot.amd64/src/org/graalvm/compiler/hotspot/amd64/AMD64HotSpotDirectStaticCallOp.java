@@ -59,12 +59,10 @@ final class AMD64HotSpotDirectStaticCallOp extends DirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
-            crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
-            if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
-                crb.setNeedsMHDeoptHandler();
-            }
-            super.emitCode(crb, masm);
+        crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
+        if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
+            crb.setNeedsMHDeoptHandler();
         }
+        super.emitCode(crb, masm);
     }
 }
