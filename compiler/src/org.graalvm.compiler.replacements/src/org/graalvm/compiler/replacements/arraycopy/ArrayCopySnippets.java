@@ -212,6 +212,11 @@ public abstract class ArrayCopySnippets implements Snippets {
         elementKindCounter.inc();
         elementKindCopiedCounter.add(length);
 
+        doArraycopyExactStubCallSnippet(src, srcPos, dest, destPos, length, elementKind, locationIdentity, counters);
+    }
+
+    protected void doArraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity locationIdentity,
+                    @SuppressWarnings("unused") Counters counters) {
         ArrayCopyCallNode.arraycopy(src, srcPos, dest, destPos, length, elementKind, locationIdentity, heapWordSize());
     }
 
