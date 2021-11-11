@@ -34,7 +34,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -859,44 +858,5 @@ public class CompilationResult {
         }
         dataSection.close(options);
         closed = true;
-    }
-
-    public void shiftCodePatch(int pos, int bytesToShift) {
-        iterateAndReplace(infopoints, pos, site -> {
-            if (site instanceof Call) {
-                Call call = (Call) site;
-                return new Call(call.target, site.pcOffset + bytesToShift, call.size, call.direct, call.debugInfo);
-            } else {
-                return new Infopoint(site.pcOffset + bytesToShift, site.debugInfo, site.reason);
-            }
-        });
-        iterateAndReplace(dataPatches, pos, site -> new DataPatch(site.pcOffset + bytesToShift, site.reference, site.note));
-        iterateAndReplace(exceptionHandlers, pos, site -> new ExceptionHandler(site.pcOffset + bytesToShift, site.handlerPos));
-        iterateAndReplace(marks, pos, site -> new CodeMark(site.pcOffset + bytesToShift, site.id));
-        if (annotations != null) {
-            for (CodeAnnotation annotation : annotations) {
-                int annotationPos = annotation.position;
-                if (pos <= annotationPos) {
-                    annotation.setPosition(annotationPos + bytesToShift);
-                }
-            }
-        }
-    }
-
-    private static <T extends Site> void iterateAndReplace(List<T> sites, int pos, Function<T, T> replacement) {
-        for (int i = 0; i < sites.size(); i++) {
-            T site = sites.get(i);
-            if (pos == site.pcOffset && site instanceof CodeMark) {
-                CodeMark mark = (CodeMark) site;
-                if (mark.id.isMarkAfter()) {
-                    // The insert point is exactly on the mark but the mark is annotating the end of
-                    // the last instruction, so leave it alone.
-                    continue;
-                }
-            }
-            if (pos <= site.pcOffset) {
-                sites.set(i, replacement.apply(site));
-            }
-        }
     }
 }
