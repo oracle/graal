@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -65,18 +66,22 @@ final class RootNameFilter implements Predicate<String> {
                 this.querying.set(true);
                 final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
                 computed = false;
-                InsightPerContext ctx = instrument.findCtx();
-                final int len = key.functionsMaxCount();
-                for (int i = 0; i < len; i++) {
-                    InsightFilter.Data data = (InsightFilter.Data) ctx.functionFor(key, i);
-                    if (data == null || data.rootNameFn == null) {
-                        continue;
-                    }
-                    if (rootNameCheck(iop, data, rootName)) {
-                        computed = true;
-                        break;
+                TruffleContext c = instrument.env().getEnteredContext();
+                if (c != null) {
+                    InsightPerContext ctx = instrument.find(c);
+                    final int len = key.functionsMaxCount();
+                    for (int i = 0; i < len; i++) {
+                        InsightFilter.Data data = (InsightFilter.Data) ctx.functionFor(key, i);
+                        if (data == null || data.rootNameFn == null) {
+                            continue;
+                        }
+                        if (rootNameCheck(iop, data, rootName)) {
+                            computed = true;
+                            break;
+                        }
                     }
                 }
+
             }
         } finally {
             this.querying.set(prev);
