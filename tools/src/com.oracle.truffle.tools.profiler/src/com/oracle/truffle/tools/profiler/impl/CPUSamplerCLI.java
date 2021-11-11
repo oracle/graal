@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -113,6 +114,19 @@ class CPUSamplerCLI extends ProfilerCLI {
         private EnableOptionData(boolean enabled, Output output) {
             this.enabled = enabled;
             this.output = output;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            EnableOptionData that = (EnableOptionData) o;
+            return enabled == that.enabled && output == that.output;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(enabled, output);
         }
     }
 
