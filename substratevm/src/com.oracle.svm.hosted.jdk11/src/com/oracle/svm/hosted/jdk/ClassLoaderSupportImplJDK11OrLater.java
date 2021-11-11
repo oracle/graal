@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.jdk11;
+package com.oracle.svm.hosted.jdk;
 
 import java.util.ArrayList;
 import java.util.Collections;
