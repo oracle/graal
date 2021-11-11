@@ -118,10 +118,8 @@ bool relaunch = false;
 // platform-independent environment setter
 int setenv(std::string key, std::string value) {
     #if defined (_WIN32)
-        std::stringstream ss;
-        ss << key << "=" << value;
-        if(_putenv(ss.str().c_str()) == -1) {
-            std::cerr << "_putenv failed" << std::endl;
+        if(_putenv_s(key.c_str(), value.c_str()) == -1) {
+            std::cerr << "_putenv_s failed" << std::endl;
             return -1;
         }
     #else
