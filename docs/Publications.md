@@ -303,7 +303,10 @@ In _Proceedings Dynamic Language Symposium, DLS co-located with SPLASH conferenc
 - Matt D'Souzam, Gilles Duboscq, [**Lightweight On-Stack Replacement in Languages with Unstructured Loops**](https://dl.acm.org/doi/10.1145/3486606.3486782)
 In _Proceedings of the 13th ACM SIGPLAN International Workshop on Virtual Machines and Intermediate Languages (VMIL 2021)_
 
--  Sebastian Kloibhofer [**Run-time Data Analysis to Drive Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3484271.3484974)
+- Sebastian Kloibhofer [**Run-time Data Analysis to Drive Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3484271.3484974)
+In _Proceedings of SPLASH Companion 2021_
+
+- Lukas Makor [**Run-time data analysis in dynamic runtimes**](https://dl.acm.org/doi/10.1145/3484271.3484974)
 In _Proceedings of SPLASH Companion 2021_
 
 <!-- -  Hugo Guiroux, Jean-Pierre Lozi, Peterson Yuhala, Jämes Ménétrey, Pascal Felber, Valerio Schiavoni, Alain Tchana, Gaël Thomas [**Montsalvat: Intel SGX Shielding for GraalVM Native Images**](#)
@@ -311,10 +314,10 @@ In _Proceedings of MIDDLEWARE 2021 - 22nd ACM/IFIP International Conference 2021
 
 ### 2020
 
-- Lukas Stadler, David Leopoldseder, Thomas Pointhuber, Sebastian Kloibhofer, Maximilian Heisinger, Hanspeter Moessenboeck [**Graal SymEx: Symbolic Execution on the GraalVM**](https://epub.jku.at/obvulihs/download/pdf/5669034)
+- Sebastian Kloibhofer, Thomas Pointhuber, Maximilian Heisinger, Hanspeter Mössenböck, Lukas Stadler, David Leopoldseder [**SymJEx: symbolic execution on the GraalVM**](https://epub.jku.at/obvulihs/download/pdf/5669034)
 In _Proceedings of the 17th International Conference on Managed Programming Languages and Runtimes (MPLR 2020)_
 
-- David Leopoldseder, Raphael Mosaner [**Machine Learning to Ease Understanding of Data Driven Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3426430.3429451)
+- Raphael Mosaner [**Machine Learning to Ease Understanding of Data Driven Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3426430.3429451)
 In _Proceedings of SPLASH Companion 2020_
 
 - Aleksandar Prokopec, Andrea Rosà, David Leopoldseder, Gilles Duboscq, Petr Tuma, Martin Studener, Lubomír Bulej, Yudi Zheng, Alex Villazón, Doug Simon, Thomas Würthinger, Walter Binder [**Renaissance: Benchmarking Suite for Parallel Applications on the JVM**](https://dblp.uni-trier.de/db/conf/se/se2020.html#ProkopecRLD0SBZ20)
