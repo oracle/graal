@@ -166,7 +166,7 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 
 ## Run SimpleLanguage with the Newest (Developement) version of the Compiler
 
-To tun SimpleLanguage with the developement version of the GraalVM compiler we must build a GraalVM whith that compiler.
+To run SimpleLanguage with the development version of the GraalVM compiler we must build a GraalVM with that compiler.
 Clone the `graal` repository (https://github.com/oracle/graal) and follow the instructions in the `vm/README.md` file to build a GraalVM.
 
 Once that's done, point `JAVA_HOME` to the newly built GraalVM and proceed with normal building and running of SimpleLanguage.
@@ -197,10 +197,6 @@ Having the language on a separate class path ensures a strong separation between
 For development purposes it is useful to disable the class path separation and enable having the language implementation on the application class path (for example, for testing
 the internals of the language).
 
-Since JDK 11-based distribution of GraalVM, the Java Module System isolation is used. 
-You can achieve the same behavior using `--add-exports` or `--upgrade-module-path`.
-The latter is preferable.
-
 The Language API JAR on Maven Central exports all API packages in its module-info.
 Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
 ```shell
@@ -209,7 +205,8 @@ Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisable
 
 A sample POM using `--upgrade-module-path` to export Language API packages can be found in the [Simple Language POM.xml](https://github.com/graalvm/simplelanguage/blob/master/language/pom.xml#L58) file.
 
-NOTE: Disabling the locator effectively removes all installed languages from a GraalVM distribution (since the locator locates the languages). To use them you have to manually add them to the module path.
+NOTE: Disabling the locator effectively removes all installed languages from the module path as the locator also creates the class loader for the languages.
+To still use the builtin languages add them to the module-path by pointing the module-path to all needed language homes (e.g. $GRAALVM/languages/js).
 
 ### Other JVM Implementations
 
