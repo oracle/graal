@@ -39,6 +39,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 
@@ -321,7 +322,12 @@ abstract class ProfilerCLI {
         }
     }
 
-    protected static IllegalArgumentException handleFileNotFound() {
-        return new IllegalArgumentException("Cannot redirect output to a directory");
+    protected static AbstractTruffleException handleFileNotFound() {
+        return new AbstractTruffleException() {
+            @Override
+            public String getMessage() {
+                return "File IO Exception caught during output printing.";
+            }
+        };
     }
 }
