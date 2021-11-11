@@ -70,7 +70,7 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
     @Before
     @Override
     public void setup() {
-        Context.Builder builder = Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "false").out(out).err(err);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "false").out(out).err(err).logHandler(err);
         setupEnv(builder.build(), new TestDecentInstrument());
         engine = context.getEngine();
     }
@@ -301,7 +301,7 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
      */
     @Test
     public void testExceptionInLoadSourceSectionFilterPredicateNotEntered() throws Exception {
-        Context.Builder builder = Context.newBuilder().allowAllAccess(true).out(out).err(err);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).out(out).err(err).logHandler(err);
         setupEnv(builder.build(), new TestDecentInstrument());
 
         SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
