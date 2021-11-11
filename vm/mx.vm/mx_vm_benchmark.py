@@ -1009,8 +1009,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 }, startPattern=r"::: Running :::")
             ]
         elif metric_name == "allocated-memory":
-                rules += [
-                mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+            rules += [
+                ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
                     "metric.name": "allocated-memory",
@@ -1019,7 +1019,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.type": "numeric",
                     "metric.score-function": "id",
                     "metric.iteration": ("<iteration>", int),
-                }),
+                }, startPattern=r"::: Running :::")
             ]
         else:
             rules += [
