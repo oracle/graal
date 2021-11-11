@@ -112,6 +112,7 @@
 
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 extern char **environ;
+bool debug = false;
 
 char *exe_path() {
     #if defined (__linux__)
@@ -147,6 +148,9 @@ char *exe_directory() {
 CreateJVM loadliblang(char *exeDir) {
     std::stringstream liblangPath;
     liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+    if (debug) {
+        std::cout << "Loading library " << liblangPath.str() << std::endl;
+    }
 #if defined (__linux__) || defined (__APPLE__)
         void* jvmHandle = dlopen(liblangPath.str().c_str(), RTLD_NOW);
         if (jvmHandle != NULL) {
@@ -213,6 +217,9 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
 
     // handle relaunch arguments
     else {
+        if (debug) {
+            std::cout << "Relaunch environment variable detected" << std::endl;
+        }
         for (int i = 0; i < vmArgCount; i++) {
             std::stringstream ss;
             ss << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
@@ -258,6 +265,9 @@ void parse_vm_options(int argc, char **argv, char *exeDir, JavaVMInitArgs *vmIni
     vmInitArgs->nOptions = vmArgs.size();
     JavaVMOption *curOpt = vmInitArgs->options;
     for(const auto& arg: vmArgs) {
+        if (debug) {
+            std::cout << "Setting VM argument " << arg << std::endl;
+        }
         curOpt->optionString = strdup(arg.c_str());
         curOpt++;
     }
@@ -281,6 +291,7 @@ int setenv(std::string key, std::string value) {
 }
 
 int main(int argc, char *argv[]) {
+    debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
     char *exeDir = exe_directory();
     CreateJVM createJVM = loadliblang(exeDir);
     if (!createJVM) {
@@ -374,6 +385,9 @@ int main(int argc, char *argv[]) {
     jthrowable t = env->ExceptionOccurred();
     if (t) {
         if (env->IsInstanceOf(t, relaunchExceptionClass)) {
+            if (debug) {
+                std::cout << "Relaunch exception has been thrown" << std::endl;
+            }
             env->ExceptionClear();
             // read correct VM arguments from launcher object
             jobjectArray vmArgs = (jobjectArray)env->GetStaticObjectField(launcherClass, vmArgsFid);
@@ -387,6 +401,9 @@ int main(int argc, char *argv[]) {
                 std::cerr << "Error in GetArrayLength:" << std::endl;
                 env->ExceptionDescribe();
                 return -1;
+            }
+            if (debug) {
+                std::cout << "Relaunch VM arguments read: " << vmArgCount << std::endl;
             }
             std::stringstream ss;
             ss << vmArgCount;
