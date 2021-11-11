@@ -25,6 +25,11 @@
 
 package com.oracle.svm.hosted.jdk;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
+import java.lang.module.ResolvedModule;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,25 +48,55 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassLoaderSupportImpl;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 
 import jdk.internal.module.Modules;
 
-public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport {
+public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
 
     private final NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport;
     private final Map<String, Set<Module>> packageToModules;
 
     ClassLoaderSupportImplJDK11OrLater(NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport) {
+        super(classLoaderSupport);
         this.classLoaderSupport = classLoaderSupport;
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
 
     @Override
-    protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        return loader == classLoaderSupport.getClassLoader() || loader instanceof NativeImageSystemClassLoader;
+    public void collectResources(ResourceCollector resourceCollector) {
+        /* Collect resources from modules */
+        NativeImageClassLoaderSupportJDK11OrLater.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
+                        .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
+                        .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
+
+        /* Collect remaining resources from classpath */
+        super.collectResources(resourceCollector);
+    }
+
+    private void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
+        ModuleReference moduleReference = resolvedModule.reference();
+        try (ModuleReader moduleReader = moduleReference.open()) {
+            String moduleName = resolvedModule.name();
+            List<String> foundResources = moduleReader.list()
+                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName))
+                            .collect(Collectors.toList());
+
+            for (String resName : foundResources) {
+                Optional<InputStream> content = moduleReader.open(resName);
+                if (content.isEmpty()) {
+                    continue;
+                }
+                try (InputStream is = content.get()) {
+                    resourceCollector.addResource(moduleName, resName, is);
+                }
+            }
+        } catch (IOException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 
     @Override
@@ -84,7 +120,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
         }
         if (modules.isEmpty()) {
             /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
-            return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, classLoaderSupport.getClassLoader()));
+            return super.getResourceBundle(bundleName, locale);
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {

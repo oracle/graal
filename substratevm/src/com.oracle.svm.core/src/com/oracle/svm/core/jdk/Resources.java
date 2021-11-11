@@ -76,6 +76,7 @@ public final class Resources {
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
+        // TODO: Replace this with is.readAllBytes() once Java 8 support is removed
         byte[] arr = new byte[4096];
         int pos = 0;
         try {

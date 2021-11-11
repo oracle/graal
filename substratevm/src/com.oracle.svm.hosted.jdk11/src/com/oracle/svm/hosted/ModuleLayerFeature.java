@@ -49,19 +49,20 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * This feature:
@@ -141,6 +142,14 @@ public final class ModuleLayerFeature implements Feature {
         Set<Module> analysisReachableNamedModules = analysisReachableModules
                         .filter(Module::isNamed)
                         .collect(Collectors.toSet());
+
+        ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules.forEach(moduleName -> {
+            Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
+            if (module.isEmpty()) {
+                VMError.shouldNotReachHere("ResourcesFeature requires module that is not available");
+            }
+            analysisReachableNamedModules.add((Module) module.get());
+        });
 
         Set<Module> analysisReachableSyntheticModules = analysisReachableNamedModules
                         .stream()
