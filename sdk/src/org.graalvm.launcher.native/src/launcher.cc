@@ -345,9 +345,9 @@ int main(int argc, char *argv[]) {
         }
         return -1;
     }
-    jfieldID vmArgsFid = env->GetStaticFieldID(launcherClass, "vmArgs", "[Ljava/lang/String;");
+    jfieldID vmArgsFid = env->GetFieldID(relaunchExceptionClass, "vmArgs", "[Ljava/lang/String;");
     if (vmArgsFid == NULL) {
-        std::cerr << "Launcher vm args field not found." << std::endl;
+        std::cerr << "RelaunchException vm args field not found." << std::endl;
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
@@ -389,10 +389,10 @@ int main(int argc, char *argv[]) {
                 std::cout << "Relaunch exception has been thrown" << std::endl;
             }
             env->ExceptionClear();
-            // read correct VM arguments from launcher object
-            jobjectArray vmArgs = (jobjectArray)env->GetStaticObjectField(launcherClass, vmArgsFid);
+            // read correct VM arguments from exception
+            jobjectArray vmArgs = (jobjectArray)env->GetObjectField(t, vmArgsFid);
             if (env->ExceptionCheck()) {
-                std::cerr << "Error in GetStaticObjectField:" << std::endl;
+                std::cerr << "Error in GetObjectField:" << std::endl;
                 env->ExceptionDescribe();
                 return -1;
             }

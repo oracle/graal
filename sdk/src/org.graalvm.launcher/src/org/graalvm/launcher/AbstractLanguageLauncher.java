@@ -60,24 +60,18 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     private static final Constructor<AbstractLanguageLauncher> LAUNCHER_CTOR;
     /**
-     * Set to true if the launcher has been started via the {@code runLauncher} JNI entry point
+     * Set to true if the launcher has been started via the {@code runLauncher} JNI entry point.
      */
     private boolean jniLaunch;
     /**
-     * Native argument count, set if the launcher has been started via {@code runLauncher}
+     * Native argument count, set if the launcher has been started via {@code runLauncher}.
      */
     private int nativeArgc;
     /**
      * Pointer to the native argument value array, set if the launcher has been started via
-     * {@code runLauncher}
+     * {@code runLauncher}.
      */
     private long nativeArgv;
-    /**
-     * Actual VM arguments, set if validateVmArguments fails s.t. the native launcher can obtain the
-     * actual VM arguments for a relaunch. Static field since the native launcher does not have a
-     * reference to the Launcher instance.
-     */
-    @SuppressWarnings("unused") private static String[] vmArgs;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -204,9 +198,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             return;
         }
 
-        vmArgs = actualVmArgs.toArray(new String[actualVmArgs.size()]);
-
-        throw new RelaunchException();
+        throw new RelaunchException(actualVmArgs);
     }
 
     /**
@@ -214,6 +206,16 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      */
     protected static final class RelaunchException extends RuntimeException {
         private static final long serialVersionUID = -4014071914987464223L;
+
+        /**
+         * Actual VM arguments, set if validateVmArguments fails s.t. the native launcher can obtain
+         * the actual VM arguments for a relaunch.
+         */
+        @SuppressWarnings("unused") private String[] vmArgs;
+
+        RelaunchException(List<String> actualVmArgs) {
+            vmArgs = actualVmArgs.toArray(new String[actualVmArgs.size()]);
+        }
 
         @Override
         public String getMessage() {
