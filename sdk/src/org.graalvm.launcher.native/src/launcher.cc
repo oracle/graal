@@ -313,6 +313,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    // free the allocated vm arguments
+    for (int i = 0; i < vmInitArgs.nOptions; i++) {
+        free(vmInitArgs.options[i].optionString);
+    }
+
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {
         std::cerr << "Byte array class not found." << std::endl;
