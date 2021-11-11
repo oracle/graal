@@ -32,6 +32,7 @@ import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.aarch64.AArch64Call.DirectCallOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -72,6 +73,6 @@ final class AArch64HotSpotDirectVirtualCallOp extends DirectCallOp {
         if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget)) {
             crb.setNeedsMHDeoptHandler();
         }
-        super.emitCode(crb, masm);
+        AArch64Call.directCall(crb, masm, callTarget, null, state);
     }
 }
