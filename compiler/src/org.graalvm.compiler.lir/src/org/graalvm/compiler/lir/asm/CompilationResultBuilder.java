@@ -235,8 +235,22 @@ public class CompilationResultBuilder {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
     }
 
-    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
-        return compilationResult.recordMark(asm.position(), id);
+    /**
+     * Associates {@code markId} with position {@code codePos} in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(int codePos, CompilationResult.MarkId markId) {
+        return compilationResult.recordMark(codePos, markId);
+    }
+
+    /**
+     * Associates {@code markId} with the current assembler position in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId markId) {
+        return recordMark(asm.position(), markId);
     }
 
     public void blockComment(String s) {

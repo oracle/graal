@@ -397,22 +397,22 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Emit a direct call to a fixed address, which will be patched later during code installation.
+     * Emits a direct call to a fixed address, which will be patched later during code installation.
      *
-     * @param align indicates whether the call displacement must be 4-byte aligned
-     * @return where the actual call instruction starts.
+     * @param align indicates whether the call displacement operand must be 4-byte aligned
+     * @return the position of the emitted call instruction
      */
     public final int directCall(boolean align) {
         emitAlignmentForDirectCall(align);
-        if (testAndAlign(5) != 0) {
+        if (mitigateJCCErratum(5) != 0) {
             // If JCC erratum padding was emitted, the displacement may be unaligned again. The
             // first call to emitAlignmentForDirectCall is essential as it may trigger the
             // JCC erratum padding.
             emitAlignmentForDirectCall(align);
         }
-        int beforeCall = position();
+        int callPos = position();
         call();
-        return beforeCall;
+        return callPos;
     }
 
     private void emitAlignmentForDirectCall(boolean align) {
@@ -427,7 +427,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int indirectCall(Register callReg) {
         int bytesToEmit = needsRex(callReg) ? 3 : 2;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeCall = position();
         call(callReg);
         assert beforeCall + bytesToEmit == position();
@@ -436,7 +436,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int directCall(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeCall = position();
         movq(scratch, address);
         call(scratch);
@@ -446,7 +446,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int directJmp(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
         movq(scratch, address);
         jmpWithoutAlignment(scratch);
@@ -458,16 +458,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private void alignFusedPair(Label branchTarget, boolean isShortJmp, int prevOpInBytes) {
         assert prevOpInBytes < 26 : "Fused pair may be longer than 0x20 bytes.";
         if (branchTarget == null) {
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         } else if (isShortJmp) {
-            testAndAlign(prevOpInBytes + 2);
+            mitigateJCCErratum(prevOpInBytes + 2);
         } else if (!branchTarget.isBound()) {
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         } else {
             long disp = branchTarget.position() - (position() + prevOpInBytes);
             // assuming short jump first
             if (isByte(disp - 2)) {
-                testAndAlign(prevOpInBytes + 2);
+                mitigateJCCErratum(prevOpInBytes + 2);
                 // After alignment, isByte(disp - shortSize) might not hold. Need to check
                 // again.
                 disp = branchTarget.position() - (position() + prevOpInBytes);
@@ -475,7 +475,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     return;
                 }
             }
-            testAndAlign(prevOpInBytes + 6);
+            mitigateJCCErratum(prevOpInBytes + 6);
         }
     }
 

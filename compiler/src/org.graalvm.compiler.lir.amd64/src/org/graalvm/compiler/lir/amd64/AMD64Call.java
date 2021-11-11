@@ -102,10 +102,6 @@ public class AMD64Call {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             directCall(crb, masm, callTarget, null, true, state);
         }
-
-        public void emitCall(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            directCall(crb, masm, callTarget, null, true, state);
-        }
     }
 
     @Opcode("CALL_INDIRECT")
@@ -193,7 +189,10 @@ public class AMD64Call {
         }
     }
 
-    public static void directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
+    /**
+     * @return the position of the emitted call instruction
+     */
+    public static int directCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
         int before;
         if (scratch != null) {
             assert !align;
@@ -210,6 +209,7 @@ public class AMD64Call {
         crb.recordDirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+        return before;
     }
 
     public static void directJmp(CompilationResultBuilder crb, AMD64MacroAssembler masm, InvokeTarget target, Register scratch) {
@@ -229,12 +229,16 @@ public class AMD64Call {
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+    /**
+     * @return the position of the emitted call instruction
+     */
+    public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.indirectCall(dst);
         int after = masm.position();
         crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
         masm.ensureUniquePC();
+        return before;
     }
 
 }
