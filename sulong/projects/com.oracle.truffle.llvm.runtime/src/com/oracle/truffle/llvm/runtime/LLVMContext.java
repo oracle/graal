@@ -144,6 +144,9 @@ public final class LLVMContext {
     // Source cache (for reusing bitcode IDs).
     protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
+    // Calltarget Cache for SOName.
+    protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
+
     // signals
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
@@ -677,6 +680,18 @@ public final class LLVMContext {
         if (!sourceCache.containsKey(bitcodeID)) {
             sourceCache.put(bitcodeID, source);
         }
+    }
+
+    @TruffleBoundary
+    public void addCalltargetForCache(String SOName, CallTarget callTarget) {
+        if (!calltargetCache.containsKey(SOName)) {
+            calltargetCache.put(SOName, callTarget);
+        }
+    }
+
+    @TruffleBoundary
+    public CallTarget getCalltargetFromCache(String SOName) {
+        return calltargetCache.get(SOName);
     }
 
     public LLVMLanguage getLanguage() {

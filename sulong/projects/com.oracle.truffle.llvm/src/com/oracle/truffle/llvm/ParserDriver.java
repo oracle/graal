@@ -29,17 +29,6 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.stream.Collectors;
-
-import org.graalvm.polyglot.io.ByteSequence;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -47,6 +36,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.initialization.LoadDependencyNode;
 import com.oracle.truffle.llvm.initialization.LoadModulesNode;
 import com.oracle.truffle.llvm.initialization.LoadNativeNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
@@ -84,6 +74,15 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
+import org.graalvm.polyglot.io.ByteSequence;
+
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -105,9 +104,8 @@ final class ParserDriver {
     private final LLVMContext context;
     private final LLVMLanguage language;
     private final BitcodeID bitcodeID;
-    // Dependencies can either be Source or the call target if the library
-    // has already been parsed.
-    private final ArrayList<Object> dependencies = new ArrayList<>();
+    // All other dependencies are LoadDependencyNode.
+    private final ArrayList<LoadDependencyNode> libraryDependencies = new ArrayList<>();
 
     private ParserDriver(LLVMContext context, BitcodeID bitcodeID) {
         this.context = context;
@@ -140,9 +138,12 @@ final class ParserDriver {
      * @return calltarget
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
-        insertDefaultDependencies(source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, bytes);
+
+        //TODO: Can this be here, instead of being first?
+        insertDefaultDependencies(source.getName());
+
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode,
             // as it's purely native.
@@ -157,7 +158,7 @@ final class ParserDriver {
         }
         // ensures the library of the source is not native
         if (context.isInternalLibraryFile(result.getRuntime().getFile())) {
-            String libraryName = getSimpleLibraryName(source.getName());
+            String libraryName = getSimpleLibraryName(result.getRuntime().getLibraryName());
             // Add the file scope of the source to the language
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
             if (libraryName.equals("libsulong")) {
@@ -167,7 +168,7 @@ final class ParserDriver {
             resolveRenamedSymbols(result);
         }
         addExternalSymbolsToScopes(result);
-        return createLibraryCallTarget(source.getName(), result, source);
+        return createLibraryCallTarget( result.getRuntime().getLibraryName(), result, source);
     }
 
     @TruffleBoundary
@@ -195,19 +196,7 @@ final class ParserDriver {
         for (String sulongLibraryName : sulongLibraryNames) {
             // Don't add the library itself as one of it's own dependency.
             if (!currentLib.equals(sulongLibraryName)) {
-                TruffleFile file = createTruffleFile(sulongLibraryName, null, InternalLibraryLocator.INSTANCE, "<internal library>");
-                // Look into the library cache in the language for the call target.
-                if (file != null) {
-                    CallTarget calls = language.getCachedLibrary(file.getPath());
-                    if (calls != null) {
-                        dependencies.add(calls);
-                    } else {
-                        Object sourceOrCallTarget = createDependencySource(sulongLibraryName, null, false, file);
-                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
-                            dependencies.add(sourceOrCallTarget);
-                        }
-                    }
-                }
+                libraryDependencies.add(LoadDependencyNode.create(sulongLibraryName, InternalLibraryLocator.INSTANCE, "<internal library>"));
             }
         }
 
@@ -216,21 +205,7 @@ final class ParserDriver {
         for (String externalLibraryName : externals) {
             // Look into the library cache in the language for the call target.
             if (!currentLib.equals(externalLibraryName)) {
-                TruffleFile file = createTruffleFile(externalLibraryName, null, DefaultLibraryLocator.INSTANCE, "<command-line library>");
-                // Look into the library cache in the language for the call target.
-                if (file != null) {
-                    CallTarget calls = language.getCachedLibrary(file.getPath());
-                    if (calls != null) {
-                        dependencies.add(calls);
-                    } else {
-                        // for native libraries, the path is the same as the library's name. The NFI
-                        // will figure out the path.
-                        Object sourceOrCallTarget = createDependencySource(externalLibraryName, externalLibraryName, true, file);
-                        if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
-                            dependencies.add(sourceOrCallTarget);
-                        }
-                    }
-                }
+                libraryDependencies.add(LoadDependencyNode.create(externalLibraryName, DefaultLibraryLocator.INSTANCE, "<command-line library>"));
             }
         }
     }
@@ -356,7 +331,7 @@ final class ParserDriver {
         // Create a new public file scope to be returned inside sulong library.
         LLVMScope publicFileScope = new LLVMScope();
         LLVMScope fileScope = new LLVMScope();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, binaryParserResult.getLibraryName(), getSourceFilesWithChecksums(context.getEnv(), module),
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
@@ -436,8 +411,8 @@ final class ParserDriver {
         BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
         if (binaryParserResult != null) {
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
-            TruffleFile file = createTruffleFile(source.getName(), source.getPath(), binaryParserResult.getLocator(), "<source library>");
-            processDependencies(source.getName(), file, binaryParserResult);
+            TruffleFile file = createTruffleFile(binaryParserResult.getLibraryName(), source.getPath(), binaryParserResult.getLocator(), "<source library>");
+            processDependencies(binaryParserResult.getLibraryName(), file, binaryParserResult);
             return parseBinary(binaryParserResult, file);
         } else {
             LibraryLocator.traceDelegateNative(context, source);
@@ -468,24 +443,13 @@ final class ParserDriver {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
-                // only create a source if the library has not already been parsed.
-                TruffleFile file = createTruffleFile(lib, null, binaryParserResult.getLocator(), libraryName);
-                CallTarget calls = language.getCachedLibrary(file.getPath());
-                if (calls != null && !dependencies.contains(calls)) {
-                    dependencies.add(calls);
-                } else {
-                    Object sourceOrCallTarget = createDependencySource(lib, lib, true, file);
-                    // A source is null if it's a native library, which will be added to the NFI
-                    // context extension instead.
-                    if (sourceOrCallTarget != null && !dependencies.contains(sourceOrCallTarget)) {
-                        dependencies.add(sourceOrCallTarget);
-                    }
-                }
+                //TODO: create the dependencies that's needed.
+                libraryDependencies.add(LoadDependencyNode.create(lib, binaryParserResult.getLocator(), lib));
             }
         }
     }
 
-    private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
+    /*private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
         assert file != null;
         if (!file.isRegularFile()) {
             if (!isNative) {
@@ -512,7 +476,7 @@ final class ParserDriver {
             }
         }
         return source;
-    }
+    }*/
 
     private static void addExternalSymbolsToScopes(LLVMParserResult parserResult) {
         // TODO (chaeubl): in here, we should validate if the return type/argument type/global
@@ -547,7 +511,7 @@ final class ParserDriver {
         } else {
             // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), libraryDependencies, source, language);
             return loadModules.getCallTarget();
         }
     }
