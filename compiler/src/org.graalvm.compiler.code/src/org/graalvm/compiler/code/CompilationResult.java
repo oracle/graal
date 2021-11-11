@@ -525,10 +525,11 @@ public class CompilationResult {
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
      */
-    public void recordCall(int codePos, int size, InvokeTarget target, DebugInfo debugInfo, boolean direct) {
+    public Call recordCall(int codePos, int size, InvokeTarget target, DebugInfo debugInfo, boolean direct) {
         checkOpen();
         final Call call = new Call(target, codePos, size, direct, debugInfo);
         addInfopoint(call);
+        return call;
     }
 
     /**
