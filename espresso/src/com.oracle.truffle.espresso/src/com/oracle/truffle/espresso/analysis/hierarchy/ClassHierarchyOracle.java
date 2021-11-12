@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 public interface ClassHierarchyOracle {
     final class ClassHierarchyAccessor {
-        static ClassHierarchyAccessor accessor = new ClassHierarchyAccessor();
+        static final ClassHierarchyAccessor accessor = new ClassHierarchyAccessor();
 
         private ClassHierarchyAccessor() {
         }
