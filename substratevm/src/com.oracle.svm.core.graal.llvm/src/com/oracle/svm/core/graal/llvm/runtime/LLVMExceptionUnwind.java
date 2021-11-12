@@ -45,7 +45,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMDirectives;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -82,8 +81,7 @@ public class LLVMExceptionUnwind {
      * from which it will get extracted after the landingpad instruction (see
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
-    @CEntryPoint(include = IncludeForLLVMOnly.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = IncludeForLLVMOnly.class, publishAs = CEntryPoint.Publish.NotPublished)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);

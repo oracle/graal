@@ -26,12 +26,12 @@ package com.oracle.svm.core.jdk.management;
 
 import static com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import static com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import static com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -51,8 +51,8 @@ public final class LibManagementExtSupport {
      * Reimplementation of the native {@code throw_internal_error} function in Java.
      */
     @Uninterruptible(reason = "No Java context.")
-    @CEntryPoint(name = "throw_internal_error", include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
+    @CEntryPoint(name = "throw_internal_error", include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.SymbolOnly)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     private static void throwInternalError(IsolateThread env, CCharPointer msg) {
         /*
          * Ported from `src/jdk.management/share/native/libmanagement_ext/management_ext.c`.
