@@ -721,7 +721,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
-                    _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                    if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                        _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 if (not stage1 or _skip_libraries(_library_config)) and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
@@ -2391,6 +2392,14 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'exclude': excluded_paths,
                         'path': None,
                     })
+                    if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                        for executable in library_config.launchers:
+                            layout.setdefault(path_prefix + executable, []).append({
+                                'source_type': 'dependency',
+                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config),
+                                'exclude': excluded_paths,
+                                'path': None,
+                            })
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination
@@ -2588,7 +2597,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dist = get_final_graalvm_distribution()
         _exe_path = _dist.find_single_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
         _dynamic_cflags = [
-            '-static-libstdc++',
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
         ]
@@ -2625,11 +2633,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
             ]
         return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
-
-    @property
-    def ldflags(self):
-        _dynamic_ldflags = ['-static-libstdc++']
-        return super(NativeLibraryLauncherProject, self).ldflags + _dynamic_ldflags
 
     @property
     def ldlibs(self):

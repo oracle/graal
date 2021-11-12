@@ -196,16 +196,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             }
         }
 
-        if (heuristicVmArgs.size() != actualVmArgs.size()) {
+        if (!heuristicVmArgs.equals(actualVmArgs)) {
             throw new RelaunchException(actualVmArgs);
-        }
-
-        for (int i = 0; i < heuristicVmArgs.size(); i++) {
-            String hArg = heuristicVmArgs.get(i);
-            String aArg = actualVmArgs.get(i);
-            if (!hArg.equals(aArg)) {
-                throw new RelaunchException(actualVmArgs);
-            }
         }
 
         // all argument match, we're good
