@@ -114,8 +114,18 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String resourceName, InputStream is) {
+        registerResource(null, resourceName, is);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String moduleName, String resourceName, InputStream is) {
         addEntry(moduleName, resourceName, false, inputStreamToByteArray(is));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content) {
+        registerDirectoryResource(null, resourceDirName, content);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
