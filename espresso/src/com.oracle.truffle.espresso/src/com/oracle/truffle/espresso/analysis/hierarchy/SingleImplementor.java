@@ -50,9 +50,9 @@ public final class SingleImplementor {
                     SingleImplementor.class,
                     AssumptionGuardedValue.class, "currentState");
 
-    static AssumptionGuardedValue<ObjectKlass> NoImplementorsState = AssumptionGuardedValue.createInvalid();
-    static SingleImplementor MultipleImplementors = new SingleImplementor(AssumptionGuardedValue.createInvalid());
-    static AssumptionGuardedValue<ObjectKlass> MultipleImplementorsState = MultipleImplementors.read();
+    static final AssumptionGuardedValue<ObjectKlass> NoImplementorsState = AssumptionGuardedValue.createInvalid();
+    static final SingleImplementor MultipleImplementors = new SingleImplementor(AssumptionGuardedValue.createInvalid());
+    static final AssumptionGuardedValue<ObjectKlass> MultipleImplementorsState = MultipleImplementors.read();
 
     // Used only to create MultipeImplementors instance
     private SingleImplementor(AssumptionGuardedValue<ObjectKlass> state) {
