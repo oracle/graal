@@ -1047,6 +1047,8 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                         source_type = 'skip' if isinstance(dep.native_image_config, mx_sdk.LibraryConfig) and _skip_libraries(dep.native_image_config) else 'dependency'
                         root_contents += [source_type + ':{}:{}/*.debug'.format(dep.suite.name, dep.name)]
                         layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
+                elif isinstance(dep, GraalVmJImage):
+                    _add(dep.deps, layout)
 
         if not self._layout_initialized:
             self.layout = {
