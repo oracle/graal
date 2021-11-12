@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -110,6 +112,15 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             }
         }
 
+        if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
+            // a: devision of a/0 traps
+            // b: division of Integer.MIN_VALUE / -1 overflows
+            if (!yStamp.contains(0) && !divCanOverflow(forX, forY)) {
+                return FloatingIntegerDivNode.create(forX, forY, view, zeroCheck);
+            }
+        }
+
         if (self != null && self.next() instanceof SignedDivNode) {
             NodeClass<?> nodeClass = self.getNodeClass();
             if (self.next().getClass() == self.getClass() && nodeClass.equalInputs(self, self.next()) && self.valueEquals(self.next())) {
@@ -118,6 +129,14 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         }
 
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
+    }
+
+    public static boolean divCanOverflow(ValueNode dividend, ValueNode divisor) {
+        IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
+        IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
+        assert dividendStamp.getBits() == divisorStamp.getBits();
+        long minValue = NumUtil.minValue(dividendStamp.getBits());
+        return dividendStamp.contains(minValue) && divisorStamp.contains(-1);
     }
 
     public static ValueNode canonical(ValueNode forX, long c, NodeView view) {

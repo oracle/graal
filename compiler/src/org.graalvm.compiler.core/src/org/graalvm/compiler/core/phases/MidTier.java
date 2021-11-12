@@ -109,7 +109,7 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        appendPhase(new OptimizeDivPhase());
+        appendPhase(new OptimizeDivPhase(canonicalizer));
 
         appendPhase(new FrameStateAssignmentPhase());
 

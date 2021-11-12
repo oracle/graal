@@ -84,6 +84,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<String> EscapeAnalyzeOnly = new OptionKey<>(null);
 
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> FloatingDivNodes = new OptionKey<>(true);
+
     @Option(help = "The maximum length of an array that will be escape analyzed.", type = OptionType.Expert)
     public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(128);
 

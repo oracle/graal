@@ -72,6 +72,11 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         return zeroCheck;
     }
 
+    public void setZeroGuard(GuardingNode zeroCheck) {
+        updateUsagesInterface(this.zeroCheck, zeroCheck);
+        this.zeroCheck = zeroCheck;
+    }
+
     public final Op getOp() {
         return op;
     }

@@ -612,13 +612,13 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             for (Block block : schedule.getCFG().getBlocks()) {
                 fixReadsClosure.processNodes(block, schedule);
             }
+            graph.setAfterStage(StageFlag.FIXED_READS);
             assert graph.verify();
             if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
                 schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
 
             }
         }
-        graph.setAfterStage(StageFlag.FIXED_READS);
         if (!ec.getNodes().isEmpty()) {
             canonicalizerPhase.applyIncremental(graph, context, ec.getNodes());
         }
