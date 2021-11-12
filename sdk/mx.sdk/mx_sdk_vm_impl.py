@@ -532,13 +532,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if src_jdk_base != '.':
                 exclude_base = join(exclude_base, src_jdk_base)
             if mx.get_os() == 'darwin':
-                hsdis = '/jre/lib/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
+                hsdis_jdk8 = '/jre/lib/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
                 incl_list, excl_list = _patch_darwin_jdk()
                 for d, s in incl_list:
                     _add(layout, d, s)
                 exclusion_list += excl_list
             else:
-                hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
+                hsdis_jdk8 = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
             if _src_jdk_version == 8:
                 if mx.get_os() == 'darwin':
                     jvm_cfg = '/lib/jvm.cfg'
@@ -559,7 +559,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         exclude_base + '/bin/jvisualvm',
                         exclude_base + '/bin/jvisualvm.exe',
                         exclude_base + '/lib/visualvm',
-                        exclude_base + hsdis,
+                        exclude_base + hsdis_jdk8,
                         exclude_base + '/jre' + jvm_cfg,
                     ] + ([
                         exclude_base + '/bin/jmc',
