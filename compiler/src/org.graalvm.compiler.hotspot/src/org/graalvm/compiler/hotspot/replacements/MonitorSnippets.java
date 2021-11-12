@@ -868,8 +868,8 @@ public class MonitorSnippets implements Snippets {
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, invoke.graph().trackNodeSourcePosition(), invoke.getNodeSourcePosition(),
-                                    invoke.getOptions());
+                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, null, invoke.graph().trackNodeSourcePosition(),
+                                    invoke.getNodeSourcePosition(), invoke.getOptions());
                     InliningUtil.inline(invoke, inlineeGraph, false, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();

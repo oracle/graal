@@ -33,6 +33,8 @@ import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 /**
  * Metadata required for processing of snippets.
  */
@@ -149,5 +151,15 @@ public class SnippetParameterInfo {
 
     public void clearNames() {
         names = null;
+    }
+
+    public static BitSet getNonNullParameters(SnippetParameterInfo info) {
+        BitSet nonNullParameters = new BitSet(info.getParameterCount());
+        for (int i = 0; i < info.getParameterCount(); i++) {
+            if (info.isNonNullParameter(i)) {
+                nonNullParameters.set(i);
+            }
+        }
+        return nonNullParameters;
     }
 }

@@ -37,6 +37,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formattable;
@@ -978,9 +979,10 @@ public class SnippetTemplate {
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
+        BitSet nonNullParameters = getNonNullParameters(args);
         boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, shouldTrackNodeSourcePosition1, replacee.getNodeSourcePosition(),
-                        options);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, nonNullParameters, shouldTrackNodeSourcePosition1,
+                        replacee.getNodeSourcePosition(), options);
         assert snippetGraph.getAssumptions() == null : snippetGraph;
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -1031,7 +1033,7 @@ public class SnippetTemplate {
                         nodeReplacements.put(parameter, placeholder);
                         placeholders[i] = placeholder;
                     } else if (args.info.isNonNullParameter(i)) {
-                        parameter.setStamp(parameter.stamp(NodeView.DEFAULT).join(StampFactory.objectNonNull()));
+                        GraalError.guarantee(StampTool.isPointerNonNull(parameter), "Expected %s to have a non-null stamp, but was %s", parameter, parameter.stamp(NodeView.DEFAULT));
                     }
                 }
             }
@@ -1451,6 +1453,16 @@ public class SnippetTemplate {
             }
         }
         return constantArgs;
+    }
+
+    private static BitSet getNonNullParameters(Arguments args) {
+        BitSet nonNullParameters = new BitSet(args.info.getParameterCount());
+        for (int i = 0; i < args.info.getParameterCount(); i++) {
+            if (args.info.isNonNullParameter(i)) {
+                nonNullParameters.set(i);
+            }
+        }
+        return nonNullParameters;
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {

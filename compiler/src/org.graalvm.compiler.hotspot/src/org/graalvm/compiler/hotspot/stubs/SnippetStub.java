@@ -45,6 +45,8 @@ import org.graalvm.compiler.replacements.Snippets;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 /**
  * Base class for a stub defined by a snippet.
  */
@@ -88,7 +90,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
         SnippetParameterInfo info = providers.getReplacements().getSnippetParameterInfo(method);
-        final StructuredGraph graph = buildInitialGraph(debug, compilationId, makeConstArgs(info));
+        final StructuredGraph graph = buildInitialGraph(debug, compilationId, makeConstArgs(info), SnippetParameterInfo.getNonNullParameters(info));
         try (DebugContext.Scope outer = debug.scope("SnippetStub", graph)) {
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 int index = param.index();
@@ -108,8 +110,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
         return graph;
     }
 
-    protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
-        return providers.getReplacements().getSnippet(method, null, args, false, null, options).copyWithIdentifier(compilationId, debug);
+    protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args, BitSet nonNullParameters) {
+        return providers.getReplacements().getSnippet(method, null, args, nonNullParameters, false, null, options).copyWithIdentifier(compilationId, debug);
     }
 
     protected Object[] makeConstArgs(SnippetParameterInfo info) {

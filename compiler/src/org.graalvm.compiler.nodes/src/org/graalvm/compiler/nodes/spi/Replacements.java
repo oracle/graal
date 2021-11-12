@@ -46,6 +46,8 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 /**
  * Interface for managing replacements.
  */
@@ -77,12 +79,13 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      *            recursive call and won't be processed for {@linkplain MethodSubstitution
      *            substitutions}.
      * @param args arguments to the snippet if available, otherwise {@code null}
+     * @param nonNullParameters
      * @param trackNodeSourcePosition
      * @param options
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options);
 
     /**
      * Get the snippet metadata required to inline the snippet.
