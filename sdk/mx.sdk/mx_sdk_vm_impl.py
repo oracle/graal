@@ -363,9 +363,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         path_substitutions.register_no_arg('jdk_base', lambda: self.jdk_base)
         path_substitutions.register_no_arg('jre_base', lambda: self.jre_base)
 
-        string_substitutions = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
+        string_substitutions = mx_subst.SubstitutionEngine(path_substitutions)
         string_substitutions.register_no_arg('version', _suite.release_version)
         string_substitutions.register_no_arg('graalvm_os', get_graalvm_os())
+        string_substitutions.register_with_arg('esc', lambda s: '<' + s + '>')
 
         _layout_provenance = {}
 
@@ -1325,7 +1326,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 for language, path in sorted(image_config.relative_home_paths.items()):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
 
-            build_args += [mx_subst.string_substitutions.substitute(arg) for arg in image_config.build_args]
+            build_args += [graalvm_dist.string_substitutions.substitute(arg) for arg in image_config.build_args]
 
             name = basename(image_config.destination)
             if suffix:
@@ -2428,9 +2429,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             path_substitutions=graalvm.path_substitutions,
             string_substitutions=graalvm.string_substitutions,
             **kw_args)
-
-
-mx_subst.string_substitutions.register_with_arg('esc', lambda s: '<' + s + '>')
 
 
 def _get_jvm_cfg_contents():
