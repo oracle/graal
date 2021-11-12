@@ -45,8 +45,6 @@ import java.nio.ByteOrder;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -56,10 +54,18 @@ import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferCl
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.ObjectClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.PointerType;
-import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeArrayNode;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializePointerNode;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeStringNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeDoubleNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeEnvNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeFloatNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt16Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt32Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt64Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt8Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeObjectNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeNullableNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializePointerNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeStringNodeGen;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 /**
@@ -167,6 +173,8 @@ final class LibFFIType {
             this.injectedArgument = injectedArgument;
         }
 
+        public abstract SerializeArgumentNode createSerializeArgumentNode();
+
         public abstract ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg);
 
         public abstract Object deserializeRet(Node node, NativeArgumentBuffer buffer);
@@ -195,11 +203,6 @@ final class LibFFIType {
         @ExportMessage
         boolean accepts(@Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) {
             return cachedType == simpleType;
-        }
-
-        @ExportMessage
-        void serialize(NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException {
-            throw CompilerDirectives.shouldNotReachHere(simpleType.name());
         }
 
         @ExportMessage
@@ -257,43 +260,14 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class SimpleType extends BasicType {
+
+        private final SerializeArgumentNode sharedArgumentNode;
 
         SimpleType(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment) {
             super(language, simpleType, size, alignment, 0);
-        }
-
-        @ExportMessage
-        void serialize(NativeArgumentBuffer buffer, Object value,
-                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) throws UnsupportedTypeException {
-            buffer.align(alignment);
-            switch (cachedType) {
-                case UINT8:
-                case SINT8:
-                    buffer.putInt8((byte) value);
-                    break;
-                case UINT16:
-                case SINT16:
-                    buffer.putInt16((short) value);
-                    break;
-                case UINT32:
-                case SINT32:
-                    buffer.putInt32((int) value);
-                    break;
-                case UINT64:
-                case SINT64:
-                    buffer.putInt64((long) value);
-                    break;
-                case FLOAT:
-                    buffer.putFloat((float) value);
-                    break;
-                case DOUBLE:
-                    buffer.putDouble((double) value);
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere(cachedType.name());
-            }
+            this.sharedArgumentNode = createSharedArgumentNode();
+            assert !this.sharedArgumentNode.isAdoptable();
         }
 
         public Object fromPrimitive(long primitive) {
@@ -340,6 +314,34 @@ final class LibFFIType {
         }
 
         @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return sharedArgumentNode;
+        }
+
+        private SerializeArgumentNode createSharedArgumentNode() {
+            switch (simpleType) {
+                case UINT8:
+                case SINT8:
+                    return new SerializeInt8Node(this);
+                case UINT16:
+                case SINT16:
+                    return new SerializeInt16Node(this);
+                case UINT32:
+                case SINT32:
+                    return new SerializeInt32Node(this);
+                case UINT64:
+                case SINT64:
+                    return new SerializeInt64Node(this);
+                case FLOAT:
+                    return new SerializeFloatNode(this);
+                case DOUBLE:
+                    return new SerializeDoubleNode(this);
+                default:
+                    throw CompilerDirectives.shouldNotReachHere(simpleType.name());
+            }
+        }
+
+        @Override
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return BufferClosureArgumentNodeGen.create(this, arg);
         }
@@ -374,6 +376,11 @@ final class LibFFIType {
         }
 
         @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            throw new AssertionError("invalid argument type VOID");
+        }
+
+        @Override
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("invalid argument type VOID");
         }
@@ -384,18 +391,15 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class PointerType extends BasicType {
 
         private PointerType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.POINTER, size, alignment, 1);
         }
 
-        @ExportMessage
-        void serialize(NativeArgumentBuffer buffer, Object value,
-                        @Cached SerializePointerNode serialize) throws UnsupportedTypeException {
-            buffer.align(alignment);
-            serialize.execute(value, buffer, size);
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializePointerNodeGen.create(this);
         }
 
         @Override
@@ -404,18 +408,15 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class StringType extends BasicType {
 
         private StringType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.STRING, size, alignment, 1);
         }
 
-        @ExportMessage
-        void serialize(NativeArgumentBuffer buffer, Object value,
-                        @Cached SerializeStringNode serialize) throws UnsupportedTypeException {
-            buffer.align(alignment);
-            serialize.execute(value, buffer, size);
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializeStringNodeGen.create(this);
         }
 
         @Override
@@ -424,18 +425,19 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class ObjectType extends BasicType {
+
+        private final SerializeArgumentNode sharedArgumentNode;
 
         ObjectType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.OBJECT, size, alignment, 1);
+            this.sharedArgumentNode = new SerializeObjectNode(this);
+            assert !this.sharedArgumentNode.isAdoptable();
         }
 
-        @ExportMessage
         @Override
-        void serialize(NativeArgumentBuffer buffer, Object value) {
-            buffer.align(alignment);
-            buffer.putObject(TypeTag.OBJECT, value, size);
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return sharedArgumentNode;
         }
 
         @Override
@@ -444,22 +446,15 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class NullableType extends BasicType {
 
         NullableType(LibFFILanguage language, int size, int alignment) {
             super(language, NativeSimpleType.NULLABLE, size, alignment, 1, Direction.JAVA_TO_NATIVE_ONLY);
         }
 
-        @ExportMessage(limit = "3")
-        void serialize(NativeArgumentBuffer buffer, Object value,
-                        @CachedLibrary("value") InteropLibrary interop) {
-            buffer.align(alignment);
-            if (interop.isNull(value)) {
-                buffer.putPointer(0L, size);
-            } else {
-                buffer.putObject(TypeTag.OBJECT, value, size);
-            }
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializeNullableNodeGen.create(this);
         }
 
         @Override
@@ -500,16 +495,14 @@ final class LibFFIType {
             }
         }
 
-        @ExportMessage
-        boolean accepts(@Cached("this.elementType") NativeSimpleType cachedType) {
-            return cachedType == elementType;
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return SerializeArrayNode.create(this);
         }
 
         @ExportMessage
-        void serialize(NativeArgumentBuffer buffer, Object value,
-                        @Cached(parameters = "this.elementType") SerializeArrayNode serialize) throws UnsupportedTypeException {
-            buffer.align(alignment);
-            serialize.execute(value, buffer, size);
+        boolean accepts(@Cached("this.elementType") NativeSimpleType cachedType) {
+            return cachedType == elementType;
         }
 
         @ExportMessage
@@ -533,13 +526,16 @@ final class LibFFIType {
     @SuppressWarnings("unused")
     static final class EnvType extends BasePointerType {
 
+        private final SerializeArgumentNode sharedArgumentNode;
+
         EnvType(CachedTypeInfo pointerType) {
             super(pointerType, Direction.BOTH, true);
+            this.sharedArgumentNode = new SerializeEnvNode(this);
         }
 
-        @ExportMessage
-        protected void serialize(NativeArgumentBuffer buffer, Object value) {
-            buffer.putObject(TypeTag.ENV, null, size);
+        @Override
+        public SerializeArgumentNode createSerializeArgumentNode() {
+            return sharedArgumentNode;
         }
 
         @ExportMessage(name = "deserialize")

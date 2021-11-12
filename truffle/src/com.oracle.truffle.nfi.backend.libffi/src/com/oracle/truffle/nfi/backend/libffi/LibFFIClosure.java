@@ -219,17 +219,17 @@ final class LibFFIClosure implements TruffleObject {
     private static final class EncodeRetNode extends Node {
 
         private final CachedTypeInfo retType;
-        @Child NativeArgumentLibrary nativeArguments;
+        @Child SerializeArgumentNode serialize;
 
         private EncodeRetNode(CachedTypeInfo retType) {
             this.retType = retType;
-            this.nativeArguments = NativeArgumentLibrary.getFactory().create(this.retType);
+            this.serialize = retType.createSerializeArgumentNode();
         }
 
         RetPatches execute(Object ret, NativeArgumentBuffer.Pointer retBuffer) {
             NativeArgumentBuffer nativeRetBuffer = new NativeArgumentBuffer.Direct(retBuffer, retType.objectCount);
             try {
-                nativeArguments.serialize(retType, nativeRetBuffer, ret);
+                serialize.serialize(ret, nativeRetBuffer);
                 if (nativeRetBuffer.getPatchCount() > 0) {
                     if (nativeRetBuffer.getPatchCount() == 1 && TypeTag.getTag(nativeRetBuffer.patches[0]) == TypeTag.KEEPALIVE) {
                         // special case for closure ret: we need to increment the refcount
@@ -547,12 +547,10 @@ final class LibFFIClosure implements TruffleObject {
 
     abstract static class UnboxStringNode extends Node {
 
-        private final CachedTypeInfo strType;
-        @Child NativeArgumentLibrary argLib;
+        @Child SerializeArgumentNode serialize;
 
         UnboxStringNode(CachedTypeInfo strType) {
-            this.strType = strType;
-            this.argLib = NativeArgumentLibrary.getFactory().create(strType);
+            this.serialize = strType.createSerializeArgumentNode();
             assert strType instanceof LibFFIType.StringType;
         }
 
@@ -562,7 +560,7 @@ final class LibFFIClosure implements TruffleObject {
         protected Object nativeString(Object str) throws UnsupportedTypeException {
             RetStringBuffer retBuffer = new RetStringBuffer();
             CompilerDirectives.ensureVirtualized(retBuffer);
-            argLib.serialize(strType, retBuffer, str);
+            serialize.serialize(str, retBuffer);
             return retBuffer.ret;
         }
     }

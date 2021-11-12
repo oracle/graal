@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -48,8 +47,6 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 @GenerateLibrary
 abstract class NativeArgumentLibrary extends Library {
-
-    public abstract void serialize(CachedTypeInfo type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
     public abstract Object deserialize(CachedTypeInfo type, NativeArgumentBuffer buffer);
 
