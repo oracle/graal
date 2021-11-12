@@ -1126,7 +1126,7 @@ def hellomodule(args):
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         built_image = native_image([
-            '--verbose', '-H:Path=' + build_dir,
+            '--verbose', '-ea', '-H:Path=' + build_dir,
             '--trace-class-initialization=hello.lib.Greeter', # also test native-image-diagnostics-agent
             ] + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')

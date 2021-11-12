@@ -44,10 +44,12 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 @TargetClass(value = java.lang.Module.class, onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module_JDK11OrLater {
 
+    @Alias private String name;
+
     @SuppressWarnings("static-method")
     @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry res = Resources.get(name);
+    public InputStream getResourceAsStream(String resourceName) {
+        ResourceStorageEntry res = Resources.get(name, resourceName);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 

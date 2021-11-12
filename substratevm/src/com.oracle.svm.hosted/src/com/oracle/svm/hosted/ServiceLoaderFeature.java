@@ -362,7 +362,7 @@ public class ServiceLoaderFeature implements Feature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
         }
-        Resources.registerResource(serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
+        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();

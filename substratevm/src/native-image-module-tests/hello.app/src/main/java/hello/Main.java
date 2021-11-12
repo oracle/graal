@@ -26,9 +26,11 @@ package hello;
 
 import hello.lib.Greeter;
 
+import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -52,6 +54,22 @@ public class Main {
         greetMethod.invoke(null);
 
         testBootLayer(helloAppModule, helloLibModule);
+
+        System.out.println("Now testing resources in modules");
+        String helloAppModuleResourceContents;
+        String sameResourcePathName = "resource-file.txt";
+        try (Scanner s = new Scanner(helloAppModule.getResourceAsStream(sameResourcePathName))) {
+            helloAppModuleResourceContents = s.nextLine();
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access resource " + sameResourcePathName + " from " + helloAppModule);
+        }
+        String helloLibModuleResourceContents;
+        try (Scanner s = new Scanner(helloLibModule.getResourceAsStream(sameResourcePathName))) {
+            helloLibModuleResourceContents = s.nextLine();
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access resource " + sameResourcePathName + " from " + helloLibModule);
+        }
+        assert !helloAppModuleResourceContents.equals(helloLibModuleResourceContents) : sameResourcePathName + " not recognized as different resources";
     }
 
     private static void failIfAssertionsAreDisabled() {

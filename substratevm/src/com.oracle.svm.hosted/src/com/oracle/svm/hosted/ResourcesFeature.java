@@ -211,7 +211,6 @@ public final class ResourcesFeature implements Feature {
         @Override
         public boolean isIncluded(String moduleName, String resourceName) {
             String modulePrefix = moduleName == null ? "" : moduleName + ":";
-            System.out.println("Probe: " + modulePrefix + resourceName);
 
             VMError.guarantee(!resourceName.contains("\\"), "Resource path contains backslash!");
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
@@ -230,7 +229,6 @@ public final class ResourcesFeature implements Feature {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    System.out.println("Take: " + modulePrefix + resourceName);
                     return true;
                 }
             }
@@ -241,13 +239,13 @@ public final class ResourcesFeature implements Feature {
         @Override
         public void addResource(String moduleName, String resourceName, InputStream resourceStream) {
             collectModuleName(moduleName);
-            registerResource(debugContext, resourceName, resourceStream);
+            registerResource(debugContext, moduleName, resourceName, resourceStream);
         }
 
         @Override
         public void addDirectoryResource(String moduleName, String dir, String content) {
             collectModuleName(moduleName);
-            registerDirectoryResource(debugContext, dir, content);
+            registerDirectoryResource(debugContext, moduleName, dir, content);
         }
 
         private void collectModuleName(String moduleName) {
@@ -327,18 +325,18 @@ public final class ResourcesFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String resourceName, InputStream resourceStream) {
+    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
-            Resources.registerResource(resourceName, resourceStream);
+            Resources.registerResource(moduleName, resourceName, resourceStream);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String dir, String content) {
+    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + dir);
-            Resources.registerDirectoryResource(dir, content);
+            Resources.registerDirectoryResource(moduleName, dir, content);
         }
     }
 }

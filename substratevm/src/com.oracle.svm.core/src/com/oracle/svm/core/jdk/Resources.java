@@ -38,6 +38,7 @@ import java.util.Enumeration;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -66,12 +67,12 @@ public final class Resources {
     }
 
     /** The hosted map used to collect registered resources. */
-    private final EconomicMap<String, ResourceStorageEntry> resources = ImageHeapMap.create();
+    private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     Resources() {
     }
 
-    public EconomicMap<String, ResourceStorageEntry> resources() {
+    public EconomicMap<Pair<String, String>, ResourceStorageEntry> resources() {
         return resources;
     }
 
@@ -101,29 +102,30 @@ public final class Resources {
         return data;
     }
 
-    private static void addEntry(String resourceName, boolean isDirectory, byte[] data) {
+    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data) {
         Resources support = singleton();
-        ResourceStorageEntry entry = support.resources.get(resourceName);
+        Pair<String, String> key = Pair.create(moduleName, resourceName);
+        ResourceStorageEntry entry = support.resources.get(key);
         if (entry == null) {
             entry = new ResourceStorageEntry(isDirectory);
-            support.resources.put(resourceName, entry);
+            support.resources.put(key, entry);
         }
         entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String resourceName, InputStream is) {
-        addEntry(resourceName, false, inputStreamToByteArray(is));
+    public static void registerResource(String moduleName, String resourceName, InputStream is) {
+        addEntry(moduleName, resourceName, false, inputStreamToByteArray(is));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String resourceDirName, String content) {
+    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(resourceDirName, true, content.getBytes());
+        addEntry(moduleName, resourceDirName, true, content.getBytes());
     }
 
     /**
@@ -136,7 +138,11 @@ public final class Resources {
     }
 
     public static ResourceStorageEntry get(String name) {
-        return singleton().resources.get(name);
+        return singleton().resources.get(Pair.createRight(name));
+    }
+
+    public static ResourceStorageEntry get(String moduleName, String resourceName) {
+        return singleton().resources.get(Pair.create(moduleName, resourceName));
     }
 
     private static URL createURL(String resourceName, int index) {
