@@ -43,11 +43,6 @@ package com.oracle.truffle.nfi.backend.libffi;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosureArgumentNode;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
@@ -184,7 +179,6 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     abstract static class BasicType extends CachedTypeInfo {
 
         final LibFFILanguage nfiLanguage;
@@ -200,21 +194,10 @@ final class LibFFIType {
             this(language, simpleType, size, alignment, objectCount, Direction.BOTH);
         }
 
-        @ExportMessage
-        boolean accepts(@Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) {
-            return cachedType == simpleType;
-        }
-
-        @ExportMessage
-        Object deserialize(NativeArgumentBuffer buffer,
-                        @CachedLibrary("this") NativeArgumentLibrary self,
-                        @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType) {
-            return deserializeImpl(buffer, self, cachedType);
-        }
-
-        private Object deserializeImpl(NativeArgumentBuffer buffer, Node node, NativeSimpleType cachedType) throws AssertionError {
+        @Override
+        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
             buffer.align(alignment);
-            switch (cachedType) {
+            switch (simpleType) {
                 case VOID:
                     return null;
                 case UINT8:
@@ -252,11 +235,6 @@ final class LibFFIType {
                 default:
                     throw CompilerDirectives.shouldNotReachHere(simpleType.name());
             }
-        }
-
-        @Override
-        public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
-            return deserializeImpl(buffer, node, simpleType);
         }
     }
 
@@ -470,7 +448,6 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     static final class ArrayType extends BasePointerType {
 
         final NativeSimpleType elementType;
@@ -500,16 +477,6 @@ final class LibFFIType {
             return SerializeArrayNode.create(this);
         }
 
-        @ExportMessage
-        boolean accepts(@Cached("this.elementType") NativeSimpleType cachedType) {
-            return cachedType == elementType;
-        }
-
-        @ExportMessage
-        public Object deserialize(NativeArgumentBuffer buffer) {
-            return deserializeRet(null, buffer);
-        }
-
         @Override
         public Object deserializeRet(Node node, NativeArgumentBuffer buffer) {
             CompilerDirectives.transferToInterpreter();
@@ -522,7 +489,6 @@ final class LibFFIType {
         }
     }
 
-    @ExportLibrary(NativeArgumentLibrary.class)
     @SuppressWarnings("unused")
     static final class EnvType extends BasePointerType {
 
@@ -536,11 +502,6 @@ final class LibFFIType {
         @Override
         public SerializeArgumentNode createSerializeArgumentNode() {
             return sharedArgumentNode;
-        }
-
-        @ExportMessage(name = "deserialize")
-        public Object deserialize(NativeArgumentBuffer buffer) {
-            return deserializeRet(null, buffer);
         }
 
         @Override
