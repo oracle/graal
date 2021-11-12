@@ -63,7 +63,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
@@ -173,7 +172,7 @@ public final class ResourcesFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        imageClassLoader = access.getImageClassLoader();
         ImageSingletons.add(ResourcesRegistry.class,
                         new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue())));
     }
@@ -184,7 +183,6 @@ public final class ResourcesFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
         ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class), ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
@@ -210,8 +208,6 @@ public final class ResourcesFeature implements Feature {
 
         @Override
         public boolean isIncluded(String moduleName, String resourceName) {
-            String modulePrefix = moduleName == null ? "" : moduleName + ":";
-
             VMError.guarantee(!resourceName.contains("\\"), "Resource path contains backslash!");
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
 
@@ -263,10 +259,8 @@ public final class ResourcesFeature implements Feature {
         }
 
         access.requireAnalysisIteration();
-        DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
-        imageClassLoader = accessImpl.imageClassLoader;
 
-        DebugContext debugContext = accessImpl.getDebugContext();
+        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules);

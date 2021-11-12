@@ -174,6 +174,6 @@ class ClassLoaderSupportFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl((NativeImageClassLoaderSupport) access.getImageClassLoader().classLoaderSupport));
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl(access.getImageClassLoader().classLoaderSupport));
     }
 }
