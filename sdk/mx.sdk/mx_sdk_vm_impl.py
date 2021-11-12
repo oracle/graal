@@ -602,7 +602,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         # Add the rest of the GraalVM
 
         component_suites = {}
-        installables = {}
+        installable_component_lists = {}
         has_graal_compiler = False
         _macros_dir = _get_macros_dir()
         _libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False)
@@ -765,16 +765,17 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 # add language-specific release file
                 component_suites.setdefault(_component_base, []).append(_component.suite)
 
-            if _component.installable and not _disable_installable(_component):
-                installables.setdefault(_component.installable_id, []).append(_component)
+            if _component.installable:
+                installable_component_lists.setdefault(_component.installable_id, []).append(_component)
 
         installer = get_component('gu', stage1=stage1)
         if installer:
             # Register pre-installed components
             components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
-            for installable_components in installables.values():
+            for installable_components in installable_component_lists.values():
                 manifest_str = _gen_gu_manifest(installable_components, _format_properties, bundled=True)
                 main_component = _get_main_component(installable_components)
+                mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', _component.installable_id))
                 _add(layout, components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
