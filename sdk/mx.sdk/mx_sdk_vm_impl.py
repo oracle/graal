@@ -220,7 +220,7 @@ def registered_graalvm_components(stage1=False):
                         jar_distributions=[],
                         build_args=[
                                '-Dgraalvm.libpolyglot=true',
-                               '-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>',
+                               '-Dorg.graalvm.polyglot.install_name_id=@rpath/<jre_home>/lib/polyglot/<lib:polyglot>',
                                '--tool:all',
                            ],
                         is_polyglot=True,
@@ -362,6 +362,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('jdk_base', lambda: self.jdk_base)
         path_substitutions.register_no_arg('jre_base', lambda: self.jre_base)
+        path_substitutions.register_no_arg('jre_home', lambda: relpath(self.jre_base, self.jdk_base))
 
         string_substitutions = mx_subst.SubstitutionEngine(path_substitutions)
         string_substitutions.register_no_arg('version', _suite.release_version)
