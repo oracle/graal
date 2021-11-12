@@ -56,10 +56,12 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
         }
     }
 
-    protected static final LeafTypeAssumptionAccessor assumptionAccessor = new LeafTypeAssumptionAccessor();
+    protected static final ClassHierarchyAccessor classHierarchyInfoAccessor = new ClassHierarchyAccessor();
 
     protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl(AlwaysValidAssumption.INSTANCE);
     protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
+
+    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
@@ -71,6 +73,16 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
 
     @Override
     public LeafTypeAssumption isLeafClass(ObjectKlass klass) {
-        return klass.getLeafTypeAssumption(assumptionAccessor);
+        return klass.getLeafTypeAssumption(classHierarchyInfoAccessor);
+    }
+
+    @Override
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+        return SingleImplementor.MultipleImplementors;
+    }
+
+    @Override
+    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
+        return NotSingleImplementor;
     }
 }
