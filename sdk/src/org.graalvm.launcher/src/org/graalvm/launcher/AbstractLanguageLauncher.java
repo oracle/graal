@@ -45,10 +45,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.polyglot.Context;
@@ -198,14 +196,20 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             }
         }
 
-        Set<String> heuristic = new HashSet<>(heuristicVmArgs);
-        Set<String> actual = new HashSet<>(actualVmArgs);
-
-        if (heuristic.equals(actual)) {
-            return;
+        if (heuristicVmArgs.size() != actualVmArgs.size()) {
+            throw new RelaunchException(actualVmArgs);
         }
 
-        throw new RelaunchException(actualVmArgs);
+        for (int i = 0; i < heuristicVmArgs.size(); i++) {
+            String hArg = heuristicVmArgs.get(i);
+            String aArg = actualVmArgs.get(i);
+            if (!hArg.equals(aArg)) {
+                throw new RelaunchException(actualVmArgs);
+            }
+        }
+
+        // all argument match, we're good
+        return;
     }
 
     /**

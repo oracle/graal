@@ -2588,6 +2588,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dist = get_final_graalvm_distribution()
         _exe_path = _dist.find_single_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
         _dynamic_cflags = [
+            '-static-libstdc++',
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
         ]
@@ -2624,6 +2625,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
             ]
         return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
+
+    @property
+    def ldflags(self):
+        _dynamic_ldflags = ['-static-libstdc++']
+        return super(NativeLibraryLauncherProject, self).ldflags + _dynamic_ldflags
 
     @property
     def ldlibs(self):

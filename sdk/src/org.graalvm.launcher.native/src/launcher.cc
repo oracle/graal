@@ -81,9 +81,9 @@
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
-#define IS_VM_ARG(ARG) (strcmp(ARG, VM_ARG_PREFIX) == 0)
-#define IS_VM_CP_ARG(ARG) (strcmp(ARG, VM_CP_ARG_PREFIX) == 0)
-#define IS_VM_CLASSPATH_ARG(ARG) (strcmp(ARG, VM_CLASSPATH_ARG_PREFIX) == 0)
+#define IS_VM_ARG(ARG) (strncmp(ARG, VM_ARG_PREFIX, VM_ARG_OFFSET) == 0)
+#define IS_VM_CP_ARG(ARG) (strncmp(ARG, VM_CP_ARG_PREFIX, VM_CP_ARG_OFFSET) == 0)
+#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, VM_CLASSPATH_ARG_PREFIX, VM_CLASSPATH_ARG_OFFSET) == 0)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -272,7 +272,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 
     // handle optional vm args from LanguageLibraryConfig.option_vars
     #ifdef LAUNCHER_OPTION_VARS
-    for (int i = 0; i < launcherOptionCount; i++) {
+    for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
         if (IS_VM_CP_ARG(launcherOptionVars[i])) {
             cp << CP_SEP_STR << launcherOptionVars[i]+VM_CP_ARG_OFFSET;
         } else if (IS_VM_CLASSPATH_ARG(launcherOptionVars[i])) {
