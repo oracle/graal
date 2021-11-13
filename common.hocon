@@ -39,7 +39,10 @@ labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
 labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
-  catch_files : ${catch_files}
+  catch_files : ${catch_files},
+  logs : [
+    "*/es-*.json"
+  ]
 }
 
 linux : ${common} ${deps.linux}

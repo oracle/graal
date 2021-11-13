@@ -35,6 +35,13 @@
     ]
   },
 
+  local truffle_unittest = {
+    environment+: {
+      "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+      "MX_TEST_RESULT_TAGS": "truffle"
+    }
+  },
+
   local gate_lite = truffle_common + {
     name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_version,
     run: [
@@ -103,7 +110,7 @@
     ],
   },
 
-  local truffle_gate = truffle_common + common.eclipse + common.jdt + {
+  local truffle_gate = truffle_common + common.eclipse + common.jdt + truffle_unittest {
     name: 'gate-truffle-oraclejdk-' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
@@ -130,7 +137,7 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk11 + truffle_common + {
+    linux_amd64 + common.oraclejdk11 + truffle_common + truffle_unittest {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -141,7 +148,7 @@
       ],
     },
 
-    windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + truffle_common + {
+    windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + truffle_common + truffle_unittest {
       name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows

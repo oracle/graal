@@ -11,6 +11,7 @@ compiler-suite-root = "./compiler"
 logPatterns = [
     "*.bgv"
     ${compiler-suite-root}"/graal_dumps/*/*"
+    "*/es-*.json"
 ]
 
 jvm-config.default = "graal-core"
