@@ -625,7 +625,7 @@ public class SubstrateDiagnostics {
                     if (allowJavaHeapAccess) {
                         Thread threadObj = JavaThreads.fromVMThread(thread);
                         log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
-                        if (threadObj.isDaemon()) {
+                        if (threadObj != null && threadObj.isDaemon()) {
                             log.string(", daemon");
                         }
                     }

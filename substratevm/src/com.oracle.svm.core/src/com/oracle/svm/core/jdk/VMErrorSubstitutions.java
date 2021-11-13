@@ -99,7 +99,7 @@ public class VMErrorSubstitutions {
      * uninterruptible
      */
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
 

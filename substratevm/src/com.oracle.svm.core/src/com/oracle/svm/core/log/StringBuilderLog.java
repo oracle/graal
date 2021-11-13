@@ -37,7 +37,7 @@ public class StringBuilderLog extends RealLog {
     public StringBuilderLog() {
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "This implementation allocates.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "This implementation allocates.")
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
     @Override
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
