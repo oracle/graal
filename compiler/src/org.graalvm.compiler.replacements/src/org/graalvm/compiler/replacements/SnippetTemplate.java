@@ -42,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Formattable;
 import java.util.Formatter;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -200,6 +201,257 @@ import jdk.vm.ci.meta.Signature;
  * constants to the snippet's {@link ConstantParameter} parameters.
  *
  * Snippet templates can be managed in a cache maintained by {@link AbstractTemplates}.
+ *
+ * <h1>Snippet Lowering of {@link WithExceptionNode}</h1>
+ *
+ * Lowering of {@link WithExceptionNode} is more complicated than for normal (fixed) nodes, because
+ * of the {@linkplain WithExceptionNode#exceptionEdge() exception edge}.
+ *
+ * <h2>Replacing a WithExceptionNode with a Snippet with an {@link UnwindNode}</h2>
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * The <em>replacee graph</em> is the graph that contains the node to be lowered and where the
+ * <em>snippet graph</em> will be inlined into. In the example below, the {@code WithException} node
+ * will be lowered via a snippet.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * A <em>snippet graph</em> is a complete graph starting with a {@link StartNode} and ending with a
+ * {@link ReturnNode} and or an {@link UnwindNode}. For simplicity, multiple {@linkplain ReturnNode
+ * ReturnNodes} are {@linkplain InliningUtil#mergeReturns merged} and replaced by a single return
+ * node.
+ *
+ * The following is the simplest possible example for a snippet with an {@link UnwindNode}. The
+ * snippet consists of an @code InvokeWithException'}.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *      Return'        Unwind'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * After inlining the snippet, the {@code WithException} node in the replacee graph is replaced by
+ * the snippet graph. The {@code Start'} is connected to the predecessor, the {@code Return'} to the
+ * {@linkplain WithExceptionNode#next() next} edge, and the {@code Unwind'} to the
+ * {@linkplain WithExceptionNode#exceptionEdge() exception edge}.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * It is important to note that we do not yet remove the original {@code Begin} and
+ * {@code WithException} node, although they are no longer needed. Doing so would require support
+ * from the {@link LoweringPhase}, which might still hold references to these nodes for subsequent
+ * lowering rounds. {@linkplain org.graalvm.compiler.nodes.BeginNode#simplify Simplifications} and
+ * {@linkplain ExceptionObjectNode#lower lowering} will take care of removing these nodes.
+ *
+ * <h3>Replacee Graph after lowering</h3>
+ *
+ * After the whole replacee graph has been lowered, the superfluous nodes are gone.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h2>Replacing a non-throwing WithExceptionNode with a Snippet with an {@link UnwindNode}</h2>
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * {@linkplain WithExceptionNode#replaceWithNonThrowing() Non-throwing} {@link WithExceptionNode}
+ * are nodes where the {@linkplain WithExceptionNode#exceptionEdge() exception edge} is an
+ * {@link UnreachableBeginNode} followed by an
+ * {@link org.graalvm.compiler.nodes.UnreachableControlSinkNode}. This pattern is used to encode
+ * that we have proven that the {@link WithExceptionNode} will never throw an exception.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       UnreachableBegin
+ *         |              |
+ *     nextSucc      UnreachableControlSink
+ *         |
+ *        ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * The <em>snippet graph</em> is the same as in the example above.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *      Return'        Unwind'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * In this case, we remove the {@code ExceptionObject'} from the snippet graph, and attach the
+ * original {@code UnreachableBegin} directly to the exception producing instruction from the
+ * snippet (the {@code InvokeWithException'} node in this example).
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *         InvokeWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      UnreachableBegin
+ *         |              |
+ *       Begin       UnreachableControlSink
+ *         |
+ *     nextSucc
+ *         |
+ *        ...
+ * </pre>
+ *
+ * <h2>Replacing a WithExceptionNode with a Snippet without an {@link UnwindNode}</h2>
+ *
+ * There are cases where snippets are known not to throw an exception, although the replacee is a
+ * {@link WithExceptionNode}.
+ *
+ * <h3>Replacee Graph</h3>
+ *
+ * Let us reuse the example from the first case.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           WithException  <--- // to be lowered
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Snippet Graph</h3>
+ *
+ * In this example, the snippet graph consists of a single {@code NonThrowingWork'} node.
+ *
+ * <pre>
+ *              Start'
+ *                |
+ *          NonThrowingWork'
+ *                |
+ *             Return'
+ * </pre>
+ *
+ * <h3>Replacee Graph after inlining</h3>
+ *
+ * As outlined above, we cannot simply delete the nodes connected to the replacee because it would
+ * interfere with the {@link LoweringPhase}. Thus, we introduce an artificial
+ * {@code PlaceholderWithException'} that connects to the
+ * {@linkplain WithExceptionNode#exceptionEdge() exception edge}. This placeholder node removes the
+ * exception edge and itself in a subsequent {@linkplain PlaceholderWithExceptionNode#simplify
+ * canonicalization}.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+  *                |
+ *           NonThrowingWork'
+ *                 |
+ *      PlaceholderWithException'
+ *            /         \
+ *    [next] /           \ [exceptionEdge]
+ *          /             \
+ *       Begin'      ExceptionObject'
+ *         |              |
+ *       Begin       ExceptionObject
+ *         |              |
+ *     nextSucc      exceptionSucc
+ *         |              |
+ *        ...            ...
+ * </pre>
+ *
+ * <h3>Replacee Graph after lowering</h3>
+ *
+ * After the whole replacee graph has been lowered, the graph looks like the following.
+ *
+ * <pre>
+ *                ...
+ *                 |
+ *                pred
+ *                 |
+ *           NonThrowingWork'
+ *                 |
+ *             nextSucc
+ *                 |
+ *                ...
+ * </pre>
+ *
  */
 public class SnippetTemplate {
 
@@ -1777,11 +2029,10 @@ public class SnippetTemplate {
                 UnwindNode snippetUnwindDuplicate = (UnwindNode) duplicates.get(unwindPath);
                 ValueNode snippetExceptionValue = snippetUnwindDuplicate.exception();
                 FixedWithNextNode snippetUnwindPath = (FixedWithNextNode) snippetUnwindDuplicate.predecessor();
-                GraalError.guarantee(snippetExceptionValue instanceof ExceptionObjectNode, "Snippet exception object must be an %s: %s", ExceptionObjectNode.class.getSimpleName(),
-                                snippetExceptionValue);
-                GraalError.guarantee(snippetUnwindPath == snippetExceptionValue, "Snippet unwind predecessor must be the exception object %s: %s", snippetUnwindPath, snippetExceptionValue);
-                GraalError.guarantee(snippetUnwindPath instanceof StateSplit, "Snippet unwind predecessor must be a state split: %s", snippetUnwindPath);
-                GraphUtil.killCFG(snippetUnwindDuplicate);
+                GraalError.guarantee(!(snippetExceptionValue instanceof ExceptionObjectNode) || snippetUnwindPath == snippetExceptionValue,
+                                "Snippet unwind predecessor must be the exception object %s: %s", snippetUnwindPath, snippetExceptionValue);
+                GraalError.guarantee(!(snippetUnwindPath instanceof MergeNode) || snippetExceptionValue instanceof PhiNode,
+                                "If the snippet unwind predecessor is a merge node, the exception object must be a phi %s: %s", snippetUnwindPath, snippetExceptionValue);
                 // replacee exception handler
                 WithExceptionNode replaceeWithExceptionNode = (WithExceptionNode) replacee;
                 AbstractBeginNode exceptionEdge = replaceeWithExceptionNode.exceptionEdge();
@@ -1799,15 +2050,10 @@ public class SnippetTemplate {
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
                     // replace exceptionEdge with snippetUnwindPath
                     replaceExceptionObjectNode(exceptionEdge, snippetUnwindPath);
+                    GraphUtil.killCFG(snippetUnwindDuplicate);
                 } else {
                     GraalError.guarantee(exceptionEdge instanceof UnreachableBeginNode, "Unexpected exception edge: %s", exceptionEdge);
-                    replaceeWithExceptionNode.setExceptionEdge(null);
-                    Node snippetUnwindPred = snippetUnwindPath.predecessor();
-                    GraalError.guarantee(snippetUnwindPred instanceof WithExceptionNode, "Unexpected exception producer: %s", snippetUnwindPred);
-                    WithExceptionNode snippetWithException = (WithExceptionNode) snippetUnwindPred;
-                    GraalError.guarantee(snippetWithException.exceptionEdge() == snippetUnwindPath, "Unexpected exception edge: %s", snippetWithException.exceptionEdge());
-                    snippetWithException.setExceptionEdge(exceptionEdge);
-                    GraphUtil.killCFG(snippetUnwindPath);
+                    markExceptionsUnreachable(unwindPath.exception(), duplicates);
                 }
             } else {
                 /*
@@ -1860,6 +2106,29 @@ public class SnippetTemplate {
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
+        }
+    }
+
+    /**
+     * Searches for {@link WithExceptionNode} reachable from the {@link UnwindNode} and marks them
+     * as {@linkplain WithExceptionNode#replaceWithNonThrowing() non-throwing}.
+     */
+    private static void markExceptionsUnreachable(ValueNode snippetExceptionValue, EconomicMap<Node, Node> duplicates) {
+        assert snippetExceptionValue.graph().isSubstitution() : "search should be done in the snippet graph";
+        if (snippetExceptionValue instanceof ValuePhiNode) {
+            for (ValueNode phiInput : ((PhiNode) snippetExceptionValue).values().snapshot()) {
+                markExceptionsUnreachable(phiInput, duplicates);
+            }
+        } else {
+            // snippetExceptionValue is a (lowered) ExceptionObjectNode
+            Node snippetUnwindPred = snippetExceptionValue.predecessor();
+            // the exception node might have been lowered to a memory anchor and a begin node
+            while (snippetUnwindPred instanceof AbstractBeginNode || snippetUnwindPred instanceof MemoryAnchorNode) {
+                snippetUnwindPred = snippetUnwindPred.predecessor();
+            }
+            GraalError.guarantee(snippetUnwindPred instanceof WithExceptionNode, "Unexpected exception producer: %s", snippetUnwindPred);
+            WithExceptionNode snippetWithException = (WithExceptionNode) duplicates.get(snippetUnwindPred);
+            snippetWithException.replaceWithNonThrowing();
         }
     }
 
@@ -2107,9 +2376,15 @@ public class SnippetTemplate {
                     setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfter);
                     break;
                 case AFTER_EXCEPTION_BCI:
-                    GraalError.guarantee(nodeRequiringState instanceof ExceptionObjectNode, "Not an exception object node: %s", nodeRequiringState);
-                    ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) duplicates.get(nodeRequiringState);
-                    rewireExceptionObjectFrameState(exceptionObject, newExceptionObject);
+                    if (nodeRequiringState instanceof ExceptionObjectNode) {
+                        ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) duplicates.get(nodeRequiringState);
+                        rewireExceptionFrameState(exceptionObject, newExceptionObject, newExceptionObject);
+                    } else if (nodeRequiringState instanceof MergeNode) {
+                        MergeNode mergeNode = (MergeNode) duplicates.get(nodeRequiringState);
+                        rewireExceptionFrameState(exceptionObject, getExceptionValueFromMerge(mergeNode), mergeNode);
+                    } else {
+                        GraalError.shouldNotReachHere("Unexpected exception state node: " + nodeRequiringState);
+                    }
                     break;
                 case BEFORE_BCI:
                     FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
@@ -2126,6 +2401,14 @@ public class SnippetTemplate {
             }
             replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
         }
+    }
+
+    private static ValuePhiNode getExceptionValueFromMerge(MergeNode mergeNode) {
+        Iterator<ValuePhiNode> phis = mergeNode.valuePhis().iterator();
+        GraalError.guarantee(phis.hasNext(), "No phi at merge %s", mergeNode);
+        ValuePhiNode phi = phis.next();
+        GraalError.guarantee(!phis.hasNext(), "More than one phi at merge %s", mergeNode);
+        return phi;
     }
 
     private void setReplaceeGraphStateAfter(Node nodeRequiringState, Node replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FrameState stateAfter) {
@@ -2155,7 +2438,7 @@ public class SnippetTemplate {
         });
     }
 
-    private static void rewireExceptionObjectFrameState(ExceptionObjectNode exceptionObject, ExceptionObjectNode newExceptionObject) {
+    private static void rewireExceptionFrameState(ExceptionObjectNode exceptionObject, ValueNode newExceptionObject, StateSplit newStateSplit) {
         if (exceptionObject == null) {
             /*
              * The exception edge is dead in the replacee graph. Thus, we will not use the exception
@@ -2176,7 +2459,7 @@ public class SnippetTemplate {
                 }
             }
         });
-        newExceptionObject.setStateAfter(newExceptionState);
+        newStateSplit.setStateAfter(newExceptionState);
     }
 
     private void rewireFrameStatesAfterFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
@@ -2212,7 +2495,8 @@ public class SnippetTemplate {
             DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
             if (deoptDup.canDeoptimize()) {
                 if (deoptDup instanceof ExceptionObjectNode) {
-                    rewireExceptionObjectFrameState(exceptionObject, (ExceptionObjectNode) deoptDup);
+                    ExceptionObjectNode newExceptionObject = (ExceptionObjectNode) deoptDup;
+                    rewireExceptionFrameState(exceptionObject, newExceptionObject, newExceptionObject);
                     continue;
                 }
                 if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {

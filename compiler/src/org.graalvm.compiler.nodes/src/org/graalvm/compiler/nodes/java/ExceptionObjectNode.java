@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
@@ -119,7 +120,7 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
         if (predecessor() instanceof WithExceptionNode) {
             return false;
         }
-        GraalError.guarantee(predecessor() instanceof ExceptionObjectNode, "Unexpected predecessor of %s: %s", this, predecessor());
+        GraalError.guarantee(predecessor() instanceof ExceptionObjectNode || predecessor() instanceof MergeNode, "Unexpected predecessor of %s: %s", this, predecessor());
         GraalError.guarantee(getExceptionValueFromState(this) == getExceptionValueFromState((StateSplit) predecessor()), "predecessor of %s with unexpected state: %s", this, predecessor());
         GraalError.guarantee(hasNoUsages(), "Unexpected usages of %s", this);
         return true;
