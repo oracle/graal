@@ -105,6 +105,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -113,7 +114,6 @@ import org.graalvm.compiler.nodes.PiNode.Placeholder;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -1988,11 +1988,11 @@ public class SnippetTemplate {
                 }
             }
 
-            rewireFrameStates(replacee, duplicates, replaceeGraphPredecessor);
-
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
+
+            rewireFrameStates(replacee, duplicates, replaceeGraphPredecessor);
 
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
@@ -2320,8 +2320,19 @@ public class SnippetTemplate {
     protected void rewireFrameStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates, FixedNode replaceeGraphCFGPredecessor) {
         if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects() && requiresFrameStateProcessingBeforeFSA(replacee)) {
             rewireFrameStatesBeforeFSA(replacee, duplicates, replaceeGraphCFGPredecessor);
-        } else if (replacee.graph().getGuardsStage().areFrameStatesAtDeopts() && replacee instanceof DeoptimizingNode) {
-            rewireFrameStatesAfterFSA(replacee, duplicates);
+        } else if (replacee.graph().getGuardsStage().areFrameStatesAtDeopts()) {
+            if (replacee instanceof DeoptimizingNode && ((DeoptimizingNode) replacee).canDeoptimize()) {
+                rewireFrameStatesAfterFSA(replacee, duplicates);
+            } else {
+                /*
+                 * Guarantee no frame states need to be attached to DeoptimizingNodes, since it is
+                 * not possible to assign them a valid state.
+                 */
+                for (DeoptimizingNode deoptNode : deoptNodes) {
+                    DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode.asNode());
+                    GraalError.guarantee(!deoptDup.canDeoptimize(), "No FrameState is being transferred to DeoptimizingNode.");
+                }
+            }
         }
     }
 
@@ -2464,19 +2475,29 @@ public class SnippetTemplate {
 
     private void rewireFrameStatesAfterFSA(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
         DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+        GraalError.guarantee(replaceeDeopt.canDeoptimize(), "Method expects the replacee to have deopt state");
         FrameState stateBefore = null;
         FrameState stateDuring = null;
         FrameState stateAfter = null;
-        if (replaceeDeopt.canDeoptimize()) {
-            if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
-                stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
-            }
-            if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
-                stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
-            }
-            if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
-                stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
-            }
+        if (replaceeDeopt instanceof DeoptimizingNode.DeoptBefore) {
+            stateBefore = ((DeoptimizingNode.DeoptBefore) replaceeDeopt).stateBefore();
+        }
+        if (replaceeDeopt instanceof DeoptimizingNode.DeoptDuring) {
+            stateDuring = ((DeoptimizingNode.DeoptDuring) replaceeDeopt).stateDuring();
+        }
+        if (replaceeDeopt instanceof DeoptimizingNode.DeoptAfter) {
+            stateAfter = ((DeoptimizingNode.DeoptAfter) replaceeDeopt).stateAfter();
+        }
+
+        if (stateAfter == null && stateDuring == null && stateBefore == null) {
+            /*
+             * There should only be no state available to transfer during testing or if the
+             * replacee's graph itself is a substitution.
+             */
+            StructuredGraph graph = replacee.graph();
+            boolean condition = graph.isStateAfterClearedForTesting() || graph.isSubstitution();
+            GraalError.guarantee(condition, "No state available to transfer");
+            return;
         }
         final ExceptionObjectNode exceptionObject;
         if (replacee instanceof WithExceptionNode) {
@@ -2500,6 +2521,7 @@ public class SnippetTemplate {
                     continue;
                 }
                 if (deoptDup instanceof DeoptimizingNode.DeoptBefore) {
+                    GraalError.guarantee(stateBefore != null, "Invalid stateBefore being transferred.");
                     ((DeoptimizingNode.DeoptBefore) deoptDup).setStateBefore(stateBefore);
                 }
                 if (deoptDup instanceof DeoptimizingNode.DeoptDuring) {
@@ -2514,8 +2536,12 @@ public class SnippetTemplate {
                     } else if (stateAfter != null) {
                         deoptDupDuring.computeStateDuring(stateAfter);
                     } else if (stateBefore != null) {
-                        assert ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() : "can't use stateBefore as stateDuring for state split " + deoptDupDuring;
+                        boolean guarantee = ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect();
+                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateDuring for state split %s",
+                                        deoptDupDuring);
                         deoptDupDuring.setStateDuring(stateBefore);
+                    } else {
+                        throw GraalError.shouldNotReachHere("No stateDuring assigned.");
                     }
                 }
                 if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {
@@ -2523,7 +2549,8 @@ public class SnippetTemplate {
                     if (stateAfter != null) {
                         deoptDupAfter.setStateAfter(stateAfter);
                     } else {
-                        assert !deoptDupAfter.hasSideEffect() : "can't use stateBefore as stateAfter for state split " + deoptDupAfter;
+                        boolean guarantee = stateBefore != null && !deoptDupAfter.hasSideEffect();
+                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateAfter for state split %s", deoptDupAfter);
                         deoptDupAfter.setStateAfter(stateBefore);
                     }
 
@@ -2534,7 +2561,10 @@ public class SnippetTemplate {
 
     public static FrameState findLastFrameState(FixedNode start) {
         FrameState state = findLastFrameState(start, false);
-        assert state != null : "Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true);
+        if (state == null) {
+            // keep in branch to avoid eager evaluation of findLastFrameState(start, true)
+            throw GraalError.shouldNotReachHere("Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true));
+        }
         return state;
     }
 

@@ -158,7 +158,7 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
         CoreProviders context = getProviders();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
         canonicalizer.apply(graph, context);
 
