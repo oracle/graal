@@ -156,6 +156,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 if (nativeImage.config.useJavaModules()) {
                     nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
+                    nativeImage.addAddedModules(addModulesArgs);
                 } else {
                     NativeImage.showWarning("Ignoring unsupported module option: " + addModulesOption + " " + addModulesArgs);
                 }
@@ -337,6 +338,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             if (nativeImage.config.useJavaModules()) {
                 nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
+                nativeImage.addAddedModules(addModulesArgs);
             } else {
                 NativeImage.showWarning("Ignoring unsupported module option: " + addModulesOption + " " + addModulesArgs);
             }

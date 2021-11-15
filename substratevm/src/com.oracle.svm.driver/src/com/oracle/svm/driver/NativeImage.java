@@ -257,6 +257,7 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
+    private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
     protected static class BuildConfiguration {
 
@@ -1161,6 +1162,10 @@ public class NativeImage {
             return 2;
         }
 
+        if (!addModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
+        }
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
         return buildImage(finalImageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
@@ -1506,6 +1511,10 @@ public class NativeImage {
 
     public void addImageBuilderModulePath(Path modulePathEntry) {
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
+    }
+
+    public void addAddedModules(String addModulesArg) {
+        addModules.addAll(Arrays.asList(SubstrateUtil.split(addModulesArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {
