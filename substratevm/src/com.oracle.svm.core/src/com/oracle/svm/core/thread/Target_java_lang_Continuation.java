@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -37,7 +36,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -46,8 +44,9 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 public final class Target_java_lang_Continuation {
     @Alias//
     Runnable target;
+
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    public StoredContinuation internalContinuation;
+    public Continuation internal;
 
     @Alias//
     short cs;
@@ -60,17 +59,6 @@ public final class Target_java_lang_Continuation {
     // Checkstyle: stop
     static byte FLAG_SAFEPOINT_YIELD = 1 << 1;
     // Checkstyle: resume
-
-    /**
-     * Frame pointer of
-     * {@link Target_java_lang_Continuation#enterSpecial(Target_java_lang_Continuation, boolean)} if
-     * continuation is running, else frame pointer of
-     * {@link LoomSupport#yield(Target_java_lang_Continuation)}.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Pointer sp = WordFactory.nullPointer();
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    CodePointer ip = WordFactory.nullPointer();
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     int monitorBefore;
@@ -88,7 +76,7 @@ public final class Target_java_lang_Continuation {
 
     @Substitute
     private boolean isEmpty() {
-        return sp.isNull();
+        return internal.isEmpty();
     }
 
     @Alias
@@ -145,7 +133,7 @@ public final class Target_java_lang_Continuation {
 
     @Substitute
     boolean isStarted() {
-        return this.sp.isNonNull();
+        return internal.isStarted();
     }
 
     @Alias
@@ -156,7 +144,7 @@ public final class Target_java_lang_Continuation {
     public static native Target_java_lang_Continuation getCurrentContinuation(Target_java_lang_ContinuationScope scope);
 
     @Substitute
-    private static void enterSpecial(Target_java_lang_Continuation cont, boolean isContinue) {
+    static void enterSpecial(Target_java_lang_Continuation cont, boolean isContinue) {
         enter(cont, isContinue);
     }
 
@@ -180,8 +168,7 @@ public final class Target_java_lang_Continuation {
     @Substitute
     private void finish() {
         done = true;
-        sp = WordFactory.nullPointer();
-        ip = WordFactory.nullPointer();
+        internal.finish();
         assert isEmpty();
     }
 
@@ -193,27 +180,27 @@ public final class Target_java_lang_Continuation {
         CodePointer currentIP = KnownIntrinsics.readReturnAddress();
 
         if (isContinue) {
-            assert cont.internalContinuation != null;
-            assert cont.ip.isNonNull();
+            assert cont.internal.stored != null;
+            assert cont.internal.ip.isNonNull();
 
-            byte[] buf = StoredContinuationImpl.allocateBuf(cont.internalContinuation);
-            StoredContinuationImpl.writeBuf(cont.internalContinuation, buf);
+            byte[] buf = StoredContinuationImpl.allocateBuf(cont.internal.stored);
+            StoredContinuationImpl.writeBuf(cont.internal.stored, buf);
 
             for (int i = 0; i < buf.length; i++) {
                 currentSP.writeByte(i - buf.length, buf[i]);
             }
 
-            CodePointer ip = cont.ip;
+            CodePointer ip = cont.internal.ip;
 
-            cont.internalContinuation = null;
-            cont.sp = currentSP;
-            cont.ip = currentIP;
+            cont.internal.stored = null;
+            cont.internal.sp = currentSP;
+            cont.internal.ip = currentIP;
             KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), ip, false);
         } else {
-            assert cont.sp.isNull() && cont.ip.isNull() && cont.internalContinuation == null;
+            assert cont.internal.sp.isNull() && cont.internal.ip.isNull() && cont.internal.stored == null;
             cont.monitorBefore = 0;
-            cont.sp = currentSP;
-            cont.ip = currentIP;
+            cont.internal.sp = currentSP;
+            cont.internal.ip = currentIP;
 
             cont.enter0();
         }
@@ -247,7 +234,7 @@ public final class Target_java_lang_Continuation {
             }
             cont.yieldInfo = scope;
         }
-        int preemptResult = LoomSupport.tryPreempt(this, SubstrateUtil.cast(thread, Thread.class));
+        int preemptResult = internal.tryPreempt(SubstrateUtil.cast(thread, Thread.class));
         if (preemptResult == 0) {
             flags = FLAG_SAFEPOINT_YIELD;
         }

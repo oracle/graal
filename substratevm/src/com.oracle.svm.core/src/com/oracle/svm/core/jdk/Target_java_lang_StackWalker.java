@@ -255,7 +255,7 @@ final class Target_java_lang_StackWalker {
             VMError.guarantee(LoomSupport.isEnabled());
             this.contScope = contScope;
             this.continuation = continuation;
-            if (this.continuation.internalContinuation != null) {
+            if (this.continuation.internal.stored != null) {
                 initCurrentContinuation();
             } // else the continuation is done and no frame should be visited
         }
@@ -284,7 +284,7 @@ final class Target_java_lang_StackWalker {
         }
 
         private void initCurrentContinuation() {
-            curStoredContinuation = continuation.internalContinuation;
+            curStoredContinuation = continuation.internal.stored;
             VMError.guarantee(curStoredContinuation != null);
             sp = StoredContinuationImpl.payloadFrameStart(curStoredContinuation);
             endSp = sp.add(TypeConversion.asU4(StoredContinuationImpl.readAllFrameSize(curStoredContinuation)));

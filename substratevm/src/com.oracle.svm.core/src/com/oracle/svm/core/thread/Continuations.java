@@ -24,27 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.c.function.CodePointer;
+public final class Continuations {
 
-import com.oracle.svm.core.SubstrateOptions;
-
-public final class JavaContinuations {
-    public static final int YIELDING = -2;
-    public static final int YIELD_SUCCESS = 0;
-    public static final int PINNED_CRITICAL_SECTION = 1;
-    public static final int PINNED_NATIVE = 2;
-    public static final int PINNED_MONITOR = 3;
-
-    @Fold
-    public static boolean isSupported() {
-        return SubstrateOptions.SupportContinuations.getValue();
-    }
-
-    public static void setIP(Continuation c, CodePointer ip) {
-        c.ip = ip;
-    }
-
-    private JavaContinuations() {
+    private Continuations() {
     }
 }

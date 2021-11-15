@@ -36,13 +36,9 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.misc.Unsafe;
@@ -54,53 +50,8 @@ public final class LoomSupport {
         return JavaContinuations.isSupported() && SubstrateOptions.UseLoom.getValue();
     }
 
-    @NeverInline("access stack pointer")
     public static Integer yield(Target_java_lang_Continuation cont) {
-        Pointer leafSP = KnownIntrinsics.readCallerStackPointer();
-        Pointer rootSP = cont.sp;
-        CodePointer leafIP = KnownIntrinsics.readReturnAddress();
-        CodePointer rootIP = cont.ip;
-
-        int preemptStatus = StoredContinuationImpl.allocateFromCurrentStack(cont, rootSP, leafSP, leafIP);
-        if (preemptStatus != 0) {
-            return preemptStatus;
-        }
-
-        cont.sp = leafSP;
-        cont.ip = leafIP;
-
-        KnownIntrinsics.farReturn(0, rootSP, rootIP, false);
-        throw VMError.shouldNotReachHere("value should be returned by `farReturn`");
-    }
-
-    public static int tryPreempt(Target_java_lang_Continuation cont, Thread thread) {
-        TryPreemptThunk thunk = new TryPreemptThunk(cont, thread);
-        JavaVMOperation.enqueueBlockingSafepoint("tryForceYield0", thunk);
-        return thunk.preemptStatus;
-    }
-
-    private static class TryPreemptThunk implements SubstrateUtil.Thunk {
-        int preemptStatus = JavaContinuations.YIELD_SUCCESS;
-
-        final Target_java_lang_Continuation cont;
-        final Thread thread;
-
-        TryPreemptThunk(Target_java_lang_Continuation cont, Thread thread) {
-            this.cont = cont;
-            this.thread = thread;
-        }
-
-        @Override
-        public void invoke() {
-            IsolateThread vmThread = JavaThreads.getIsolateThread(thread);
-            Pointer rootSP = cont.sp;
-            CodePointer rootIP = cont.ip;
-            preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, rootSP, vmThread);
-            if (preemptStatus == 0) {
-                VMThreads.ActionOnExitSafepointSupport.setSwitchStack(vmThread);
-                VMThreads.ActionOnExitSafepointSupport.setSwitchStackTarget(vmThread, rootSP, rootIP);
-            }
-        }
+        return cont.internal.yield();
     }
 
     public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
@@ -126,7 +77,7 @@ public final class LoomSupport {
             }
 
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(vmThread);
-            if (anchor.isNonNull() && cont.sp.aboveThan(anchor.getLastJavaSP())) {
+            if (anchor.isNonNull() && cont.internal.sp.aboveThan(anchor.getLastJavaSP())) {
                 return JavaContinuations.PINNED_NATIVE;
             }
         }
@@ -138,15 +89,11 @@ public final class LoomSupport {
     }
 
     public static Pointer getSP(Target_java_lang_Continuation cont) {
-        return cont.sp;
+        return cont.internal.sp;
     }
 
     public static CodePointer getIP(Target_java_lang_Continuation cont) {
-        return cont.ip;
-    }
-
-    public static void setIP(Target_java_lang_Continuation cont, CodePointer ip) {
-        cont.ip = ip;
+        return cont.internal.ip;
     }
 
     /**

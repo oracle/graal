@@ -49,10 +49,9 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -224,19 +223,19 @@ public final class StoredContinuationImpl {
         UnmanagedMemoryUtil.copy(frameStart, Word.objectToUntrackedPointer(buf).add(getByteArrayBaseOffset()), WordFactory.unsigned(buf.length));
     }
 
-    public static int allocateFromCurrentStack(Target_java_lang_Continuation contRef, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
-        return allocateFromStack(contRef, rootSp, leafSp, leafIp, WordFactory.nullPointer());
+    public static int allocateFromCurrentStack(Continuation cont, Pointer rootSp, Pointer leafSp, CodePointer leafIp) {
+        return allocateFromStack(cont, rootSp, leafSp, leafIp, WordFactory.nullPointer());
     }
 
-    public static int allocateFromForeignStack(Target_java_lang_Continuation contRef, Pointer rootSp, IsolateThread thread) {
-        return allocateFromStack(contRef, rootSp, WordFactory.nullPointer(), WordFactory.nullPointer(), thread);
+    public static int allocateFromForeignStack(Continuation cont, Pointer rootSp, IsolateThread thread) {
+        return allocateFromStack(cont, rootSp, WordFactory.nullPointer(), WordFactory.nullPointer(), thread);
     }
 
     /**
      * Return value follows the semantic of preempt status and pinned reason, 0 means yielding
      * successfully.
      */
-    private static int allocateFromStack(Target_java_lang_Continuation contRef, Pointer rootSp, Pointer leafSP, CodePointer leafIp, IsolateThread otherThread) {
+    private static int allocateFromStack(Continuation cont, Pointer rootSp, Pointer leafSP, CodePointer leafIp, IsolateThread otherThread) {
         boolean isCurrentThread = leafSP.isNonNull();
 
         YieldVisitor visitor = new YieldVisitor(rootSp, leafSP, leafIp);
@@ -255,29 +254,29 @@ public final class StoredContinuationImpl {
         }
 
         if (!isCurrentThread) {
-            LoomSupport.setIP(contRef, visitor.leafIP);
+            JavaContinuations.setIP(cont, visitor.leafIP);
         }
         VMError.guarantee(resultLeafSP.isNonNull());
 
         int frameCount = visitor.frameSizeReferenceMapIndex.size();
         long payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + rootSp.subtract(resultLeafSP).rawValue();
 
-        contRef.internalContinuation = allocateWriteFrameCount(payloadSize, frameCount);
+        cont.stored = allocateWriteFrameCount(payloadSize, frameCount);
 
-        writePayloadLong(contRef.internalContinuation, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
+        writePayloadLong(cont.stored, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
 
         long allFrameSize = 0;
         for (int i = 0; i < frameCount; i++) {
             Pair<Integer, Integer> frameSizeRefMapInxPair = visitor.frameSizeReferenceMapIndex.get(i);
-            writePayloadInt(contRef.internalContinuation, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getLeft());
-            writePayloadInt(contRef.internalContinuation, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
+            writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + REFERENCE_MAP_INDEX_OFFSET_IN_FRAME_META,
                             frameSizeRefMapInxPair.getRight());
             allFrameSize += frameSizeRefMapInxPair.getLeft();
         }
 
-        Pointer frameStart = payloadFrameStart(contRef.internalContinuation);
-        long frameSize = readAllFrameSize(contRef.internalContinuation);
+        Pointer frameStart = payloadFrameStart(cont.stored);
+        long frameSize = readAllFrameSize(cont.stored);
         VMError.guarantee(frameSize == allFrameSize);
         UnmanagedMemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
 
