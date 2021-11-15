@@ -690,6 +690,7 @@ public abstract class VMThreads {
             statusTL.setVolatile(STATUS_IN_JAVA);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusVM() {
             statusTL.setVolatile(STATUS_IN_VM);
         }
@@ -732,7 +733,7 @@ public abstract class VMThreads {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
-            return (statusTL.getVolatile() == STATUS_IN_JAVA);
+            return statusTL.getVolatile() == STATUS_IN_JAVA;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

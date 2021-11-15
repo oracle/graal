@@ -108,8 +108,8 @@ suite = {
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.x86_64"
                     },
                     "aarch64": {
-                        "sha1": "49b2bff3ab0ecea436bd0f8ed64af28e5bdbd03a",
-                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-linux-arm64.jar"],
+                        "sha1": "1340a75f741014eab5795cf37b24551913854dec",
+                        "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2_1-linux-arm64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.linux.arm64"
                     },
                     "<others>": {
@@ -121,6 +121,10 @@ suite = {
                         "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
                         "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
+                    },
+                    "aarch64": {
+                        # GR-34811
+                        "optional": True,
                     },
                 },
                 "<others>": {
@@ -1081,6 +1085,7 @@ suite = {
                     "com.oracle.svm.core.snippets", # Uses of com.oracle.svm.core.snippets.KnownIntrinsics
                     "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
                     "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
+                    "com.oracle.svm.core.jni", # Uses of com.oracle.svm.core.jni.JNIRuntimeAccess
                     "com.oracle.svm.jfr", # Uses of com.oracle.svm.jfr.JfrEnabled
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
@@ -1112,6 +1117,7 @@ suite = {
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
+                    "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -1133,12 +1139,17 @@ suite = {
                         "sun.security.jca",
                         "sun.security.util",
                         "sun.security.provider",
+                        "sun.security.ssl",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
                         "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
                         "sun.util.resources",
                         "sun.invoke.util",
+                        "sun.net",
+                    ],
+                    "java.management": [
+                        "sun.management",
                     ],
                     "java.xml.crypto": [
                         "org.jcp.xml.dsig.internal.dom",

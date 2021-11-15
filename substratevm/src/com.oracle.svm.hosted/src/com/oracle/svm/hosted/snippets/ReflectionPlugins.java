@@ -66,6 +66,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -200,12 +201,16 @@ public final class ReflectionPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
             }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
         });
     }
 
     private void registerClassPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, Class.class,
-                        "isInterface", "isPrimitive",
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
@@ -248,6 +253,14 @@ public final class ReflectionPlugins {
     private boolean processMethodHandlesLookup(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
         Supplier<String> targetParameters = () -> "";
 
+        if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
+            /*
+             * If our immediate caller (which is the only method available at the time the
+             * invocation plugin is running) is not the method returned by
+             * Reflection.getCallerClass(), we cannot intrinsify.
+             */
+            return false;
+        }
         Class<?> callerClass = OriginalClassProvider.getJavaClass(snippetReflection, b.getMethod().getDeclaringClass());
         MethodHandles.Lookup lookup;
         try {

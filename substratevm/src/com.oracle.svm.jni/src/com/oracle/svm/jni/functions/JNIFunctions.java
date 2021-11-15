@@ -1155,7 +1155,7 @@ public final class JNIFunctions {
         }
 
         @Uninterruptible(reason = "Prevent safepoints until everything is set up for the fatal error printing.", calleeMustBe = false)
-        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
+        @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
         static void fatalError(CodePointer callerIP, Pointer callerSP, String message) {
             SafepointBehavior.preventSafepoints();
             StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();

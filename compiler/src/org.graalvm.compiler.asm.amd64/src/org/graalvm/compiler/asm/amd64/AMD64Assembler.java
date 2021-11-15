@@ -116,12 +116,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     private final boolean useBranchesWithin32ByteBoundary;
 
-    public interface CodePatchShifter {
-        void shift(int pos, int bytesToShift);
-    }
-
-    protected CodePatchShifter codePatchShifter = null;
-
     /**
      * Constructs an assembler for the AMD64 architecture.
      */
@@ -142,11 +136,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         } else {
             useBranchesWithin32ByteBoundary = hasIntelJccErratum;
         }
-    }
-
-    public void setCodePatchShifter(CodePatchShifter codePatchShifter) {
-        assert this.codePatchShifter == null : "overwriting existing value";
-        this.codePatchShifter = codePatchShifter;
     }
 
     /**
@@ -1059,7 +1048,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX512F_MASK(null, null, null, EVEXFeatureAssertion.AVX512F_ALL, MASK, null, null, null),
         MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, XMM, XMM, null),
         MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, null, XMM, null),
-        MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, XMM, XMM, null),
+        MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512DQ_VL, MASK, null, XMM, null),
+        MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM);
 
         private final CPUFeature l128feature;
@@ -1247,6 +1237,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    P_66, M_0F38, W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VPMOVMSKB       = new VexRMOp("VPMOVMSKB",       P_66, M_0F,   WIG, 0xD7, VEXOpAssertion.AVX1_2_CPU_XMM);
         public static final VexRMOp VPMOVB2M        = new VexRMOp("VPMOVB2M",        P_F3, M_0F38, W0,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W0);
+        public static final VexRMOp VPMOVW2M        = new VexRMOp("VPMOVW2M",        P_F3, M_0F38, W1,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W1);
+        public static final VexRMOp VPMOVD2M        = new VexRMOp("VPMOVD2M",        P_F3, M_0F38, W0,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       W0);
+        public static final VexRMOp VPMOVQ2M        = new VexRMOp("VPMOVQ2M",        P_F3, M_0F38, W1,  0x39, VEXOpAssertion.MASK_NULL_XMM_AVX512DQ_VL, EVEXTuple.FVM,       W1);
         public static final VexRMOp VPMOVSXBW       = new VexRMOp("VPMOVSXBW",       P_66, M_0F38, WIG, 0x20, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.HVM,       WIG);
         public static final VexRMOp VPMOVSXBD       = new VexRMOp("VPMOVSXBD",       P_66, M_0F38, WIG, 0x21, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.QVM,       WIG);
         public static final VexRMOp VPMOVSXBQ       = new VexRMOp("VPMOVSXBQ",       P_66, M_0F38, WIG, 0x22, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.OVM,       WIG);
@@ -2023,7 +2016,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexFloatCompareOp VCMPPS_AVX512 = new VexFloatCompareOp("VCMPPS", P_,   M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W0);
         public static final VexFloatCompareOp VCMPPD        = new VexFloatCompareOp("VCMPPD", P_66, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPPD_AVX512 = new VexFloatCompareOp("VCMPPD", P_66, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.FVM,       W1);
-        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F2, M_0F, WIG, 0xC2);
+        public static final VexFloatCompareOp VCMPSS        = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSS_AVX512 = new VexFloatCompareOp("VCMPSS", P_F3, M_0F, W0,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_32BIT, W0);
         public static final VexFloatCompareOp VCMPSD        = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, WIG, 0xC2);
         public static final VexFloatCompareOp VCMPSD_AVX512 = new VexFloatCompareOp("VCMPSD", P_F2, M_0F, W1,  0xC2, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL, EVEXTuple.T1S_64BIT, W1);
@@ -2388,23 +2381,32 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     protected boolean ensureWithinBoundary(int opStart) {
         if (useBranchesWithin32ByteBoundary) {
-            assert !mayCrossBoundary(opStart, position());
+            int nextOpStart = position();
+            int opEnd = nextOpStart - 1;
+            if (mayCrossBoundary(opStart, opEnd)) {
+                throw new GraalError("instruction at %d of size %d bytes crosses a JCC erratum boundary", opStart, nextOpStart - opStart);
+            }
         }
         return true;
     }
 
-    protected final void testAndAlign(int bytesToEmit) {
+    /**
+     * If this assembler is configured to mitigate the Intel JCC erratum, emits nops at the current
+     * position such that an instruction of size {@code bytesToEmit} will not cross a
+     * {@value #JCC_ERRATUM_MITIGATION_BOUNDARY}.
+     *
+     * @return the number of nop bytes emitted
+     */
+    protected final int mitigateJCCErratum(int bytesToEmit) {
         if (useBranchesWithin32ByteBoundary) {
             int beforeNextOp = position();
-            int afterNextOp = beforeNextOp + bytesToEmit;
-            if (mayCrossBoundary(beforeNextOp, afterNextOp)) {
-                int bytesToShift = bytesUntilBoundary(beforeNextOp);
-                nop(bytesToShift);
-                if (codePatchShifter != null) {
-                    codePatchShifter.shift(beforeNextOp, bytesToShift);
-                }
+            int bytesUntilBoundary = bytesUntilBoundary(beforeNextOp);
+            if (bytesUntilBoundary < bytesToEmit) {
+                nop(bytesUntilBoundary);
+                return bytesUntilBoundary;
             }
         }
+        return 0;
     }
 
     public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
@@ -2413,7 +2415,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
-            testAndAlign(shortSize);
+            mitigateJCCErratum(shortSize);
             // After alignment, isByte(disp - shortSize) might not hold. Need to check again.
             disp = jumpTarget - position();
             if (isByte(disp - shortSize)) {
@@ -2426,7 +2428,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         // 0000 1111 1000 tttn #32-bit disp
         assert forceDisp32 || isInt(disp - longSize) : "must be 32bit offset (call4)";
-        testAndAlign(longSize);
+        mitigateJCCErratum(longSize);
         disp = jumpTarget - position();
         emitByte(0x0F);
         emitByte(0x80 | cc.getValue());
@@ -2449,7 +2451,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         if (l.isBound()) {
             jcc(cc, l.position(), false);
         } else {
-            testAndAlign(6);
+            mitigateJCCErratum(6);
             // Note: could eliminate cond. jumps to this jump if condition
             // is the same however, seems to be rather unlikely case.
             // Note: use jccb() if label to be bound is very close to get
@@ -2463,7 +2465,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jccb(ConditionFlag cc, Label l) {
         final int shortSize = 2;
-        testAndAlign(shortSize);
+        mitigateJCCErratum(shortSize);
         if (l.isBound()) {
             int entry = l.position();
             assert isByte(entry - (position() + shortSize)) : "Displacement too large for a short jmp";
@@ -2502,7 +2504,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // the long jmp triggering range.
         if (!forceDisp32) {
             // We first align the next jmp assuming it will be short jmp.
-            testAndAlign(shortSize);
+            mitigateJCCErratum(shortSize);
             int pos = position();
             long disp = jumpTarget - pos;
             if (isByte(disp - shortSize)) {
@@ -2512,7 +2514,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             }
         }
 
-        testAndAlign(longSize);
+        mitigateJCCErratum(longSize);
         int pos = position();
         long disp = jumpTarget - pos;
         emitByte(0xE9);
@@ -2529,7 +2531,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             // we can't yet know where the label will be bound. If you're sure that
             // the forward jump will not run beyond 256 bytes, use jmpb to
             // force an 8-bit displacement.
-            testAndAlign(5);
+            mitigateJCCErratum(5);
             l.addPatchAt(position(), this);
             emitByte(0xE9);
             emitInt(0);
@@ -2544,7 +2546,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jmp(Register entry) {
         int bytesToEmit = needsRex(entry) ? 3 : 2;
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
         jmpWithoutAlignment(entry);
         assert beforeJmp + bytesToEmit == position();
@@ -2552,7 +2554,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jmp(AMD64Address adr) {
         int bytesToEmit = getPrefixInBytes(DWORD, adr) + OPCODE_IN_BYTES + addressInBytes(adr);
-        testAndAlign(bytesToEmit);
+        mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
         prefix(adr);
         emitByte(0xFF);
@@ -2606,7 +2608,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void jmpb(Label l) {
         final int shortSize = 2;
-        testAndAlign(shortSize);
+        mitigateJCCErratum(shortSize);
         if (l.isBound()) {
             // Displacement is relative to byte just after jmpb instruction
             int displacement = l.position() - position() - shortSize;
@@ -3576,10 +3578,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void ret(int imm16) {
         if (imm16 == 0) {
-            testAndAlign(1);
+            mitigateJCCErratum(1);
             emitByte(0xC3);
         } else {
-            testAndAlign(3);
+            mitigateJCCErratum(3);
             emitByte(0xC2);
             emitShort(imm16);
         }

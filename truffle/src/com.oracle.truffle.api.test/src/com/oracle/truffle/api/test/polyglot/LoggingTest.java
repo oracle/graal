@@ -703,6 +703,40 @@ public class LoggingTest {
     }
 
     @Test
+    public void testDefaultLevelMultipleContexts() {
+        String parentLoggerName = "testDefaultLevelMultipleContexts";
+        String childLoggerName = String.format("%s.child", parentLoggerName);
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(parentLoggerName, Level.FINE);
+        setLevelsMap.put(childLoggerName, Level.SEVERE);
+        Context.Builder builder = newContextBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        TruffleLogger parentLogger = TruffleLogger.getLogger(LoggingLanguageFirst.ID, parentLoggerName);
+        TruffleLogger childLogger = TruffleLogger.getLogger(LoggingLanguageFirst.ID, childLoggerName);
+        AbstractLoggingLanguage.action = (loggingContext, defaultLoggers) -> {
+            parentLogger.log(Level.INFO, parentLogger.getName());
+            childLogger.log(Level.INFO, childLogger.getName());
+            return false;
+        };
+        try (Context ctx = builder.logHandler(handler).build()) {
+            TestHandler handler2 = new TestHandler();
+            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = Arrays.asList(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+                Assert.assertEquals(expected, handler.getLog());
+                expected = new ArrayList<>();
+                expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+                expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, childLoggerName)));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
+    @Test
     public void testNoContextLoggingBasic() {
         // Engine handler overriden by context handler, logging from language with context
         final Level defaultLevel = Level.INFO;

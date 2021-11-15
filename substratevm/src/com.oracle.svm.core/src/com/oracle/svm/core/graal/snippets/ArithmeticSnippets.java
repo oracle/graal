@@ -38,13 +38,16 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -55,7 +58,6 @@ import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import org.graalvm.compiler.nodes.UnreachableNode;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -64,44 +66,44 @@ import jdk.vm.ci.meta.JavaKind;
 public abstract class ArithmeticSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    protected static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+    protected static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck, @ConstantParameter boolean needsBoundsCheck) {
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (x == Integer.MIN_VALUE && y == -1) {
+        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return Integer.MIN_VALUE;
         }
         return safeDiv(x, y);
     }
 
     @Snippet
-    protected static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+    protected static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck, @ConstantParameter boolean needsBoundsCheck) {
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (x == Long.MIN_VALUE && y == -1) {
+        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return Long.MIN_VALUE;
         }
         return safeDiv(x, y);
     }
 
     @Snippet
-    protected static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+    protected static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck, @ConstantParameter boolean needsBoundsCheck) {
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (x == Integer.MIN_VALUE && y == -1) {
+        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return 0;
         }
         return safeRem(x, y);
     }
 
     @Snippet
-    protected static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+    protected static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck, @ConstantParameter boolean needsBoundsCheck) {
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (x == Long.MIN_VALUE && y == -1) {
+        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return 0;
         }
         return safeRem(x, y);
@@ -189,7 +191,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     private final SnippetInfo ulrem;
 
     protected ArithmeticSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean divRemNeedsSignedBoundsCheck) {
         super(options, factories, providers, snippetReflection);
         this.layout = ConfigurationValues.getObjectLayout();
 
@@ -202,10 +204,10 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         uirem = snippet(ArithmeticSnippets.class, "uiremSnippet");
         ulrem = snippet(ArithmeticSnippets.class, "ulremSnippet");
 
-        lowerings.put(SignedDivNode.class, new DivRemLowering());
-        lowerings.put(SignedRemNode.class, new DivRemLowering());
-        lowerings.put(UnsignedDivNode.class, new DivRemLowering());
-        lowerings.put(UnsignedRemNode.class, new DivRemLowering());
+        lowerings.put(SignedDivNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
+        lowerings.put(SignedRemNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
+        lowerings.put(UnsignedDivNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
+        lowerings.put(UnsignedRemNode.class, new DivRemLowering(divRemNeedsSignedBoundsCheck));
         lowerings.put(SafeSignedDivNode.class, new IdentityLowering());
         lowerings.put(SafeSignedRemNode.class, new IdentityLowering());
         lowerings.put(SafeUnsignedDivNode.class, new IdentityLowering());
@@ -213,8 +215,18 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     }
 
     protected class DivRemLowering implements NodeLoweringProvider<IntegerDivRemNode> {
+        private final boolean needsSignedBoundsCheck;
+
+        protected DivRemLowering(boolean needsSignedBoundsCheck) {
+            this.needsSignedBoundsCheck = needsSignedBoundsCheck;
+        }
+
         @Override
         public void lower(IntegerDivRemNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                // wait for more precise stamp information
+                return;
+            }
             assert node.getStackKind() == JavaKind.Int || node.getStackKind() == JavaKind.Long;
             SnippetInfo snippet;
             if (node instanceof SignedDivNode) {
@@ -233,7 +245,11 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             args.add("y", node.getY());
 
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-            args.addConst("needsZeroCheck", node.getZeroCheck() == null && yStamp.contains(0));
+            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+            args.addConst("needsZeroCheck", needsZeroCheck);
+            if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
+                args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
+            }
 
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -262,6 +278,13 @@ class SafeSignedDivNode extends SignedDivNode {
     }
 
     @Override
+    protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
+        assert forZeroCheck == null;
+        // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
+        return new SafeSignedDivNode(forX, forY);
+    }
+
+    @Override
     public boolean canDeoptimize() {
         /*
          * All checks have been done. Returning false is the indicator that no FrameState is
@@ -280,7 +303,17 @@ class SafeSignedRemNode extends SignedRemNode {
     }
 
     @Override
+    protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
+        assert forZeroCheck == null;
+        return new SafeSignedRemNode(forX, forY);
+    }
+
+    @Override
     public boolean canDeoptimize() {
+        /*
+         * All checks have been done. Returning false is the indicator that no FrameState is
+         * necessary anymore for the node.
+         */
         return false;
     }
 }
@@ -295,6 +328,10 @@ class SafeUnsignedDivNode extends UnsignedDivNode {
 
     @Override
     public boolean canDeoptimize() {
+        /*
+         * All checks have been done. Returning false is the indicator that no FrameState is
+         * necessary anymore for the node.
+         */
         return false;
     }
 }
@@ -309,6 +346,10 @@ class SafeUnsignedRemNode extends UnsignedRemNode {
 
     @Override
     public boolean canDeoptimize() {
+        /*
+         * All checks have been done. Returning false is the indicator that no FrameState is
+         * necessary anymore for the node.
+         */
         return false;
     }
 }

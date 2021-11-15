@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_HEAP_ACCESS;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
 
@@ -91,7 +90,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
-    @RestrictHeapAccess(access = NO_HEAP_ACCESS, reason = "We have yet to enter the isolate.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     private static int handler(ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo) {
         ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
         if (exceptionRecord.ExceptionCode() != ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION()) {
@@ -142,7 +141,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     private static RuntimeException shouldNotReachHere() {
         throw VMError.shouldNotReachHere();
     }

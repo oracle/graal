@@ -408,6 +408,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPluginContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -494,7 +495,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private boolean bciCanBeDuplicated = false;
 
     @Override
-    public FrameState getIntrinsicReturnState(JavaKind returnKind, ValueNode returnVal) {
+    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode returnVal) {
+        if (parsingIntrinsic()) {
+            // Invocation plugins inside of snippets shouldn't produce a real FrameState
+            return graph.add(new FrameState(BytecodeFrame.AFTER_BCI));
+        }
         FrameStateBuilder frameStateBuilder = frameState;
         if (returnVal != null) {
             // Push the return value on the top of stack
@@ -508,6 +513,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             FrameState newFrameState = frameStateBuilder.create(stream.nextBCI(), null);
             return newFrameState;
         }
+    }
+
+    @Override
+    public FrameState getInvocationPluginBeforeState() {
+        assert isParsingInvocationPlugin();
+        ResolvedJavaMethod callee = invocationPluginContext.targetMethod;
+        JavaKind[] argSlotKinds = callee.getSignature().toParameterKinds(!callee.isStatic());
+        return frameState.create(bci(), getNonIntrinsicAncestor(), false, argSlotKinds, invocationPluginContext.args);
     }
 
     @Override
@@ -1790,6 +1803,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected final ConstantPool constantPool;
     protected final IntrinsicContext intrinsicContext;
 
+    protected InvocationPluginContext invocationPluginContext;
+
     @Override
     public InvokeKind getInvokeKind() {
         return currentInvoke == null ? null : currentInvoke.kind;
@@ -2190,13 +2205,58 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return false;
     }
 
+    class InvocationPluginScope implements DebugCloseable {
+        InvocationPluginScope(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+            assert invocationPluginContext == null;
+            invocationPluginContext = new InvocationPluginContext(invokeKind, args, targetMethod, resultType, plugin);
+        }
+
+        @Override
+        public void close() {
+            invocationPluginContext = null;
+        }
+    }
+
+    @Override
+    public Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
+        assert isParsingInvocationPlugin();
+        assert currentInvoke != null : "must be processing invoke";
+
+        FixedWithNextNode previousLastInstr = lastInstr;
+        lastInstr = predecessor;
+        InvokeKind invokeKind = invocationPluginContext.invokeKind;
+        ResolvedJavaMethod targetMethod = invocationPluginContext.targetMethod;
+        ValueNode[] args = invocationPluginContext.args;
+        int invokeBci = bci();
+        JavaTypeProfile profile = getProfileForInvoke(invokeKind);
+        // inlineInfo is null during application
+        ExceptionEdgeAction edgeAction = getActionForInvokeExceptionEdge(null);
+
+        int beforeDepth = getFrameStateBuilder().stackSize();
+        Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, currentInvoke.returnType.getJavaKind(), currentInvoke.returnType, profile);
+        if (getFrameStateBuilder().stackSize() != beforeDepth) {
+            assert getFrameStateBuilder().stackSize() > beforeDepth : "only pushes expected";
+            getFrameStateBuilder().pop(currentInvoke.returnType.getJavaKind());
+        }
+        graph.getInliningLog().addDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
+        lastInstr.setNext(end);
+        lastInstr = previousLastInstr;
+        return invoke;
+    }
+
+    @Override
+    public boolean isParsingInvocationPlugin() {
+        return invocationPluginContext != null;
+    }
+
     @SuppressWarnings("try")
     protected boolean applyInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
         InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
         assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
         InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-        try (DebugCloseable context = openNodeContext(targetMethod)) {
+        try (DebugCloseable context = openNodeContext(targetMethod); InvocationPluginScope pluginScope = new InvocationPluginScope(invokeKind, args, targetMethod, resultType, plugin)) {
             Mark mark = graph.getMark();
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
                 checkDeoptAfterPlugin(mark, targetMethod);
@@ -2216,7 +2276,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         if (!needsExplicitException()) {
             return true;
         }
-        if (StrictDeoptInsertionChecks.getValue(getOptions()) || (Assertions.assertionsEnabled() && disallowDeoptInPlugins())) {
+        if (StrictDeoptInsertionChecks.getValue(getOptions()) || (Assertions.assertionsEnabled() && !allowDeoptInPlugins())) {
             for (Node node : graph.getNewNodes(mark)) {
                 if (node instanceof FixedGuardNode || node instanceof DeoptimizeNode) {
                     throw new AssertionError("node " + node + " may not be used by plugin in graphs with explicit exceptions for " + targetMethod);
@@ -2959,7 +3019,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             withExceptionNode.setExceptionEdge(exceptionEdge);
         }
         assert withExceptionNode.next() == null : "new WithExceptionNode with existing next";
-        AbstractBeginNode nextBegin = graph.add(withExceptionNode.createNextBegin());
+        AbstractBeginNode nextBegin = graph.add(new BeginNode());
         withExceptionNode.setNext(nextBegin);
         return nextBegin;
     }
@@ -4644,7 +4704,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private void genNewPrimitiveArray(int typeCode) {
         ResolvedJavaType elementType = getMetaAccess().lookupJavaType(arrayTypeCodeToClass(typeCode));
-        ValueNode length = frameState.pop(JavaKind.Int);
+        ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewArray(this, elementType, length)) {
@@ -4657,14 +4717,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private void genNewObjectArray(int cpi) {
         JavaType type = lookupType(cpi, ANEWARRAY);
-        genNewObjectArray(type);
-    }
-
-    private void genNewObjectArray(JavaType type) {
         if (typeIsResolved(type)) {
             genNewObjectArray((ResolvedJavaType) type);
         } else {
-            ValueNode length = frameState.pop(JavaKind.Int);
+            ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
             handleUnresolvedNewObjectArray(type, length);
         }
     }
@@ -4676,7 +4732,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             classInitializationPlugin.apply(this, resolvedType.getArrayClass(), this::createCurrentFrameState);
         }
 
-        ValueNode length = frameState.pop(JavaKind.Int);
+        ValueNode length = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             if (plugin.handleNewArray(this, resolvedType, length)) {
                 return;
@@ -4690,15 +4746,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         JavaType type = lookupType(cpi, MULTIANEWARRAY);
         int rank = getStream().readUByte(bci() + 3);
         ValueNode[] dims = new ValueNode[rank];
-        genNewMultiArray(type, rank, dims);
-    }
-
-    private void genNewMultiArray(JavaType type, int rank, ValueNode[] dims) {
         if (typeIsResolved(type)) {
             genNewMultiArray((ResolvedJavaType) type, rank, dims);
         } else {
             for (int i = rank - 1; i >= 0; i--) {
-                dims[i] = frameState.pop(JavaKind.Int);
+                dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
             }
             handleUnresolvedNewMultiArray(type, dims);
         }
@@ -4712,7 +4764,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         for (int i = rank - 1; i >= 0; i--) {
-            dims[i] = frameState.pop(JavaKind.Int);
+            dims[i] = maybeEmitExplicitNegativeArraySizeCheck(frameState.pop(JavaKind.Int));
         }
 
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {

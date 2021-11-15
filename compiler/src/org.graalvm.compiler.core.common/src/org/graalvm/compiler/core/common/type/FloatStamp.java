@@ -945,6 +945,19 @@ public class FloatStamp extends PrimitiveStamp {
 
                             return new FloatStamp(stamp1.getBits(), Math.max(stamp1.lowerBound, stamp2.lowerBound), Math.max(stamp1.upperBound, stamp2.upperBound), false);
                         }
+
+                        @Override
+                        public boolean isNeutral(Constant n) {
+                            PrimitiveConstant value = (PrimitiveConstant) n;
+                            switch (value.getJavaKind()) {
+                                case Float:
+                                    return Float.compare(value.asFloat(), Float.NEGATIVE_INFINITY) == 0;
+                                case Double:
+                                    return Double.compare(value.asDouble(), Double.NEGATIVE_INFINITY) == 0;
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
+                        }
                     },
 
                     new BinaryOp.Min(true, true) {
@@ -979,6 +992,19 @@ public class FloatStamp extends PrimitiveStamp {
                                 return folded;
                             }
                             return new FloatStamp(stamp1.getBits(), Math.min(stamp1.lowerBound, stamp2.lowerBound), Math.min(stamp1.upperBound, stamp2.upperBound), false);
+                        }
+
+                        @Override
+                        public boolean isNeutral(Constant n) {
+                            PrimitiveConstant value = (PrimitiveConstant) n;
+                            switch (value.getJavaKind()) {
+                                case Float:
+                                    return Float.compare(value.asFloat(), Float.POSITIVE_INFINITY) == 0;
+                                case Double:
+                                    return Double.compare(value.asDouble(), Double.POSITIVE_INFINITY) == 0;
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
                         }
                     },
 

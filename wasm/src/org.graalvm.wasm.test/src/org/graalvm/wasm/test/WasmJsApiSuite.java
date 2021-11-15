@@ -637,10 +637,11 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
+            WasmContext wasmContext = WasmContext.get(null);
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
+                            wasmContext,
                             null,
-                            null,
-                            new RootNode(WasmContext.get(null).language()) {
+                            new RootNode(wasmContext.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;

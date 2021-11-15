@@ -58,20 +58,15 @@ final class OptionValuesImpl implements OptionValues {
 
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
-    // TODO is this too long? Make sure to update Engine#setUseSystemProperties javadoc.
-    // Just using graalvm as prefix is not good enough as it is ambiguous with host compilation
-    // For example the property graalvm.compiler is an option for which compiler. The java compiler?
-    // or the truffle compiler?
+    // prefix used for -D java system properties
     static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
 
-    private final PolyglotEngineImpl engine;
     private final OptionDescriptors descriptors;
     private final Map<OptionKey<?>, Object> values;
     private final Map<OptionKey<?>, String> unparsedValues;
 
-    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors, boolean preserveUnparsedValues) {
+    OptionValuesImpl(OptionDescriptors descriptors, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
-        this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
@@ -80,7 +75,6 @@ final class OptionValuesImpl implements OptionValues {
     @Override
     public int hashCode() {
         int result = 31 + descriptors.hashCode();
-        result = 31 * result + Objects.hashCode(engine);
         result = 31 * result + values.hashCode();
         return result;
     }
@@ -94,52 +88,50 @@ final class OptionValuesImpl implements OptionValues {
                 return true;
             }
             OptionValues other = ((OptionValues) obj);
-            if (getDescriptors().equals(other.getDescriptors())) {
-                if (!hasSetOptions() && !other.hasSetOptions()) {
-                    return true;
+            if (!getDescriptors().equals(other.getDescriptors())) {
+                return false;
+            }
+            if (!hasSetOptions() && !other.hasSetOptions()) {
+                return true;
+            }
+            if (other instanceof OptionValuesImpl) {
+                // faster comparison that only depends on the set values
+                OptionValuesImpl otherOptions = (OptionValuesImpl) other;
+                if (!values.equals(otherOptions.values)) {
+                    return false;
                 }
-                if (other instanceof OptionValuesImpl) {
-                    // faster comparison that only depends on the set values
-                    for (OptionKey<?> key : values.keySet()) {
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
+            } else {
+                // slow comparison for arbitrary option values
+                for (OptionDescriptor descriptor : getDescriptors()) {
+                    OptionKey<?> key = descriptor.getKey();
+                    if (!slowCompareKey(key, other)) {
+                        return false;
                     }
-                    for (OptionKey<?> key : ((OptionValuesImpl) other).values.keySet()) {
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-                } else {
-                    // slow comparison for arbitrary option values
-                    for (OptionDescriptor descriptor : getDescriptors()) {
-                        OptionKey<?> key = descriptor.getKey();
-                        if (hasBeenSet(key) || other.hasBeenSet(key)) {
-                            if (!get(key).equals(other.get(key))) {
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
                 }
             }
+            return true;
+        }
+    }
+
+    private boolean slowCompareKey(OptionKey<?> key, OptionValues other) {
+        boolean set = hasBeenSet(key);
+        if (set != other.hasBeenSet(key)) {
             return false;
         }
+        if (set && !get(key).equals(other.get(key))) {
+            return false;
+        }
+        return true;
     }
 
-    public void putAll(Map<String, String> providedValues, boolean allowExperimentalOptions) {
+    public void putAll(PolyglotEngineImpl engine, Map<String, String> providedValues, boolean allowExperimentalOptions) {
         for (String key : providedValues.keySet()) {
-            put(key, providedValues.get(key), allowExperimentalOptions);
+            put(engine, key, providedValues.get(key), allowExperimentalOptions);
         }
     }
 
-    public void put(String key, String value, boolean allowExperimentalOptions) {
-        OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
+    public void put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
+        OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
         OptionKey<?> optionKey = descriptor.getKey();
         Object previousValue;
         if (values.containsKey(optionKey)) {
@@ -169,7 +161,6 @@ final class OptionValuesImpl implements OptionValues {
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
-        this.engine = copy.engine;
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
         this.unparsedValues = copy.unparsedValues;
@@ -234,10 +225,10 @@ final class OptionValuesImpl implements OptionValues {
         return unparsedValues.get(key);
     }
 
-    private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions) {
+    private OptionDescriptor findDescriptor(PolyglotEngineImpl engine, String key, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = descriptors.get(key);
         if (descriptor == null) {
-            throw failNotFound(key);
+            throw failNotFound(engine, key);
         }
         if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw failExperimental(key);
@@ -251,11 +242,11 @@ final class OptionValuesImpl implements OptionValues {
         return PolyglotEngineException.illegalArgument(message);
     }
 
-    private RuntimeException failNotFound(String key) {
+    private RuntimeException failNotFound(PolyglotEngineImpl engine, String key) {
         OptionDescriptors allOptions;
         Exception errorOptions = null;
         try {
-            allOptions = engine == null ? this.descriptors : this.engine.getAllOptions();
+            allOptions = engine == null ? this.descriptors : engine.getAllOptions();
         } catch (Exception e) {
             errorOptions = e;
             allOptions = this.descriptors;

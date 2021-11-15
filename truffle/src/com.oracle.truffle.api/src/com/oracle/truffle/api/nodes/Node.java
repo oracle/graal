@@ -518,11 +518,19 @@ public abstract class Node implements NodeInterface, Cloneable {
         return getRootNodeImpl();
     }
 
+    /** Protect against parent cycles and extremely long parent chains. */
+    private static final int PARENT_LIMIT = 100000;
+
     @ExplodeLoop
     private RootNode getRootNodeImpl() {
         Node node = this;
         Node prev;
+        int parentsVisited = 0;
         do {
+            if (parentsVisited++ > PARENT_LIMIT) {
+                assert false : "getRootNode() did not terminate in " + PARENT_LIMIT + " iterations.";
+                return null;
+            }
             prev = node;
             node = node.parent;
         } while (node != null);

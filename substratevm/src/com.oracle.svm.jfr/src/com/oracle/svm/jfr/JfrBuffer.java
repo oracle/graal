@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.c.struct.PinnedObjectField;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -41,7 +42,7 @@ import com.oracle.svm.core.util.VMError;
 public interface JfrBuffer extends PointerBase {
 
     /**
-     * Returns the size of the buffer.
+     * Returns the size of the buffer. This excludes the header of the buffer.
      */
     @RawField
     UnsignedWord getSize();
@@ -96,4 +97,18 @@ public interface JfrBuffer extends PointerBase {
     static int offsetOfAcquired() {
         throw VMError.unimplemented(); // replaced
     }
+
+    /**
+     * Returns the type of the buffer.
+     */
+    @RawField
+    @PinnedObjectField
+    JfrBufferType getBufferType();
+
+    /**
+     * Sets the type of the buffer.
+     */
+    @RawField
+    @PinnedObjectField
+    void setBufferType(JfrBufferType bufferType);
 }

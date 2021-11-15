@@ -306,4 +306,66 @@ public class TypecheckBenchmark extends BenchmarkBase {
         return res;
     }
 
+    @Benchmark
+    public boolean classIsAssignableFromShouldFold(ThreadState state) {
+        return AA.class.isAssignableFrom(state.aa1.getClass());
+    }
+
+    @Benchmark
+    public boolean classIsInstanceShouldFold(ThreadState state) {
+        return AA.class.isInstance(state.aa1);
+    }
+
+    @Benchmark
+    public boolean instanceOfClassShouldFold(ThreadState state) {
+        return state.aa1 instanceof AA;
+    }
+
+    @Benchmark
+    public int classIsAssignableFrom(ThreadState state) {
+        int res = 0;
+        Object[] objects = state.object;
+        for (int i = 0; i < objects.length; i++) {
+            if (classIsAssignableFrom(objects[i])) {
+                res++;
+            }
+        }
+        return res;
+    }
+
+    boolean classIsAssignableFrom(Object obj) {
+        return AA1.class.isAssignableFrom(obj.getClass());
+    }
+
+    @Benchmark
+    public int classIsInstance(ThreadState state) {
+        int res = 0;
+        Object[] objects = state.object;
+        for (int i = 0; i < objects.length; i++) {
+            if (classIsInstance(objects[i])) {
+                res++;
+            }
+        }
+        return res;
+    }
+
+    boolean classIsInstance(Object obj) {
+        return AA1.class.isInstance(obj);
+    }
+
+    @Benchmark
+    public int instanceOfClass(ThreadState state) {
+        int res = 0;
+        Object[] objects = state.object;
+        for (int i = 0; i < objects.length; i++) {
+            if (instanceOfClass(objects[i])) {
+                res++;
+            }
+        }
+        return res;
+    }
+
+    boolean instanceOfClass(Object obj) {
+        return obj instanceof AA1;
+    }
 }

@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -33,22 +34,58 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
-        markAncestorsAsNonLeaf(newKlass);
-
-        if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
-        }
         if (newKlass.isAbstract() || newKlass.isInterface()) {
             return NotLeaf;
+        }
+        // this is a concrete klass, add it to implementors of super classes and interfaces
+        addImplementorToSuperInterfaces(newKlass);
+        if (newKlass.isFinalFlagSet()) {
+            return FinalIsAlwaysLeaf;
         }
         return new LeafTypeAssumptionImpl(newKlass);
     }
 
-    private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
-        ObjectKlass currentParent = newClass.getSuperKlass();
-        while (currentParent != null && currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().isValid()) {
-            currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().invalidate();
-            currentParent = currentParent.getSuperKlass();
+    /**
+     * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
+     * parent interfaces.
+     */
+    private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+        superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
+        for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
+            addImplementor(ancestorInterface, implementor);
         }
+    }
+
+    private void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
+        for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
+            addImplementor(superInterface, newKlass);
+        }
+
+        ObjectKlass currentKlass = newKlass.getSuperKlass();
+        while (currentKlass != null) {
+            currentKlass.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
+            currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
+            for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
+                addImplementor(superInterface, newKlass);
+            }
+            currentKlass = currentKlass.getSuperKlass();
+        }
+    }
+
+    @Override
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+        // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
+        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
+            return SingleImplementor.MultipleImplementors;
+        }
+        if (klass.isAbstract() || klass.isInterface()) {
+            return new SingleImplementor();
+        }
+        return new SingleImplementor(klass);
+    }
+
+    @Override
+    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
+        return klass.getImplementor(classHierarchyInfoAccessor).read();
     }
 }

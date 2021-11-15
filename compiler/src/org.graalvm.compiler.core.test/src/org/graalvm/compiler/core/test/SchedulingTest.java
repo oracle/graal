@@ -62,7 +62,7 @@ public class SchedulingTest extends GraphScheduleTest {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST);
         schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
 import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -232,6 +233,10 @@ public abstract class InstanceOf extends Node {
             return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType);
         }
 
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+        }
+
         /**
          * If {@code superType} is a leaf type, {@code maybeSubtype} is a subtype of
          * {@code superType} iff it is equal to {@code superType}.
@@ -242,7 +247,19 @@ public abstract class InstanceOf extends Node {
             return superType == maybeSubtype;
         }
 
-        @Specialization(replaces = "doLeaf")
+        /**
+         * If {@code superType} has a single implementor (itself if {@code superType} is a concrete
+         * class or a single concrete child, if {@code superType} is an abstract class),
+         * {@code maybeSubtype} is its subtype iff it's equal to the implementing class.
+         */
+        @Specialization(assumptions = "maybeSingleImplementor.hasValue()", guards = "implementor != null")
+        public boolean doSingleImplementor(ObjectKlass maybeSubtype,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
+                        @Cached("maybeSingleImplementor.get()") ObjectKlass implementor) {
+            return maybeSubtype == implementor;
+        }
+
+        @Specialization(replaces = {"doLeaf", "doSingleImplementor"})
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             return superType == maybeSubtype || superType.checkOrdinaryClassSubclassing(maybeSubtype);
         }
@@ -263,7 +280,18 @@ public abstract class InstanceOf extends Node {
             assert superType.isInterface();
         }
 
-        @Specialization
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+        }
+
+        @Specialization(assumptions = "maybeSingleImplementor.hasValue()", guards = "implementor != null")
+        public boolean doSingleImplementor(ObjectKlass maybeSubtype,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
+                        @Cached("maybeSingleImplementor.get()") ObjectKlass implementor) {
+            return maybeSubtype == implementor;
+        }
+
+        @Specialization(replaces = "doSingleImplementor")
         public boolean doObjectKlass(ObjectKlass maybeSubtype) {
             // This check can be expensive.
             return superType.checkInterfaceSubclassing(maybeSubtype);

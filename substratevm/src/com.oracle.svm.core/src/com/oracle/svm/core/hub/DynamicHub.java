@@ -48,8 +48,6 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -77,14 +75,12 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
-import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -121,12 +117,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Used to quickly determine in which category a certain hub falls (e.g., instance or array).
      */
-    private int hubType;
+    private final int hubType;
 
     /**
      * Used to quickly determine if this class is a subclass of {@link Reference}.
      */
-    private byte referenceType;
+    private final byte referenceType;
 
     /**
      * Encoding of the object or array size. Decode using {@link LayoutEncoding}.
@@ -165,53 +161,49 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private short monitorOffset;
 
     /**
-     * Bit-set for various boolean flags, to reduce size of instances.
+     * Bit-set for various boolean flags, to reduce size of instances. It is important that this
+     * field is final, so that various methods are constant folded for constant classes already
+     * before the static analysis.
      */
-    private byte flags;
+    private final byte flags;
 
-    /**
-     * Has the type been discovered as instantiated by the static analysis?
-     */
-    private static final int IS_INSTANTIATED_FLAG_BIT = 0;
-
-    /**
-     * Is this a Hidden Class.
-     */
-    private static final int IS_HIDDED_FLAG_BIT = 1;
-
-    /**
-     * Is this a Record Class.
-     */
-    private static final int IS_RECORD_FLAG_BIT = 2;
-
-    /**
-     * Holds assertionStatus determined by {@link RuntimeAssertionsSupport}.
-     */
-    private static final int ASSERTION_STATUS_FLAG_BIT = 3;
-
+    /** Is this a primitive type. */
+    private static final int IS_PRIMITIVE_FLAG_BIT = 0;
+    /** Is this an interface. */
+    private static final int IS_INTERFACE_FLAG_BIT = 1;
+    /** Is this a Hidden Class. */
+    private static final int IS_HIDDED_FLAG_BIT = 2;
+    /** Is this a Record Class. */
+    private static final int IS_RECORD_FLAG_BIT = 3;
+    /** Holds assertionStatus determined by {@link RuntimeAssertionsSupport}. */
+    private static final int ASSERTION_STATUS_FLAG_BIT = 4;
     /**
      * Class/superclass/implemented interfaces has default methods. Necessary metadata for class
      * initialization, but even for classes/interfaces that are already initialized during image
      * generation, so it cannot be a field in {@link ClassInitializationInfo}.
      */
-    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 4;
-
+    private static final int HAS_DEFAULT_METHODS_FLAG_BIT = 5;
     /**
      * Directly declares default methods. Necessary metadata for class initialization, but even for
      * interfaces that are already initialized during image generation, so it cannot be a field in
      * {@link ClassInitializationInfo}.
      */
-    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 5;
+    private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
+
+    /**
+     * Has the type been discovered as instantiated by the static analysis?
+     */
+    private boolean isInstantiated;
 
     /**
      * Boolean value or exception that happened at image-build time.
      */
-    private Object isLocalClass;
+    private final Object isLocalClass;
 
     /**
      * Boolean value or exception that happened at image-build time.
      */
-    private Object isAnonymousClass;
+    private final Object isAnonymousClass;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -275,7 +267,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Source file name if known; null otherwise.
      */
-    private String sourceFileName;
+    private final String sourceFileName;
 
     /**
      * The annotations of this class. This field holds either null (no annotations), an Annotation
@@ -352,7 +344,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
-                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus) {
+                    String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -364,32 +357,26 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
-        setFlag(IS_HIDDED_FLAG_BIT, isHidden);
-        setFlag(IS_RECORD_FLAG_BIT, isRecord);
         this.nestHost = nestHost;
-        setFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus);
+
+        this.flags = NumUtil.safeToByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
+                        makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
+                        makeFlag(IS_HIDDED_FLAG_BIT, isHidden) |
+                        makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
+                        makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
+                        makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
+                        makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void setFlag(int flagBit, boolean value) {
+    private int makeFlag(int flagBit, boolean value) {
         int flagMask = 1 << flagBit;
-        flags = NumUtil.safeToByte((flags & ~flagMask) | (value ? flagMask : 0));
-
-        assert isFlagSet(flagBit) == value;
+        return value ? flagMask : 0;
     }
 
     private boolean isFlagSet(int flagBit) {
         int flagMask = 1 << flagBit;
         return (flags & flagMask) != 0;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo, boolean hasDefaultMethods, boolean declaresDefaultMethods) {
-        assert this.classInitializationInfo == null : "Initialization must be called only once";
-
-        this.classInitializationInfo = classInitializationInfo;
-        setFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods);
-        setFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -416,7 +403,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
         this.referenceMapIndex = (int) referenceMapIndex;
-        setFlag(IS_INSTANTIATED_FLAG_BIT, isInstantiated);
+        this.isInstantiated = isInstantiated;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -599,7 +586,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public boolean isInstantiated() {
-        return isFlagSet(IS_INSTANTIATED_FLAG_BIT);
+        return isInstantiated;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -654,13 +641,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean isInterface() {
-        return LayoutEncoding.isInterface(getLayoutEncoding());
+        return isFlagSet(IS_INTERFACE_FLAG_BIT);
     }
 
     @Substitute
     @Override
     public boolean isPrimitive() {
-        return LayoutEncoding.isPrimitive(getLayoutEncoding());
+        return isFlagSet(IS_PRIMITIVE_FLAG_BIT);
     }
 
     @Substitute
@@ -1066,7 +1053,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          */
         final Executable enclosingMethodOrConstructor;
 
-        private ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
+        ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
                         Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
                         Object[] recordComponents) {
@@ -1091,7 +1078,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     static final class Target_java_lang_Class_MethodArray {
     }
 
-    private ReflectionData rd = ReflectionData.EMPTY;
+    ReflectionData rd = ReflectionData.EMPTY;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setReflectionData(ReflectionData rd) {
@@ -1196,74 +1183,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return publicOnly ? companion.get().getCompleteReflectionData().declaredPublicMethods : companion.get().getCompleteReflectionData().declaredMethods;
     }
 
-    ReflectionData loadReflectionMetadata() {
-        Executable[] data = CodeInfoDecoder.getMethodMetadata(this);
-
-        List<Method> newDeclaredMethods = new ArrayList<>(Arrays.asList(rd.declaredMethods));
-        List<Method> newPublicMethods = new ArrayList<>(Arrays.asList(rd.publicMethods));
-        List<Constructor<?>> newDeclaredConstructors = new ArrayList<>(Arrays.asList(rd.declaredConstructors));
-        List<Constructor<?>> newPublicConstructors = new ArrayList<>(Arrays.asList(rd.publicConstructors));
-        List<Method> newDeclaredPublicMethods = new ArrayList<>(Arrays.asList(rd.declaredPublicMethods));
-
-        outer: for (Executable method : data) {
-            if (method instanceof Constructor<?>) {
-                Constructor<?> c = (Constructor<?>) method;
-                for (Constructor<?> c2 : rd.declaredConstructors) {
-                    if (Arrays.equals(c.getParameterTypes(), c2.getParameterTypes())) {
-                        continue outer;
-                    }
-                }
-                newDeclaredConstructors.add(c);
-                if (Modifier.isPublic(c.getModifiers())) {
-                    newPublicConstructors.add(c);
-                }
-            } else {
-                Method m = (Method) method;
-                for (Method m2 : rd.declaredMethods) {
-                    if (m.getName().equals(m2.getName()) && Arrays.equals(m.getParameterTypes(), m2.getParameterTypes())) {
-                        continue outer;
-                    }
-                }
-                newDeclaredMethods.add(m);
-                if (Modifier.isPublic(m.getModifiers())) {
-                    newPublicMethods.add(m);
-                    newDeclaredPublicMethods.add(m);
-                }
-            }
-        }
-
-        /* Recursively add public superclass methods to the public methods list */
-        if (superHub != null) {
-            addInheritedPublicMethods(newPublicMethods, superHub);
-        }
-        for (DynamicHub superintfc : getInterfaces()) {
-            addInheritedPublicMethods(newPublicMethods, superintfc);
-        }
-
-        return new ReflectionData(rd.declaredFields, rd.publicFields, rd.publicUnhiddenFields, newDeclaredMethods.toArray(new Method[0]), newPublicMethods.toArray(new Method[0]),
-                        newDeclaredConstructors.toArray(new Constructor<?>[0]), newPublicConstructors.toArray(new Constructor<?>[0]), rd.nullaryConstructor, rd.declaredPublicFields,
-                        newDeclaredPublicMethods.toArray(new Method[0]), rd.declaredClasses, rd.publicClasses, rd.enclosingMethodOrConstructor, rd.recordComponents);
-    }
-
-    private void addInheritedPublicMethods(List<Method> newPublicMethods, DynamicHub parentHub) {
-        outer: for (Method m : parentHub.companion.get().getCompleteReflectionData().publicMethods) {
-            if (!isInterface() && parentHub.isInterface() && Modifier.isStatic(m.getModifiers())) {
-                continue;
-            }
-            for (Method m2 : newPublicMethods) {
-                if (m.getName().equals(m2.getName()) && Arrays.equals(m.getParameterTypes(), m2.getParameterTypes())) {
-                    if (m.getDeclaringClass() != m2.getDeclaringClass() && m2.getDeclaringClass().isAssignableFrom(m.getDeclaringClass())) {
-                        /* Need to store the more specific method */
-                        newPublicMethods.remove(m2);
-                        newPublicMethods.add(m);
-                    }
-                    continue outer;
-                }
-            }
-            newPublicMethods.add(m);
-        }
-    }
-
     @Substitute
     @TargetElement(name = "privateGetPublicFields", onlyWith = JDK8OrEarlier.class)
     private Field[] privateGetPublicFieldsJDK8OrEarlier(@SuppressWarnings("unused") Set<Class<?>> traversedInterfaces) {
@@ -1277,7 +1196,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private Method[] privateGetPublicMethods() {
+    Method[] privateGetPublicMethods() {
         return companion.get().getCompleteReflectionData().publicMethods;
     }
 
@@ -1605,6 +1524,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
     }
 
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    private static native String typeVarBounds(TypeVariable<?> typeVar);
+
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
      * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
@@ -1622,8 +1545,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Delete
     private native Class<?>[] getInterfaces0();
 
-    @Delete
-    native void setSigners(Object[] signers);
+    @Substitute
+    private void setSigners(@SuppressWarnings("unused") Object[] signers) {
+        throw VMError.unsupportedFeature("Class metadata cannot be changed at run time");
+    }
 
     @Delete
     private native java.security.ProtectionDomain getProtectionDomain0();
@@ -1734,6 +1659,10 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     public static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
         return soleInstance;
     }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
+final class Target_jdk_internal_reflect_ConstantPool {
 }
 
 @TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK17OrLater.class)

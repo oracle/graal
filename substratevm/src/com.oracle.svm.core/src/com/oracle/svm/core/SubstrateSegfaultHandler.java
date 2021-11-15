@@ -118,7 +118,7 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.
         Isolate isolate = SingleIsolateSegfaultSetup.singleton().getIsolate();
@@ -152,7 +152,7 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Called from the platform dependent segfault handler to print diagnostics. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();

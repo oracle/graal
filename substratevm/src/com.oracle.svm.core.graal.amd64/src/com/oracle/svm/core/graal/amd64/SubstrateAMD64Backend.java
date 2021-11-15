@@ -396,7 +396,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
-            Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            Value codeOffsetInImage = emitConstant(getLIRKindTool().getWordKind(), JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
             Value codeStartField = new AMD64AddressValue(getLIRKindTool().getWordKind(), asAllocatable(codeInfo), getRuntimeConfiguration().getImageCodeInfoCodeStartOffset());
             Value codeStart = getArithmetic().emitLoad(getLIRKindTool().getWordKind(), codeStartField, null);
@@ -1070,7 +1070,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
-        masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();

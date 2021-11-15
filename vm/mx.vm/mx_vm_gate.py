@@ -103,7 +103,7 @@ def gate_body(args, tasks):
                               '-Dlibgraal.CrashAtIsFatal=true']
                     cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
                     out = mx.OutputCapture()
-                    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, nonZeroIsFatal=False, out=out, err=out)
+                    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
                     if exitcode == 0:
                         if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
                             # Executing a VM that does not configure fatal errors handling
@@ -143,7 +143,7 @@ def gate_body(args, tasks):
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
                     mx_compiler.ctw([
-                            '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM',
+                            '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
                             '-esa',
                             '-XX:+EnableJVMCI',
                             '-DCompileTheWorld.MultiThreaded=true',
@@ -236,7 +236,7 @@ def gate_sulong(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 # TODO Use mx_sdk_vm_impl.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
-                sulong_libs = join(mx_sdk_vm_impl.graalvm_output(), 'jre', 'languages', 'llvm')
+                sulong_libs = join(mx_sdk_vm_impl.graalvm_output(), 'jre' if mx_sdk_vm.base_jdk_version() == 8 else '', 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
                         'SULONG_HOME': sulong_libs

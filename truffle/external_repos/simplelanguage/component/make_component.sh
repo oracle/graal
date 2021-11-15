@@ -80,18 +80,18 @@ mkdir -p "$COMPONENT_DIR/META-INF"
 
 (
 cd $COMPONENT_DIR || exit 1
-jar cfm ../sl-component.jar META-INF/MANIFEST.MF .
+$JAVA_HOME/bin/jar cfm ../sl-component.jar META-INF/MANIFEST.MF .
 
 echo "bin/sl = ../$JRE/languages/sl/bin/sl" > META-INF/symlinks
 if [[ $INCLUDE_SLNATIVE = "TRUE" ]]; then
     echo "bin/slnative = ../$JRE/languages/sl/bin/slnative" >> META-INF/symlinks
 fi
-jar uf ../sl-component.jar META-INF/symlinks
+$JAVA_HOME/bin/jar uf ../sl-component.jar META-INF/symlinks
 
 {
     echo "$JRE"'languages/sl/bin/sl = rwxrwxr-x'
     echo "$JRE"'languages/sl/bin/slnative = rwxrwxr-x'
 } > META-INF/permissions
-jar uf ../sl-component.jar META-INF/permissions
+$JAVA_HOME/bin/jar uf ../sl-component.jar META-INF/permissions
 )
 rm -rf $COMPONENT_DIR

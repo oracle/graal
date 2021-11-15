@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.log;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -81,6 +82,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
      */
     class FatalLog extends RealLog {
         @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
         protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
             if (fatalLogFunctionPointer.isNonNull()) {
                 fatalLogFunctionPointer.invoke(bytes, length);
@@ -91,6 +93,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         }
 
         @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
         public Log flush() {
             if (fatalLogFunctionPointer.isNull()) {
                 FunctionPointerLogHandler.this.flush();

@@ -33,6 +33,19 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * other JFR code could see partially added data when it tries to iterate the data at a safepoint.
  */
 public interface JfrConstantPool {
+
+    /**
+     * If constant pool is empty, the {@link JfrConstantPool#write(JfrChunkWriter)} function returns
+     * this value.
+     */
+    int EMPTY = 0;
+
+    /**
+     * If constant pool is not empty, the {@link JfrConstantPool#write(JfrChunkWriter)} function
+     * returns this value.
+     */
+    int NON_EMPTY = 1;
+
     /**
      * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
      * changed.

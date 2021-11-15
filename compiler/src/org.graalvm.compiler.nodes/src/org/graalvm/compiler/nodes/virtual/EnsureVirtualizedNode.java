@@ -29,9 +29,9 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.VerificationError;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -67,7 +67,7 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
         if (alias instanceof VirtualObjectNode) {
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
             if (virtual instanceof VirtualBoxingNode) {
-                Throwable exception = new VerificationError("ensureVirtual is not valid for boxing objects: %s", virtual.type().getName());
+                Throwable exception = new GraalGraphError("ensureVirtual is not valid for boxing objects: %s", virtual.type().getName());
                 throw GraphUtil.approxSourceException(this, exception);
             }
             if (!localOnly) {
@@ -95,7 +95,7 @@ public final class EnsureVirtualizedNode extends FixedWithNextNode implements Vi
                 additionalReason = " (must not let virtual object escape at node " + next + ")";
             }
         }
-        Throwable exception = new VerificationError("Object of type %s should not be materialized%s:", StampTool.typeOrNull(stamp).getName(), additionalReason);
+        Throwable exception = new GraalGraphError("Object of type %s should not be materialized%s:", StampTool.typeOrNull(stamp).getName(), additionalReason);
 
         Node pos;
         if (location instanceof FixedWithNextNode) {

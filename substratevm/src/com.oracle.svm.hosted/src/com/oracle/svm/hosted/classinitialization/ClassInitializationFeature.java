@@ -62,6 +62,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -69,7 +70,6 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
@@ -325,7 +325,7 @@ public class ClassInitializationFeature implements GraalFeature {
             assert type.isInitialized();
             info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
-        hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
+        hub.setClassInitializationInfo(info);
     }
 
     private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {

@@ -26,6 +26,7 @@ package org.graalvm.compiler.code;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 
 import org.graalvm.compiler.options.OptionValues;
@@ -43,6 +44,7 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.services.Services;
 
 /**
  * {@link HexCodeFile} based implementation of {@link DisassemblerProvider}.
@@ -135,10 +137,31 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
             MethodHandle toolMethod = null;
             try {
                 Class<?> toolClass = Class.forName("com.oracle.max.hcfdis.HexCodeFileDis", true, ClassLoader.getSystemClassLoader());
-                toolMethod = MethodHandles.lookup().unreflect(toolClass.getDeclaredMethod("processEmbeddedString", String.class));
+                Method reflectMethod = toolClass.getDeclaredMethod("processEmbeddedString", String.class);
+                reflectMethod.setAccessible(true);
+                toolMethod = MethodHandles.lookup().unreflect(reflectMethod);
             } catch (Exception e) {
                 // Tool not available on the class path
             }
+
+            // Try disassemble a zero-length code array to see if the disassembler
+            // can really be used (e.g., the Capstone native support may be not available on the
+            // current platform).
+            if (toolMethod != null) {
+                byte[] code = {};
+                String arch = Services.getSavedProperties().get("os.arch");
+                if (arch.equals("x86_64")) {
+                    arch = "amd64";
+                }
+                int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperties().getOrDefault("sun.arch.data.model", "64"));
+                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(), wordWidth).toEmbeddedString();
+                try {
+                    toolMethod.invokeExact(hcf);
+                } catch (Throwable e) {
+                    toolMethod = null;
+                }
+            }
+
             processMethod = toolMethod;
         }
 

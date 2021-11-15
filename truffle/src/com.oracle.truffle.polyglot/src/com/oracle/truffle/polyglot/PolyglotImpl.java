@@ -293,8 +293,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         OptionDescriptors engineOptionDescriptors = PolyglotEngineImpl.createEngineOptionDescriptors();
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
-        OptionValuesImpl values = new OptionValuesImpl(null, engineOptionDescriptors, true);
-        values.putAll(engineOptions, allowExperimentalOptions);
+        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, true);
+        values.putAll(null, engineOptions, allowExperimentalOptions);
         return values;
     }
 

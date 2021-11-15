@@ -1,0 +1,8 @@
+[
+  {
+    "name": "org.graalvm.launcher.AbstractLanguageLauncher",
+    "methods": [
+      { "name": "runLauncher" }
+    ]
+  }
+]

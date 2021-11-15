@@ -266,6 +266,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
 
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
+        }
+
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
          * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword

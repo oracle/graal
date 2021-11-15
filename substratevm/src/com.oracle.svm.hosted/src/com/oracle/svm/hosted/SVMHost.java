@@ -406,7 +406,7 @@ public class SVMHost implements HostVM {
 
         final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
                         isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
-                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
+                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods());
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }

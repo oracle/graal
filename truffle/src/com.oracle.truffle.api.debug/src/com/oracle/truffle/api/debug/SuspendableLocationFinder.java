@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,10 +118,6 @@ final class SuspendableLocationFinder {
         if (section != null) {
             return section;
         }
-        if (!sectionsCollector.isOffsetInRoot) {
-            // The offset position is not in any RootNode.
-            return null;
-        }
         InstrumentableNode contextNode = sectionsCollector.getContainsNode();
         if (contextNode == null) {
             contextNode = sectionsCollector.getNextNode();
@@ -131,6 +127,16 @@ final class SuspendableLocationFinder {
         }
         if (contextNode == null) {
             return null;
+        }
+        if (!sectionsCollector.isOffsetInRoot) {
+            // The offset position is not in any RootNode.
+            SourceSection sourceSection = ((Node) contextNode).getSourceSection();
+            // Handle a special case when the location is not in any RootNode,
+            // but it's on a line with an existing code at a greater column:
+            boolean onLineBeforeLocation = sourceSection != null && anchor == SuspendAnchor.BEFORE && line == sourceSection.getStartLine() && column <= sourceSection.getStartColumn();
+            if (!onLineBeforeLocation) {
+                return null;
+            }
         }
         Node node = contextNode.findNearestNodeAt(offset, elementTags);
         if (node == null) {

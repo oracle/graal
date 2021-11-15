@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -177,6 +178,10 @@ public class NativeImageGeneratorRunner {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         AbstractNativeImageClassLoaderSupport nativeImageClassLoaderSupport = createNativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
+        for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
+            postProcessing.apply(nativeImageClassLoaderSupport);
+        }
         ClassLoader nativeImageClassLoader = nativeImageClassLoaderSupport.getClassLoader();
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
         /*
@@ -205,7 +210,7 @@ public class NativeImageGeneratorRunner {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             /* Instantiate module-aware NativeImageClassLoaderSupport */
             try {
-                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk11.NativeImageClassLoaderSupportJDK11OrLater");
+                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater");
                 Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
                 return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
             } catch (ReflectiveOperationException e) {

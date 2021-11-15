@@ -75,7 +75,7 @@ public class DeoptTester {
     private static final StackFrameVisitor collectPcVisitor = new StackFrameVisitor() {
 
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only deals with IPs, not Objects.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only deals with IPs, not Objects.")
         public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             handledPCs.add(ip.rawValue());
             return true;

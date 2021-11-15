@@ -34,7 +34,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, dirname
+from os.path import join, exists, dirname, relpath
 import pipes
 from argparse import ArgumentParser
 import fnmatch
@@ -63,14 +63,14 @@ else:
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
-def svm_java_compliance():
-    return mx.get_jdk(tag='default').javaCompliance
+def get_jdk():
+    return mx.get_jdk(tag='default')
 
 def svm_java8():
-    return svm_java_compliance() <= mx.JavaCompliance('1.8')
+    return get_jdk().javaCompliance <= mx.JavaCompliance('1.8')
 
 def graal_compiler_flags():
-    version_tag = svm_java_compliance().value
+    version_tag = get_jdk().javaCompliance.value
     compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map()
     if version_tag not in compiler_flags:
         missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
@@ -117,8 +117,8 @@ def svmbuild_dir(suite=None):
 
 
 def is_musl_supported():
-    jdk = mx.get_jdk(tag='default')
-    if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
+    jdk = get_jdk()
+    if mx.is_linux() and mx.get_arch() == "amd64" and jdk.javaCompliance == '11':
         musl_library_path = join(jdk.home, 'lib', 'static', 'linux-amd64', 'musl')
         return exists(musl_library_path)
     return False
@@ -318,12 +318,8 @@ def svm_gate_body(args, tasks):
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                if svm_java8():
-                    javac_image(['--output-path', svmbuild_dir()])
-                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
-                else:
-                    # Building javac image currently only supported for Java 8
-                    javac_command = []
+                javac_image(['--output-path', svmbuild_dir()])
+                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
@@ -332,12 +328,8 @@ def svm_gate_body(args, tasks):
     with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
-                if svm_java8():
-                    javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
-                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
-                else:
-                    # Building javac image currently only supported for Java 8
-                    javac_command = ['-H:GenerateDebugInfo=1']
+                javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
+                javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir())), '-H:GenerateDebugInfo=1']
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared', '-H:GenerateDebugInfo=1'])  # Build and run helloworld as shared library
                 cinterfacetutorial(['-H:GenerateDebugInfo=1'])
@@ -430,9 +422,7 @@ def native_unittests_task():
         '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService'
     ]
 
-    if svm_java_compliance() == '17':
-        # The following tests fail with --builder-on-modulepath enabled (GR-34117)
-        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.jdk11.jfr.*')
+    if get_jdk().javaCompliance == '17':
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
@@ -440,8 +430,14 @@ def native_unittests_task():
 
 
 def javac_image_command(javac_path):
-    return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
-            join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
+    return [join(javac_path, 'javac'), '-proc:none'] + (
+        ['-bootclasspath', join(mx_compiler.jdk.home, 'jre', 'lib', 'rt.jar')]
+        if svm_java8() else
+        # We need to set java.home as com.sun.tools.javac.file.Locations.<clinit> can't handle `null`.
+        # However, the actual value isn't important because we won't use system classes from JDK jimage,
+        # but from JDK jmods that we will pass as app modules.
+        ['-Djava.home=', '--system', 'none', '-p', join(mx_compiler.jdk.home, 'jmods')]
+    )
 
 
 def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, builder_on_modulepath=False):
@@ -733,7 +729,7 @@ def _javac_image(native_image, path, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
+    native_image((['-cp', mx_compiler.jdk.toolsjar] if svm_java8() else []) + ["-H:Path=" + path, "com.sun.tools.javac.Main", "javac",
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
@@ -805,8 +801,7 @@ def _native_image_launcher_extra_jvm_args():
         return []
     # Support for running as Java module
     res = []
-    jdk = mx.get_jdk(tag='default')
-    if not mx_sdk_vm.jdk_enables_jvmci_by_default(jdk):
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
 
@@ -882,7 +877,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 ))
 
-if not mx.is_windows():
+# GR-34811
+if not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64")):
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
         name='SubstrateVM LLVM',
@@ -999,7 +995,7 @@ def _native_image_configure_extra_jvm_args():
         return []
     packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
-    if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
+    if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return args
 
@@ -1180,7 +1176,7 @@ def clinittest(args):
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
-        mx.Project.__init__(self, suite, name, "", [], deps, workingSets, suite.dir, theLicense, **kwArgs)
+        mx.Project.__init__(self, suite, name, None, [], deps, workingSets, suite.dir, theLicense, **kwArgs)
 
     def getBuildTask(self, args):
         return JvmFuncsFallbacksBuildTask(self, args, 1)
@@ -1189,18 +1185,19 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
     def __init__(self, subject, args, parallelism):
         super(JvmFuncsFallbacksBuildTask, self).__init__(subject, args, parallelism)
 
-        self.native_project_dir = join(mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix')).dir, 'src')
-        self.jvm_funcs_path = join(self.native_project_dir, 'JvmFuncs.c')
+        libjvm = mx.dependency('substratevm:com.oracle.svm.native.jvm.' + ('windows' if mx.is_windows() else 'posix'))
 
-        native_project_src_gen_dir = join(self.native_project_dir, 'src_gen')
-        java_version = str(svm_java_compliance().value)
         try:
-            for entry in os.listdir(native_project_src_gen_dir):
-                if entry != java_version:
-                    mx.rmtree(join(native_project_src_gen_dir, entry))
+            # Remove any remaining leftover src_gen subdirs in native_project_dir
+            native_project_src_gen_dir = join(libjvm.dir, 'src', 'src_gen')
+            if exists(native_project_src_gen_dir):
+                mx.rmtree(native_project_src_gen_dir)
         except OSError:
             pass
-        self.jvm_fallbacks_path = join(native_project_src_gen_dir, java_version, 'JvmFuncsFallbacks.c')
+
+        self.jvm_funcs_path = join(libjvm.dir, 'src', 'JvmFuncs.c')
+        self.jvm_fallbacks_path = join(self.subject.get_output_root(), 'src_gen', 'JvmFuncsFallbacks.c')
+        self.register_in_libjvm(libjvm)
 
         if svm_java8():
             staticlib_path = ['jre', 'lib']
@@ -1215,7 +1212,18 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
         staticlib_wildcard = staticlib_path + [mx_subst.path_substitutions.substitute('<staticlib:*>')]
         staticlib_wildcard_path = join(mx_compiler.jdk.home, *staticlib_wildcard)
+
         self.staticlibs = glob(staticlib_wildcard_path)
+
+    # Needed because SubstrateJvmFuncsFallbacksBuilder.getBuildTask gets called from mx.clean and mx.build
+    registered_in_libjvm = False
+
+    def register_in_libjvm(self, libjvm):
+        if not JvmFuncsFallbacksBuildTask.registered_in_libjvm:
+            JvmFuncsFallbacksBuildTask.registered_in_libjvm = True
+            # Ensure generated JvmFuncsFallbacks.c will be part of the generated libjvm
+            rel_jvm_fallbacks_dir = relpath(dirname(self.jvm_fallbacks_path), libjvm.dir)
+            libjvm.srcDirs.append(rel_jvm_fallbacks_dir)
 
     def newestOutput(self):
         return mx.TimeStampFile(self.jvm_fallbacks_path)
@@ -1464,8 +1472,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
             # Packages to add-export
             distributions_transitive = mx.classpath_entries(self.buildDependencies)
-            jdk = mx.get_jdk(tag='default')
-            required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
+            required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
             graal_compiler_flags_map[11].extend(exports_flags)
             # Currently JDK 17 and JDK 11 have the same flags

@@ -46,6 +46,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -419,7 +420,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
 
     @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
+    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
@@ -558,6 +559,22 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return ImageInfo.isExecutable();
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
 
@@ -612,8 +629,11 @@ public class SubstrateOptions {
     };
 
     @APIOption(name = "configure-reflection-metadata")//
-    @Option(help = "Limit method reflection metadata to configuration entries instead of including it for all reachable methods")//
+    @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
+
+    @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
 
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);

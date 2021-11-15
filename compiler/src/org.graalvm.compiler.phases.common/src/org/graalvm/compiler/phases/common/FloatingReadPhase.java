@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 import static org.graalvm.compiler.graph.Graph.NodeEvent.NODE_ADDED;
 import static org.graalvm.compiler.graph.Graph.NodeEvent.ZERO_USAGES;
 import static org.graalvm.word.LocationIdentity.any;
+import static org.graalvm.word.LocationIdentity.init;
 
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -38,6 +39,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -48,16 +50,17 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
-import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.MemoryMapControlSinkNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
+import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingAccessNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -70,6 +73,7 @@ import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
@@ -214,6 +218,8 @@ public class FloatingReadPhase extends Phase {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph) {
+        EconomicSet<ValueNode> initMemory = EconomicSet.create(Equivalence.IDENTITY);
+
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;
         if (graph.hasLoops()) {
             modifiedInLoops = EconomicMap.create(Equivalence.IDENTITY);
@@ -226,7 +232,7 @@ public class FloatingReadPhase extends Phase {
 
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener(EnumSet.of(NODE_ADDED, ZERO_USAGES));
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, createFloatingReads, createMemoryMapNodes), graph.start(), new MemoryMapImpl(graph.start()));
+            ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, createFloatingReads, createMemoryMapNodes, initMemory), graph.start(), new MemoryMapImpl(graph.start()));
         }
 
         for (Node n : removeExternallyUsedNodes(listener.getNodes())) {
@@ -299,11 +305,14 @@ public class FloatingReadPhase extends Phase {
         private final EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops;
         private boolean createFloatingReads;
         private boolean createMemoryMapNodes;
+        private final EconomicSet<ValueNode> initMemory;
 
-        public FloatingReadClosure(EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops, boolean createFloatingReads, boolean createMemoryMapNodes) {
+        public FloatingReadClosure(EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops, boolean createFloatingReads, boolean createMemoryMapNodes,
+                        EconomicSet<ValueNode> initMemory) {
             this.modifiedInLoops = modifiedInLoops;
             this.createFloatingReads = createFloatingReads;
             this.createMemoryMapNodes = createMemoryMapNodes;
+            this.initMemory = initMemory;
         }
 
         @Override
@@ -337,8 +346,8 @@ public class FloatingReadPhase extends Phase {
             }
             assert nodeOfMemoryType(node) : node;
 
-            if (createMemoryMapNodes && node instanceof ReturnNode) {
-                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
+            if (createMemoryMapNodes && node instanceof MemoryMapControlSinkNode) {
+                ((MemoryMapControlSinkNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
             }
             return state;
         }
@@ -372,31 +381,44 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        private static void processCheckpoint(SingleMemoryKill checkpoint, MemoryMapImpl state) {
+        private void processCheckpoint(SingleMemoryKill checkpoint, MemoryMapImpl state) {
             processIdentity(checkpoint.getKilledLocationIdentity(), checkpoint, state);
         }
 
-        private static void processCheckpoint(MultiMemoryKill checkpoint, MemoryMapImpl state) {
+        private void processCheckpoint(MultiMemoryKill checkpoint, MemoryMapImpl state) {
             for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
                 processIdentity(identity, checkpoint, state);
             }
         }
 
-        private static void processIdentity(LocationIdentity identity, MemoryKill checkpoint, MemoryMapImpl state) {
+        private void processIdentity(LocationIdentity identity, MemoryKill checkpoint, MemoryMapImpl state) {
             if (identity.isAny()) {
                 state.getMap().clear();
             }
             if (identity.isMutable()) {
                 state.getMap().put(identity, checkpoint);
             }
+
+            if (checkpoint instanceof AddressableMemoryAccess) {
+                AddressNode address = ((AddressableMemoryAccess) checkpoint).getAddress();
+                if (identity.equals(init())) {
+                    // Track bases which are used for init memory
+                    initMemory.add(address.getBase());
+                }
+            }
         }
 
         @SuppressWarnings("try")
-        private static void processFloatable(FloatableAccessNode accessNode, MemoryMapImpl state) {
+        private void processFloatable(FloatableAccessNode accessNode, MemoryMapImpl state) {
             StructuredGraph graph = accessNode.graph();
             LocationIdentity locationIdentity = accessNode.getLocationIdentity();
+
             if (accessNode.canFloat()) {
-                assert accessNode.getNullCheck() == false;
+                // Bases can't be used for both init and other memory locations since init doesn't
+                // participate in the memory graph.
+                GraalError.guarantee(!initMemory.contains(accessNode.getAddress().getBase()), "base used for init cannot be used for other accesses: %s", accessNode);
+
+                assert accessNode.getUsedAsNullCheck() == false;
                 MemoryKill lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 try (DebugCloseable position = accessNode.withNodeSourcePosition()) {
                     FloatingAccessNode floatingNode = accessNode.asFloatingNode();
@@ -413,19 +435,7 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected MemoryMapImpl afterSplit(AbstractBeginNode node, MemoryMapImpl oldState) {
-            MemoryMapImpl result = new MemoryMapImpl(oldState);
-            if (node.predecessor() instanceof WithExceptionNode && node.predecessor() instanceof MemoryKill) {
-                /*
-                 * This WithExceptionNode cannot be the lastLocationAccess for a FloatingReadNode.
-                 * Since it is both a memory kill and a control flow split, the scheduler cannot
-                 * schedule anything immediately after the kill. It can only schedule in the normal
-                 * or exceptional successor - and we have to tell the scheduler here which side it
-                 * needs to choose by putting in the location identity on both successors.
-                 */
-                LocationIdentity killedLocationIdentity = node.predecessor() instanceof SingleMemoryKill ? ((SingleMemoryKill) node.predecessor()).getKilledLocationIdentity() : LocationIdentity.any();
-                result.getMap().put(killedLocationIdentity, (MemoryKill) node);
-            }
-            return result;
+            return new MemoryMapImpl(oldState);
         }
 
         @Override

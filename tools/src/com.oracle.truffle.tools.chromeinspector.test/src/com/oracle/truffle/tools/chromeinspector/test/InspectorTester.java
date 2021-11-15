@@ -44,6 +44,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.MessageEndpoint;
 
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
@@ -331,6 +332,10 @@ public final class InspectorTester {
                 error = t;
                 sendText("\nERROR: " + t.getClass().getName() + ": " + t.getLocalizedMessage());
             } finally {
+                engine.close();
+                // To cleanup any references to the closed context, we need to set a new instance
+                // of ProxyLanguage.
+                ProxyLanguage.setDelegate(new ProxyLanguage());
                 try {
                     inspect.sendClose();
                 } catch (IOException e) {

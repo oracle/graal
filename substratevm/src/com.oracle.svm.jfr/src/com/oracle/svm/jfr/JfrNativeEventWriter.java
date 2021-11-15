@@ -30,9 +30,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * A JFR event writer that does not allocate any objects in the Java heap. Can only be used from
@@ -60,7 +63,7 @@ public final class JfrNativeEventWriter {
     public static void beginEventWrite(JfrNativeEventWriterData data, boolean large) {
         assert SubstrateJVM.isRecording();
         assert isValid(data);
-        assert getUsedSize(data).equal(0);
+        assert getUncommittedSize(data).equal(0);
         if (large) {
             reserve(data, Integer.BYTES);
         } else {
@@ -74,7 +77,7 @@ public final class JfrNativeEventWriter {
             return WordFactory.unsigned(0);
         }
 
-        UnsignedWord written = getUsedSize(data);
+        UnsignedWord written = getUncommittedSize(data);
         if (large) {
             // Write a 4 byte size and commit the event if any payload was written.
             if (written.aboveThan(Integer.BYTES)) {
@@ -83,7 +86,7 @@ public final class JfrNativeEventWriter {
                 data.setCurrentPos(data.getStartPos());
                 putInt(data, makePaddedInt((int) written.rawValue()));
                 data.setCurrentPos(currentPos);
-                commit(data);
+                commitEvent(data);
             }
         } else {
             // Abort if event size will not fit in one byte (compressed).
@@ -98,7 +101,7 @@ public final class JfrNativeEventWriter {
                     data.setCurrentPos(data.getStartPos());
                     putByte(data, (byte) written.rawValue());
                     data.setCurrentPos(currentPos);
-                    commit(data);
+                    commitEvent(data);
                 }
             }
         }
@@ -147,10 +150,18 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putUtf8(JfrNativeEventWriterData data, String string) {
-        int size = UninterruptibleUtils.String.modifiedUtf8Length(string, true);
-        if (ensureSize(data, size)) {
-            UninterruptibleUtils.String.toModifiedUtf8(string, data.getCurrentPos(), data.getEndPos(), true);
+    public static void putString(JfrNativeEventWriterData data, String string) {
+        byte[] byteString = JavaLangSubstitutions.getBytes(string);
+        if (byteString.length == 0) {
+            putByte(data, JfrChunkWriter.StringEncoding.EMPTY_STRING.byteValue);
+        } else {
+            int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false);
+            putByte(data, JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
+            putInt(data, mUTF8Length);
+            if (ensureSize(data, mUTF8Length)) {
+                Pointer newPosition = UninterruptibleUtils.String.toModifiedUTF8(string, data.getCurrentPos(), data.getEndPos(), false);
+                data.setCurrentPos(newPosition);
+            }
         }
     }
 
@@ -187,7 +198,7 @@ public final class JfrNativeEventWriter {
 
         int totalRequested = requested + SIZE_SAFETY_CUSHION;
         if (getAvailableSize(data).belowThan(totalRequested)) {
-            if (!accommodate(data, getUsedSize(data), totalRequested)) {
+            if (!accommodate(data, getUncommittedSize(data), totalRequested)) {
                 assert !isValid(data);
                 return false;
             }
@@ -208,7 +219,7 @@ public final class JfrNativeEventWriter {
         JfrBuffer buffer = data.getJfrBuffer();
         data.setStartPos(buffer.getPos());
         data.setCurrentPos(buffer.getPos());
-        data.setEndPos(buffer.getPos().add(buffer.getSize()));
+        data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -222,24 +233,84 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static boolean accommodate(JfrNativeEventWriterData data, UnsignedWord used, int requested) {
-        // In case that the thread-local buffer is still not large enough to hold the data of the
-        // event even though the buffer was flushed successfully, a larger buffer may be returned.
-        JfrBuffer newBuffer = JfrThreadLocal.flush(data.getJfrBuffer(), used, requested);
+    private static boolean accommodate(JfrNativeEventWriterData data, UnsignedWord uncommitted, int requested) {
+        JfrBuffer newBuffer = accomodate0(data, uncommitted, requested);
         if (newBuffer.isNull()) {
-            // The flush failed for some reason (e.g., because not enough global memory was
-            // available).
             cancel(data);
             return false;
         }
+
         data.setJfrBuffer(newBuffer);
         hardReset(data);
-        increaseCurrentPos(data, used);
+        increaseCurrentPos(data, uncommitted);
         return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static void commit(JfrNativeEventWriterData data) {
+    private static JfrBuffer accomodate0(JfrNativeEventWriterData data, UnsignedWord uncommitted, int requested) {
+        JfrBuffer oldBuffer = data.getJfrBuffer();
+        switch (oldBuffer.getBufferType()) {
+            case THREAD_LOCAL_NATIVE:
+                return JfrThreadLocal.flush(oldBuffer, uncommitted, requested);
+            case C_HEAP:
+                return reuseOrReallocateBuffer(oldBuffer, uncommitted, requested);
+            default:
+                throw VMError.shouldNotReachHere("Unexpected type of buffer.");
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    private static JfrBuffer reuseOrReallocateBuffer(JfrBuffer oldBuffer, UnsignedWord uncommitted, int requested) {
+        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(oldBuffer);
+        UnsignedWord totalUsedBytes = unflushedSize.add(uncommitted);
+        UnsignedWord minNewSize = totalUsedBytes.add(requested);
+
+        if (oldBuffer.getSize().belowThan(minNewSize)) {
+            // Grow the buffer because it is too small.
+            UnsignedWord newSize = oldBuffer.getSize();
+            while (newSize.belowThan(minNewSize)) {
+                newSize = newSize.multiply(2);
+            }
+
+            JfrBuffer result = JfrBufferAccess.allocate(newSize, oldBuffer.getBufferType());
+            if (result.isNull()) {
+                return WordFactory.nullPointer();
+            }
+
+            // Copy all unflushed data (no matter if committed or uncommitted) from the old buffer
+            // to the new buffer.
+            UnmanagedMemoryUtil.copy(oldBuffer.getTop(), result.getPos(), totalUsedBytes);
+            JfrBufferAccess.increasePos(result, unflushedSize);
+
+            JfrBufferAccess.free(oldBuffer);
+
+            assert result.getSize().aboveThan(minNewSize);
+            return result;
+        } else {
+            // Reuse the existing buffer because enough data was already flushed in the meanwhile.
+            // For that, copy all unflushed data (no matter if committed or uncommitted) to the
+            // beginning of the buffer.
+            UnmanagedMemoryUtil.copy(oldBuffer.getTop(), JfrBufferAccess.getDataStart(oldBuffer), totalUsedBytes);
+            JfrBufferAccess.reinitialize(oldBuffer);
+            JfrBufferAccess.increasePos(oldBuffer, unflushedSize);
+            return oldBuffer;
+        }
+    }
+
+    /**
+     * Only needs to be called when non-event data is written to a buffer. For events,
+     * {@link #beginEventWrite} and {@link #endEventWrite} should be used instead.
+     */
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static boolean commit(JfrNativeEventWriterData data) {
+        if (!isValid(data)) {
+            return false;
+        }
+        return commitEvent(data);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    private static boolean commitEvent(JfrNativeEventWriterData data) {
         JfrBuffer buffer = data.getJfrBuffer();
         assert isValid(data);
         assert buffer.getPos().equal(data.getStartPos());
@@ -248,6 +319,7 @@ public final class JfrNativeEventWriter {
         Pointer newPosition = data.getCurrentPos();
         buffer.setPos(newPosition);
         data.setStartPos(newPosition);
+        return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -341,7 +413,7 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static UnsignedWord getUsedSize(JfrNativeEventWriterData data) {
+    private static UnsignedWord getUncommittedSize(JfrNativeEventWriterData data) {
         return data.getCurrentPos().subtract(data.getStartPos());
     }
 

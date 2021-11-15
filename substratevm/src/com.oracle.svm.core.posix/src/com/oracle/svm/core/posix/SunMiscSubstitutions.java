@@ -136,6 +136,9 @@ final class Util_jdk_internal_misc_Signal {
      * signals that the VM itself uses.
      */
     static long handle0(int sig, long nativeH) {
+        if (!SubstrateOptions.EnableSignalHandling.getValue()) {
+            return sunMiscSignalIgnoreHandler;
+        }
         ensureInitialized();
         final Signal.SignalDispatcher newDispatcher = nativeHToDispatcher(nativeH);
         /* If the dispatcher is the CSunMiscSignal handler, then check if the signal is in range. */

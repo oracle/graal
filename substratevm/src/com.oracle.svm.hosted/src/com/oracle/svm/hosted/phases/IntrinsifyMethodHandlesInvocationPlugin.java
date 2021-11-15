@@ -757,7 +757,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
             } else if (oNode.getClass() == NewArrayNode.class) {
                 NewArrayNode oNew = (NewArrayNode) oNode;
-                NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), node(oNew.length()), oNew.fillContents()));
+                NewArrayNode tNew = b.add(new NewArrayNode(lookup(oNew.elementType()), b.maybeEmitExplicitNegativeArraySizeCheck(node(oNew.length())), oNew.fillContents()));
                 transplanted.put(oNew, tNew);
                 return true;
 
@@ -849,7 +849,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * situation, it is necessary to push the NewInstanceNode onto the stack so that it
                  * is included in the stateDuring FrameState of the InvokeNode.
                  */
-                Node pred = oNode.predecessor();
+                Node pred = oNode;
+                do {
+                    pred = pred.predecessor();
+                    /*
+                     * The prior NewInstanceNode may be guarded by a fixed guard (e.g., for an
+                     * instanceof check). In this case, look at fixed guard's predecessor.
+                     */
+                } while (pred.getClass() == FixedGuardNode.class);
                 if (pred.getClass() == NewInstanceNode.class && transplanted.containsKey(pred)) {
                     Node tNew = transplanted.get(pred);
                     pushToFrameStack((ValueNode) tNew);
@@ -873,7 +880,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         @SuppressWarnings("unchecked")
         private <T extends Stamp> T stamp(T oStamp) throws AbortTransplantException {
             Stamp result;
-            if (((Stamp) oStamp).getClass() == ObjectStamp.class) {
+            if (oStamp.getClass() == ObjectStamp.class) {
                 ObjectStamp oObjectStamp = (ObjectStamp) oStamp;
                 result = new ObjectStamp(lookup(oObjectStamp.type()), oObjectStamp.isExactType(), oObjectStamp.nonNull(), oObjectStamp.alwaysNull(), oObjectStamp.isAlwaysArray());
             } else if (oStamp instanceof PrimitiveStamp) {

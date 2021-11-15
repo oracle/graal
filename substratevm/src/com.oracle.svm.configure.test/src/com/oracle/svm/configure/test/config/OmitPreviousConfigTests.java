@@ -310,7 +310,7 @@ class TypeMethodsWithFlagsTest {
             Assert.assertNotNull("Generated configuration type " + name + " does not exist. Has the test code changed?", configurationType);
 
             for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
-                ConfigurationMemberDeclaration kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey()).getMemberKind();
+                ConfigurationMemberDeclaration kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey()).getDeclaration();
                 Assert.assertNotNull("Method " + methodEntry.getKey() + " unexpectedly NOT found in the new configuration.", kind);
                 Assert.assertEquals("Method " + methodEntry.getKey() + " contains a different kind than expected in the new configuration.", kind, methodEntry.getValue());
             }

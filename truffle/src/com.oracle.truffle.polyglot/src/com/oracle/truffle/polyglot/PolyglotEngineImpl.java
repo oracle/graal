@@ -305,7 +305,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.conservativeContextReferences = engineOptionValues.get(PolyglotEngineOptions.UseConservativeContextReferences);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
-            language.getOptionValues().putAll(languagesOptions.get(language), allowExperimentalOptions);
+            language.getOptionValues().putAll(this, languagesOptions.get(language), allowExperimentalOptions);
         }
 
         if (engineOptionValues.get(PolyglotEngineOptions.SpecializationStatistics)) {
@@ -361,7 +361,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private PolyglotLanguageInstance createHostLanguageInstance(TruffleLanguage<Object> hostImpl) {
         PolyglotLanguage language = createLanguage(LanguageCache.createHostLanguageCache(hostImpl), HOST_LANGUAGE_INDEX, null);
-        return language.allocateInstance(new OptionValuesImpl(this, language.getOptionsInternal(), false));
+        return language.allocateInstance(new OptionValuesImpl(language.getOptionsInternal(), false));
     }
 
     void notifyCreated() {
@@ -569,13 +569,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         RUNTIME.onEnginePatch(this.runtimeData, engineOptions, logSupplier);
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
-            language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
+            language.getOptionValues().putAll(this, languagesOptions.get(language), newAllowExperimentalOptions);
         }
 
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), newAllowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(this, instrumentsOptions.get(instrument), newAllowExperimentalOptions);
         }
         registerShutDownHook();
     }
@@ -592,9 +592,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    private static void createInstruments(Map<PolyglotInstrument, Map<String, String>> instrumentsOptions, boolean allowExperimentalOptions) {
+    private void createInstruments(Map<PolyglotInstrument, Map<String, String>> instrumentsOptions, boolean allowExperimentalOptions) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getEngineOptionValues().putAll(instrumentsOptions.get(instrument), allowExperimentalOptions);
+            instrument.getEngineOptionValues().putAll(this, instrumentsOptions.get(instrument), allowExperimentalOptions);
         }
         ensureInstrumentsCreated(instrumentsOptions.keySet());
     }

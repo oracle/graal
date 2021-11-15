@@ -57,6 +57,16 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
+### 2021
+
+- David Justo, Shaoqing Yi, Lukas Stadler, Nadia Polikarpova, Arun Kumar
+[**Towards a polyglot framework for factorized ML**](https://dl.acm.org/doi/abs/10.14778/3476311.3476372)
+In _Proceedings of the VLDB Endowment 14, Issue 12 (VLDB 2021 Industry Track)_
+
+- Daniele Bonetta, Filippo Schiavio, Walter Binder
+[**Language-Agnostic Integrated Queries in a Managed Polyglot Runtime**](http://www.vldb.org/pvldb/vol14/p1414-schiavio.pdf)
+In _Proceedings of the VLDB Endowment 2021_
+
 ### 2020
 
 - Fabio Niephaus, Patrick Rein, Jakob Edding, Jonas Hering, Bastian König, Kolya Opahle, Nico Scordialo, Robert Hirschfeld
@@ -276,7 +286,39 @@ Describes the design of self-optimizing and self-specializing interpreter, and t
 
 ## GraalVM Compiler Papers
 
+### 2021
+
+- Rodrigo Bruno, Vojin Jovanovic, Christian Wimmer, Gustavo Alonso [**Compiler-Assisted Object Inlining with Value Fields**](https://dl.acm.org/doi/10.1145/3453483.3454034)
+In _Proceedings of the 42nd ACM SIGPLAN International Conference on Programming Language Design and Implementation (PLDI 2021)_
+
+- Raphael Mosaner, David Leopoldseder, Lukas Stadler, Hanspeter Moessenboeck [**Using Machine Learning to Predict the Code Size Impact of Duplication Heuristics in a Dynamic Compiler**](https://doi.org/10.1145/3475738.3480943)
+In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
+
+- Jacob Kreindl, Daniele Bonetta, Lukas Stadler, David Leopoldseder, Hanspeter Moessenboeck [**Low-Overhead Multi-Language Dynamic Taint Analysis through Speculative Optimization and Dynamic Compilation**](https://doi.org/10.1145/3475738.3480939)
+In _Proceedings of the 18th ACM SIGPLAN International Conference on Managed Programming Languages and Runtimes (MPLR 2021)_
+
+- Florian Latifi, David Leopoldseder, Christian Wimmer, Hanspeter Moessenboeck [**CompGen: Generation of Fast Compilers in a Multi-Language VM**](https://doi.org/10.1145/3486602.3486930)
+In _Proceedings Dynamic Language Symposium, DLS co-located with SPLASH conference 2021_
+
+- Matt D'Souzam, Gilles Duboscq, [**Lightweight On-Stack Replacement in Languages with Unstructured Loops**](https://dl.acm.org/doi/10.1145/3486606.3486782)
+In _Proceedings of the 13th ACM SIGPLAN International Workshop on Virtual Machines and Intermediate Languages (VMIL 2021)_
+
+- Sebastian Kloibhofer [**Run-time Data Analysis to Drive Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3484271.3484974)
+In _Proceedings of SPLASH Companion 2021_
+
+- Lukas Makor [**Run-time data analysis in dynamic runtimes**](https://dl.acm.org/doi/10.1145/3484271.3484974)
+In _Proceedings of SPLASH Companion 2021_
+
+<!-- -  Hugo Guiroux, Jean-Pierre Lozi, Peterson Yuhala, Jämes Ménétrey, Pascal Felber, Valerio Schiavoni, Alain Tchana, Gaël Thomas [**Montsalvat: Intel SGX Shielding for GraalVM Native Images**](#)
+In _Proceedings of MIDDLEWARE 2021 - 22nd ACM/IFIP International Conference 2021_ -->
+
 ### 2020
+
+- Sebastian Kloibhofer, Thomas Pointhuber, Maximilian Heisinger, Hanspeter Mössenböck, Lukas Stadler, David Leopoldseder [**SymJEx: symbolic execution on the GraalVM**](https://epub.jku.at/obvulihs/download/pdf/5669034)
+In _Proceedings of the 17th International Conference on Managed Programming Languages and Runtimes (MPLR 2020)_
+
+- Raphael Mosaner [**Machine Learning to Ease Understanding of Data Driven Compiler Optimizations**](https://dl.acm.org/doi/10.1145/3426430.3429451)
+In _Proceedings of SPLASH Companion 2020_
 
 - Aleksandar Prokopec, Andrea Rosà, David Leopoldseder, Gilles Duboscq, Petr Tuma, Martin Studener, Lubomír Bulej, Yudi Zheng, Alex Villazón, Doug Simon, Thomas Würthinger, Walter Binder [**Renaissance: Benchmarking Suite for Parallel Applications on the JVM**](https://dblp.uni-trier.de/db/conf/se/se2020.html#ProkopecRLD0SBZ20)
 In _Proceedings of Software Engineering 2020_
