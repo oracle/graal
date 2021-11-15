@@ -72,6 +72,7 @@ import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
@@ -360,60 +361,8 @@ public final class ObjectKlass extends Klass {
         synchronized (this) {
             if (!isPrepared()) {
                 checkLoadingConstraints();
-                for (Field f : staticFieldTable) {
-                    ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
-                    if (a == null) {
-                        continue;
-                    }
-                    switch (f.getKind()) {
-                        case Boolean: {
-                            boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Byte: {
-                            byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Short: {
-                            short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Char: {
-                            char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Int: {
-                            int c = getConstantPool().intAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Float: {
-                            float c = getConstantPool().floatAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Long: {
-                            long c = getConstantPool().longAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Double: {
-                            double c = getConstantPool().doubleAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Object: {
-                            StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        default:
-                            throw EspressoError.shouldNotReachHere("invalid constant field kind");
-                    }
+                for (Field f : getInitialStaticFields()) {
+                    initField(f);
                 }
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
@@ -423,6 +372,62 @@ public final class ObjectKlass extends Klass {
                     }
                 }
             }
+        }
+    }
+
+    private void initField(Field f) {
+        ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+        if (a == null) {
+            return;
+        }
+        switch (f.getKind()) {
+            case Boolean: {
+                boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
+                f.set(getStatics(), c);
+                break;
+            }
+            case Byte: {
+                byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Short: {
+                short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Char: {
+                char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Int: {
+                int c = getConstantPool().intAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Float: {
+                float c = getConstantPool().floatAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Long: {
+                long c = getConstantPool().longAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Double: {
+                double c = getConstantPool().doubleAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            case Object: {
+                StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
+                f.set(getStatics(), c);
+                break;
+            }
+            default:
+                throw EspressoError.shouldNotReachHere("invalid constant field kind");
         }
     }
 
@@ -1066,11 +1071,69 @@ public final class ObjectKlass extends Klass {
     }
 
     public Field[] getFieldTable() {
-        return fieldTable;
+        // add non-removed fields from static field table
+        ArrayList<Field> allFields = new ArrayList<>(fieldTable.length);
+        for (Field field : fieldTable) {
+            if (!field.isRemoved()) {
+                allFields.add(field);
+            }
+        }
+        ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
+        if (extensionMetadata != null) {
+            Field[] addedInstanceFields = extensionMetadata.getAddedInstanceFields();
+            for (Field addedInstanceField : addedInstanceFields) {
+                if (!addedInstanceField.isRemoved()) {
+                    allFields.add(addedInstanceField);
+                }
+            }
+        }
+        return allFields.toArray(new Field[allFields.size()]);
+    }
+
+    public Field[] getInitialStaticFields() {
+        // filter out removed fields
+        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
+        for (Field field : staticFieldTable) {
+            if (!field.isRemoved()) {
+                allStaticFields.add(field);
+            }
+        }
+        return allStaticFields.toArray(new Field[allStaticFields.size()]);
+    }
+
+    public Field[] getAddedStaticFields() {
+        // add non-removed fields from static field table
+        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
+        ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
+        if (extensionMetadata != null) {
+            Field[] addedStaticFields = extensionMetadata.getAddedStaticFields();
+            for (Field addedStaticField : addedStaticFields) {
+                if (!addedStaticField.isRemoved()) {
+                    allStaticFields.add(addedStaticField);
+                }
+            }
+        }
+        return allStaticFields.toArray(new Field[allStaticFields.size()]);
     }
 
     public Field[] getStaticFieldTable() {
-        return staticFieldTable;
+        // add non-removed fields from static field table
+        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
+        for (Field field : staticFieldTable) {
+            if (!field.isRemoved() && !field.isHidden()) {
+                allStaticFields.add(field);
+            }
+        }
+        ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
+        if (extensionMetadata != null) {
+            Field[] addedStaticFields = extensionMetadata.getAddedStaticFields();
+            for (Field addedStaticField : addedStaticFields) {
+                if (!addedStaticField.isRemoved()) {
+                    allStaticFields.add(addedStaticField);
+                }
+            }
+        }
+        return allStaticFields.toArray(new Field[allStaticFields.size()]);
     }
 
     private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {
@@ -1381,7 +1444,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public ExtensionFieldObject getStaticExtensionFieldObject() {
-        Field extensionField = getStaticFieldTable()[staticFieldTable.length - 1];
+        Field extensionField = staticFieldTable[staticFieldTable.length - 1];
         Object object = extensionField.getHiddenObject(getStatics());
         if (object == StaticObject.NULL) {
             // create new Extension field object
@@ -1391,10 +1454,27 @@ public final class ObjectKlass extends Klass {
                     CompilerDirectives.transferToInterpreter();
                     object = new ExtensionFieldObject();
                     extensionField.setHiddenObject(getStatics(), object);
+                    // ensure all added static fields are initialized
+                    initAddedStaticFields();
                 }
             }
         }
         return (ExtensionFieldObject) object;
+    }
+
+    private void initAddedStaticFields() {
+        assert getStatics() != null;
+        for (Field f : getAddedStaticFields()) {
+            if (f.getKind() == JavaKind.Object) {
+                if (f.isHidden()) { // extension field
+                    f.setHiddenObject(getStatics(), StaticObject.NULL);
+                } else {
+                    f.setObject(getStatics(), StaticObject.NULL);
+                }
+            }
+            // set constant value if any
+            initField(f);
+        }
     }
 
     /**
