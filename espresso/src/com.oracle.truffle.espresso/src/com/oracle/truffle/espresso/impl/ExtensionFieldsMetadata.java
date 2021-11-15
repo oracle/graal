@@ -67,13 +67,17 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> fields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
                     ClassRedefinition classRedefinition) {
-        List<Field> toAdd = new ArrayList<>(instanceFields.size());
-        for (ParserField newField : instanceFields) {
+        List<Field> toAdd = new ArrayList<>(fields.size());
+        for (ParserField newField : fields) {
             int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
             LinkedField linkedField = new LinkedField(newField, nextFieldSlot, LinkedField.IdMode.REDEFINE_ADDED);
             Field field = new RedefineAddedField(holder, linkedField, pool, false);
+            if (field.isStatic()) {
+                // init constant value if any
+                holder.getKlass().initField(field);
+            }
             toAdd.add(field);
 
             // mark a compatible field where

@@ -72,7 +72,6 @@ import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
@@ -375,7 +374,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    private void initField(Field f) {
+    void initField(Field f) {
         ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
         if (a == null) {
             return;
@@ -1454,27 +1453,10 @@ public final class ObjectKlass extends Klass {
                     CompilerDirectives.transferToInterpreter();
                     object = new ExtensionFieldObject();
                     extensionField.setHiddenObject(getStatics(), object);
-                    // ensure all added static fields are initialized
-                    initAddedStaticFields();
                 }
             }
         }
         return (ExtensionFieldObject) object;
-    }
-
-    private void initAddedStaticFields() {
-        assert getStatics() != null;
-        for (Field f : getAddedStaticFields()) {
-            if (f.getKind() == JavaKind.Object) {
-                if (f.isHidden()) { // extension field
-                    f.setHiddenObject(getStatics(), StaticObject.NULL);
-                } else {
-                    f.setObject(getStatics(), StaticObject.NULL);
-                }
-            }
-            // set constant value if any
-            initField(f);
-        }
     }
 
     /**
