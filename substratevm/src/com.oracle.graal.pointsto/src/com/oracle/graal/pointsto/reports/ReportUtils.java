@@ -40,6 +40,7 @@ import java.util.HashSet;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -61,6 +62,7 @@ public class ReportUtils {
     public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
     static final Comparator<InvokeTypeFlow> invokeComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
+    static final Comparator<ReachabilityAnalysis.InvokeInfo> invokeInfoComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 
@@ -203,6 +205,7 @@ public class ReportUtils {
     }
 
     public static String parsingContext(AnalysisMethod method, int bci, String indent) {
+        // todo(d-kozak)
         StringBuilder msg = new StringBuilder();
         if (method.getTypeFlow().getParsingContext().length > 0) {
             /* Include target method first. */

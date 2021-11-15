@@ -33,7 +33,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -65,6 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class TypeInitializerGraph {
     private final SVMHost hostVM;
+    private final BigBang bb;
     private ClassInitializationSupport classInitializationSupport;
 
     private enum Safety {
@@ -79,6 +81,7 @@ public class TypeInitializerGraph {
     private final Collection<AnalysisMethod> methods;
 
     TypeInitializerGraph(AnalysisUniverse universe) {
+        bb = universe.getBigbang();
         hostVM = ((SVMHost) universe.hostVM());
         classInitializationSupport = hostVM.getClassInitializationSupport();
 
@@ -159,7 +162,7 @@ public class TypeInitializerGraph {
      * types unknown to points-to analysis (which sees only the substituted version.
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
-        return m.getTypeFlow().getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
+        return bb.getInvokes(m).stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
                         hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
     }
@@ -171,7 +174,7 @@ public class TypeInitializerGraph {
     /**
      * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
-    private boolean isInvokeInitiallyUnsafe(InvokeTypeFlow i) {
+    private boolean isInvokeInitiallyUnsafe(ReachabilityAnalysis.InvokeInfo i) {
         return i.getTargetMethod().isNative() ||
                         !i.canBeStaticallyBound();
     }
@@ -201,8 +204,7 @@ public class TypeInitializerGraph {
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
-        Collection<InvokeTypeFlow> invokes = m.getTypeFlow().getInvokes();
-        if (invokes.stream().anyMatch(this::isInvokeUnsafeIterative)) {
+        if (bb.getInvokes(m).stream().anyMatch(this::isInvokeUnsafeIterative)) {
             methodSafety.put(m, Safety.UNSAFE);
             return true;
         }
@@ -216,7 +218,7 @@ public class TypeInitializerGraph {
     /**
      * Invoke becomes unsafe if it calls other unsafe methods.
      */
-    private boolean isInvokeUnsafeIterative(InvokeTypeFlow i) {
+    private boolean isInvokeUnsafeIterative(ReachabilityAnalysis.InvokeInfo i) {
         /*
          * Note that even though (for now) we only process invokes that can be statically bound, we
          * cannot just take the target method of the type flow: the static analysis can
@@ -224,7 +226,7 @@ public class TypeInitializerGraph {
          * the actual callees of the type flow, even though we know that there is at most one callee
          * returned.
          */
-        for (AnalysisMethod callee : i.getCallees()) {
+        for (AnalysisMethod callee : i.getPossibleCallees()) {
             if (methodSafety.get(callee) == Safety.UNSAFE) {
                 return true;
             }

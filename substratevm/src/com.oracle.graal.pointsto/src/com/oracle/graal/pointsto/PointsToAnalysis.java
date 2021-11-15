@@ -44,7 +44,9 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -755,6 +757,19 @@ public abstract class PointsToAnalysis implements BigBang {
                     }
                 }
             }
+        }
+    }
+
+    @Override
+    public List<InvokeInfo> getInvokes(AnalysisMethod method) {
+        return method.getTypeFlow().getInvokes().stream().map(this::processInvoke).collect(Collectors.toList());
+    }
+
+    private InvokeInfo processInvoke(InvokeTypeFlow invokeTypeFlow) {
+        if (invokeTypeFlow.isDirectInvoke()) {
+            return InvokeInfo.direct(invokeTypeFlow.getTargetMethod(), invokeTypeFlow.getSource());
+        } else {
+            return InvokeInfo.virtual(invokeTypeFlow.getTargetMethod(), invokeTypeFlow.getCallees(), invokeTypeFlow.getSource());
         }
     }
 

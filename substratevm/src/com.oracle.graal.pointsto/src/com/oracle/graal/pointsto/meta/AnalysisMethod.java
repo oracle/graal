@@ -670,4 +670,8 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
     }
+
+    public AnalysisUniverse getUniverse() {
+        return universe;
+    }
 }

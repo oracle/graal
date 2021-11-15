@@ -30,8 +30,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import jdk.vm.ci.code.BytecodePosition;
 
 import java.lang.reflect.Executable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -115,4 +119,48 @@ public interface ReachabilityAnalysis {
      * @return policy used when running the analysis
      */
     AnalysisPolicy analysisPolicy();
+
+    List<InvokeInfo> getInvokes(AnalysisMethod method);
+
+    class InvokeInfo {
+        private final AnalysisMethod targetMethod;
+        private final Collection<AnalysisMethod> possibleCallees;
+        private final BytecodePosition position;
+        private final boolean isDirect;
+
+        public static InvokeInfo direct(AnalysisMethod targetMethod, BytecodePosition position) {
+            return new InvokeInfo(targetMethod, Collections.singletonList(targetMethod), position, true);
+        }
+
+        public static InvokeInfo virtual(AnalysisMethod targetMethod, Collection<AnalysisMethod> possibleCallees, BytecodePosition position) {
+            return new InvokeInfo(targetMethod, possibleCallees, position, false);
+        }
+
+        private InvokeInfo(AnalysisMethod targetMethod, Collection<AnalysisMethod> possibleCallees, BytecodePosition position, boolean isDirect) {
+            this.targetMethod = targetMethod;
+            this.possibleCallees = possibleCallees;
+            this.position = position;
+            this.isDirect = isDirect;
+        }
+
+        public boolean canBeStaticallyBound() {
+            return targetMethod.canBeStaticallyBound() || possibleCallees.size() == 1;
+        }
+
+        public AnalysisMethod getTargetMethod() {
+            return targetMethod;
+        }
+
+        public Collection<AnalysisMethod> getPossibleCallees() {
+            return possibleCallees;
+        }
+
+        public BytecodePosition getPosition() {
+            return position;
+        }
+
+        public boolean isDirect() {
+            return isDirect;
+        }
+    }
 }

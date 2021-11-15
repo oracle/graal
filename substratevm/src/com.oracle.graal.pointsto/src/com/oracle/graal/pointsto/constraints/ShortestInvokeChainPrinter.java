@@ -31,7 +31,7 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -42,9 +42,9 @@ public final class ShortestInvokeChainPrinter {
 
         protected final Element parent;
         protected final AnalysisMethod method;
-        protected final InvokeTypeFlow invoke;
+        protected final ReachabilityAnalysis.InvokeInfo invoke;
 
-        protected Element(AnalysisMethod method, Element parent, InvokeTypeFlow invoke) {
+        protected Element(AnalysisMethod method, Element parent, ReachabilityAnalysis.InvokeInfo invoke) {
             this.parent = parent;
             this.method = method;
             this.invoke = invoke;
@@ -71,8 +71,8 @@ public final class ShortestInvokeChainPrinter {
             Element methodElement = visited.get(method);
             assert methodElement != null;
 
-            for (InvokeTypeFlow invoke : method.getTypeFlow().getInvokes()) {
-                for (AnalysisMethod callee : invoke.getCallees()) {
+            for (ReachabilityAnalysis.InvokeInfo invoke : bb.getInvokes(method)) {
+                for (AnalysisMethod callee : invoke.getPossibleCallees()) {
 
                     if (visited.containsKey(callee)) {
                         // We already had a shorter path to this method.
@@ -97,7 +97,7 @@ public final class ShortestInvokeChainPrinter {
         Element cur = start;
         out.print("\tat " + cur.method.asStackTraceElement(0));
         while (cur.parent != null) {
-            BytecodePosition source = cur.invoke.getSource();
+            BytecodePosition source = cur.invoke.getPosition();
             out.print("\n\tat " + source.getMethod().asStackTraceElement(source.getBCI()));
             cur = cur.parent;
         }
