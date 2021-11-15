@@ -68,6 +68,10 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("java.lang.**", RuleNode.Inclusion.Exclude);
         // The agent should not filter calls from native libraries.
         internalCallerFilter.addOrGetChildren("java.lang.ClassLoader$NativeLibrary", RuleNode.Inclusion.Include);
+        // The agent should not filter calls from lambdas.
+        internalCallerFilter.addOrGetChildren("java.lang.invoke.LambdaMetafactory", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.lang.invoke.InnerClassLambdaMetafactory", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.lang.invoke.InnerClassLambdaMetafactory$1", RuleNode.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.math.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.nio.**", RuleNode.Inclusion.Exclude);
