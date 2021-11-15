@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,10 @@ public final class MethodParametersAttribute extends Attribute {
         public int getAccessFlags() {
             return accessFlags;
         }
+
+        public boolean sameAs(Entry otherEntry) {
+            return nameIndex == otherEntry.nameIndex && accessFlags == otherEntry.accessFlags;
+        }
     }
 
     private final Entry[] entries;
@@ -62,5 +66,32 @@ public final class MethodParametersAttribute extends Attribute {
     public MethodParametersAttribute(Symbol<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
+    }
+
+    @Override
+    public boolean sameAs(Attribute other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        if (!super.equals(other)) {
+            return false;
+        }
+        MethodParametersAttribute that = (MethodParametersAttribute) other;
+        return entriesSameAs(that.entries);
+    }
+
+    private boolean entriesSameAs(Entry[] otherEntries) {
+        if (entries.length != otherEntries.length) {
+            return false;
+        }
+        for (int i = 0; i < entries.length; i++) {
+            if (!entries[i].sameAs(otherEntries[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
