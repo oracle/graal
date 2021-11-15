@@ -2400,6 +2400,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                                 'exclude': excluded_paths,
                                 'path': None,
                             })
+                        for language, path_from_root in home_paths.items():
+                            destination = path_prefix + library_config.destination
+                            relative_path_from_launcher_dir = relpath(path_from_root, dirname(destination))
+                            library_config.add_relative_home_path(language, relative_path_from_launcher_dir)
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination

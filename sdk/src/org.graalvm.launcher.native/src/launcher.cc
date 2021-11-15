@@ -139,7 +139,7 @@ std::string exe_path() {
         char path[PATH_MAX];
         uint32_t path_len = PATH_MAX;
         _NSGetExecutablePath(path, &path_len);
-        char *realPath = realpath(path, NULL)
+        char *realPath = realpath(path, NULL);
     #elif defined (_WIN32)
         char *realPath = (char *)malloc(_MAX_PATH);
         GetModuleFileNameA(NULL, realPath, _MAX_PATH);
