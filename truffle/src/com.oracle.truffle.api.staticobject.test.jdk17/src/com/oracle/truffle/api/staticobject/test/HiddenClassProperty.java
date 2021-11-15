@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
@@ -55,7 +52,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Constructor;
 
 import static java.lang.invoke.MethodHandles.Lookup.ClassOption.NESTMATE;
 

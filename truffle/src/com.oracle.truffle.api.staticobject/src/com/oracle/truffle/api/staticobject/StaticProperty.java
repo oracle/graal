@@ -46,7 +46,6 @@ import java.nio.ByteOrder;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import com.oracle.truffle.api.TruffleOptions;
 import sun.misc.Unsafe;
 
 /**
