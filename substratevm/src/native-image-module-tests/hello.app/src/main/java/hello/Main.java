@@ -79,7 +79,7 @@ public class Main {
             throw new AssertionError("This example requires that assertions are enabled (-ea)");
         }
     }
-    
+
     private static void testModuleObjects(Module helloAppModule, Module helloLibModule) {
         assert helloAppModule.getName().equals("moduletests.hello.app");
         assert helloAppModule.isExported(Main.class.getPackageName());
