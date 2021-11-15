@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
@@ -70,8 +71,8 @@ public class HiddenClassProperty extends StaticObjectModelTest {
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void hiddenClass() throws Throwable {
+        Assume.assumeFalse(TruffleOptions.AOT);
         try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
 
             MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -79,15 +80,12 @@ public class HiddenClassProperty extends StaticObjectModelTest {
             Class<HiddenClassInterface> hiddenClass = (Class<HiddenClassInterface>) lookup.defineHiddenClass(hiddenClassBytes, true, NESTMATE).lookupClass();
 
             StaticProperty property = new DefaultStaticProperty(("property"));
-            builder.property(property, hiddenClass, false);
-            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
-            Object object = shape.getFactory().create();
-
-            Constructor<?> constructor = hiddenClass.getConstructor();
-            HiddenClassInterface hiddenInstance = (HiddenClassInterface) constructor.newInstance();
-
-            property.setObject(object, hiddenInstance);
-            Assert.assertEquals(42, ((HiddenClassInterface) property.getObject(object)).return42());
+            try {
+                builder.property(property, hiddenClass, false);
+                Assert.fail();
+            } catch (IllegalArgumentException e) {
+                Assert.assertEquals("Cannot use a hidden class as type of a static property", e.getMessage());
+            }
         }
     }
 }

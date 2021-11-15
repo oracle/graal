@@ -255,9 +255,7 @@ public abstract class StaticShape<T> {
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
             CompilerAsserts.neverPartOfCompilation();
-            if (type.isAnonymousClass()) {
-                throw new IllegalArgumentException("Cannot use an anonymous class as type of a static property");
-            }
+            StaticPropertyValidator.validate(type);
             checkStatus();
             property.init(type, storeAsFinal);
             staticProperties.put(validateAndGetId(property), property);

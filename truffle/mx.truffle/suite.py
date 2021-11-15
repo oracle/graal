@@ -458,16 +458,43 @@ suite = {
       "workingSets" : "Truffle,Codegen",
     },
 
-    "com.oracle.truffle.api.staticobject": {
-      "subDir": "src",
-      "sourceDirs": ["src"],
-      "dependencies": [
+    "com.oracle.truffle.api.staticobject" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
         "com.oracle.truffle.api",
         "truffle:TRUFFLE_ASM_9.1",
       ],
-      "checkstyle": "com.oracle.truffle.api",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
-      "javadocType": "api",
+      "javadocType" : "api",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.staticobject.jdk8" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject"
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.staticobject",
+      "checkPackagePrefix" : "false",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.staticobject.jdk17" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.staticobject"
+      ],
+      "overlayTarget" : "com.oracle.truffle.api.staticobject",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "17",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
     },
 
