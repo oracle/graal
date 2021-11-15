@@ -48,7 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.graal.pointsto.ReachabilityAnalysis;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -290,7 +290,7 @@ public class PermissionsFeature implements Feature {
         try {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
-            for (ReachabilityAnalysis.InvokeInfo invoke : m.getUniverse().getBigbang().getInvokes(m)) {
+            for (InvokeInfo invoke : m.getUniverse().getBigbang().getInvokes(m)) {
                 for (AnalysisMethod callee : invoke.getPossibleCallees()) {
                     if (callee.isInvoked()) {
                         Set<AnalysisMethod> parents = visited.get(callee);

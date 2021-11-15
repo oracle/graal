@@ -34,10 +34,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -174,7 +174,7 @@ public class TypeInitializerGraph {
     /**
      * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
-    private boolean isInvokeInitiallyUnsafe(ReachabilityAnalysis.InvokeInfo i) {
+    private boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
         return i.getTargetMethod().isNative() ||
                         !i.canBeStaticallyBound();
     }
@@ -218,7 +218,7 @@ public class TypeInitializerGraph {
     /**
      * Invoke becomes unsafe if it calls other unsafe methods.
      */
-    private boolean isInvokeUnsafeIterative(ReachabilityAnalysis.InvokeInfo i) {
+    private boolean isInvokeUnsafeIterative(InvokeInfo i) {
         /*
          * Note that even though (for now) we only process invokes that can be statically bound, we
          * cannot just take the target method of the type flow: the static analysis can

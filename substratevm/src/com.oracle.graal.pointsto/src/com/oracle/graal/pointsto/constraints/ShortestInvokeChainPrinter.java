@@ -31,9 +31,9 @@ import java.util.LinkedList;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.code.BytecodePosition;
 
 public final class ShortestInvokeChainPrinter {
@@ -42,9 +42,9 @@ public final class ShortestInvokeChainPrinter {
 
         protected final Element parent;
         protected final AnalysisMethod method;
-        protected final ReachabilityAnalysis.InvokeInfo invoke;
+        protected final InvokeInfo invoke;
 
-        protected Element(AnalysisMethod method, Element parent, ReachabilityAnalysis.InvokeInfo invoke) {
+        protected Element(AnalysisMethod method, Element parent, InvokeInfo invoke) {
             this.parent = parent;
             this.method = method;
             this.invoke = invoke;
@@ -71,7 +71,7 @@ public final class ShortestInvokeChainPrinter {
             Element methodElement = visited.get(method);
             assert methodElement != null;
 
-            for (ReachabilityAnalysis.InvokeInfo invoke : bb.getInvokes(method)) {
+            for (InvokeInfo invoke : bb.getInvokes(method)) {
                 for (AnalysisMethod callee : invoke.getPossibleCallees()) {
 
                     if (visited.containsKey(callee)) {

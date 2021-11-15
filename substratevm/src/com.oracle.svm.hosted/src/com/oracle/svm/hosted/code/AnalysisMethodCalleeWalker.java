@@ -28,8 +28,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.hosted.code.AnalysisMethodCalleeWalker.CallPathVisitor.VisitResult;
 
@@ -98,7 +98,7 @@ public class AnalysisMethodCalleeWalker {
 
     /** Visit the callees of this method. */
     VisitResult walkCallees(AnalysisMethod method, CallPathVisitor visitor) {
-        for (ReachabilityAnalysis.InvokeInfo invoke : method.getUniverse().getBigbang().getInvokes(method)) {
+        for (InvokeInfo invoke : method.getUniverse().getBigbang().getInvokes(method)) {
             walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getPosition(), visitor);
         }
         return VisitResult.CONTINUE;

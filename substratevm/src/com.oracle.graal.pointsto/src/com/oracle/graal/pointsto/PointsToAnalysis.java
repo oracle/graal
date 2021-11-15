@@ -47,6 +47,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -771,6 +772,11 @@ public abstract class PointsToAnalysis implements BigBang {
         } else {
             return InvokeInfo.virtual(invokeTypeFlow.getTargetMethod(), invokeTypeFlow.getCallees(), invokeTypeFlow.getSource());
         }
+    }
+
+    @Override
+    public StackTraceElement[] getParsingContext(AnalysisMethod method) {
+        return method.getTypeFlow().getParsingContext();
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")

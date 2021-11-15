@@ -58,9 +58,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ReachabilityAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
@@ -202,7 +202,7 @@ public final class CallTreePrinter {
         }
     }
 
-    private void processInvoke(ReachabilityAnalysis.InvokeInfo invokeInfo, MethodNode callerNode, Deque<MethodNode> workList) {
+    private void processInvoke(InvokeInfo invokeInfo, MethodNode callerNode, Deque<MethodNode> workList) {
 
         InvokeNode invokeNode = new InvokeNode(invokeInfo.getTargetMethod(), invokeInfo.isDirect(), sourceReference(invokeInfo.getPosition()));
         callerNode.addInvoke(invokeNode);
