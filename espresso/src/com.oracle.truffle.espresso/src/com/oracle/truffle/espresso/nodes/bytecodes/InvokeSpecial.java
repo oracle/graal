@@ -95,7 +95,7 @@ public abstract class InvokeSpecial extends Node {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         public Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         // TODO(peterssen): Use the method's declaring class instead of the first

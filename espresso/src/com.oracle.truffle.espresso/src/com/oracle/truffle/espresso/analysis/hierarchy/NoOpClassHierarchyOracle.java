@@ -46,8 +46,8 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
             underlying = Truffle.getRuntime().createAssumption(assumptionName);
         }
 
-        LeafTypeAssumptionImpl(ObjectKlass klass) {
-            this(klass.getNameAsString() + " is a leaf type");
+        LeafTypeAssumptionImpl(ObjectKlass.KlassVersion klass) {
+            this(klass.getKlass().getNameAsString() + " is a leaf type");
         }
 
         @Override
@@ -61,10 +61,10 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl(AlwaysValidAssumption.INSTANCE);
     protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
 
-    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
+    protected static final AssumptionGuardedValue<ObjectKlass.KlassVersion> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return FinalIsAlwaysLeaf;
         }
@@ -72,17 +72,17 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public LeafTypeAssumption isLeafClass(ObjectKlass klass) {
+    public LeafTypeAssumption isLeafClass(ObjectKlass.KlassVersion klass) {
         return klass.getLeafTypeAssumption(classHierarchyInfoAccessor);
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
         return SingleImplementor.MultipleImplementors;
     }
 
     @Override
-    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
+    public AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor(ObjectKlass.KlassVersion klass) {
         return NotSingleImplementor;
     }
 }

@@ -115,22 +115,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private static final byte SETTER_LENGTH = 6;
     private static final byte STATIC_SETTER_LENGTH = 5;
 
-    private final Assumption isLeaf;
-
     private final ObjectKlass declaringKlass;
 
     @CompilationFinal(dimensions = 1) //
     private final Symbol<Type>[] parsedSignature;
-
-    @CompilationFinal private int vtableIndex = -1;
-    @CompilationFinal private int itableIndex = -1;
-
-    private final ExceptionsAttribute exceptionsAttribute;
-
-    @CompilationFinal private int refKind;
-
-    @CompilationFinal(dimensions = 1) //
-    private ObjectKlass[] checkedExceptions;
 
     private final Method proxy;
     private String genericSignature;
@@ -145,11 +133,45 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private boolean removedByRedefinition;
 
-    // Multiple maximally-specific interface methods. Fail on call.
-    @CompilationFinal private boolean poisonPill = false;
+    Method(Method method) {
+        this(method, method.getCodeAttribute());
+    }
 
-    // Whether we need to use an additional frame slot for monitor unlock on kill.
-    @CompilationFinal private byte usesMonitors = -1;
+    private Method(Method method, CodeAttribute split) {
+        this.rawSignature = method.rawSignature;
+        this.declaringKlass = method.declaringKlass;
+        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+        }
+        // Proxy the method, so that we have the same callTarget if it is not yet initialized.
+        // Allows for not duplicating the codeAttribute
+        this.proxy = method.proxy == null ? method : method.proxy;
+    }
+
+    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
+        this(klassVersion, linkedMethod, linkedMethod.getRawSignature(), pool);
+    }
+
+    Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
+        this.declaringKlass = klassVersion.getKlass();
+        this.rawSignature = rawSignature;
+        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+
+        try {
+            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
+        } catch (IllegalArgumentException | ClassFormatError e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+        }
+        this.proxy = null;
+    }
 
     public Method identity() {
         return proxy == null ? this : proxy;
@@ -196,99 +218,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private Source source;
 
-    Method(Assumption redefineAssumption, Method method) {
-        this.rawSignature = method.rawSignature;
-        this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(redefineAssumption, method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
-
-        try {
-            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
-        } catch (IllegalArgumentException | ClassFormatError e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
-        }
-
-        // Proxy the method, so that we have the same callTarget if it is not yet initialized.
-        // Allows for not duplicating the methodVersion
-        this.proxy = method.proxy == null ? method : method.proxy;
-        this.poisonPill = method.poisonPill;
-        this.isLeaf = method.isLeaf;
-        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
-
-        initRefKind();
-    }
-
-    private Method(Assumption redefineAssumption, Method method, CodeAttribute split) {
-        this.rawSignature = method.rawSignature;
-        this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(redefineAssumption, method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
-
-        try {
-            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
-        } catch (IllegalArgumentException | ClassFormatError e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
-        }
-        // Proxy the method, so that we have the same callTarget if it is not yet initialized.
-        // Allows for not duplicating the codeAttribute
-        this.proxy = method.proxy == null ? method : method.proxy;
-        this.poisonPill = method.poisonPill;
-        this.isLeaf = method.isLeaf;
-        this.exceptionsAttribute = (ExceptionsAttribute) getAttribute(ExceptionsAttribute.NAME);
-
-        initRefKind();
-    }
-
-    Method(Assumption redefineAssumption, ObjectKlass declaringKlass, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
-        this(redefineAssumption, declaringKlass, linkedMethod, linkedMethod.getRawSignature(), pool);
-    }
-
-    Method(Assumption redefineAssumption, ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
-        this.methodVersion = new MethodVersion(redefineAssumption, pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
-        this.declaringKlass = declaringKlass;
-        this.rawSignature = rawSignature;
-
-        try {
-            this.parsedSignature = getSignatures().parsed(this.getRawSignature());
-        } catch (IllegalArgumentException | ClassFormatError e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
-        }
-
-        this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
-
-        initRefKind();
-        this.proxy = null;
-
-        if (isAbstract()) {
-            // Disabled for abstract methods to reduce footprint.
-            this.isLeaf = NeverValidAssumption.INSTANCE;
-        } else if (isStatic() || isPrivate() || isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet()) {
-            // Nothing to assume, spare an assumption.
-            this.isLeaf = AlwaysValidAssumption.INSTANCE;
-        } else {
-            this.isLeaf = Truffle.getRuntime().createAssumption();
-        }
-    }
-
     public int getRefKind() {
-        return refKind;
-    }
-
-    public void initRefKind() {
-        if (isStatic()) {
-            this.refKind = REF_invokeStatic;
-        } else if (isPrivate() || isConstructor()) {
-            this.refKind = REF_invokeSpecial;
-        } else if (declaringKlass.isInterface()) {
-            this.refKind = REF_invokeInterface;
-        } else {
-            assert !declaringKlass.isPrimitive();
-            this.refKind = REF_invokeVirtual;
-        }
+        return getMethodVersion().getRefKind();
     }
 
     public Attribute getAttribute(Symbol<Name> attrName) {
@@ -401,27 +332,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean usesMonitors() {
-        if (usesMonitors != -1) {
-            return usesMonitors != 0;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (isSynchronized()) {
-                return (usesMonitors = 1) != 0;
-            }
-            if (getCodeAttribute() != null) {
-                BytecodeStream bs = new BytecodeStream(getOriginalCode());
-                int bci = 0;
-                while (bci < bs.endBCI()) {
-                    int opcode = bs.currentBC(bci);
-                    if (opcode == MONITORENTER || opcode == MONITOREXIT) {
-                        return (usesMonitors = 1) != 0;
-                    }
-                    bci = bs.nextBCI(bci);
-                }
-                return (usesMonitors = 0) != 0;
-            }
-            return false;
-        }
+        return getMethodVersion().usesMonitors();
     }
 
     public static FrameDescriptor initFrameDescriptor(int slotCount) {
@@ -430,20 +341,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             descriptor.addFrameSlot(i, FrameSlotKind.Long);
         }
         return descriptor;
-    }
-
-    private void checkPoisonPill(Meta meta) {
-        if (poisonPill) {
-            // Conflicting Maximally-specific non-abstract interface methods.
-            if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
-                /*
-                 * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface), but
-                 * HotSpot throws AbstractMethodError.
-                 */
-                throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getName());
-            }
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getName());
-        }
     }
 
     private CallTarget lookupLibJavaCallTarget() {
@@ -521,27 +418,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public ObjectKlass[] getCheckedExceptions() {
-        if (checkedExceptions == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            createCheckedExceptions();
-        }
-        return checkedExceptions;
-    }
-
-    private synchronized void createCheckedExceptions() {
-        if (checkedExceptions == null) {
-            if (exceptionsAttribute == null) {
-                checkedExceptions = ObjectKlass.EMPTY_ARRAY;
-                return;
-            }
-            final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
-            ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
-            for (int i = 0; i < entries.length; ++i) {
-                // TODO(peterssen): Resolve and cache CP entries.
-                tmpchecked[i] = (ObjectKlass) (getDeclaringKlass().getConstantPool()).resolvedKlassAt(getDeclaringKlass(), entries[i]);
-            }
-            checkedExceptions = tmpchecked;
-        }
+        return getMethodVersion().getCheckedExceptions();
     }
 
     /**
@@ -745,29 +622,23 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     void setVTableIndex(int i) {
-        setVTableIndex(i, false);
+        getMethodVersion().setVTableIndex(i);
     }
 
     void setVTableIndex(int i, boolean isRedefinition) {
-        assert (vtableIndex == -1 || vtableIndex == i || isRedefinition);
-        assert itableIndex == -1;
-        CompilerAsserts.neverPartOfCompilation();
-        this.vtableIndex = i;
+        getMethodVersion().setVTableIndex(i, isRedefinition);
     }
 
     public int getVTableIndex() {
-        return vtableIndex;
+        return getMethodVersion().getVTableIndex();
     }
 
     void setITableIndex(int i) {
-        assert (itableIndex == -1 || itableIndex == i);
-        assert vtableIndex == -1;
-        CompilerAsserts.neverPartOfCompilation();
-        this.itableIndex = i;
+        getMethodVersion().setITableIndex(i);
     }
 
     public int getITableIndex() {
-        return itableIndex;
+        return getMethodVersion().getITableIndex();
     }
 
     public boolean hasCode() {
@@ -779,7 +650,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public void setPoisonPill() {
-        this.poisonPill = true;
+        getMethodVersion().poisonPill = true;
     }
 
     public String getSourceFile() {
@@ -865,15 +736,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Assumption getLeafAssumption() {
-        return isLeaf;
+        return getMethodVersion().isLeaf;
     }
 
     public boolean leafAssumption() {
-        return isLeaf.isValid();
-    }
-
-    public void invalidateLeaf() {
-        isLeaf.invalidate();
+        return getMethodVersion().leafAssumption();
     }
 
     public void unregisterNative() {
@@ -958,7 +825,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Spawns a placeholder method for MH intrinsics
     public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
         assert isPolySignatureIntrinsic();
-        return new Method(declaringKlass.getKlassVersion().getAssumption(), declaringKlass, getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
+        return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
@@ -967,7 +834,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Method forceSplit() {
-        Method result = new Method(declaringKlass.getKlassVersion().getAssumption(), this, getCodeAttribute());
+        Method result = new Method(this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = root.getCallTarget();
@@ -1135,27 +1002,25 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public SharedRedefinitionContent redefine(Assumption redefineAssumption, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
-        // invalidate old version
+    public SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
         RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(redefineAssumption, runtimePool, newLinkedMethod, newCodeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
         return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
     }
 
-    public void redefine(Assumption redefineAssumption, SharedRedefinitionContent content, Ids<Object> ids) {
-        // invalidate old version
+    public void redefine(ObjectKlass.KlassVersion klassVersion, SharedRedefinitionContent content, Ids<Object> ids) {
         // install the new method version immediately
         MethodVersion oldVersion = methodVersion;
-        methodVersion = new MethodVersion(redefineAssumption, content.getPool(), content.getLinkedMethod(), content.codeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, content.getPool(), content.getLinkedMethod(), content.codeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    public void invalidate(Assumption redefineAssumption, Ids<Object> ids) {
+    public void swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         // create a copy of the code attribute using the original
@@ -1163,18 +1028,18 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // running quickened bytecode and we can't safely patch
         // the bytecodes back to the original.
         CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
-        methodVersion = new MethodVersion(redefineAssumption, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
+        methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
     }
 
     public MethodVersion getMethodVersion() {
         MethodVersion version = methodVersion;
-        if (!version.getAssumption().isValid()) {
+        if (!version.getRedefineAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // we block until class redefinition is done
             // unless we're the redefine thread
             getContext().getClassRedefinition().check();
-            if (isRemovedByRedefition() || getContext().getClassRedefinition().inProgress()) {
+            if (isRemovedByRedefition()) {
                 // for a removed method, we return the latest known
                 // method version in case active frames try to
                 // retrieve information for obsolete methods
@@ -1182,7 +1047,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
             do {
                 version = methodVersion;
-            } while (!version.getAssumption().isValid());
+            } while (!version.getRedefineAssumption().isValid());
         }
         return version;
     }
@@ -1263,19 +1128,76 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public final class MethodVersion implements MethodRef {
         private final Assumption redefineAssumption;
+        private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
+        private final ExceptionsAttribute exceptionsAttribute;
+        private final Assumption isLeaf;
+
         @CompilationFinal private CallTarget callTarget;
+
+        @CompilationFinal private int vtableIndex = -1;
+        @CompilationFinal private int itableIndex = -1;
+
+        // Whether we need to use an additional frame slot for monitor unlock on kill.
+        @CompilationFinal private byte usesMonitors = -1;
 
         @CompilationFinal(dimensions = 1) //
         private volatile byte[] code = null;
 
-        MethodVersion(Assumption redefineAssumption, RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
-            this.redefineAssumption = redefineAssumption;
+        @CompilationFinal private int refKind;
+
+        @CompilationFinal(dimensions = 1) //
+        private ObjectKlass[] checkedExceptions;
+
+        // Multiple maximally-specific interface methods. Fail on call.
+        @CompilationFinal private boolean poisonPill = false;
+
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
+            this.redefineAssumption = klassVersion.getAssumption();
+            this.klassVersion = klassVersion;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
+            this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
+
+            int flags = linkedMethod.getFlags();
+            if (Modifier.isAbstract(flags)) {
+                // Disabled for abstract methods to reduce footprint.
+                this.isLeaf = NeverValidAssumption.INSTANCE;
+            } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
+                // Nothing to assume, spare an assumption.
+                this.isLeaf = AlwaysValidAssumption.INSTANCE;
+            } else {
+                this.isLeaf = Truffle.getRuntime().createAssumption();
+            }
+            initRefKind();
+        }
+
+        public void initRefKind() {
+            if (Modifier.isStatic(linkedMethod.getFlags())) {
+                this.refKind = REF_invokeStatic;
+            } else if (Modifier.isPrivate(linkedMethod.getFlags()) || Name._init_.equals(linkedMethod.getName())) {
+                this.refKind = REF_invokeSpecial;
+            } else if (klassVersion.isInterface()) {
+                this.refKind = REF_invokeInterface;
+            } else {
+                assert !declaringKlass.isPrimitive();
+                this.refKind = REF_invokeVirtual;
+            }
+        }
+
+        public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, LinkedMethod newLinkedMethod, CodeAttribute newCodeAttribute) {
+            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, newCodeAttribute);
+            // make sure the table indices are copied
+            result.vtableIndex = vtableIndex;
+            result.itableIndex = itableIndex;
+            return result;
+        }
+
+        public LinkedMethod getLinkedMethod() {
+            return linkedMethod;
         }
 
         public byte[] getCode() {
@@ -1295,12 +1217,78 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return Method.this;
         }
 
-        public Assumption getAssumption() {
+        public Symbol<Name> getName() {
+            return linkedMethod.getName();
+        }
+
+        protected Symbol<Signature> getRawSignature() {
+            return getMethod().getRawSignature();
+        }
+
+        public Assumption getRedefineAssumption() {
             return redefineAssumption;
+        }
+
+        public boolean leafAssumption() {
+            return isLeaf.isValid();
+        }
+
+        public void invalidateLeaf() {
+            isLeaf.invalidate();
+        }
+
+        public boolean isStatic() {
+            return getMethod().isStatic();
+        }
+
+        public boolean isPrivate() {
+            return getMethod().isPrivate();
+        }
+
+        public boolean isProtected() {
+            return getMethod().isProtected();
+        }
+
+        public boolean isPublic() {
+            return getMethod().isPublic();
+        }
+
+        public boolean isAbstract() {
+            return getMethod().isAbstract();
+        }
+
+        public boolean isFinalFlagSet() {
+            return getMethod().isFinalFlagSet();
         }
 
         public CodeAttribute getCodeAttribute() {
             return codeAttribute;
+        }
+
+        void setVTableIndex(int i) {
+            setVTableIndex(i, false);
+        }
+
+        void setVTableIndex(int i, boolean isRedefinition) {
+            assert (vtableIndex == -1 || vtableIndex == i || isRedefinition);
+            assert itableIndex == -1;
+            CompilerAsserts.neverPartOfCompilation();
+            this.vtableIndex = i;
+        }
+
+        public int getVTableIndex() {
+            return vtableIndex;
+        }
+
+        void setITableIndex(int i) {
+            assert (itableIndex == -1 || itableIndex == i);
+            assert vtableIndex == -1;
+            CompilerAsserts.neverPartOfCompilation();
+            this.itableIndex = i;
+        }
+
+        public int getITableIndex() {
+            return itableIndex;
         }
 
         public ExceptionHandler[] getExceptionHandlers() {
@@ -1414,6 +1402,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 target = rootNode.getCallTarget();
             }
             return target;
+        }
+
+        private void checkPoisonPill(Meta meta) {
+            if (poisonPill) {
+                // Conflicting Maximally-specific non-abstract interface methods.
+                if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
+                    /*
+                     * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface),
+                     * but HotSpot throws AbstractMethodError.
+                     */
+                    throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getName());
+                }
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getName());
+            }
         }
 
         public int getCodeSize() {
@@ -1593,6 +1595,62 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public String toString() {
             return getMethod().toString();
+        }
+
+        public boolean usesMonitors() {
+            if (usesMonitors != -1) {
+                return usesMonitors != 0;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (isSynchronized()) {
+                    return (usesMonitors = 1) != 0;
+                }
+                if (codeAttribute != null) {
+                    BytecodeStream bs = new BytecodeStream(codeAttribute.getOriginalCode());
+                    int bci = 0;
+                    while (bci < bs.endBCI()) {
+                        int opcode = bs.currentBC(bci);
+                        if (opcode == MONITORENTER || opcode == MONITOREXIT) {
+                            return (usesMonitors = 1) != 0;
+                        }
+                        bci = bs.nextBCI(bci);
+                    }
+                    return (usesMonitors = 0) != 0;
+                }
+                return false;
+            }
+        }
+
+        public int getRefKind() {
+            return refKind;
+        }
+
+        public ObjectKlass[] getCheckedExceptions() {
+            if (checkedExceptions == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createCheckedExceptions();
+            }
+            return checkedExceptions;
+        }
+
+        private synchronized void createCheckedExceptions() {
+            if (checkedExceptions == null) {
+                if (exceptionsAttribute == null) {
+                    checkedExceptions = ObjectKlass.EMPTY_ARRAY;
+                    return;
+                }
+                final int[] entries = exceptionsAttribute.getCheckedExceptionsCPI();
+                ObjectKlass[] tmpchecked = new ObjectKlass[entries.length];
+                for (int i = 0; i < entries.length; ++i) {
+                    // TODO(peterssen): Resolve and cache CP entries.
+                    tmpchecked[i] = (ObjectKlass) pool.resolvedKlassAt(declaringKlass, entries[i]);
+                }
+                checkedExceptions = tmpchecked;
+            }
+        }
+
+        public ObjectKlass.KlassVersion getKlassVersion() {
+            return klassVersion;
         }
     }
 

@@ -101,9 +101,6 @@ public final class ClassRedefinition {
         NEW_CLASS,
         // currently supported under option
         SCHEMA_CHANGE,
-        // currently unsupported
-        HIERARCHY_CHANGE,
-        CLASS_MODIFIERS_CHANGE,
         INVALID;
     }
 
@@ -134,10 +131,6 @@ public final class ClassRedefinition {
             redefineThread = null;
             redefineLock.notifyAll();
         }
-    }
-
-    public boolean inProgress() {
-        return locked;
     }
 
     public boolean isRedefineThread() {
@@ -200,7 +193,7 @@ public final class ClassRedefinition {
                 continue;
             }
             byte[] bytes = hotSwapInfo.getBytes();
-            ParserKlass parserKlass = null;
+            ParserKlass parserKlass;
             ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
@@ -253,10 +246,6 @@ public final class ClassRedefinition {
                         packet.info.setKlass(newKlass);
                     }
                     return 0;
-                case CLASS_MODIFIERS_CHANGE:
-                    return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
-                case HIERARCHY_CHANGE:
-                    return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
                 default:
                     return 0;
             }
@@ -274,11 +263,6 @@ public final class ClassRedefinition {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
-
-        // detect class-level changes
-        if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
-            throw new RedefintionNotSupportedException(ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED);
-        }
 
         if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass()) || !Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
             throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
@@ -368,7 +352,9 @@ public final class ClassRedefinition {
             collectedChanges.addNewMethods(newMethods);
         }
 
-        collectedChanges.addRemovedMethods(oldMethods);
+        for (Method oldMethod : oldMethods) {
+            collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
+        }
 
         if (!oldMethods.isEmpty()) {
             result = ClassChange.REMOVE_METHOD;
@@ -437,6 +423,12 @@ public final class ClassRedefinition {
             collectedChanges.addRemovedFields(oldFieldsList);
             result = ClassChange.SCHEMA_CHANGE;
         }
+
+        // detect class-level changes
+        if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
+            result = ClassChange.SCHEMA_CHANGE;
+        }
+
         collectedChanges.addCompatibleFields(compatibleFields);
         return result;
     }
@@ -450,7 +442,7 @@ public final class ClassRedefinition {
             Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldParserMethod.getSignature().toString());
             if (matcher.matches()) {
                 newSpecialMethods.add(newMethod);
-                collectedChanges.addRemovedMethods(oldMethod);
+                collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
             } else {
                 bodyChanges.put(oldMethod, newMethod);
             }
@@ -504,24 +496,6 @@ public final class ClassRedefinition {
     }
 
     private static ClassChange detectMethodChanges(ParserMethod oldMethod, ParserMethod newMethod) {
-        // check method attributes that would constitute a higher-level
-        // class redefinition than a method body change
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.RuntimeVisibleTypeAnnotations)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleTypeAnnotations)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.Signature)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.Exceptions)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
         // check code attribute
         CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Symbol.Name.Code);
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Symbol.Name.Code);
@@ -590,23 +564,63 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static boolean checkAttribute(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Symbol.Name> name) {
+    private static boolean attrChanged(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Symbol.Name> name) {
         Attribute oldAttribute = oldMethod.getAttribute(name);
         Attribute newAttribute = newMethod.getAttribute(name);
         if ((oldAttribute == null || newAttribute == null)) {
             if (oldAttribute != null || newAttribute != null) {
                 return true;
             } // else both null, so no change. Move on!
-        } else if (!Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+        } else if (!oldAttribute.sameAs(newAttribute)) {
             return true;
         }
         return false;
     }
 
     private static boolean isSameMethod(ParserMethod oldMethod, ParserMethod newMethod) {
-        return oldMethod.getName().equals(newMethod.getName()) &&
+        boolean same = oldMethod.getName().equals(newMethod.getName()) &&
                         oldMethod.getSignature().equals(newMethod.getSignature()) &&
                         oldMethod.getFlags() == newMethod.getFlags();
+        if (same) {
+            // check method attributes that would constitute a higher-level
+            // class redefinition than a method body change
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleTypeAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleTypeAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleParameterAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleParameterAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Signature)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+                return false;
+            }
+        }
+        return same;
     }
 
     private static boolean isUnchangedField(Field oldField, ParserField newField, Map<ParserField, Field> compatibleFields) {
@@ -629,7 +643,7 @@ public final class ClassRedefinition {
                 for (Attribute oldAttribute : oldAttributes) {
                     boolean found = false;
                     for (Attribute newAttribute : newAttributes) {
-                        if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+                        if (oldAttribute.getName() == newAttribute.getName() && oldAttribute.sameAs(newAttribute)) {
                             found = true;
                             break;
                         }

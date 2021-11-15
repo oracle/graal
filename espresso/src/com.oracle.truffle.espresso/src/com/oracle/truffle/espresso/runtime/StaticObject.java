@@ -95,10 +95,10 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     @ExplodeLoop
-    private void initStaticFields(ObjectKlass thisKlass) {
+    private void initInitialStaticFields(ObjectKlass thisKlass) {
         checkNotForeign();
         CompilerAsserts.partialEvaluationConstant(thisKlass);
-        for (Field f : thisKlass.getStaticFieldTable()) {
+        for (Field f : thisKlass.getInitialStaticFields()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
                 if (f.isHidden()) { // extension field
@@ -138,7 +138,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static StaticObject createStatics(ObjectKlass klass) {
         assert klass != null;
         StaticObject newObj = klass.getLinkedKlass().getShape(true).getFactory().create(klass);
-        newObj.initStaticFields(klass);
+        newObj.initInitialStaticFields(klass);
         return trackAllocation(klass, newObj);
     }
 

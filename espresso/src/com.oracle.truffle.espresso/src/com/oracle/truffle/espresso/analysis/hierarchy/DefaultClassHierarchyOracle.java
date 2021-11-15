@@ -33,7 +33,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  */
 public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
+
         if (newKlass.isAbstract() || newKlass.isInterface()) {
             return NotLeaf;
         }
@@ -49,33 +50,33 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
      * parent interfaces.
      */
-    private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+    private void addImplementor(ObjectKlass.KlassVersion superInterface, ObjectKlass.KlassVersion implementor) {
         superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
-        for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
-            addImplementor(ancestorInterface, implementor);
+        for (ObjectKlass ancestorInterface : superInterface.getKlass().getSuperInterfaces()) {
+            addImplementor(ancestorInterface.getKlassVersion(), implementor);
         }
     }
 
-    private void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
-        for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
-            addImplementor(superInterface, newKlass);
+    private void addImplementorToSuperInterfaces(ObjectKlass.KlassVersion newKlass) {
+        for (ObjectKlass superInterface : newKlass.getKlass().getSuperInterfaces()) {
+            addImplementor(superInterface.getKlassVersion(), newKlass);
         }
 
-        ObjectKlass currentKlass = newKlass.getSuperKlass();
+        ObjectKlass currentKlass = newKlass.getKlass().getSuperKlass();
         while (currentKlass != null) {
-            currentKlass.getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
-            currentKlass.getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
+            currentKlass.getKlassVersion().getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
+            currentKlass.getKlassVersion().getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
-                addImplementor(superInterface, newKlass);
+                addImplementor(superInterface.getKlassVersion(), newKlass);
             }
             currentKlass = currentKlass.getSuperKlass();
         }
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
         // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
-        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
+        if (klass.getKlass().getType() == Symbol.Type.java_io_Serializable || klass.getKlass().getType() == Symbol.Type.java_lang_Cloneable) {
             return SingleImplementor.MultipleImplementors;
         }
         if (klass.isAbstract() || klass.isInterface()) {
@@ -85,7 +86,7 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
     }
 
     @Override
-    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
+    public AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor(ObjectKlass.KlassVersion klass) {
         return klass.getImplementor(classHierarchyInfoAccessor).read();
     }
 }

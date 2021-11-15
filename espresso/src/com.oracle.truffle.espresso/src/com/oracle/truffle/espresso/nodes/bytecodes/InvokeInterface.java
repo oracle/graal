@@ -92,8 +92,8 @@ public abstract class InvokeInterface extends Node {
 
         public abstract Object execute(Object[] args);
 
-        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        protected AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass().getKlassVersion());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
@@ -130,7 +130,7 @@ public abstract class InvokeInterface extends Node {
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,

@@ -230,11 +230,11 @@ public abstract class InstanceOf extends Node {
         }
 
         protected LeafTypeAssumption getLeafAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType);
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeafClass(superType.getKlassVersion());
         }
 
-        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+        protected AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType.getKlassVersion());
         }
 
         /**
@@ -280,8 +280,8 @@ public abstract class InstanceOf extends Node {
             assert superType.isInterface();
         }
 
-        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+        protected AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType.getKlassVersion());
         }
 
         @Specialization(assumptions = "maybeSingleImplementor.hasValue()", guards = "implementor != null")

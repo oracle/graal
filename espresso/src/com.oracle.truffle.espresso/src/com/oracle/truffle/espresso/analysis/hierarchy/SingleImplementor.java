@@ -45,17 +45,17 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * itself; {@code SingleImplementor} for abstract classes and interfaces starts in state (1).
  */
 public final class SingleImplementor {
-    @CompilationFinal private volatile AssumptionGuardedValue<ObjectKlass> currentState;
+    @CompilationFinal private volatile AssumptionGuardedValue<ObjectKlass.KlassVersion> currentState;
     @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<SingleImplementor, AssumptionGuardedValue> STATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
                     SingleImplementor.class,
                     AssumptionGuardedValue.class, "currentState");
 
-    static final AssumptionGuardedValue<ObjectKlass> NoImplementorsState = AssumptionGuardedValue.createInvalid();
+    static final AssumptionGuardedValue<ObjectKlass.KlassVersion> NoImplementorsState = AssumptionGuardedValue.createInvalid();
     static final SingleImplementor MultipleImplementors = new SingleImplementor(AssumptionGuardedValue.createInvalid());
-    static final AssumptionGuardedValue<ObjectKlass> MultipleImplementorsState = MultipleImplementors.read();
+    static final AssumptionGuardedValue<ObjectKlass.KlassVersion> MultipleImplementorsState = MultipleImplementors.read();
 
     // Used only to create MultipeImplementors instance
-    private SingleImplementor(AssumptionGuardedValue<ObjectKlass> state) {
+    private SingleImplementor(AssumptionGuardedValue<ObjectKlass.KlassVersion> state) {
         this.currentState = state;
     }
 
@@ -63,11 +63,11 @@ public final class SingleImplementor {
         this.currentState = NoImplementorsState;
     }
 
-    SingleImplementor(ObjectKlass implementor) {
+    SingleImplementor(ObjectKlass.KlassVersion implementor) {
         this.currentState = AssumptionGuardedValue.create(implementor);
     }
 
-    void addImplementor(ObjectKlass implementor) {
+    void addImplementor(ObjectKlass.KlassVersion implementor) {
         // Implementors are only added when the implementing class is loaded, which happens in the
         // interpreter. This allows to keep {@code value} and {@code hasValue} compilation final.
         CompilerAsserts.neverPartOfCompilation();
@@ -75,10 +75,10 @@ public final class SingleImplementor {
         if (currentState == MultipleImplementorsState) {
             return;
         }
-        AssumptionGuardedValue<ObjectKlass> singleImplementor = AssumptionGuardedValue.create(implementor);
+        AssumptionGuardedValue<ObjectKlass.KlassVersion> singleImplementor = AssumptionGuardedValue.create(implementor);
         if (!STATE_UPDATER.compareAndSet(this, NoImplementorsState, singleImplementor)) {
             // CAS failed, i.e. there already exists an implementor
-            AssumptionGuardedValue<ObjectKlass> state = currentState;
+            AssumptionGuardedValue<ObjectKlass.KlassVersion> state = currentState;
             // adding the same implementor repeatedly, so the class / interface still has a single
             // implementor
             if (state.value == implementor) {
@@ -92,7 +92,7 @@ public final class SingleImplementor {
         }
     }
 
-    public AssumptionGuardedValue<ObjectKlass> read() {
+    public AssumptionGuardedValue<ObjectKlass.KlassVersion> read() {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(currentState);
         return currentState;

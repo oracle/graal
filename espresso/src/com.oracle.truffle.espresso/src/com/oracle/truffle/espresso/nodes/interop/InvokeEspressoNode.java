@@ -45,7 +45,7 @@ public abstract class InvokeEspressoNode extends Node {
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
         Method.MethodVersion resolutionSeed = method.getMethodVersion();
-        if (!resolutionSeed.getAssumption().isValid()) {
+        if (!resolutionSeed.getRedefineAssumption().isValid()) {
             // OK, we know it's a removed method then
             resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
                             method,
@@ -77,7 +77,7 @@ public abstract class InvokeEspressoNode extends Node {
     abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
-    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getAssumption()")
+    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,

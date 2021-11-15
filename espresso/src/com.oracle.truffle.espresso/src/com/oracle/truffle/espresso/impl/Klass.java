@@ -459,6 +459,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
     };
 
+    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<ObjectKlass.KlassVersion>() {
+        @Override
+        public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
+            return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());
+        }
+    };
+
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
     static final DebugCounter KLASS_LOOKUP_METHOD_COUNT = DebugCounter.create("Klass.lookupMethod call count");
@@ -1360,7 +1367,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public final int getModifiers() {
+    public int getModifiers() {
         return modifiers;
     }
 

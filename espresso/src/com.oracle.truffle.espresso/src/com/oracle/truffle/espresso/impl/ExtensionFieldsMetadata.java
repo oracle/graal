@@ -67,27 +67,47 @@ public final class ExtensionFieldsMetadata {
         }
     }
 
-    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> instanceFields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
+    private static List<Field> initNewFields(ObjectKlass.KlassVersion holder, List<ParserField> fields, RuntimeConstantPool pool, Map<ParserField, Field> compatibleFields,
                     ClassRedefinition classRedefinition) {
-        List<Field> toAdd = new ArrayList<>(instanceFields.size());
-        for (ParserField newField : instanceFields) {
+        List<Field> toAdd = new ArrayList<>(fields.size());
+        for (ParserField newField : fields) {
             int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
             LinkedField linkedField = new LinkedField(newField, nextFieldSlot, LinkedField.IdMode.REDEFINE_ADDED);
             Field field = new RedefineAddedField(holder, linkedField, pool, false);
+            if (field.isStatic()) {
+                // init constant value if any
+                holder.getKlass().initField(field);
+            }
             toAdd.add(field);
 
             // mark a compatible field where
             // state could potentially be copied from
-            field.setCompatibleField(compatibleFields.get(newField));
+            // but only if the class has been initialized
+            Field compatibleField = compatibleFields.get(newField);
+            if (compatibleField != null) {
+                if (compatibleField.getDeclaringKlass().isInitialized()) {
+                    field.setCompatibleField(compatibleField);
+                }
+            }
         }
         return toAdd;
     }
 
     public Field[] getDeclaredAddedFields() {
-        Field[] result = new Field[addedInstanceFields.length + addedStaticFields.length];
-        System.arraycopy(addedStaticFields, 0, result, 0, addedStaticFields.length);
-        System.arraycopy(addedInstanceFields, 0, result, addedStaticFields.length, addedInstanceFields.length);
+        int instanceFieldslength = addedInstanceFields.length;
+        int staticFieldsLength = addedStaticFields.length;
+        Field[] result = new Field[instanceFieldslength + staticFieldsLength];
+        System.arraycopy(addedStaticFields, 0, result, 0, staticFieldsLength);
+        System.arraycopy(addedInstanceFields, 0, result, staticFieldsLength, instanceFieldslength);
         return result;
+    }
+
+    public Field[] getAddedStaticFields() {
+        return addedStaticFields;
+    }
+
+    public Field[] getAddedInstanceFields() {
+        return addedInstanceFields;
     }
 
     public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {

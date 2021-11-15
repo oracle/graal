@@ -65,7 +65,7 @@ public final class InvokeVirtualQuickNode extends QuickNode {
 
     @Override
     public boolean removedByRedefintion() {
-        if (method.getAssumption().isValid()) {
+        if (method.getRedefineAssumption().isValid()) {
             return false;
         } else {
             return method.getMethod().isRemovedByRedefition();
