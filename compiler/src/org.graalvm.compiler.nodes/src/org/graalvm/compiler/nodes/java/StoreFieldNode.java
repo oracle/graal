@@ -133,7 +133,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     @Override
     public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(object());
+        InterpreterValue val = interpreter.interpretDataflowNode(value());
 
         if (isStatic()) {
             interpreter.storeStaticFieldValue(field(), val);
