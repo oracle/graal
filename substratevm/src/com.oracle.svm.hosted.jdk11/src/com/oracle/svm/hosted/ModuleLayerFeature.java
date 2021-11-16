@@ -67,13 +67,14 @@ import org.graalvm.nativeimage.hosted.Feature;
  * This feature:
  * <ul>
  * <li>synthesizes the runtime boot module layer</li>
- * <li>ensures that fields/methods from the {@link ClassLoader} class are reachable in order to make
- * native methods of the {@link Module} class work</li>
+ * <li>replicates build-time module relations at runtime</li>
+ * <li>patches dynamic hubs of every class with new module instances</li>
  * </ul>
  * <p>
  * This feature synthesizes the runtime boot module layer by using type reachability information. If
  * a type is reachable, its module is also reachable and therefore should be included in the runtime
- * boot module layer.
+ * boot module layer. If those modules require any additional modules, they will also be marked as
+ * reachable.
  * </p>
  * <p>
  * The configuration for the runtime boot module layer is resolved using the module reachability
@@ -84,7 +85,7 @@ import org.graalvm.nativeimage.hosted.Feature;
  * {@link ModuleLayer#defineModulesWithOneLoader(Configuration, ClassLoader)}, because as a side
  * effect this will create a new class loader. Instead, we use a private constructor to construct
  * the {@link ModuleLayer} instance, which we then patch using the module reachability data provided
- * to us by the analysis.
+ * to us by the analysis. This should be updated if JDK-8277013 gets resolved.
  * </p>
  * <p>
  * Because the result of this feature is dependant on the analysis results, and because this feature
@@ -209,32 +210,39 @@ public final class ModuleLayerFeature implements Feature {
         Module builderModule = ModuleLayerFeature.class.getModule();
         assert builderModule != null;
 
-        List<Module> toModify = new ArrayList<>(applicationModules.size() + 1);
-        toModify.add(builderModule);
-        toModify.addAll(applicationModules);
-
         try {
-            for (Module m : toModify) {
-                for (Map.Entry<String, HostedRuntimeModulePair> e : moduleLookupMap.entrySet()) {
-                    Module hostedModule = e.getValue().hostedModule;
-                    if (hostedModule == m) {
+            for (Map.Entry<String, HostedRuntimeModulePair> e1 : moduleLookupMap.entrySet()) {
+                Module hostedFrom = e1.getValue().hostedModule;
+                Module runtimeFrom = e1.getValue().runtimeModule;
+                for (Map.Entry<String, HostedRuntimeModulePair> e2 : moduleLookupMap.entrySet()) {
+                    Module hostedTo = e2.getValue().hostedModule;
+                    if (hostedTo == hostedFrom) {
                         continue;
                     }
-                    Module runtimeModule = e.getValue().runtimeModule;
-                    if (m.canRead(hostedModule)) {
-                        for (Module appModule : applicationModules) {
-                            moduleLayerFeatureUtils.addReads(appModule, runtimeModule);
-                        }
-                    }
-                    for (String pn : hostedModule.getPackages()) {
-                        if (hostedModule.isOpen(pn, m)) {
+                    Module runtimeTo = e2.getValue().runtimeModule;
+                    if (hostedFrom.canRead(hostedTo)) {
+                        moduleLayerFeatureUtils.addReads(runtimeFrom, runtimeTo);
+                        if (hostedFrom == builderModule) {
                             for (Module appModule : applicationModules) {
-                                moduleLayerFeatureUtils.addOpens(runtimeModule, pn, appModule);
+                                moduleLayerFeatureUtils.addReads(appModule, runtimeTo);
                             }
                         }
-                        if (hostedModule.isExported(pn, m)) {
-                            for (Module appModule : applicationModules) {
-                                moduleLayerFeatureUtils.addExports(runtimeModule, pn, appModule);
+                    }
+                    for (String pn : runtimeFrom.getPackages()) {
+                        if (hostedFrom.isOpen(pn, hostedTo)) {
+                            moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, runtimeTo);
+                            if (hostedTo == builderModule) {
+                                for (Module appModule : applicationModules) {
+                                    moduleLayerFeatureUtils.addOpens(runtimeFrom, pn, appModule);
+                                }
+                            }
+                        }
+                        if (hostedFrom.isExported(pn, hostedTo)) {
+                            moduleLayerFeatureUtils.addExports(runtimeFrom, pn, runtimeTo);
+                            if (hostedTo == builderModule) {
+                                for (Module appModule : applicationModules) {
+                                    moduleLayerFeatureUtils.addExports(runtimeFrom, pn, appModule);
+                                }
                             }
                         }
                     }
@@ -295,6 +303,7 @@ public final class ModuleLayerFeature implements Feature {
         try {
             moduleLayerNameToModuleField.set(runtimeBootLayer, nameToModule);
             moduleLayerParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
+            moduleLayerFeatureUtils.clearJavaBaseLoaderField(runtimeBootLayer);
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to patch the runtime boot module layer.", ex);
         }
@@ -341,6 +350,7 @@ public final class ModuleLayerFeature implements Feature {
         private final Set<Module> everyoneSet;
         private final Constructor<Module> moduleConstructor;
         private final Field moduleLayerField;
+        private final Field moduleLoaderField;
         private final Field moduleReadsField;
         private final Field moduleOpenPackagesField;
         private final Field moduleExportedPackagesField;
@@ -361,10 +371,12 @@ public final class ModuleLayerFeature implements Feature {
                 allUnnamedModule = (Module) allUnnamedModuleField.get(null);
 
                 moduleLayerField = findFieldByName(moduleClassFields, "layer");
+                moduleLoaderField = findFieldByName(moduleClassFields, "loader");
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
                 moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
                 moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
                 moduleLayerField.setAccessible(true);
+                moduleLoaderField.setAccessible(true);
                 moduleReadsField.setAccessible(true);
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
@@ -565,6 +577,11 @@ public final class ModuleLayerFeature implements Feature {
             if (prev != null) {
                 prev.add(other == null ? allUnnamedModule : other);
             }
+        }
+
+        void clearJavaBaseLoaderField(ModuleLayer runtimeBootLayer) throws IllegalAccessException {
+            Module base = runtimeBootLayer.findModule("java.base").get();
+            moduleLoaderField.set(base, null);
         }
     }
 }

@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        failIfAssertionsAreDisabled();
+
         Module helloAppModule = Main.class.getModule();
         Module helloLibModule = Greeter.class.getModule();
         testModuleObjects(helloAppModule, helloLibModule);
@@ -49,10 +51,17 @@ public class Main {
         greetMethod.setAccessible(true);
         greetMethod.invoke(null);
 
-        System.out.println("Now testing boot module layer");
         testBootLayer(helloAppModule, helloLibModule);
     }
 
+    private static void failIfAssertionsAreDisabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        if (!enabled) {
+            throw new AssertionError("This example requires that assertions are enabled (-ea)");
+        }
+    }
+    
     private static void testModuleObjects(Module helloAppModule, Module helloLibModule) {
         assert helloAppModule.getName().equals("moduletests.hello.app");
         assert helloAppModule.isExported(Main.class.getPackageName());
@@ -73,6 +82,8 @@ public class Main {
 
     @SuppressWarnings("OptionalGetWithoutIsPresent")
     private static void testBootLayer(Module helloAppModule, Module helloLibModule) {
+        System.out.println("Now testing boot module layer");
+
         ModuleLayer bootLayer = ModuleLayer.boot();
 
         System.out.println("Now testing boot module layer configuration");
