@@ -118,8 +118,15 @@ public interface ReachabilityAnalysis {
      */
     AnalysisPolicy analysisPolicy();
 
+    /**
+     * @return analysis related invoke information for given method, mainly the possible callees to
+     *         traverse the call graph
+     */
     Collection<InvokeInfo> getInvokes(AnalysisMethod method);
 
+    /**
+     * @return the parsing context in which given method was parsed
+     */
     StackTraceElement[] getParsingContext(AnalysisMethod method);
 
 }
