@@ -193,7 +193,7 @@ public final class ResourcesFeature implements Feature {
         resourceRegistryImpl().flushConditionalConfiguration(access);
     }
 
-    private static class ResourceCollectorImpl implements ResourceCollector {
+    private static final class ResourceCollectorImpl implements ResourceCollector {
         private final DebugContext debugContext;
         private final ResourcePattern[] includePatterns;
         private final ResourcePattern[] excludePatterns;
@@ -292,7 +292,7 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    private static class ResourcePattern {
+    private static final class ResourcePattern {
         final String moduleName;
         final Pattern pattern;
 

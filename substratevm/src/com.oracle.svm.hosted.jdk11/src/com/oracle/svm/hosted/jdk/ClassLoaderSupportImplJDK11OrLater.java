@@ -77,7 +77,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
         super.collectResources(resourceCollector);
     }
 
-    private void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
+    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
         ModuleReference moduleReference = resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
             String moduleName = resolvedModule.name();
