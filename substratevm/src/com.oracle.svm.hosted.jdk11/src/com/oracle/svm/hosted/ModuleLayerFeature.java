@@ -209,27 +209,33 @@ public final class ModuleLayerFeature implements Feature {
         Module builderModule = ModuleLayerFeature.class.getModule();
         assert builderModule != null;
 
+        List<Module> toModify = new ArrayList<>(applicationModules.size() + 1);
+        toModify.add(builderModule);
+        toModify.addAll(applicationModules);
+
         try {
-            for (Map.Entry<String, HostedRuntimeModulePair> e : moduleLookupMap.entrySet()) {
-                Module hostedModule = e.getValue().hostedModule;
-                if (hostedModule == builderModule) {
-                    continue;
-                }
-                Module runtimeModule = e.getValue().runtimeModule;
-                if (builderModule.canRead(hostedModule)) {
-                    for (Module appModule : applicationModules) {
-                        moduleLayerFeatureUtils.addReads(appModule, runtimeModule);
+            for (Module m : toModify) {
+                for (Map.Entry<String, HostedRuntimeModulePair> e : moduleLookupMap.entrySet()) {
+                    Module hostedModule = e.getValue().hostedModule;
+                    if (hostedModule == m) {
+                        continue;
                     }
-                }
-                for (String pn : hostedModule.getPackages()) {
-                    if (hostedModule.isOpen(pn, builderModule)) {
+                    Module runtimeModule = e.getValue().runtimeModule;
+                    if (m.canRead(hostedModule)) {
                         for (Module appModule : applicationModules) {
-                            moduleLayerFeatureUtils.addOpens(runtimeModule, pn, appModule);
+                            moduleLayerFeatureUtils.addReads(appModule, runtimeModule);
                         }
                     }
-                    if (hostedModule.isExported(pn, builderModule)) {
-                        for (Module appModule : applicationModules) {
-                            moduleLayerFeatureUtils.addExports(runtimeModule, pn, appModule);
+                    for (String pn : hostedModule.getPackages()) {
+                        if (hostedModule.isOpen(pn, m)) {
+                            for (Module appModule : applicationModules) {
+                                moduleLayerFeatureUtils.addOpens(runtimeModule, pn, appModule);
+                            }
+                        }
+                        if (hostedModule.isExported(pn, m)) {
+                            for (Module appModule : applicationModules) {
+                                moduleLayerFeatureUtils.addExports(runtimeModule, pn, appModule);
+                            }
                         }
                     }
                 }
