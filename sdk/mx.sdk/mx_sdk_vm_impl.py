@@ -722,7 +722,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
-                    _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                    if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                        _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 if (not stage1 or _skip_libraries(_library_config)) and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
@@ -2392,6 +2393,18 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'exclude': excluded_paths,
                         'path': None,
                     })
+                    if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                        for executable in library_config.launchers:
+                            layout.setdefault(path_prefix + executable, []).append({
+                                'source_type': 'dependency',
+                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config),
+                                'exclude': excluded_paths,
+                                'path': None,
+                            })
+                        for language, path_from_root in home_paths.items():
+                            destination = path_prefix + library_config.destination
+                            relative_path_from_launcher_dir = relpath(path_from_root, dirname(destination))
+                            library_config.add_relative_home_path(language, relative_path_from_launcher_dir)
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination
@@ -2614,6 +2627,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
                 '-DLIBLANG_RELPATH=' + _libjvm_path,
             ]
+            if len(self.language_library_config.option_vars) > 0:
+                _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
+
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
             # path from language launcher to library

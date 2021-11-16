@@ -113,6 +113,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
+        self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, list)
@@ -142,6 +143,11 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
         return AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
+    def add_relative_home_path(self, language, path):
+        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
+            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                language, self.relative_home_paths[language], path, self.destination))
+        self.relative_home_paths[language] = path
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -166,14 +172,6 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
         self.option_vars = [] if option_vars is None else option_vars
-
-        self.relative_home_paths = {}
-
-    def add_relative_home_path(self, language, path):
-        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
-            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
-                language, self.relative_home_paths[language], path, self.destination))
-        self.relative_home_paths[language] = path
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -200,7 +198,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, **kwargs):
+    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
         """
         :param str language
         :param str main_class
@@ -212,6 +210,10 @@ class LanguageLibraryConfig(LibraryConfig):
         self.default_symlinks = None
         self.relative_home_paths = {}
         self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
+        self.option_vars = [] if option_vars is None else option_vars
+
+        # Ensure the language launcher can always find the language home
+        self.add_relative_home_path(language, relpath('.', dirname(destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
