@@ -23,10 +23,6 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
@@ -34,46 +30,27 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * class.
  */
 public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
-    protected static class LeafTypeAssumptionImpl implements LeafTypeAssumption {
-        private final Assumption underlying;
-
-        // Used only to create never valid and always valid instances
-        private LeafTypeAssumptionImpl(Assumption underlyingAssumption) {
-            underlying = underlyingAssumption;
-        }
-
-        private LeafTypeAssumptionImpl(String assumptionName) {
-            underlying = Truffle.getRuntime().createAssumption(assumptionName);
-        }
-
-        LeafTypeAssumptionImpl(ObjectKlass klass) {
-            this(klass.getNameAsString() + " is a leaf type");
-        }
-
-        @Override
-        public Assumption getAssumption() {
-            return underlying;
-        }
-    }
-
-    protected static final ClassHierarchyAccessor classHierarchyInfoAccessor = new ClassHierarchyAccessor();
-
-    protected static final LeafTypeAssumption FinalIsAlwaysLeaf = new LeafTypeAssumptionImpl(AlwaysValidAssumption.INSTANCE);
-    protected static final LeafTypeAssumption NotLeaf = new LeafTypeAssumptionImpl(NeverValidAssumption.INSTANCE);
-
     protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
         if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
-        return NotLeaf;
+        return ClassHierarchyAssumptionImpl.NeverValid;
     }
 
     @Override
-    public LeafTypeAssumption isLeafClass(ObjectKlass klass) {
-        return klass.getLeafTypeAssumption(classHierarchyInfoAccessor);
+    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+        if (klass.isFinalFlagSet()) {
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
+        }
+        return ClassHierarchyAssumptionImpl.NeverValid;
+    }
+
+    @Override
+    public ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass) {
+        return ClassHierarchyAssumptionImpl.NeverValid;
     }
 
     @Override
