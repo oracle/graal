@@ -110,6 +110,7 @@ public class GraalInterpreter {
         @Override
         public void setMergeNodeIncomingIndex(AbstractMergeNode node, int index) {
             checkActivationsNotEmpty();
+            // System.out.printf("setMergeIndex(%s,%d)\n", node, index);
             activations.peek().setMergeIndex(node, index);
         }
 
@@ -122,6 +123,8 @@ public class GraalInterpreter {
         public void visitMerge(AbstractMergeNode node) {
             // Gets the index from which this merge node was reached.
             int accessIndex = getMergeIndex(node);
+            // System.out.printf("visitMerge(%s) gets index %d\n", node, accessIndex);
+
             // Get all associated phi nodes of this merge node
             // Evaluate all associated phi nodes with merge access index as their input
             // store all the INITIAL values (before updating) in local mapping then apply from that
@@ -130,8 +133,11 @@ public class GraalInterpreter {
             Map<Node, InterpreterValue> prevValues = new HashMap<>();
 
             // Collecting previous values:
+            // TODO: we could check localstate map directly to see if the phi value is there.
+            //       Rather than allowing interpretDataflowNode to return null, which weakens other error checking / messages.
             for (PhiNode phi : node.phis()) {
                 InterpreterValue prevVal = this.interpretDataflowNode(phi);
+                //System.out.printf("prevValues[%s] :=? %s\n", phi, prevVal);
                 if (prevVal != null) {
                     // Only maps if the evaluation yielded a value
                     // (i.e. not the first time the phi has been evaluated)
@@ -147,7 +153,7 @@ public class GraalInterpreter {
                 } else {
                     phiVal = this.interpretDataflowNode(val);
                 }
-
+                //System.out.printf("set phi value[%s] := %s\n", phi, phiVal);
                 this.setNodeLookupValue(phi, phiVal);
             }
         }
@@ -171,7 +177,7 @@ public class GraalInterpreter {
         @Override
         public InterpreterValue interpretDataflowNode(Node node) {
             GraalError.guarantee(node != null, "Tried to interpret null dataflow node");
-            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode (" + node.getNodeClass() + ") as a dataflow node");
+            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode");
             return ((ValueNode) node).interpretDataFlow(this);
         }
 
@@ -222,7 +228,6 @@ public class GraalInterpreter {
                 Field objectField = hotSpotClassObjectConstant.getClass().getDeclaredField("object");
                 objectField.setAccessible(true);
                 actualDeclaringClass = (Class<?>) objectField.get(hotSpotClassObjectConstant);
-                System.out.println("SETTING STATIC FIELDS FOR CLASS: " + actualDeclaringClass);
 
                 GraalError.guarantee(actualDeclaringClass != null, "actualDeclaringClass is null");
             } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -249,9 +254,12 @@ public class GraalInterpreter {
 //                                " := " + currentField.get(null));
                         fieldMap.put(resolvedField, valueFactory.createFromObject(currentField.get(null)));
                     }
+                } catch (java.lang.RuntimeException ex) {
+                    // we cannot catch java.lang.reflect.InaccessibleObjectException, so must catch its superclass
+                    // we skip any fields that raise this error
                 } catch (IllegalAccessException e) {
                     // TODO: improve this message
-                    GraalError.shouldNotReachHere(e, "loadStaticFields");
+                    GraalError.shouldNotReachHere(e, "loadStaticFields IllegalAccessException");
                 }
             }
         }
@@ -271,10 +279,10 @@ public class GraalInterpreter {
         }
 
         InterpreterValue getNodeValue(Node node) {
-            if (!localState.containsKey(node)) {
-                throw new IllegalArgumentException("missing localState for node: " + node.toString() + " keys=" + localState.keySet());
-            }
-            return localState.get(node);
+//            if (!localState.containsKey(node)) {
+//                throw new IllegalArgumentException("missing localState for node: " + node.toString() + " keys=" + localState.keySet());
+//            }
+            return localState.getOrDefault(node, null); // WAS: .get(node);
         }
 
         int getMergeIndex(AbstractMergeNode node) {
