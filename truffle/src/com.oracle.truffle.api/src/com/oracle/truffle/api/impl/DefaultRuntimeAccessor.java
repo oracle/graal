@@ -172,11 +172,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public boolean inFirstTier() {
-            return false;
-        }
-
-        @Override
         public void reportPolymorphicSpecialize(Node source) {
         }
 

@@ -35,7 +35,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -62,7 +61,6 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
-    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.hasNextTier();
 
     private ByteArrayOutputStream outContent;
 

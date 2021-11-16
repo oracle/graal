@@ -87,6 +87,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
@@ -126,7 +127,6 @@ public class TruffleGraphBuilderPlugins {
         registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, providers.getReplacements(), providers.getLowerer(), metaAccess);
-        registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         EconomicSet<ResolvedJavaType> primitiveBoxTypes = EconomicSet.create();
@@ -247,23 +247,6 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
-        r.register0("hasNextTier", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                // This method must not be intrinsified until after graph decoding.
-                // We only know whether something is a first-tier compilation or not once we are
-                // inside a partial evaluation request.
-                // The graph builder output can be cached across compilations, so intrinsifying this
-                // in the first tier would make it invalid for second-tier
-                // compilations.
-                return false;
-            }
-        });
-    }
-
     public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
         final ResolvedJavaType compilerDirectivesType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerDirectives");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerDirectivesType));
@@ -272,6 +255,18 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
                 return true;
+            }
+        });
+        r.register0("hasNextTier", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (canDelayIntrinsification && b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
+                    TruffleCompilationTask task = (TruffleCompilationTask) b.getGraph().getCancellable();
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(task.hasNextTier()));
+                    return true;
+                }
+
+                return false;
             }
         });
         r.register0("inCompiledCode", new InvocationPlugin() {
