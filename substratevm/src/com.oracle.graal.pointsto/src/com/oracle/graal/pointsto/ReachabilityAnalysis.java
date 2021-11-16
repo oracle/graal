@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import java.lang.reflect.Executable;
-import java.util.List;
+import java.util.Collection;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -118,7 +118,7 @@ public interface ReachabilityAnalysis {
      */
     AnalysisPolicy analysisPolicy();
 
-    List<InvokeInfo> getInvokes(AnalysisMethod method);
+    Collection<InvokeInfo> getInvokes(AnalysisMethod method);
 
     StackTraceElement[] getParsingContext(AnalysisMethod method);
 

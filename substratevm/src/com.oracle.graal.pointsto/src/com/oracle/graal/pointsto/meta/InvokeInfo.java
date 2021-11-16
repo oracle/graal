@@ -27,46 +27,20 @@ package com.oracle.graal.pointsto.meta;
 import jdk.vm.ci.code.BytecodePosition;
 
 import java.util.Collection;
-import java.util.Collections;
 
-public final class InvokeInfo {
-    private final AnalysisMethod targetMethod;
-    private final Collection<AnalysisMethod> possibleCallees;
-    private final BytecodePosition position;
-    private final boolean isDirect;
+/**
+ * Provides analysis related information for each invoke in AnalysisMethod's StructuredGraph. It was
+ * created as an abstraction to encapsulate InvokeTypeFlow.
+ */
+public interface InvokeInfo {
 
-    public static InvokeInfo direct(AnalysisMethod targetMethod, BytecodePosition position) {
-        return new InvokeInfo(targetMethod, Collections.singletonList(targetMethod), position, true);
-    }
+    boolean canBeStaticallyBound();
 
-    public static InvokeInfo virtual(AnalysisMethod targetMethod, Collection<AnalysisMethod> possibleCallees, BytecodePosition position) {
-        return new InvokeInfo(targetMethod, possibleCallees, position, false);
-    }
+    AnalysisMethod getTargetMethod();
 
-    private InvokeInfo(AnalysisMethod targetMethod, Collection<AnalysisMethod> possibleCallees, BytecodePosition position, boolean isDirect) {
-        this.targetMethod = targetMethod;
-        this.possibleCallees = possibleCallees;
-        this.position = position;
-        this.isDirect = isDirect;
-    }
+    Collection<AnalysisMethod> getCallees();
 
-    public boolean canBeStaticallyBound() {
-        return targetMethod.canBeStaticallyBound() || possibleCallees.size() == 1;
-    }
+    BytecodePosition getPosition();
 
-    public AnalysisMethod getTargetMethod() {
-        return targetMethod;
-    }
-
-    public Collection<AnalysisMethod> getPossibleCallees() {
-        return possibleCallees;
-    }
-
-    public BytecodePosition getPosition() {
-        return position;
-    }
-
-    public boolean isDirect() {
-        return isDirect;
-    }
+    boolean isDirectInvoke();
 }

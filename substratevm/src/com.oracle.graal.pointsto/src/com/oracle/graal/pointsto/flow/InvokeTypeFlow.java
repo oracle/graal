@@ -29,6 +29,7 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import org.graalvm.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -43,7 +44,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 
-public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
+public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implements InvokeInfo {
 
     protected final BytecodeLocation location;
 
@@ -93,12 +94,11 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         }
     }
 
-    public abstract boolean isDirectInvoke();
-
     public AnalysisType getReceiverType() {
         return receiverType;
     }
 
+    @Override
     public AnalysisMethod getTargetMethod() {
         return targetMethod;
     }
@@ -252,7 +252,13 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * If this is an invoke clone it returns the callees registered with the clone. If this is the
      * original invoke it returns the current registered callees of all clones.
      */
+    @Override
     public abstract Collection<AnalysisMethod> getCallees();
+
+    @Override
+    public BytecodePosition getPosition() {
+        return getSource();
+    }
 
     /**
      * Checks if this invoke can be statically bound.
@@ -266,6 +272,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * statically bound. If the invoke doesn't link to any callee then it is unreachable, i.e., it
      * has no implementation, and should be removed by the analysis client.
      */
+    @Override
     public boolean canBeStaticallyBound() {
         /*
          * Check whether this method can be trivially statically bound, i.e., without the help of

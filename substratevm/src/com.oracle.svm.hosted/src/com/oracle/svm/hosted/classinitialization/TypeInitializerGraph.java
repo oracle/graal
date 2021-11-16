@@ -226,7 +226,7 @@ public class TypeInitializerGraph {
          * the actual callees of the type flow, even though we know that there is at most one callee
          * returned.
          */
-        for (AnalysisMethod callee : i.getPossibleCallees()) {
+        for (AnalysisMethod callee : i.getCallees()) {
             if (methodSafety.get(callee) == Safety.UNSAFE) {
                 return true;
             }

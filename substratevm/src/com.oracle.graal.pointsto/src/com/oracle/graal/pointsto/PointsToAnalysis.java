@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -44,9 +45,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -762,16 +761,8 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @Override
-    public List<InvokeInfo> getInvokes(AnalysisMethod method) {
-        return method.getTypeFlow().getInvokes().stream().map(this::processInvoke).collect(Collectors.toList());
-    }
-
-    private InvokeInfo processInvoke(InvokeTypeFlow invokeTypeFlow) {
-        if (invokeTypeFlow.isDirectInvoke()) {
-            return InvokeInfo.direct(invokeTypeFlow.getTargetMethod(), invokeTypeFlow.getSource());
-        } else {
-            return InvokeInfo.virtual(invokeTypeFlow.getTargetMethod(), invokeTypeFlow.getCallees(), invokeTypeFlow.getSource());
-        }
+    public Collection<InvokeInfo> getInvokes(AnalysisMethod method) {
+        return Collections.unmodifiableCollection(method.getTypeFlow().getInvokes());
     }
 
     @Override
