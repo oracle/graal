@@ -579,8 +579,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
         InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
 
-        GraalError.guarantee(xVal.isPrimitive(), "x doesn't interpret to primitive value");
-        GraalError.guarantee(yVal.isPrimitive(), "y doesn't interpret to primitive value");
+        GraalError.guarantee(xVal != null, "null result from x: " + getX());
+        GraalError.guarantee(yVal != null, "null result from y: " + getY());
+        GraalError.guarantee(xVal.isPrimitive(), "non-primitive x: " + xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "non_primitive y: " + yVal);
 
         return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant()));
     }
