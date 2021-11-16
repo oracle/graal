@@ -91,7 +91,7 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue getHeapValue(Node node) {
-            GraalError.guarantee(heap.containsKey(node), "Accessing non-existing heap entry for node: " + node.toString());
+            GraalError.guarantee(heap.containsKey(node), "No heap entry for node: " + node.toString());
             return heap.get(node);
         }
 
@@ -170,7 +170,8 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue interpretDataflowNode(Node node) {
-            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode as a dataflow node");
+            GraalError.guarantee(node != null, "Tried to interpret null dataflow node");
+            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode (" + node.getNodeClass() + ") as a dataflow node");
             return ((ValueNode) node).interpretDataFlow(this);
         }
 
@@ -187,29 +188,24 @@ public class GraalInterpreter {
         @Override
         public InterpreterValue getParameter(int index) {
             if (index < 0 || index >= activations.peek().evaluatedParams.size()) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("out-of-range parameter index: " + index);
             }
             return activations.peek().evaluatedParams.get(index);
         }
 
         private InterpreterValue interpretGraph(StructuredGraph graph, List<InterpreterValue> evaluatedParams) {
             addActivation(evaluatedParams);
-
             loadStaticFields(graph);
-
             FixedNode next = graph.start();
             InterpreterValue returnVal = null;
-
             while (next != null) {
                 if (next instanceof ReturnNode || next instanceof UnwindNode) {
                     next.interpretControlFlow(myState);
                     returnVal = myState.getNodeLookupValue(next);
                     break;
                 }
-
                 next = next.interpretControlFlow(myState);
             }
-
             popActivation();
             return returnVal;
         }
@@ -226,6 +222,7 @@ public class GraalInterpreter {
                 Field objectField = hotSpotClassObjectConstant.getClass().getDeclaredField("object");
                 objectField.setAccessible(true);
                 actualDeclaringClass = (Class<?>) objectField.get(hotSpotClassObjectConstant);
+                System.out.println("SETTING STATIC FIELDS FOR CLASS: " + actualDeclaringClass);
 
                 GraalError.guarantee(actualDeclaringClass != null, "actualDeclaringClass is null");
             } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -236,13 +233,20 @@ public class GraalInterpreter {
             if (!typesAlreadyStaticallyLoaded.add(actualDeclaringClass)) {
                 return;
             }
+            initStaticFields(actualDeclaringClass.getDeclaredFields(), "");
+            // we add public superclass fields too, just in case.
+            initStaticFields(actualDeclaringClass.getFields(), "SUPERCLASS");
+        }
 
-            Field[] fields = actualDeclaringClass.getFields();
+        private void initStaticFields(Field[] fields, String where) {
             for (Field currentField : fields) {
                 try {
                     currentField.setAccessible(true);
                     ResolvedJavaField resolvedField = context.getMetaAccess().lookupJavaField(currentField);
                     if (resolvedField.isStatic()) {
+//                        System.out.println("  initializing " + where + " static field: " +
+//                                resolvedField.getDeclaringClass().getName() + "." + resolvedField.getName() +
+//                                " := " + currentField.get(null));
                         fieldMap.put(resolvedField, valueFactory.createFromObject(currentField.get(null)));
                     }
                 } catch (IllegalAccessException e) {
@@ -268,14 +272,14 @@ public class GraalInterpreter {
 
         InterpreterValue getNodeValue(Node node) {
             if (!localState.containsKey(node)) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("missing localState for node: " + node.toString() + " keys=" + localState.keySet());
             }
             return localState.get(node);
         }
 
         int getMergeIndex(AbstractMergeNode node) {
             if (!mergeIndexes.containsKey(node)) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("missing mergeIndex for merge node: " + node.toString());
             }
             return mergeIndexes.get(node);
         }
@@ -313,7 +317,7 @@ public class GraalInterpreter {
             // The current logic only makes sense if the type given is the elemental type - that is,
             // the non-array type in the last dimension
             if (!elementalType.getElementalType().equals(elementalType)) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("unimplemented elementalType: " + elementalType);
             }
 
             // Get the overall type for a multidimensional array with this many dimensions
@@ -327,12 +331,15 @@ public class GraalInterpreter {
 
         private InterpreterValueArray createMultiArray(ResolvedJavaType componentType, int[] dimensions, int dimensionIndex) {
             if (dimensionIndex >= dimensions.length || dimensions[dimensionIndex] < 0) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("out-of-range dimensionIndex: " + dimensionIndex);
             }
 
             if (dimensionIndex == dimensions.length - 1) {
-                if (componentType.isArray() || dimensions[dimensionIndex] < 0) {
-                    throw new IllegalArgumentException();
+                if (componentType.isArray()) {
+                    throw new IllegalArgumentException("bad multiarray componentType: " + componentType);
+                }
+                if (dimensions[dimensionIndex] < 0) {
+                    throw new IllegalArgumentException("negative multiarray size: " + dimensions[dimensionIndex]);
                 }
                 return createArray(componentType, dimensions[dimensionIndex]);
             }
