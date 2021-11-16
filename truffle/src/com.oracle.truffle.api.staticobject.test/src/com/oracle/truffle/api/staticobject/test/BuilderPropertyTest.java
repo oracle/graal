@@ -249,33 +249,25 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     @Test
     @SuppressWarnings("rawtypes")
     public void privateClass() throws NoSuchFieldException {
-        try (TestEnvironment te = new TestEnvironment(config)) {
-            Assume.assumeTrue(te.isFieldBased());
-            // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
-            // jar in the boot class path. As a consequence, generated classes do not have
-            // visibility of classes loaded by the application class loader, such as PrivateClass.
-            Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
-            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            Class<?> propertyType = VisibilityTest.getPrivateClass();
-            StaticProperty property = new DefaultStaticProperty("property");
-            builder.property(property, propertyType, false);
-            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
-            Object object = shape.getFactory().create();
-
-            Assert.assertEquals(propertyType, object.getClass().getField(guessGeneratedFieldName(property)).getType());
-        }
+        Class<?> privateType = VisibilityTest.getPrivateClass();
+        testPrivatePropertyType(config, privateType);
     }
 
     @Test
     public void packagePrivateClass() throws NoSuchFieldException, ClassNotFoundException {
+        Class<?> privateType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
+        testPrivatePropertyType(config, privateType);
+    }
+
+    private static void testPrivatePropertyType(TestConfiguration config, Class<?> privateType) throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
             // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
             // jar in the boot class path. As a consequence, generated classes do not have
-            // visibility of classes loaded by the application class loader, such as PrivateClass.
+            // visibility of classes loaded by the application class loader.
             Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            Class<?> propertyType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
+            Class<?> propertyType = privateType;
             StaticProperty property = new DefaultStaticProperty("property");
             builder.property(property, propertyType, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
