@@ -62,8 +62,21 @@ import org.graalvm.compiler.options.OptionType;
 public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     public static class CFGOptions {
+        /**
+         * Take {@link LoopEndNode} frequencies to calculate the frequency of a loop instead of
+         * {@link LoopExitNode} frequency. For this a sum of the {@link LoopEndNode} frequencies is
+         * taken. This sum is subtracted from 1 to get the frequency of all paths out of the loop.
+         * Note that this ignores the frequency of all paths out of the loop that do not go through
+         * a loop exit, i.e. control flow sinks like deopt nodes that do not require explicit loop
+         * exit nodes. The formula that must hold here is sumLoopEndFrequency + sumSinkFrequency +
+         * sumLoopExitFrequency = 1.
+         *
+         * This option only exists to debug loop frequency calculation differences when taking exits
+         * or ends. A vastly different loop frequency calculated with the {@link LoopEndNode} sum
+         * indicates there are many non 0 frequency paths out of a loop.
+         */
         //@formatter:off
-        @Option(help = "Compute loop frequencies based on loop end frequencies.", type = OptionType.Expert)
+        @Option(help = "Derive loop frequencies only from backedge frequencies instead of from loop exit frequencies.", type = OptionType.Debug)
         public static final OptionKey<Boolean> UseLoopEndFrequencies = new OptionKey<>(false);
         @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes."
                         + "If the frequencies diverge a lot, this may indicate missing profiles on control flow"
@@ -353,17 +366,21 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
         }
     }
 
-    public static boolean isDominatorTreeLoopExitOrRealExit(Block b) {
-        if (b.getBeginNode() instanceof LoopExitNode) {
-            return true;
-        }
-        Block dominator = b.getDominator();
-        return dominator != null && b.getLoop() != dominator.getLoop() && (!b.isLoopHeader() || dominator.getLoopDepth() >= b.getLoopDepth());
+    public static boolean isDominatorTreeLoopExit(Block b) {
+        return isDominatorTreeLoopExit(b, false);
     }
 
-    public static boolean isDominatorTreeLoopExit(Block b) {
+    public static boolean isDominatorTreeLoopExit(Block b, boolean considerRealExits) {
         Block dominator = b.getDominator();
-        return dominator != null && b.getLoop() != dominator.getLoop() && (!b.isLoopHeader() || dominator.getLoopDepth() >= b.getLoopDepth());
+        if (dominator != null && b.getLoop() != dominator.getLoop() && (!b.isLoopHeader() || dominator.getLoopDepth() >= b.getLoopDepth())) {
+            return true;
+        }
+        if (considerRealExits) {
+            if (b.getBeginNode() instanceof LoopExitNode) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ControlFlowGraph(StructuredGraph graph) {
@@ -506,7 +523,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     lv = openLoops[tos - 1];
                 }
                 LoopBeginNode closedLoop = ((LoopEndNode) b.getEndNode()).loopBegin();
-                assert lv.lb == closedLoop : "Must close inner loops first before closing other ones stackLoop=" + lv.lb + " ended loop=" + closedLoop + " block=" + b;
+                assert lv.lb == closedLoop : "Must close inner loops first before closing other ones stackLoop=" + lv.lb + " ended loop=" + closedLoop + " block=" + b + "->" + b.getBeginNode();
                 lv.endsVisited++;
                 if (lv.loopFullyProcessed()) {
                     loopClosedAction.accept(lv.lb);
@@ -778,12 +795,11 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
             }
         } else {
             /*
-             * Ideally we would like to take the loop end frequency sum here because it respects
+             * Ideally we would like to use the loop end frequency sum here because it respects
              * control flow sinks (unwinds and deopts) inside the loop (this can be seen in the
-             * branch above). However, semantically, if we ever exit a loop in compiled code it
-             * means we did not do so by an unwind or deopt but a loop exit, thus we ignore the end
-             * (and sink) frequencies and compute loop frequency purely based on the exit
-             * frequencies.
+             * branch above). However, if we ever exit a loop in compiled code it means we did not
+             * do so by an unwind or deopt but a loop exit, thus we ignore the end (and sink)
+             * frequencies and compute loop frequency purely based on the exit frequencies.
              */
             double loopExitFrequencySum = 0D;
             for (LoopExitNode lex : lb.loopExits()) {
@@ -838,12 +854,12 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         // loop exit successor frequency is weighted differently
                         continue;
                     }
-                    if (isDominatorTreeLoopExitOrRealExit(loopBlock)) {
+                    if (isDominatorTreeLoopExit(loopBlock, true)) {
                         // loop exit successor frequency is weighted differently
                         continue outer;
                     }
                     for (Block succ : loopBlock.getSuccessors()) {
-                        if (isDominatorTreeLoopExitOrRealExit(succ)) {
+                        if (isDominatorTreeLoopExit(succ, true)) {
                             // loop exit successor frequency is weighted differently
                             continue outer;
                         }
