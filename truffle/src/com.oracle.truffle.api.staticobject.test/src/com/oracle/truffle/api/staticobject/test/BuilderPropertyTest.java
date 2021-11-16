@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
@@ -253,7 +251,6 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void privateClass() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
-            Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             Class[] types = new Class[]{VisibilityTest.getPrivateClass()};
             StaticProperty[] properties = new StaticProperty[types.length];
@@ -273,7 +270,6 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void packagePrivateClass() throws NoSuchFieldException, ClassNotFoundException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
-            Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             Class<?> propertyType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
             StaticProperty property = new DefaultStaticProperty("property");
@@ -311,10 +307,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             builder.property(arrayProperty, int[].class, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object staticObject = shape.getFactory().create();
-
-            if (!(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
-                staticObject.getClass().getField("intArray").getType().getName().equals("[I");
-            }
+            staticObject.getClass().getField("intArray").getType().getName().equals("[I");
             int[] intArray = new int[10];
             arrayProperty.setObject(staticObject, intArray);
             Assert.assertEquals(intArray, arrayProperty.getObject(staticObject));
