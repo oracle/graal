@@ -55,7 +55,7 @@ git clone https://github.com/oracle/graal
 ```
 
 Next, you need to download a recent
-[JVMCI-enabled JDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
+[JVMCI-enabled JDK 8](https://github.com/graalvm/graal-jvmci-8/releases).
 
 Set the `JAVA_HOME` environment variable to point to the extracted JDK from above.
 The `sulong/mx.sulong/env` file can be used to store environment variables for use with `mx`:
@@ -93,7 +93,7 @@ mx --dynamicimport /compiler --jdk jvmci lli ...
 
 ## Debugging
 
-See [debugging](../user/Debugging.md) for information how to debug C programs or
+See [debugging](https://www.graalvm.org/reference-manual/llvm/Debugging) for information how to debug C programs or
 LLVM bitcode running inside GraalVM. Note that for debugging options to be available from
 `mx`, the tools suite needs to be built and imported (`mx --dynamicimport /tools lli --inspect ...`).
 
@@ -130,7 +130,7 @@ cd graal/vm && mx --dynamicimport /sulong,/substratevm,/tools build
 ```
 
 The built GraalVM in `graal/sdk/latest_graalvm_home` is a regular GraalVM, containing
-the `lli` launcher. See the [user documentation](../user/README.md) for more how to use it.
+the `lli` launcher.
 
 
 ## IDE Setup
