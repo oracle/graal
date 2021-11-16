@@ -251,6 +251,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void privateClass() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
+            // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
+            // jar in the boot class path. As a consequence, generated classes do not have
+            // visibility of classes loaded by the application class loader, such as PrivateClass.
+            Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             Class[] types = new Class[]{VisibilityTest.getPrivateClass()};
             StaticProperty[] properties = new StaticProperty[types.length];
@@ -270,6 +274,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void packagePrivateClass() throws NoSuchFieldException, ClassNotFoundException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
+            // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
+            // jar in the boot class path. As a consequence, generated classes do not have
+            // visibility of classes loaded by the application class loader, such as PrivateClass.
+            Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             Class<?> propertyType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
             StaticProperty property = new DefaultStaticProperty("property");
