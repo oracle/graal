@@ -256,17 +256,13 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             // visibility of classes loaded by the application class loader, such as PrivateClass.
             Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            Class[] types = new Class[]{VisibilityTest.getPrivateClass()};
-            StaticProperty[] properties = new StaticProperty[types.length];
-            for (int i = 0; i < properties.length; i++) {
-                properties[i] = new DefaultStaticProperty("property" + i);
-                builder.property(properties[i], types[i], false);
-            }
+            Class<?> propertyType = VisibilityTest.getPrivateClass();
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, propertyType, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object object = shape.getFactory().create();
-            for (int i = 0; i < types.length; i++) {
-                Assert.assertEquals(types[i], object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
-            }
+
+            Assert.assertEquals(propertyType, object.getClass().getField(guessGeneratedFieldName(property)).getType());
         }
     }
 
