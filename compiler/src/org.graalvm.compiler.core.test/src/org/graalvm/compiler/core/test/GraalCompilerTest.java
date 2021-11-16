@@ -814,7 +814,15 @@ public abstract class GraalCompilerTest extends GraalTest {
         Result result = test(getInitialOptions(), name, args);
 
         // TODO: move above to a more general place
-        checkAgainstInterpreter(name, result, args);
+        try {
+            checkAgainstInterpreter(name, result, args);
+        } catch (GraalError ex) {
+            if (ex.getMessage().startsWith("unimplemented: ")) {
+                // This is ok.  We expect that not all nodes in unit tests will be implemented.
+            } else {
+                throw ex;
+            }
+        }
 
         return result;
     }
