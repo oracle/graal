@@ -1100,21 +1100,6 @@ public final class ObjectKlass extends Klass {
         return allStaticFields.toArray(new Field[allStaticFields.size()]);
     }
 
-    public Field[] getAddedStaticFields() {
-        // add non-removed fields from static field table
-        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
-        ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
-        if (extensionMetadata != null) {
-            Field[] addedStaticFields = extensionMetadata.getAddedStaticFields();
-            for (Field addedStaticField : addedStaticFields) {
-                if (!addedStaticField.isRemoved()) {
-                    allStaticFields.add(addedStaticField);
-                }
-            }
-        }
-        return allStaticFields.toArray(new Field[allStaticFields.size()]);
-    }
-
     public Field[] getStaticFieldTable() {
         // add non-removed fields from static field table
         ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
@@ -1264,6 +1249,25 @@ public final class ObjectKlass extends Klass {
         SourceDebugExtensionAttribute attribute = (SourceDebugExtensionAttribute) getAttribute(SourceDebugExtensionAttribute.NAME);
         return attribute != null ? attribute.getDebugExtension() : null;
     }
+
+    public SingleImplementor getImplementor(ClassHierarchyAccessor accessor) {
+        Objects.requireNonNull(accessor);
+        return getKlassVersion().getImplementor(accessor);
+    }
+
+    /**
+     * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
+     * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
+     * classes and corresponding assumptions.
+     *
+     * @return the assumption, indicating if this class is a leaf in class hierarchy.
+     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
+     */
+    public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
+        Objects.requireNonNull(assumptionAccessor);
+        return getKlassVersion().getLeafTypeAssumption(assumptionAccessor);
+    }
+
 
     public KlassVersion getKlassVersion() {
         KlassVersion cache = klassVersion;
@@ -1637,14 +1641,6 @@ public final class ObjectKlass extends Klass {
             return ObjectKlass.this;
         }
 
-        /**
-         * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
-         * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
-         * classes and corresponding assumptions.
-         *
-         * @return the assumption, indicating if this class is a leaf in class hierarchy.
-         * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
-         */
         public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
             Objects.requireNonNull(assumptionAccessor);
             return leafTypeAssumption;

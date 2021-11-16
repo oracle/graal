@@ -92,14 +92,14 @@ public abstract class InvokeInterface extends Node {
 
         public abstract Object execute(Object[] args);
 
-        protected AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass().getKlassVersion());
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
-        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getRedefineAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,

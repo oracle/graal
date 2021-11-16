@@ -140,7 +140,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Method(Method method, CodeAttribute split) {
         this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
+        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getMethodVersion().isLeaf, method.getMethodVersion().poisonPill, split);
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -161,7 +161,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
-        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, null, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -1127,7 +1127,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public final class MethodVersion implements MethodRef {
-        private final Assumption redefineAssumption;
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
@@ -1154,24 +1153,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill = false;
 
-        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, CodeAttribute codeAttribute) {
-            this.redefineAssumption = klassVersion.getAssumption();
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, Assumption leafAssumption, boolean poisonPill, CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
             this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
 
-            int flags = linkedMethod.getFlags();
-            if (Modifier.isAbstract(flags)) {
-                // Disabled for abstract methods to reduce footprint.
-                this.isLeaf = NeverValidAssumption.INSTANCE;
-            } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
-                // Nothing to assume, spare an assumption.
-                this.isLeaf = AlwaysValidAssumption.INSTANCE;
+            if (leafAssumption != null) {
+                this.isLeaf = leafAssumption;
             } else {
-                this.isLeaf = Truffle.getRuntime().createAssumption();
+                int flags = linkedMethod.getFlags();
+                if (Modifier.isAbstract(flags)) {
+                    // Disabled for abstract methods to reduce footprint.
+                    this.isLeaf = NeverValidAssumption.INSTANCE;
+                } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
+                    // Nothing to assume, spare an assumption.
+                    this.isLeaf = AlwaysValidAssumption.INSTANCE;
+                } else {
+                    this.isLeaf = Truffle.getRuntime().createAssumption();
+                }
             }
+            this.poisonPill = poisonPill;
             initRefKind();
         }
 
@@ -1189,7 +1192,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, LinkedMethod newLinkedMethod, CodeAttribute newCodeAttribute) {
-            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, newCodeAttribute);
+            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, null, false, newCodeAttribute);
             // make sure the table indices are copied
             result.vtableIndex = vtableIndex;
             result.itableIndex = itableIndex;
@@ -1226,7 +1229,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public Assumption getRedefineAssumption() {
-            return redefineAssumption;
+            return klassVersion.getAssumption();
         }
 
         public boolean leafAssumption() {
@@ -1572,7 +1575,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean isObsolete() {
-            return !redefineAssumption.isValid();
+            return !klassVersion.getAssumption().isValid();
         }
 
         @Override

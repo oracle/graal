@@ -54,9 +54,9 @@ public interface ClassHierarchyOracle {
      *         invalidated in {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a child of
      *         {@code klass} is created.
      */
-    LeafTypeAssumption isLeafClass(ObjectKlass.KlassVersion klass);
+    LeafTypeAssumption isLeafClass(ObjectKlass klass);
 
     SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass);
 
-    AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor(ObjectKlass.KlassVersion klass);
+    AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
 }

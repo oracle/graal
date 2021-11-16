@@ -111,14 +111,14 @@ public abstract class InvokeVirtual extends Node {
             }
         }
 
-        protected AssumptionGuardedValue<ObjectKlass.KlassVersion> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass().getKlassVersion());
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
-        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getRedefineAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
@@ -190,7 +190,7 @@ public abstract class InvokeVirtual extends Node {
          * Good thing is, miranda methods are taken care of at vtable creation !
          */
         int vtableIndex = resolutionSeed.getVTableIndex();
-        Method.MethodVersion target = null;
+        Method.MethodVersion target;
         if (receiverKlass.isArray()) {
             target = receiverKlass.getSuperKlass().vtableLookup(vtableIndex).getMethodVersion();
         } else {
