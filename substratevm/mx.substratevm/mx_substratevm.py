@@ -177,7 +177,7 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
             config_args += ['--components=' + ','.join(c.name for c in components)]
         dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
         if dynamic_imports:
-            config_args += ['--dynamicimports', ','.join(dynamic_imports)]
+            config_args += ['--dynamicimports=' + ','.join(dynamic_imports)]
         primary_suite_dir = None
 
     args = config_args + cmd_args
