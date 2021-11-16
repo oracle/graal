@@ -328,6 +328,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < vmInitArgs.nOptions; i++) {
         free(vmInitArgs.options[i].optionString);
     }
+    free(vmInitArgs.options);
 
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {

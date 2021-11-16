@@ -561,7 +561,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 
 def build_js(native_image):
-    return native_image(['--macro:js-launcher'])
+    return native_image(['--macro:js-library'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
