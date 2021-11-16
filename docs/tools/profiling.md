@@ -96,11 +96,11 @@ algorithm.
 
     By default the sampler prints an execution time histogram for each JavaScript function.
 
-    You can produce a flame graph in SVG format by requesting that with the `--cpusampler.Output=flamegraph` option:
+    You can produce a flame graph in SVG format by requesting that with the `--cpusampler=flamegraph` option:
     ```shell
-    js primes.js --cpusampler --cpusampler.Output=flamegraph --cpusampler.OutputFile=primes.svg
+    js primes.js --cpusampler=flamegraph
     ```
-    It should produce something like this:
+    It should produce a file called `flamegraph.svg` containing something like this:
 
     ![](img/profiler_flamegraph.png)
 
@@ -190,10 +190,6 @@ matching mime-type, for example, `+`. The default is no filter.
 program roots, for example, `Math.*`. The default is &lowast;.
 - `--cpusampler.GatherHitTimes`: saves a timestamp for each taken sample. The default is false.
 - `--cpusampler.MinSamples=<Integer>`: removes elements from output if they have less samples than this value (default is `0`).
-- `--cpusampler.Mode=<Mode>`:  describes the level of sampling detail. Please note that increased detail can lead to reduced accuracy.
-    - `exclude_inlined_roots`: samples roots excluding inlined functions (enabled by default)
-    - `roots`: samples roots including inlined functions
-    - `statements`: samples all statements
 - `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
 The default is `histogram`.
 - `--cpusampler.OutputFile=<String>`: saves output to the given file. Output is printed to output stream by default.
@@ -202,6 +198,7 @@ sample the stack.
 - `--cpusampler.StackLimit=<Integer>`: specifies the maximum number of stack
 elements.
 - `--cpusampler.SummariseThreads `: prints sampling output as a summary of all `per thread` profiles. The default is false.
+
 
 ### CPU Tracer Options
 
