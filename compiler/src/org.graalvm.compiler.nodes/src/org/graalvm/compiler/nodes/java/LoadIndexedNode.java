@@ -219,6 +219,6 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
 
     @Override
     public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.interpretDataflowNode(this);
+        return interpreter.getNodeLookupValue(this);
     }
 }
