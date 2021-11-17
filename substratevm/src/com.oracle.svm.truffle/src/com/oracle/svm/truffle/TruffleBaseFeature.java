@@ -636,7 +636,9 @@ final class Target_com_oracle_truffle_api_staticobject_StaticShape_Builder {
     static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
         IllegalArgumentException exception = ExceptionCache.get(storageSuperClass, storageFactoryInterface);
         if (exception != null) {
-            throw exception;
+            // To have both the run-time and the build-time stack traces, throw a new exception
+            // caused by the build-time exception
+            throw new IllegalArgumentException(exception.getMessage(), exception);
         }
     }
 }
