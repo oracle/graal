@@ -45,7 +45,7 @@ public class LibCFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.LINUX.class.getSimpleName().toLowerCase().equals(ImageSingletons.lookup(Platform.class).getOS());
+        return LibCBase.isPlatformEquivalent(Platform.LINUX.class);
     }
 
     public static class LibCOptions {
