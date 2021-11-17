@@ -49,7 +49,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 
-    static Resolvable.ResolvedConstant createSynthetic(Field field) {
+    static Resolvable.ResolvedConstant fromPreResolved(Field field) {
         return new Resolved(field);
     }
 

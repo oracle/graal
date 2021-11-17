@@ -78,7 +78,7 @@ public final class ClassRedefinition {
     private final Ids<Object> ids;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
-    private ArrayList<Field> currentSyntheticFields;
+    private ArrayList<Field> currentDelegationFields;
     private AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
 
     public Assumption getMissingFieldAssumption() {
@@ -165,21 +165,21 @@ public final class ClassRedefinition {
         }
     }
 
-    public synchronized Field createSyntheticFrom(Field field) {
-        Field syntheticField = RedefineAddedField.synthetic(field);
-        if (currentSyntheticFields == null) {
-            currentSyntheticFields = new ArrayList<>(1);
+    public synchronized Field createDelegationFrom(Field field) {
+        Field delegationField = RedefineAddedField.createDelegationField(field);
+        if (currentDelegationFields == null) {
+            currentDelegationFields = new ArrayList<>(1);
         }
-        currentSyntheticFields.add(syntheticField);
-        return syntheticField;
+        currentDelegationFields.add(delegationField);
+        return delegationField;
     }
 
-    public synchronized void clearSyntheticFields() {
-        if (currentSyntheticFields != null) {
-            for (Field field : currentSyntheticFields) {
+    public synchronized void clearDelegationFields() {
+        if (currentDelegationFields != null) {
+            for (Field field : currentDelegationFields) {
                 field.removeByRedefintion();
             }
-            currentSyntheticFields.clear();
+            currentDelegationFields.clear();
         }
     }
 

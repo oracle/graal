@@ -30,21 +30,21 @@ public final class RedefineAddedField extends Field {
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
-    public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isSynthetic) {
+    public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isDelegation) {
         super(holder, linkedField, pool);
-        if (!isSynthetic) {
+        if (!isDelegation) {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
             shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
             this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldStorageObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
         }
     }
 
-    public static Field synthetic(Field field) {
+    public static Field createDelegationField(Field field) {
         // update holder to latest klass version to ensure we
         // only re-resolve again when the class is redefined
-        RedefineAddedField syntheticField = new RedefineAddedField(field.getDeclaringKlass().getKlassVersion(), field.linkedField, field.pool, true);
-        syntheticField.setCompatibleField(field);
-        return syntheticField;
+        RedefineAddedField delegationField = new RedefineAddedField(field.getDeclaringKlass().getKlassVersion(), field.linkedField, field.pool, true);
+        delegationField.setCompatibleField(field);
+        return delegationField;
     }
 
     @Override

@@ -741,7 +741,7 @@ public final class JDWPContextImpl implements JDWPContext {
             classRedefinition.begin();
 
             // clear synthetic fields, which forces re-resolution
-            classRedefinition.clearSyntheticFields();
+            classRedefinition.clearDelegationFields();
 
             // invalidate missing fields assumption, which forces re-resolution
             classRedefinition.invalidateMissingFields();

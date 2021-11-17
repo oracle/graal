@@ -156,14 +156,14 @@ public final class RuntimeConstantPool extends ConstantPool {
             }
             // A new compatible field was not found, but we still allow
             // obsolete code to use the latest known resolved field.
-            // To avoid a de-opt loop here, we create a synthetic compatible
+            // To avoid a de-opt loop here, we create a compatible delegation
             // field that actually uses the latest known resolved field
             // underneath.
             synchronized (this) {
-                Field syntheticField = context.getClassRedefinition().createSyntheticFrom(realField);
-                Resolvable.ResolvedConstant resolved = FieldRefConstant.createSynthetic(syntheticField);
+                Field delegationField = context.getClassRedefinition().createDelegationFrom(realField);
+                Resolvable.ResolvedConstant resolved = FieldRefConstant.fromPreResolved(delegationField);
                 constants[index] = resolved;
-                return syntheticField;
+                return delegationField;
             }
         }
     }
