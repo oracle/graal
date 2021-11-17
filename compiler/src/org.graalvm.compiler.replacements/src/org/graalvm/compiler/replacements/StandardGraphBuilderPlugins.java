@@ -1916,8 +1916,9 @@ public class StandardGraphBuilderPlugins {
                 LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
                 // fromIndex = max(fromIndex, 0)
                 ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
+                SignExtendNode toByte = b.add(new SignExtendNode(b.add(new NarrowNode(ch, JavaKind.Byte.getBitCount())), JavaKind.Int.getBitCount()));
                 helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_BYTE, JavaKind.Byte, JavaKind.Byte,
-                                false, nonNullValue, length, fromIndex, ch));
+                                false, nonNullValue, length, fromIndex, toByte));
             }
             return true;
         }
