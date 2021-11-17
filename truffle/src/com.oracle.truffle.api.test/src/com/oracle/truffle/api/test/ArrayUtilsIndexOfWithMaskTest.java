@@ -59,6 +59,8 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 public class ArrayUtilsIndexOfWithMaskTest {
 
     private static final String strAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String strWithFF = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam \u00ff nonumy ";
+    private static final String strWith7F = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam \u007f nonumy ";
     private static final String lipsum = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy " +
                     "eirmod tempor invidunt ut labore et dolore magna aliquyam" +
                     " erat, \u0000 sed diam voluptua. At vero \uffff eos et ac" +
@@ -100,6 +102,10 @@ public class ArrayUtilsIndexOfWithMaskTest {
         }
         add(ret, dataRow(strAlphabet, 0, strAlphabet.length(), "O", String.valueOf('\u0100'), 14, -1));
         add(ret, dataRow(strAlphabet, 0, strAlphabet.length(), "\u014f", String.valueOf('\u0100'), 14));
+        add(ret, dataRow(strWithFF, 0, strWithFF.length(), "\u00ff", String.valueOf('\u0080'), 66));
+        add(ret, dataRow(strWithFF, 0, strWithFF.length(), "\uffff", String.valueOf('\u0080'), 66, -1));
+        add(ret, dataRow(strWith7F, 0, strWith7F.length(), "\u00ff", String.valueOf('\u0080'), 66));
+        add(ret, dataRow(strWith7F, 0, strWith7F.length(), "\uffff", String.valueOf('\u0080'), 66, -1));
         add(ret, dataRow(lipsum, 0, lipsum.length(), "o", String.valueOf('\u0100'), 1, -1));
         add(ret, dataRow(lipsum, 0, lipsum.length(), "\u016f", String.valueOf('\u0100'), 1));
         add(ret, dataRow(lipsum, 0, lipsum.length(), "X", mask(1), -1));

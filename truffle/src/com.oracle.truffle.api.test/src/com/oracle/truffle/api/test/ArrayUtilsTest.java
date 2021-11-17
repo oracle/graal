@@ -179,11 +179,6 @@ public class ArrayUtilsTest {
                     204,
     };
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     @Test
     public void testIndexOf() {
         int i = 0;

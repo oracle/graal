@@ -229,7 +229,7 @@ public class AMD64TruffleArrayUtilsWithMaskSnippets implements Snippets {
 
     private static char readChar(JavaKind valueKind, byte[] array, int i) {
         if (valueKind == JavaKind.Byte) {
-            return (char) array[i];
+            return (char) Byte.toUnsignedInt(array[i]);
         }
         ReplacementsUtil.dynamicAssert(valueKind == JavaKind.Char, "unexpected valueKind");
         return (char) typePunnedRead(JavaKind.Byte, JavaKind.Byte, valueKind, array, i << 1, array.length);
