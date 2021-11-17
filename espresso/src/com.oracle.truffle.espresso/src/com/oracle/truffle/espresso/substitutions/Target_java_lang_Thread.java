@@ -39,7 +39,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
-import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
+import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
 
 // @formatter:off
 /**
@@ -216,7 +216,7 @@ public final class Target_java_lang_Thread {
         StaticObject thread = meta.getContext().getCurrentThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
             meta.getContext().getTruffleThreads().sleep(millis, location);
-        } catch (TruffleThreads.GuestInterruptedException e) {
+        } catch (GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }

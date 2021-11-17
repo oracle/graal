@@ -30,11 +30,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
-import com.oracle.truffle.espresso.trufflethreads.TruffleThreads.GuestInterruptedException;
 
 /**
  * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
- * monitor locks.
+ * monitor locks, along with some bookkeeping.
  */
 public interface TruffleLock {
 
@@ -202,7 +201,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     private static final long serialVersionUID = -2776792497346642438L;
 
-    public TruffleLockImpl(TruffleThreads truffleThreads) {
+    TruffleLockImpl(TruffleThreads truffleThreads) {
         this.truffleThreads = truffleThreads;
     }
 
@@ -238,11 +237,10 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         throw new UnsupportedOperationException("lockInterruptibly unsupported for TruffleLocks. Use lockInterruptible instead.");
     }
 
-    @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Truffle runtime method.")
     @Override
     public boolean await(long timeout) throws GuestInterruptedException {
         if (timeout == 0) {
-            truffleThreads.enterInterruptible((lock) -> lock.getWaitCondition().await(), /* TODO */null, this);
+            truffleThreads.enterInterruptible(awaitInterruptible, /* TODO */null, this);
         } else if (timeout > 0) {
             TimedWaitInterruptible interruptible = new TimedWaitInterruptible(timeout);
             truffleThreads.enterInterruptible(interruptible, /* TODO */null, this);
@@ -285,8 +283,16 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         super.lockInterruptibly();
     }
 
+    private static final TruffleSafepoint.Interruptible<TruffleLockImpl> awaitInterruptible = new TruffleSafepoint.Interruptible<TruffleLockImpl>() {
+        @Override
+        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Truffle runtime method.")
+        public void apply(TruffleLockImpl lock) throws InterruptedException {
+            lock.getWaitCondition().await();
+        }
+    };
+
     private static final class TimedWaitInterruptible implements TruffleSafepoint.Interruptible<TruffleLockImpl> {
-        public TimedWaitInterruptible(long timeout) {
+        TimedWaitInterruptible(long timeout) {
             this.timeout = timeout;
         }
 

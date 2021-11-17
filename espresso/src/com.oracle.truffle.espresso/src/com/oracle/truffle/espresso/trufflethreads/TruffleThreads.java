@@ -23,16 +23,12 @@
 
 package com.oracle.truffle.espresso.trufflethreads;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
 import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 /**
  * TruffleThreads provides custom implementations of the common blocking methods from the
@@ -49,17 +45,24 @@ import com.oracle.truffle.espresso.vm.UnsafeAccess;
  * </p>
  * <p>
  * A language meaning to use these capabilities must create an instance of this interface through
- * {@link #create(Interrupter)}. The parameter is an interrupter that should implement the
+ * {@link #create(GuestInterrupter)}. The parameter is an interrupter that should implement the
  * language-specific behavior of an interruption.
  * </p>
  */
 public interface TruffleThreads {
     /**
      * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
-     * parameter as the implementation of guest interruptions. The given interrupter need not call
-     * the host {@link Thread#interrupt()}.
+     * parameter as how guest interruptions are made observable.
+     * <p>
+     * This implementation can be as simple as setting a boolean in the guest's representation of
+     * the thread.
+     * <p>
+     * To benefit from the classes of this package, the guest implementations of thread
+     * interruptions should call {@link #guestInterrupt(Thread)}. Coordination with truffle
+     * safepoints and wake-ups of the thread are handled by the internals of this class. As such,
+     * the guest interrupter need not call the host {@link Thread#interrupt()}.
      */
-    static TruffleThreads create(Interrupter guestInterrupter) {
+    static TruffleThreads create(GuestInterrupter guestInterrupter) {
         return new TruffleThreadsImpl(guestInterrupter);
     }
 
@@ -88,7 +91,8 @@ public interface TruffleThreads {
 
     /**
      * Similar to {@link Thread#sleep(long)}, but with the semantics of
-     * {@link #enterInterruptible(Interruptible, Node, Object)}.
+     * {@link #enterInterruptible(Interruptible, Node, Object)}, meaning that the current thread
+     * will still handle {@linkplain TruffleSafepoint safepoints}.
      *
      * @param millis the length of time to sleep in milliseconds.
      * @param location the location with which the safepoint should be polled.
@@ -98,50 +102,28 @@ public interface TruffleThreads {
     void sleep(long millis, Node location) throws GuestInterruptedException;
 
     /**
-     * Interrupts the given thread with the privided {@linkplain #create(Interrupter) guest
+     * Interrupts the given thread with the provided {@linkplain #create(GuestInterrupter) guest
      * interruption} semantics.
      *
      * @param t the thread to interrupt.
      */
     void guestInterrupt(Thread t);
 
-    /**
-     * Holds the same role as a {@link InterruptedException}, but for guest interruptions.
-     */
-    class GuestInterruptedException extends Exception {
-        private static final long serialVersionUID = -3471443492081741698L;
-
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-
-        /*
-         * TODO: maybe reference the context(s) that guest-interrupted this thread so languages may
-         * ignore non-self interruptions ? Ideally, the semantics in guestInterrupt(t) should be
-         * enough to detect this.
-         */
-    }
 }
 
 final class TruffleThreadsImpl implements TruffleThreads {
-    public TruffleThreadsImpl(Interrupter guestInterrupter) {
+    TruffleThreadsImpl(GuestInterrupter guestInterrupter) {
         this.guestInterrupter = guestInterrupter;
     }
 
-    // TODO: This is slow. One such interrupter is needed per (language, thread) pair.
-    private final Map<Thread, TruffleThreadInterrupter> interrupters = new ConcurrentHashMap<>();
-
-    private final Interrupter guestInterrupter;
+    private final GuestInterrupter guestInterrupter;
 
     @Override
     @TruffleBoundary
     public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Thread current = Thread.currentThread();
-        TruffleThreadInterrupter interrupter = getInterrupter(current);
-        safepoint.setBlocked(location, interrupter, interruptible, object, null, interrupter::afterInterrupt);
+        safepoint.setBlocked(location, guestInterrupter, interruptible, object, null, () -> guestInterrupter.afterInterrupt(current));
     }
 
     private static Interruptible<Long> sleepInterruptible() {
@@ -166,48 +148,7 @@ final class TruffleThreadsImpl implements TruffleThreads {
 
     @Override
     public void guestInterrupt(Thread t) {
-        getInterrupter(t).guestInterrupt();
-    }
-
-    @TruffleBoundary
-    private TruffleThreadInterrupter getInterrupter(Thread t) {
-        return interrupters.computeIfAbsent(t, TruffleThreadInterrupter::new);
-    }
-
-    public class TruffleThreadInterrupter implements Interrupter {
-        private volatile boolean isGuest = false;
-        private final Thread thread;
-
-        public TruffleThreadInterrupter(Thread thread) {
-            this.thread = thread;
-        }
-
-        @Override
-        public void interrupt(Thread ignore) {
-            assert ignore == thread;
-            thread.interrupt();
-        }
-
-        @Override
-        public void resetInterrupted() {
-            Thread.interrupted();
-        }
-
-        public void afterInterrupt() {
-            // TODO: compareAndSet.
-            boolean guestInterrupted = isGuest;
-            isGuest = false;
-            if (guestInterrupted) {
-                resetInterrupted();
-                // Needs to be unchecked throw (Runnable does not declare as a checked exception.)
-                UnsafeAccess.get().throwException(new GuestInterruptedException());
-            }
-        }
-
-        public void guestInterrupt() {
-            isGuest = true;
-            guestInterrupter.interrupt(thread);
-            thread.interrupt();
-        }
+        guestInterrupter.guestInterrupt(t);
+        t.interrupt();
     }
 }

@@ -61,8 +61,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
+import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
 import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
-import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -93,7 +93,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorWait(TruffleLock self, long timeout) throws TruffleThreads.GuestInterruptedException {
+    public static boolean monitorWait(TruffleLock self, long timeout) throws GuestInterruptedException {
         return self.await(timeout);
     }
 

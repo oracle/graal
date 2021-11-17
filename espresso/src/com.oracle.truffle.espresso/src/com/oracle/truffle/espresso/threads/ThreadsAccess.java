@@ -41,34 +41,29 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.trufflethreads.GuestInterrupter;
 
 /**
  * Provides bridges to guest world thread implementation.
  */
-public final class ThreadsAccess implements ContextAccess {
+public final class ThreadsAccess extends GuestInterrupter implements ContextAccess {
 
     private final Meta meta;
     private final EspressoContext context;
-    private final TruffleSafepoint.Interrupter espressoInterrupter;
 
     public ThreadsAccess(Meta meta) {
         this.meta = meta;
         this.context = meta.getContext();
-        espressoInterrupter = new TruffleSafepoint.Interrupter() {
-            @Override
-            public void interrupt(Thread thread) {
-                ThreadsAccess.this.doInterrupt(context.getGuestThreadFromHost(thread));
-            }
-
-            @Override
-            public void resetInterrupted() {
-                ThreadsAccess.this.clearInterruptStatus(context.getCurrentThread());
-            }
-        };
     }
 
-    public TruffleSafepoint.Interrupter getEspressoInterrupter() {
-        return espressoInterrupter;
+    @Override
+    public void guestInterrupt(Thread t) {
+        doInterrupt(context.getGuestThreadFromHost(t));
+    }
+
+    @Override
+    public boolean isGuestInterrupted(Thread t) {
+        return isInterrupted(context.getGuestThreadFromHost(t), false);
     }
 
     @Override
@@ -212,9 +207,6 @@ public final class ThreadsAccess implements ContextAccess {
         context.getTruffleThreads().guestInterrupt(getHost(guest));
     }
 
-    /**
-     * Implementation of {@link Thread#interrupt()}.
-     */
     private void doInterrupt(StaticObject guest) {
         if (context.getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
@@ -441,7 +433,7 @@ public final class ThreadsAccess implements ContextAccess {
 
         private class StopAction extends ThreadLocalAction {
 
-            public StopAction() {
+            StopAction() {
                 super(true, false);
             }
 

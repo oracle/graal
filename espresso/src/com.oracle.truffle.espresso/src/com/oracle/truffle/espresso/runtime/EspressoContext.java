@@ -506,7 +506,7 @@ public final class EspressoContext {
             }
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
-            this.truffleThreads = TruffleThreads.create(threads.getEspressoInterrupter());
+            this.truffleThreads = TruffleThreads.create(threads);
 
             this.interpreterToVM = new InterpreterToVM(this);
 

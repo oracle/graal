@@ -148,7 +148,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
-import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
+import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -817,7 +817,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (report) {
                 context.reportMonitorWaited(self, timedOut);
             }
-        } catch (TruffleThreads.GuestInterruptedException e) {
+        } catch (GuestInterruptedException e) {
             profiler.profile(0);
             if (getThreadAccess().isInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());

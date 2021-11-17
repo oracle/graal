@@ -80,7 +80,7 @@ public final class SuspendLock {
     private static class SuspendAction extends ThreadLocalAction {
         private final SuspendLock lock;
 
-        public SuspendAction(SuspendLock lock) {
+        SuspendAction(SuspendLock lock) {
             super(true, false);
             this.lock = lock;
         }
