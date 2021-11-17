@@ -54,7 +54,6 @@ public final class ConstantValueAttribute extends Attribute {
         return constantValueIndex;
     }
 
-
     @Override
     public boolean sameAs(Attribute other) {
         if (this == other) {

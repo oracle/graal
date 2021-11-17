@@ -94,7 +94,7 @@ final class LinkedKlassFieldLayout {
         // static extension field
         if (context.JDWPOptions != null) {
             LinkedField staticExtensionField = new LinkedField(new ParserField(ParserField.HIDDEN | Modifier.STATIC, Name.staticExtensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY),
-                    nextStaticFieldSlot, LinkedField.IdMode.REGULAR);
+                            nextStaticFieldSlot, LinkedField.IdMode.REGULAR);
             staticBuilder.property(staticExtensionField, Object.class, true);
             staticFields[nextStaticFieldIndex] = staticExtensionField;
         }
@@ -111,7 +111,7 @@ final class LinkedKlassFieldLayout {
             if (superKlass == null) {
                 // instance extension field
                 LinkedField extensionField = new LinkedField(new ParserField(ParserField.HIDDEN, Name.extensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY), nextInstanceFieldSlot++,
-                        LinkedField.IdMode.REGULAR);
+                                LinkedField.IdMode.REGULAR);
                 instanceBuilder.property(extensionField, Object.class, true);
                 instanceFields[nextInstanceFieldIndex++] = extensionField;
 

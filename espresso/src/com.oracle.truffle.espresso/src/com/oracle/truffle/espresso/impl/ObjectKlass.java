@@ -47,9 +47,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -1480,8 +1480,8 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal //
         boolean hasDeclaredDefaultMethods = false;
 
-        // Class hierarchy information is managed by ClassHierarchyOracle, stored in ObjectKlass only
-        // for convenience.
+        // Class hierarchy information is managed by ClassHierarchyOracle,
+        // stored in ObjectKlass only for convenience.
         // region class hierarchy information
         private final SingleImplementor implementor;
         private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
@@ -1670,7 +1670,7 @@ public final class ObjectKlass extends Klass {
             return Modifier.isAbstract(modifiers);
         }
 
-        public boolean isConcrete()  {
+        public boolean isConcrete() {
             return !isAbstract();
         }
 
