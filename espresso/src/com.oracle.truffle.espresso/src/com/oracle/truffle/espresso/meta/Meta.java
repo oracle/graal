@@ -81,7 +81,11 @@ public final class Meta implements ContextAccess {
 
         // Core types.
         java_lang_Object = knownKlass(Type.java_lang_Object);
-        HIDDEN_OBJECT_EXTENSION_FIELD = java_lang_Object.requireHiddenField(Name.extensionFieldName);
+        if (context.JDWPOptions != null) {
+            HIDDEN_OBJECT_EXTENSION_FIELD = java_lang_Object.requireHiddenField(Name.extensionFieldName);
+        } else {
+            HIDDEN_OBJECT_EXTENSION_FIELD = null;
+        }
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
