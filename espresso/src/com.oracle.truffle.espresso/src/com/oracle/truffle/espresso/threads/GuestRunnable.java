@@ -61,7 +61,6 @@ final class GuestRunnable implements Runnable {
             context.getVM().attachThread(Thread.currentThread());
             try {
                 // Execute the payload
-                context.getThreadAccess().setState(thread, State.RUNNABLE.value);
                 context.getThreadAccess().fullSafePoint(thread);
                 thread.getKlass().vtableLookup(context.getMeta().java_lang_Thread_run.getVTableIndex()).invokeDirect(thread);
                 context.getThreadAccess().fullSafePoint(thread);

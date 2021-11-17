@@ -180,7 +180,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                             assert head != null;
                         } while (StaticObject.notNull(meta.java_lang_ref_Reference_next.getObject(head.getGuestReference())));
 
-                        lock.getLock().lock();
+                        lock.getLock(getContext()).lock();
                         try {
                             assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
                             casNextIfNullAndMaybeClear(head);
@@ -199,7 +199,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                             meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
                             updateReferencePendingList(head, prev, lock);
                         } finally {
-                            lock.getLock().unlock();
+                            lock.getLock(getContext()).unlock();
                         }
                     } catch (InterruptedException e) {
                         // ignore

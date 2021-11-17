@@ -318,7 +318,7 @@ public final class Management extends NativeEnv {
                     }
                     Thread hostOwner = StaticObject.isNull(lockObj)
                                     ? null
-                                    : lockObj.getLock().getOwnerThread();
+                                    : lockObj.getLock(getContext()).getOwnerThread();
                     if (hostOwner != null && hostOwner.isAlive()) {
                         lockOwner = getContext().getGuestThreadFromHost(hostOwner);
                         if (lockOwner == null) {

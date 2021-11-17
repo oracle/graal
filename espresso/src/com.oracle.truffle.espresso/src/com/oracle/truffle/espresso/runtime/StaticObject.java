@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
 
 /**
  * Implementation of the Espresso object model.
@@ -60,11 +61,11 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
+    private static final TruffleLock FOREIGN_MARKER = TruffleLock.create(null);
 
     private final Klass klass; // != PrimitiveKlass
 
-    private EspressoLock lockOrForeignMarker;
+    private TruffleLock lockOrForeignMarker;
 
     // region Constructors
     protected StaticObject(Klass klass) {
@@ -263,30 +264,32 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     /**
-     * Returns an {@link EspressoLock} instance for use with this {@link StaticObject} instance.
+     * Returns an {@link TruffleLock} instance for use with this {@link StaticObject} instance.
      *
      * <p>
-     * The {@link EspressoLock} instance will be unique and cached. Calling this method on
+     * The {@link TruffleLock} instance will be unique and cached. Calling this method on
      * {@link StaticObject#NULL} is an invalid operation.
      *
      * <p>
-     * The returned {@link EspressoLock} instance supports the same usages as do the {@link Object}
+     * The returned {@link TruffleLock} instance supports the same usages as do the {@link Object}
      * monitor methods ({@link Object#wait() wait}, {@link Object#notify notify}, and
      * {@link Object#notifyAll notifyAll}) when used with the built-in monitor lock.
+     *
+     * @param context
      */
     @SuppressFBWarnings(value = "DC", justification = "Implementations of EspressoLock have only final and volatile fields")
-    public final EspressoLock getLock() {
+    public final TruffleLock getLock(EspressoContext context) {
         checkNotForeign();
         if (isNull(this)) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
         }
-        EspressoLock l = lockOrForeignMarker;
+        TruffleLock l = lockOrForeignMarker;
         if (l == null) {
             synchronized (this) {
                 l = lockOrForeignMarker;
                 if (l == null) {
-                    lockOrForeignMarker = l = EspressoLock.create();
+                    lockOrForeignMarker = l = TruffleLock.create(context.getTruffleThreads());
                 }
             }
         }

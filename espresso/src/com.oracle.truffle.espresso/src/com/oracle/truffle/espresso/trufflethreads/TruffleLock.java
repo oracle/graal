@@ -47,6 +47,23 @@ public interface TruffleLock {
     }
 
     /**
+     * Acquires the lock.
+     * <p>
+     * Acquires the lock if it is not held by another thread and returns immediately, setting the
+     * lock hold count to one.
+     *
+     * <p>
+     * If the current thread already holds the lock then the hold count is incremented by one and
+     * the method returns immediately.
+     * <p>
+     * If the lock is held by another thread then the current thread becomes disabled for thread
+     * scheduling purposes and lies dormant until the lock has been acquired, at which time the lock
+     * hold count is set to one. During this, the thread will still handle {@link TruffleSafepoint
+     * safepoints}
+     */
+    void lock();
+
+    /**
      * Acquires the lock only if it is not held by another thread at the time of invocation.
      * <p>
      * Acquires the lock if it is not held by another thread and returns immediately with the value
@@ -98,7 +115,7 @@ public interface TruffleLock {
      *
      * @throws GuestInterruptedException if the current thread is guest-interrupted
      */
-    void lock() throws GuestInterruptedException;
+    void lockInterruptible() throws GuestInterruptedException;
 
     /**
      * Attempts to release this lock.
@@ -125,13 +142,11 @@ public interface TruffleLock {
      * @param timeout the maximum time to wait in milliseconds. {@code false} if the waiting time
      *            detectably elapsed before return from the method, else {@code true}
      * @throws IllegalArgumentException if the value of timeout is negative.
-     * @throws IllegalMonitorStateException if the current thread is not the owner of the object's
-     *             monitor.
-     * @throws InterruptedException if any thread interrupted the current thread before or while the
-     *             current thread was waiting for a notification. The <i>interrupted status</i> of
-     *             the current thread is cleared when this exception is thrown.
+     * @throws IllegalMonitorStateException if the current thread is not the owner of the lock.
+     * @throws GuestInterruptedException if any thread guest-interrupted the current thread before
+     *             or while the current thread was waiting for a notification.
      */
-    boolean await(long timeout) throws InterruptedException;
+    boolean await(long timeout) throws GuestInterruptedException;
 
     /**
      * Wakes up one waiting thread.
@@ -209,18 +224,28 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     }
 
     @Override
-    public void lock() throws GuestInterruptedException {
-        truffleThreads.enterInterruptible(TruffleLockImpl::superLockInterruptibly, null, this);
+    public void lock() {
+        TruffleSafepoint.setBlockedThreadInterruptible(/* TODO */null, TruffleLockImpl::superLockInterruptibly, this);
+    }
+
+    @Override
+    public void lockInterruptible() throws GuestInterruptedException {
+        truffleThreads.enterInterruptible(TruffleLockImpl::superLockInterruptibly, /* TODO */null, this);
+    }
+
+    @Override
+    public void lockInterruptibly() {
+        throw new UnsupportedOperationException("lockInterruptibly unsupported for TruffleLocks. Use lockInterruptible instead.");
     }
 
     @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Truffle runtime method.")
     @Override
     public boolean await(long timeout) throws GuestInterruptedException {
         if (timeout == 0) {
-            truffleThreads.enterInterruptible((lock) -> lock.getWaitCondition().await(), null, this);
+            truffleThreads.enterInterruptible((lock) -> lock.getWaitCondition().await(), /* TODO */null, this);
         } else if (timeout > 0) {
             TimedWaitInterruptible interruptible = new TimedWaitInterruptible(timeout);
-            truffleThreads.enterInterruptible(interruptible, null, this);
+            truffleThreads.enterInterruptible(interruptible, /* TODO */null, this);
             return interruptible.result;
         } else {
             throw new IllegalArgumentException();
@@ -272,5 +297,5 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         public void apply(TruffleLockImpl lock) throws InterruptedException {
             result = lock.getWaitCondition().await(timeout, TimeUnit.MILLISECONDS);
         }
-    };
+    }
 }

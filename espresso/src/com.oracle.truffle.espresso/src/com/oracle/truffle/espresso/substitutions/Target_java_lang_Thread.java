@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
+import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
 
 // @formatter:off
 /**
@@ -206,20 +207,20 @@ public final class Target_java_lang_Thread {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
-        return object.getLock().isHeldByCurrentThread();
+        return object.getLock(meta.getContext()).isHeldByCurrentThread();
     }
 
     @TruffleBoundary
     @Substitution
-    public static void sleep(long millis, @Inject Meta meta) {
+    public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         StaticObject thread = meta.getContext().getCurrentThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
+            meta.getContext().getTruffleThreads().sleep(millis, location);
+        } catch (TruffleThreads.GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            meta.getThreadAccess().checkDeprecation();
+            meta.getThreadAccess().fullSafePoint(thread);
         } catch (IllegalArgumentException e) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         }

@@ -1344,7 +1344,7 @@ public final class Target_sun_misc_Unsafe {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        InterpreterToVM.monitorUnsafeEnter(object.getLock());
+        InterpreterToVM.monitorUnsafeEnter(object.getLock(meta.getContext()));
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe8.class)
@@ -1354,7 +1354,7 @@ public final class Target_sun_misc_Unsafe {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        InterpreterToVM.monitorUnsafeExit(object.getLock());
+        InterpreterToVM.monitorUnsafeExit(object.getLock(meta.getContext()));
     }
 
     @Substitution(hasReceiver = true, isTrivial = true)
@@ -1508,7 +1508,7 @@ public final class Target_sun_misc_Unsafe {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
-        return InterpreterToVM.monitorTryLock(object.getLock());
+        return InterpreterToVM.monitorTryLock(object.getLock(meta.getContext()));
     }
 
     /**

@@ -76,6 +76,7 @@ import com.oracle.truffle.espresso.redefinition.RedefintionNotSupportedException
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -616,7 +617,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Object getMonitorOwnerThread(Object object) {
         if (object instanceof StaticObject) {
-            EspressoLock lock = ((StaticObject) object).getLock();
+            TruffleLock lock = ((StaticObject) object).getLock(context);
             return asGuestThread(lock.getOwnerThread());
         }
         return null;
@@ -625,7 +626,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getMonitorEntryCount(Object monitor) {
         if (monitor instanceof StaticObject) {
-            EspressoLock lock = ((StaticObject) monitor).getLock();
+            TruffleLock lock = ((StaticObject) monitor).getLock(context);
             return lock.getEntryCount();
         }
         return -1;

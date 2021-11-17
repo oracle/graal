@@ -98,6 +98,7 @@ import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
@@ -143,6 +144,7 @@ public final class EspressoContext {
     // region Helpers
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
+    @CompilationFinal private TruffleThreads truffleThreads;
     private final EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -504,6 +506,7 @@ public final class EspressoContext {
             }
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
+            this.truffleThreads = TruffleThreads.create(threads.getEspressoInterrupter());
 
             this.interpreterToVM = new InterpreterToVM(this);
 
@@ -813,6 +816,10 @@ public final class EspressoContext {
         return threads;
     }
 
+    public TruffleThreads getTruffleThreads() {
+        return truffleThreads;
+    }
+
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
@@ -884,7 +891,7 @@ public final class EspressoContext {
     }
 
     public void interruptThread(StaticObject guestThread) {
-        threads.interruptThread(guestThread);
+        threads.callInterrupt(guestThread);
     }
 
     public boolean isMainThreadCreated() {

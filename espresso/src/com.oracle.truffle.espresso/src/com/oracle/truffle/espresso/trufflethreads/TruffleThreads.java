@@ -27,11 +27,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
 import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 /**
  * TruffleThreads provides custom implementations of the common blocking methods from the
@@ -55,7 +56,8 @@ import com.oracle.truffle.api.nodes.Node;
 public interface TruffleThreads {
     /**
      * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
-     * parameter as the implementation of guest interruptions.
+     * parameter as the implementation of guest interruptions. The given interrupter need not call
+     * the host {@link Thread#interrupt()}.
      */
     static TruffleThreads create(Interrupter guestInterrupter) {
         return new TruffleThreadsImpl(guestInterrupter);
@@ -65,9 +67,19 @@ public interface TruffleThreads {
      * Enters a {@link Interruptible} operation on the current thread. This execution will have the
      * following properties:
      * <ul>
-     * <li>{@link TruffleSafepoint safepoints} can still be handled.</li>
+     * <li>{@link TruffleSafepoint safepoints} will still be handled.</li>
      * <li>Will throw a {@link GuestInterruptedException} if {@link #guestInterrupt(Thread)} was
      * called on this thread.</li>
+     * </ul>
+     * Furthermore, no host interruptions of the current thread will result in an
+     * {@link InterruptedException}.
+     * 
+     * As such, there are only three ways to retrieve control from a call to this method:
+     * <ul>
+     * <li>The given {@linkplain Interruptible interruptible} naturally completes</li>
+     * <li>{@link #guestInterrupt(Thread)} is called for this thread.</li>
+     * <li>An {@link ThreadLocalAction action} was submitted to this thread, that throws an
+     * exception that is not an {@link InterruptedException}.</li>
      * </ul>
      *
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
@@ -86,30 +98,6 @@ public interface TruffleThreads {
     void sleep(long millis, Node location) throws GuestInterruptedException;
 
     /**
-     * Waits for the given thread to die. The waiting has the semantics of
-     * {@link #enterInterruptible(Interruptible, Node, Object)}.
-     * <p>
-     * Note that this method is equivalent to {@code join(t, 0, location)}.
-     *
-     * @param location the location with which the safepoint should be polled.
-     * @throws GuestInterruptedException if the given thread was guest-interrupted.
-     */
-    default void join(Thread t, Node location) throws GuestInterruptedException {
-        join(t, 0, location);
-    }
-
-    /**
-     * Waits at most {@code millis} milliseconds for this thread to die. The waiting has the
-     * semantics of {@link #enterInterruptible(Interruptible, Node, Object)}.
-     *
-     * @param millis the length of time to sleep in milliseconds.
-     * @param location the location with which the safepoint should be polled.
-     * @throws GuestInterruptedException if the current thread was guest-interrupted.
-     * @throws IllegalArgumentException if millis is negative.
-     */
-    void join(Thread t, long millis, Node location) throws GuestInterruptedException;
-
-    /**
      * Interrupts the given thread with the privided {@linkplain #create(Interrupter) guest
      * interruption} semantics.
      *
@@ -120,8 +108,14 @@ public interface TruffleThreads {
     /**
      * Holds the same role as a {@link InterruptedException}, but for guest interruptions.
      */
-    class GuestInterruptedException extends ControlFlowException {
+    class GuestInterruptedException extends Exception {
         private static final long serialVersionUID = -3471443492081741698L;
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
 
         /*
          * TODO: maybe reference the context(s) that guest-interrupted this thread so languages may
@@ -143,14 +137,14 @@ final class TruffleThreadsImpl implements TruffleThreads {
 
     @Override
     @TruffleBoundary
-    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) {
+    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Thread current = Thread.currentThread();
         TruffleThreadInterrupter interrupter = getInterrupter(current);
         safepoint.setBlocked(location, interrupter, interruptible, object, null, interrupter::afterInterrupt);
     }
 
-    private Interruptible<Long> sleepInterruptible() {
+    private static Interruptible<Long> sleepInterruptible() {
         return new Interruptible<Long>() {
             private final long start = System.currentTimeMillis();
 
@@ -166,34 +160,8 @@ final class TruffleThreadsImpl implements TruffleThreads {
     }
 
     @Override
-    public void sleep(long millis, Node location) {
+    public void sleep(long millis, Node location) throws GuestInterruptedException {
         enterInterruptible(sleepInterruptible(), location, millis);
-    }
-
-    private Interruptible<Long> joinMillisInterruptible(Thread t) {
-        return new Interruptible<Long>() {
-            private final long start = System.currentTimeMillis();
-
-            @Override
-            public void apply(Long arg) throws InterruptedException {
-                long millis = arg - (System.currentTimeMillis() - start);
-                if (millis <= 0) {
-                    return;
-                }
-                t.join(arg - (System.currentTimeMillis() - start));
-            }
-        };
-    }
-
-    @Override
-    public void join(Thread t, long millis, Node location) {
-        if (millis == 0) {
-            enterInterruptible(Thread::join, location, t);
-        } else if (millis > 0) {
-            enterInterruptible(joinMillisInterruptible(t), location, millis);
-        } else {
-            throw new IllegalArgumentException();
-        }
     }
 
     @Override
@@ -231,7 +199,8 @@ final class TruffleThreadsImpl implements TruffleThreads {
             isGuest = false;
             if (guestInterrupted) {
                 resetInterrupted();
-                throw new GuestInterruptedException();
+                // Needs to be unchecked throw (Runnable does not declare as a checked exception.)
+                UnsafeAccess.get().throwException(new GuestInterruptedException());
             }
         }
 
