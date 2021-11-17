@@ -173,6 +173,12 @@ public class NFINativeAccess implements NativeAccess {
         return loadLibraryHelper("default");
     }
 
+    private static boolean isExpectedException(AbstractTruffleException e) {
+        String className = e.getClass().getName();
+        return "com.oracle.truffle.nfi.backend.libffi.NFIUnsatisfiedLinkError".equals(className) ||
+                        "com.oracle.truffle.llvm.nfi.SulongNFIException".equals(className);
+    }
+
     protected @Pointer TruffleObject loadLibraryHelper(String nfiSource) {
         Source source = Source.newBuilder("nfi", nfiSource, "loadLibrary").build();
         CallTarget target = env.parseInternal(source);
@@ -183,8 +189,8 @@ public class NFINativeAccess implements NativeAccess {
             throw EspressoError.shouldNotReachHere(e);
         } catch (AbstractTruffleException e) {
             // TODO(peterssen): Remove assert once GR-27045 reaches a definitive consensus.
-            assert "com.oracle.truffle.nfi.backend.libffi.NFIUnsatisfiedLinkError".equals(e.getClass().getName());
-            // We treat AbstractTruffleException as if it were an UnsatisfiedLinkError.
+            assert isExpectedException(e);
+            // AbstractTruffleException is treated as if it were an UnsatisfiedLinkError.
             getLogger().fine("AbstractTruffleException while loading library though NFI (" + nfiSource + ") : " + e.getMessage());
             return null;
         }
