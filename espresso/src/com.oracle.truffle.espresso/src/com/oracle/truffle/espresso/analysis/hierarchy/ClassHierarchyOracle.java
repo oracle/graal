@@ -54,7 +54,7 @@ public interface ClassHierarchyOracle {
     /**
      * @return the assumption, valid only if {@code klass} is a concrete class and has no concrete
      *         subclasses. Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
+     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child of
      *         {@code klass} is created.
      */
 
@@ -63,7 +63,7 @@ public interface ClassHierarchyOracle {
     /**
      * @return the assumption, valid only if {@code klass} has no implementors, including itself
      *         (i.e. it must be abstract or an interface). Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
+     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child of
      *         {@code klass} is created.
      */
     ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass);
