@@ -65,6 +65,7 @@ public class HiddenClassProperty extends StaticObjectModelTest {
     // To support Native Image, the hidden class must be generated at image build time
     private static Class<HiddenClassInterface> hiddenClass = generateHiddenClass();
 
+    @SuppressWarnings("unchecked")
     private static Class<HiddenClassInterface> generateHiddenClass() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -76,11 +77,9 @@ public class HiddenClassProperty extends StaticObjectModelTest {
     }
 
     @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public void hiddenClass() throws Throwable {
+    public void hiddenClass() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-
             StaticProperty property = new DefaultStaticProperty(("property"));
             try {
                 builder.property(property, hiddenClass, false);
