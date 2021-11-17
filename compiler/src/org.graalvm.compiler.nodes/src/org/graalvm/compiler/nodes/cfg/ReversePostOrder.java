@@ -24,12 +24,11 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
@@ -68,49 +67,6 @@ public class ReversePostOrder {
         b.setId(nextIndex);
     }
 
-    // utility data structure to handle the processing of loops
-    private static class OpenLoopsData {
-        int endsVisited;
-        final LoopBeginNode lb;
-        final NodeBitMap visitedNodes;
-
-        OpenLoopsData(LoopBeginNode lb, NodeBitMap visitedNodes) {
-            this.lb = lb;
-            this.visitedNodes = visitedNodes;
-        }
-
-        /**
-         * A loop is fully processed, i.e., all body {@link Block} are part of the reverse post
-         * order array, if all loop end blocks and all loop exit predecessor blocks are visited.
-         */
-        boolean loopFullyProcessed() {
-            return allEndsVisited() && allLexPredecessorsVisited();
-        }
-
-        boolean loopHasNoExits() {
-            return lb.loopExits().count() == 0;
-        }
-
-        boolean allEndsVisited() {
-            return lb.getLoopEndCount() == endsVisited;
-        }
-
-        boolean allLexPredecessorsVisited() {
-            for (LoopExitNode lex : lb.loopExits()) {
-                FixedNode pred = (FixedNode) lex.predecessor();
-                if (!visitedNodes.isMarked(pred)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            return lb + "-> ends visited=" + endsVisited;
-        }
-    }
-
     /**
      * Compute the reverse post order for the given {@link ControlFlowGraph}. The creation of
      * {@link Block} and the assignment of {@link FixedNode} to {@link Block} is already done by the
@@ -119,19 +75,55 @@ public class ReversePostOrder {
      * The algorithm has special handling for {@link LoopBeginNode} and {@link LoopExitNode} nodes
      * to ensure a loop is fully processed before any dominated code is visited.
      */
-    private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] block, int startIndex) {
-        assert startIndex < block.length;
+    private static void compute(ControlFlowGraph cfg, FixedNode start, Block[] rpoBlocks, int startIndex) {
+        assert startIndex < rpoBlocks.length;
         LinkedList<FixedNode> toProcess = new LinkedList<>();
         toProcess.push(start);
         NodeBitMap visitedNodes = cfg.graph.createNodeBitMap();
         int currentIndex = startIndex;
 
+        // utility data structure to handle the processing of loops
+        class OpenLoopsData {
+            int endsVisited;
+            final LoopBeginNode lb;
+            final boolean loopHasNoExits;
+
+            OpenLoopsData(LoopBeginNode lb) {
+                this.lb = lb;
+                loopHasNoExits = lb.loopExits().count() == 0;
+            }
+
+            /**
+             * A loop is fully processed, i.e., all body {@link Block} are part of the reverse post
+             * order array, if all loop end blocks and all loop exit predecessor blocks are visited.
+             */
+            boolean loopFullyProcessed() {
+                return allEndsVisited() && allLexPredecessorsVisited();
+            }
+
+            boolean allEndsVisited() {
+                return lb.getLoopEndCount() == endsVisited;
+            }
+
+            boolean allLexPredecessorsVisited() {
+                for (LoopExitNode lex : lb.loopExits()) {
+                    FixedNode pred = (FixedNode) lex.predecessor();
+                    if (!visitedNodes.isMarked(pred)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public String toString() {
+                return lb + "-> ends visited=" + endsVisited;
+            }
+        }
+
         // stack of open (nested) loops processed at the moment, i.e., not fully included in the
         // reverse post order yet
-        OpenLoopsData[] openLoops = new OpenLoopsData[cfg.graph.getNodes(LoopBeginNode.TYPE).count()];
-
-        // tos = top of stack, i.e., the next free stack position
-        int loopTos = 0;
+        ArrayDeque<OpenLoopsData> openLoops = new ArrayDeque<>();
 
         /**
          * Traverse the FixedNodes of the graph in a reverse post order manner by following next
@@ -145,8 +137,8 @@ public class ReversePostOrder {
              * fully processed in between
              */
             FixedNode cur = null;
-            if (loopTos > 0) {
-                OpenLoopsData olPeek = openLoops[loopTos - 1];
+            if (!openLoops.isEmpty()) {
+                OpenLoopsData olPeek = openLoops.peek();
                 // (one of the) last processing fully visited a loop
                 if (olPeek.loopFullyProcessed()) {
                     cur = olPeek.lb.loopExits().first();
@@ -165,7 +157,7 @@ public class ReversePostOrder {
             // remember we enter a loop, a loop needs to be fully closed before we advance to all
             // the code on the exit paths
             if (cur instanceof LoopBeginNode) {
-                openLoops[loopTos++] = new OpenLoopsData((LoopBeginNode) cur, visitedNodes);
+                openLoops.push(new OpenLoopsData((LoopBeginNode) cur));
             }
 
             /*
@@ -181,7 +173,7 @@ public class ReversePostOrder {
              */
             if (cur instanceof LoopExitNode) {
                 final LoopExitNode lex = (LoopExitNode) cur;
-                final OpenLoopsData ol = openLoops[loopTos - 1];
+                final OpenLoopsData ol = openLoops.peek();
                 GraalError.guarantee(ol.lb == lex.loopBegin(), "Different loop on stack, should be %s is %s", lex.loopBegin(), ol.lb);
                 GraalError.guarantee(ol != null, "No open loop for loop exit %s with loop begin %s", lex, lex.loopBegin());
 
@@ -207,21 +199,21 @@ public class ReversePostOrder {
                  * node deopt paths) is processed. Now process all exits at once, enqueue their
                  * successors and continue normal processing.
                  */
-                loopTos--; // <-> openLoops.pop
+                openLoops.pop();
                 final List<LoopExitNode> loopExits = ol.lb.loopExits().snapshot();
                 for (int i = loopExits.size() - 1; i >= 0; i--) {
                     final LoopExitNode singleExit = loopExits.get(i);
-                    enqueueBlockInRPO(cfg.blockFor(singleExit), block, currentIndex++);
+                    enqueueBlockInRPO(cfg.blockFor(singleExit), rpoBlocks, currentIndex++);
                     visitedNodes.mark(singleExit);
                     pushOrStall(singleExit.next(), toProcess);
                 }
                 continue;
             }
 
-            final Block curblock = cfg.blockFor(cur);
-            if (cur == curblock.getBeginNode()) {
+            final Block curBlock = cfg.blockFor(cur);
+            if (cur == curBlock.getBeginNode()) {
                 // we are at a block start, enqueue the actual block in the RPO
-                enqueueBlockInRPO(curblock, block, currentIndex++);
+                enqueueBlockInRPO(curBlock, rpoBlocks, currentIndex++);
             }
 
             while (true) {
@@ -230,7 +222,7 @@ public class ReversePostOrder {
                  * Depending on the block end nodes we have different actions for the different
                  * graph shapes.
                  */
-                if (cur == curblock.getEndNode()) {
+                if (cur == curBlock.getEndNode()) {
                     if (cur instanceof EndNode) {
                         final EndNode endNode = (EndNode) cur;
                         // NOTE: allEndsVisited implicitly returns true for a loop begin's forward
@@ -240,15 +232,11 @@ public class ReversePostOrder {
                         }
                     } else if (cur instanceof LoopEndNode) {
                         final LoopEndNode len = (LoopEndNode) cur;
-                        for (int i = loopTos - 1; i >= 0; i--) {
-                            final OpenLoopsData ol = openLoops[i];
-                            if (len.loopBegin() == ol.lb) {
-                                ol.endsVisited++;
-                                if (ol.loopFullyProcessed() && ol.loopHasNoExits()) {
-                                    loopTos--;
-                                }
-                                break;
-                            }
+                        final OpenLoopsData ol = openLoops.peek();
+                        GraalError.guarantee(ol.lb == len.loopBegin(), "Loop begin does not match, loop end begin %s stack loop begin %s", len.loopBegin(), ol.lb);
+                        ol.endsVisited++;
+                        if (ol.loopHasNoExits && ol.loopFullyProcessed()) {
+                            openLoops.pop();
                         }
                     } else if (cur instanceof ControlSplitNode) {
                         final ControlSplitNode split = (ControlSplitNode) cur;
@@ -290,27 +278,11 @@ public class ReversePostOrder {
     }
 
     public static Block[] identifyBlocks(ControlFlowGraph cfg, int numBlocks) {
-        NodeMap<Block> nodeMap = cfg.getNodeToBlock();
         Block startBlock = cfg.blockFor(cfg.graph.start());
         startBlock.setPredecessors(Block.EMPTY_ARRAY);
         Block[] reversePostOrder = new Block[numBlocks];
         compute(cfg, cfg.graph.start(), reversePostOrder, 0);
         assignPredecessorsAndSuccessors(reversePostOrder, cfg);
-        if (Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) {
-            outer: for (Block b : nodeMap.getValues()) {
-                for (int i = 0; i < reversePostOrder.length; i++) {
-                    if (reversePostOrder[i] == b) {
-                        continue outer;
-                    }
-                }
-                GraalError.shouldNotReachHere("No mapping in reverse post oder for block " + b);
-            }
-            for (int i = 0; i < reversePostOrder.length; i++) {
-                assert reversePostOrder[i] != null : "Null entry for block " + i + " Blocks " + Arrays.toString(reversePostOrder);
-                assert reversePostOrder[i].getPredecessors() != null : "Pred null for block " + reversePostOrder[i];
-                assert reversePostOrder[i].getSuccessors() != null : "Succ null for block " + reversePostOrder[i];
-            }
-        }
         return reversePostOrder;
 
     }
@@ -328,8 +300,9 @@ public class ReversePostOrder {
         block.setPredecessors(predecessors);
     }
 
-    private static void assignPredecessorsAndSuccessors(Block[] reversePostOrder, ControlFlowGraph cfg) {
-        for (Block b : reversePostOrder) {
+    private static void assignPredecessorsAndSuccessors(Block[] blocks, ControlFlowGraph cfg) {
+        for (int bI = 0; bI < blocks.length; bI++) {
+            Block b = blocks[bI];
             FixedNode blockEndNode = b.getEndNode();
             if (blockEndNode instanceof EndNode) {
                 EndNode endNode = (EndNode) blockEndNode;
@@ -373,6 +346,7 @@ public class ReversePostOrder {
                 b.setPredecessors(predecessors);
             }
         }
+
     }
 
 }
