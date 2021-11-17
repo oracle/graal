@@ -156,12 +156,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public enum StageFlag {
         PARTIAL_ESCAPE,
-        HIGH_TIER,
+        HIGH_TIER_LOWERING,
         FLOATING_READS,
         GUARD_MOVEMENT,
-        FIXED_READS,
         VALUE_PROXY_REMOVAL,
+        MID_TIER_LOWERING,
+        LOW_TIER_LOWERING,
         EXPAND_LOGIC,
+        FIXED_READS,
         FINAL_CANONICALIZATION
     }
 
