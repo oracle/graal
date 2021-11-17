@@ -23,32 +23,87 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
- * compute currently leaf classes, it creates {@code leafTypeAssumption} in the {@link ObjectKlass}
- * constructor and invalidates it when a descendant of this class is initialized.
+ * compute currently leaf classes, it creates {@code noConcreteSubclassesAssumption} in the
+ * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
+ * initialized.
  */
-public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
+public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
-        markAncestorsAsNonLeaf(newKlass);
-
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+        if (newKlass.isConcrete()) {
+            addImplementorToAncestors(newKlass);
+        }
         if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
-        if (newKlass.isAbstract() || newKlass.isInterface()) {
-            return NotLeaf;
-        }
-        return new LeafTypeAssumptionImpl(newKlass);
+        return new ClassHierarchyAssumptionImpl(newKlass);
     }
 
-    private static void markAncestorsAsNonLeaf(ObjectKlass newClass) {
-        ObjectKlass currentParent = newClass.getSuperKlass();
-        while (currentParent != null && currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().isValid()) {
-            currentParent.getLeafTypeAssumption(assumptionAccessor).getAssumption().invalidate();
-            currentParent = currentParent.getSuperKlass();
+    @Override
+    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+        if (klass.isConcrete()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
         }
+    }
+
+    @Override
+    public ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass) {
+        if (klass.isAbstract() || klass.isInterface()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+    }
+
+    /**
+     * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
+     * parent interfaces.
+     */
+    private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+        superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+        superInterface.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(implementor);
+        for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
+            addImplementor(ancestorInterface, implementor);
+        }
+    }
+
+    private void addImplementorToAncestors(ObjectKlass newKlass) {
+        for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
+            addImplementor(superInterface, newKlass);
+        }
+
+        ObjectKlass currentKlass = newKlass.getSuperKlass();
+        while (currentKlass != null) {
+            currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+            currentKlass.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(newKlass);
+            for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
+                addImplementor(superInterface, newKlass);
+            }
+            currentKlass = currentKlass.getSuperKlass();
+        }
+    }
+
+    @Override
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+        // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
+        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
+            return SingleImplementor.MultipleImplementors;
+        }
+        if (klass.isAbstract() || klass.isInterface()) {
+            return new SingleImplementor();
+        }
+        return new SingleImplementor(klass);
+    }
+
+    @Override
+    public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
+        return klass.getImplementor(ClassHierarchyAccessor.accessor).read();
     }
 }

@@ -313,6 +313,13 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     List<String> runOptionsToParse = runOptionsMap.computeIfAbsent(runOption.runIndex, (i) -> new ArrayList<>());
                     runOptionsToParse.add(runOption.name + "=" + runOption.value);
                 }
+            } else if (isAOT() && "--jvm".equals(option)) {
+                /*
+                 * We're AOT compiled and we see the "--jvm" option: This means we didn't switch to
+                 * JVM mode yet. Just abort, this code is going to be called again later in JVM
+                 * mode.
+                 */
+                return;
             } else {
                 // The engine options must be separated and used later when building a context
                 if (option.startsWith("--engine.")) {

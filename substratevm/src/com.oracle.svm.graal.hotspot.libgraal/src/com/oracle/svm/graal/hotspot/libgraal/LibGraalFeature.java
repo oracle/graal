@@ -99,6 +99,7 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocatio
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
+import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativebridge.jni.JNI;
 import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
 import org.graalvm.nativebridge.jni.JNIMethodScope;
@@ -649,7 +650,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        try (JNIMethodScope scope = new JNIMethodScope("<called from VM>", env)) {
+        try (JNIMethodScope scope = LibGraalUtil.openScope("<called from VM>", env)) {
             return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         }
     }

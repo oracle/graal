@@ -246,7 +246,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -336,7 +335,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return profileCount;
     }
 
-    public int startOfset() {
+    public int startOffset() {
         return startOffset;
     }
 
@@ -580,7 +579,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Object[] args = createArgumentsForCall(stacklocals, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    Object result = executeDirectCall(childrenOffset, args);
+                    Object result = executeDirectCall(childrenOffset, function, args);
                     childrenOffset++;
 
                     // At the moment, WebAssembly functions may return up to one value.
@@ -1471,9 +1470,35 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private Object executeDirectCall(int childrenOffset, Object[] args) {
+    private Object executeDirectCall(int childrenOffset, WasmFunction function, Object[] args) {
+        final boolean imported = function.isImported();
+        CompilerAsserts.partialEvaluationConstant(imported);
         DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
-        return callNode.call(args);
+        assert assertDirectCall(function, callNode);
+        if (imported) {
+            WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
+            TruffleContext truffleContext = functionInstance.getTruffleContext();
+            Object prev = truffleContext.enter(this);
+            try {
+                return callNode.call(args);
+            } finally {
+                truffleContext.leave(this, prev);
+            }
+        } else {
+            return callNode.call(args);
+        }
+    }
+
+    private boolean assertDirectCall(WasmFunction function, DirectCallNode callNode) {
+        WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
+        // functionInstance may be null for calls between functions of the same module.
+        if (functionInstance == null) {
+            assert !function.isImported();
+            return true;
+        }
+        assert functionInstance.target() == callNode.getCallTarget();
+        assert function.isImported() || functionInstance.context() == WasmContext.get(this);
+        return true;
     }
 
     @BytecodeInterpreterSwitchBoundary
@@ -3022,7 +3047,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     public void resolveCallNode(int childOffset) {
         final WasmFunction function = ((WasmCallStubNode) children[childOffset]).function();
         final CallTarget target = instance().target(function.index());
-        children[childOffset] = Truffle.getRuntime().createDirectCallNode(target);
+        children[childOffset] = DirectCallNode.create(target);
     }
 
     @ExplodeLoop

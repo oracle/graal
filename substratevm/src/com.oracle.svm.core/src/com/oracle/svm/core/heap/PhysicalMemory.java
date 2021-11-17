@@ -141,7 +141,7 @@ public class PhysicalMemory {
                         !CEntryPointSnippets.isIsolateInitialized() || StackOverflowCheck.singleton().isYellowZoneAvailable();
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only called if allocation is allowed.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only called if allocation is allowed.")
     private static void doInitialize() {
         long memoryLimit = Containers.memoryLimitInBytes();
         cachedSize = memoryLimit == Containers.UNKNOWN

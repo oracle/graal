@@ -20,6 +20,7 @@ permalink: /reference-manual/embed-languages/
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Enterprise Sandbox Resource Limits](#enterprise-sandbox-resource-limits)
+* [Dependency setup](#dependency-setup)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -611,3 +612,28 @@ In this code:
 
 <!-- Enterprise Sandbox Resource Limits -->
 {% include_relative sandbox-options.md %}
+
+## Dependency setup
+
+To best make use of the embedding API of GraalVM (i.e. `org.graalvm.polyglot.*`) your project should use a GraalVM as `JAVA_HOME`.
+In addition to that, you should specify the `graal-sdk.jar` (which is included in GraalVM) as a provided dependency to your projects.
+This is mainly to provide IDEs and other tools with the information that the project uses this API.
+An example of this for Maven means adding the following to the `pom.xml` file.
+
+```xml
+<dependency>
+    <groupId>org.graalvm.sdk</groupId>
+    <artifactId>graal-sdk</artifactId>
+    <version>${graalvm.version}</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+Additionally, when using Java modules, your `modue-info.java` file should require `org.graalvm.sdk`.
+
+```java
+module com.mycompany.app {
+  requires org.graalvm.sdk;
+
+}
+```

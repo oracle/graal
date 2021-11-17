@@ -45,7 +45,37 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** @since 0.8 or earlier */
+/**
+ * Marks an implicit cast method. Implicit cast methods are expected to have a return type, the
+ * target type and a source type the first parameter type. Any other method signature is not
+ * allowed. The source and target type must not be the same type. The order of implicit casts
+ * determines the order in which they are checked. This is important to optimize performance but
+ * also to provide a precedence for ambiguous type checks.
+ * <p>
+ * Example usage:
+ *
+ * <pre>
+ * &#64;TypeSystem
+ * public static class ExampleTypeSystem {
+ *
+ *     &#64;ImplicitCast
+ *     public static double castInt(int value) {
+ *         return value;
+ *     }
+ *
+ *     &#64;ImplicitCast
+ *     public static double castShort(short value) {
+ *         return value;
+ *     }
+ * }
+ *
+ * </pre>
+ *
+ * For details on how to use implicit casts see {@link TypeSystem}.
+ *
+ * @see TypeSystem
+ * @since 0.8 or earlier
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface ImplicitCast {

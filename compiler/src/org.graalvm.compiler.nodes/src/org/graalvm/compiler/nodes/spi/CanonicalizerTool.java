@@ -25,6 +25,9 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -33,6 +36,20 @@ public interface CanonicalizerTool extends CoreProviders {
 
     Assumptions getAssumptions();
 
+    /**
+     * Indicates whether this application of the canonicalizer is the last one during compilation.
+     * Final canonicalizations can include changes to code shapes that should not be reversed before
+     * code generation.
+     */
+    default boolean finalCanonicalization() {
+        return false;
+    }
+
+    /**
+     * Indicates whether the canonicalization of memory read operations to simpler operations or
+     * constants is allowed. Nodes subject to read canonicalization include (among others):
+     * {@link ReadNode}, {@link LoadFieldNode} and {@link LoadIndexedNode}.
+     */
     boolean canonicalizeReads();
 
     /**

@@ -89,6 +89,13 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(UnwindNode node, LoweringTool tool) {
+            if (node.graph().isSubstitution()) {
+                /*
+                 * Unwind nodes in substitution graph will never survive. They are used as markers,
+                 * though, so we should not replace them.
+                 */
+                return;
+            }
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());

@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -78,7 +79,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected int tenuringThreshold;
 
     protected volatile SizeParameters sizes;
-    private final ReentrantLock sizesUpdateLock = new ReentrantLock();
+    private final AtomicBoolean sizesUpdateSpinLock = new AtomicBoolean();
 
     protected AbstractCollectionPolicy(int initialNewRatio, int initialTenuringThreshold) {
         this.initialNewRatio = initialNewRatio;
@@ -145,11 +146,18 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         if (previous != null && params.equal(previous)) {
             return; // nothing to do
         }
-        sizesUpdateLock.lock();
+        while (!sizesUpdateSpinLock.compareAndSet(false, true)) {
+            /*
+             * We use a primitive spin lock because at this point, the current thread might be
+             * unable to use a Java lock (e.g. no Thread object yet), and the critical section is
+             * short, so we do not want to suspend and wake up threads for it.
+             */
+            PauseNode.pause();
+        }
         try {
             updateSizeParametersLocked(params, previous);
         } finally {
-            sizesUpdateLock.unlock();
+            sizesUpdateSpinLock.set(false);
         }
         guaranteeSizeParametersInitialized(); // sanity
     }
@@ -303,10 +311,9 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             /*
              * In HotSpot, this is the reserved capacity of each of the survivor From and To spaces,
              * i.e., together they occupy 2x this size. Our chunked heap doesn't reserve memory, so
-             * we use never occupy more than 1x this size for survivors except during collections.
+             * we never occupy more than 1x this size for survivors except during collections.
              * However, this is inconsistent with how we interpret the maximum size of the old
-             * generation, which we can exceed the (current) old gen size while copying during
-             * collections.
+             * generation, which we can exceed while copying during collections.
              */
             initialSurvivor = initialYoung.unsignedDivide(AbstractCollectionPolicy.INITIAL_SURVIVOR_RATIO);
             initialSurvivor = minSpaceSize(alignDown(initialSurvivor));

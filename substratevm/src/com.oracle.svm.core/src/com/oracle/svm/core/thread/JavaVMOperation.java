@@ -125,7 +125,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
         operate();
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Whitelisted because some operations may allocate.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Whitelisted because some operations may allocate.")
     protected abstract void operate();
 
     /** A VMOperation that executes a thunk. */

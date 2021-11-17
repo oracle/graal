@@ -457,9 +457,10 @@ def test():
     checker.check(exec_string)
 
     # list current line
-    # expect "[0-9]+        synchronized (this) {"
+    # expect "[0-9]+        synchronized (this) {" in Java 11
+    # or "[0-9]+        if (getClass() == PrintStream.class) {" in Java 17
     exec_string = execute("list")
-    rexp = r"(%s)%ssynchronized \(this\) {"%(digits_pattern, spaces_pattern)
+    rexp = r"(%s)%s(synchronized \(this\) {|if \(getClass\(\) == PrintStream.class\))"%(digits_pattern, spaces_pattern)
     checker = Checker('list println 1', rexp)
     matches = checker.check(exec_string, skip_fails=False)
 

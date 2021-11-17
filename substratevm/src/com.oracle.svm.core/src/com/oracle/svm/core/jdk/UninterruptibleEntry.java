@@ -30,7 +30,7 @@ import org.graalvm.word.PointerBase;
 
 /**
  * The common interface for the LinkedList entries that can be used in an
- * {@link UninterruptibleHashtable}.
+ * {@link AbstractUninterruptibleHashtable}.
  */
 @RawStructure
 public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
@@ -45,18 +45,6 @@ public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends
      */
     @RawField
     void setNext(T value);
-
-    /**
-     * Gets the id for the entry.
-     */
-    @RawField
-    long getId();
-
-    /**
-     * Sets the id for the entry.
-     */
-    @RawField
-    void setId(long value);
 
     /**
      * Get the hashcode for the entry.

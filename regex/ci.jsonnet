@@ -24,9 +24,16 @@
     targets: ["weekly"],
   },
 
+  local regex_unittest = {
+    environment+: {
+        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+        "MX_TEST_RESULT_TAGS": "regex"
+    }
+  },
+
   builds: std.flattenArrays([
     [
-      common["linux-amd64"]  + jdk + regex_gate,
+      common["linux-amd64"]  + jdk + regex_gate + regex_unittest,
       common["darwin-amd64"] + jdk + regex_gate_lite,
     ] for jdk in [
       common.oraclejdk11,

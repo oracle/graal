@@ -164,7 +164,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     protected static void checkResult(int result, String functionName) {
         if (result != 0) {
             /*

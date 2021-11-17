@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -153,7 +153,11 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         }
 
         public TestNode parse() {
-            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, 0, source.getLength() - 1);
+            int rootFrom = code.indexOf('<');
+            if (rootFrom < 0) {
+                rootFrom = 0;
+            }
+            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, rootFrom, source.getLength() - 1);
             NodeDescriptor nd;
             while ((nd = nextNode()) != null) {
                 sourceDescriptor.addChild(nd);
@@ -170,6 +174,10 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
 
             if (current() == EOF) {
                 return null;
+            }
+            if (current() == '<') {
+                next();
+                skipWhiteSpace();
             }
             if (current() != '{' && current() != '[') {
                 throw new IllegalStateException("Expecting '{' or '[' at position " + current + " character: " + current());

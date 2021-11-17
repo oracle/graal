@@ -141,9 +141,9 @@ polybench_benchmark_methods = ["_run"]
 
 # pylint: disable=line-too-long
 ce_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svml', 'tfl', 'tflm', 'vvm']
-ce_win_complete_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm']
+ce_win_complete_components = ['bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'ins', 'insight', 'insightheap', 'java', 'js', 'lg', 'libpoly', 'lsp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm']
 ce_aarch64_complete_components = ce_win_complete_components + ['llp', 'llrc', 'llrl', 'llrn', 'rby', 'rbyl', 'svml']
-ce_complete_components = ce_aarch64_complete_components + ['nil', 'pyn', 'R', 'ni', 'bRMain', 'nic', 'pynl', 'bnative-image-configure']
+ce_complete_components = ce_aarch64_complete_components + ['pyn', 'R', 'bRMain', 'pynl']
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'svm', 'svmnfi', 'tfl', 'tflm', 'vvm']
 ce_python_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-ld', 'bgu', 'bjs', 'blli', 'bnative-image', 'bnative-image-configure', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'ni', 'nic', 'nil', 'nju', 'njucp', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'snative-image-agent', 'snative-image-diagnostics-agent', 'spolyglot', 'svm', 'svml', 'svmnfi', 'tfl', 'tflm', 'vvm']
 ce_fastr_components = ce_components + ['R', 'llp', 'bRMain']

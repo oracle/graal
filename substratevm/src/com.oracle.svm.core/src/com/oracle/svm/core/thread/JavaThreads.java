@@ -203,8 +203,14 @@ public abstract class JavaThreads {
         return toTarget(thread).wasStartedByCurrentIsolate;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getParentThreadId(Thread thread) {
+        return toTarget(thread).parentThreadId;
+    }
+
     /* End of accessor functions. */
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Thread fromVMThread(IsolateThread vmThread) {
         return currentThread.get(vmThread);
     }

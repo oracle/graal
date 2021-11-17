@@ -158,7 +158,7 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
+            targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;
         this.processHandler = processHandler;

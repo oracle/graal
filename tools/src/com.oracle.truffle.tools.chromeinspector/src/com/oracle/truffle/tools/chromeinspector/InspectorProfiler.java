@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
@@ -56,6 +57,7 @@ import com.oracle.truffle.tools.chromeinspector.types.ScriptTypeProfile;
 import com.oracle.truffle.tools.chromeinspector.types.TypeObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeProfileEntry;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
@@ -123,17 +125,34 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public Params stop() {
         long time = System.currentTimeMillis();
+        Map<TruffleContext, CPUSamplerData> data;
+        long period;
         synchronized (sampler) {
             sampler.setCollecting(false);
             sampler.setGatherSelfHitTimes(oldGatherSelfHitTimes);
-            long idleHitCount = (time - startTimestamp) / sampler.getPeriod() - sampler.getSampleCount();
-            Params profile = getProfile(sampler.getRootNodes(), idleHitCount, startTimestamp, time);
+            data = sampler.getData();
             sampler.clearData();
-            return profile;
+            period = sampler.getPeriod();
         }
+        long idleHitCount = (time - startTimestamp) / period - getSampleCount(data);
+        Params profile = getProfile(getRootNodes(data), idleHitCount, startTimestamp, time);
+        return profile;
+    }
+
+    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(Map<TruffleContext, CPUSamplerData> data) {
+        Collection<ProfilerNode<CPUSampler.Payload>> retVal = new ArrayList<>();
+        for (CPUSamplerData samplerData : data.values()) {
+            for (Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes : samplerData.getThreadData().values()) {
+                retVal.addAll(profilerNodes);
+            }
+        }
+        return retVal;
+    }
+
+    private static long getSampleCount(Map<TruffleContext, CPUSamplerData> data) {
+        return data.values().stream().map(CPUSamplerData::getSamples).reduce(0L, Long::sum);
     }
 
     @Override

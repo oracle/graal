@@ -293,7 +293,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @SafeVarargs
     protected final void testPartialEscapeAnalysis(String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         prepareGraph(snippet, false);
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         new DeadCodeEliminationPhase().apply(graph);
         createCanonicalizerPhase().apply(graph, context);
         try {

@@ -99,6 +99,10 @@ final class LibFFILibrary implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        /**
+         * Pretend all members are readable to avoid a native call for the lookup. The lookup is
+         * performed only once and in #readMember().
+         */
         return true;
     }
 

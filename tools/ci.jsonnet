@@ -58,9 +58,16 @@
     targets: ["weekly"],
   },
 
+  local tools_unittest = {
+    environment+: {
+        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+        "MX_TEST_RESULT_TAGS": "tools"
+    }
+  },
+
   builds: [
-    common["linux-amd64"]   + common.oraclejdk11 + tools_gate,
-    common["linux-amd64"]   + common.oraclejdk17 + tools_gate,
+    common["linux-amd64"]   + common.oraclejdk11 + tools_gate + tools_unittest,
+    common["linux-amd64"]   + common.oraclejdk17 + tools_gate + tools_unittest,
 
     common["linux-amd64"]   + common.oraclejdk11 + tools_javadoc,
     common["linux-amd64"]   + common.oraclejdk17 + tools_coverage_weekly,

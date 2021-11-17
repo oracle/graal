@@ -69,8 +69,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
     }
 
     /**
-     * This is used as a hook to allow AArch64IntegerArithmeticSnippets's SafeSignedDivNode to be
-     * created during canonicalization.
+     * This is used as a hook to allow "safe" SignedDivNodes to be created during canonicalization.
      */
     protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
         SignedDivNode sd = new SignedDivNode(forX, forY, forZeroCheck);

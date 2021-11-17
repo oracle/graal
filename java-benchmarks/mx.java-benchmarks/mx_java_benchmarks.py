@@ -1204,6 +1204,14 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     def workloadSize(self):
         return "large"
 
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
+            ]
+        return skip_patterns
+
 
 class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
@@ -1915,6 +1923,16 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 return remaining
             else:
                 return ["-r", str(iterations)] + remaining
+
+    def vmArgs(self, bmSuiteArgs):
+        vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        # The --add-opens flag will be available in the next Renaissance release (> 0.13.0).
+        if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
+                                                                        "0.13.0"]:
+            vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter.perf=ALL-UNNAMED"]
+        return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""

@@ -47,9 +47,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.LeafTypeAssumptionAccessor;
-import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -145,7 +146,12 @@ public final class ObjectKlass extends Klass {
 
     private final StaticObject definingClassLoader;
 
-    private final LeafTypeAssumption leafTypeAssumption;
+    // Class hierarchy information is managed by ClassHierarchyOracle, stored in ObjectKlass only
+    // for convenience.
+    // region class hierarchy information
+    private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
+    private final SingleImplementor implementor;
+    // endregion
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
@@ -235,7 +241,8 @@ public final class ObjectKlass extends Klass {
             initSelfReferenceInPool();
         }
 
-        this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -1411,12 +1418,17 @@ public final class ObjectKlass extends Klass {
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
      * classes and corresponding assumptions.
      *
-     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
-     * @return the assumption, indicating if this class is a leaf in class hierarchy.
+     * @see ClassHierarchyOracle#isLeaf(ObjectKlass)
+     * @see ClassHierarchyOracle#hasNoImplementors(ObjectKlass)
      */
-    public LeafTypeAssumption getLeafTypeAssumption(LeafTypeAssumptionAccessor assumptionAccessor) {
+    public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
         Objects.requireNonNull(assumptionAccessor);
-        return leafTypeAssumption;
+        return noConcreteSubclassesAssumption;
+    }
+
+    public SingleImplementor getImplementor(ClassHierarchyAccessor accessor) {
+        Objects.requireNonNull(accessor);
+        return implementor;
     }
 
     public final class KlassVersion {

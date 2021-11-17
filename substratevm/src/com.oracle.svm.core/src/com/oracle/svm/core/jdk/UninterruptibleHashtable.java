@@ -24,116 +24,63 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.locks.VMMutex;
 
 /**
- * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.
+ * Common interface for all uninterruptible hashtable implementations.
  */
-public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
-    private static final int DEFAULT_TABLE_LENGTH = 2053;
-
-    private final T[] table;
-    private final VMMutex mutex;
-
-    private long nextId;
-    private int size;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(String name) {
-        this(name, DEFAULT_TABLE_LENGTH);
+public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
+    static <T extends UninterruptibleEntry<T>> SynchronizedUninterruptibleHashtable<T> synchronizedHashtable(String name, UninterruptibleHashtable<T> table) {
+        return new SynchronizedUninterruptibleHashtable<>(name, table);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(String name, int primeLength) {
-        this.table = createTable(primeLength);
-        this.mutex = new VMMutex(name);
-        this.size = 0;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected abstract T[] createTable(int length);
-
+    /**
+     * Gets the number of entries that are in the hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract boolean isEqual(T a, T b);
+    int getSize();
 
+    /**
+     * Returns the internal array of the hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract T copyToHeap(T valueOnStack);
+    T[] getTable();
 
+    /**
+     * Returns the matching value for {@code valueOnStack} from the hashtable. If there is no
+     * matching value in the hashtable, a null pointer is returned.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void free(T t);
+    T get(T valueOnStack);
 
+    /**
+     * Tries to insert {@code valueOnStack} into the hashtable. Returns false if there was already a
+     * matching entry in the hashtable or if an error occurred while insert the entry. Returns true
+     * if the entry was inserted successfully.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void clear() {
-        for (int i = 0; i < table.length; i++) {
-            T entry = table[i];
-            while (entry.isNonNull()) {
-                T tmp = entry;
-                entry = entry.getNext();
-                free(tmp);
-            }
-            table[i] = WordFactory.nullPointer();
-        }
-        size = 0;
-    }
+    boolean putIfAbsent(T valueOnStack);
 
+    /**
+     * If the hashtable contains an existing entry that matches {@code valueOnStack}, then this
+     * existing entry will be returned and no value will be inserted.
+     * 
+     * If there wasn't already a matching entry, this method tries to create and insert a new entry
+     * hashtable. If an error occurred while inserting the entry, a null pointer is returned
+     * instead.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void setSize(int size) {
-        this.size = size;
-    }
+    T getOrPut(T valueOnStack);
 
+    /**
+     * Clear all entries from map.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void teardown() {
-        clear();
-    }
+    void clear();
 
+    /**
+     * Teardown hashtable.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getSize() {
-        return size;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long add(T valueOnStack) {
-        assert valueOnStack.isNonNull();
-
-        mutex.lockNoTransition();
-        try {
-            // Try to find the entry in the hashtable
-            int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-            T entry = table[index];
-            while (entry.isNonNull()) {
-                if (isEqual(valueOnStack, entry)) {
-                    return entry.getId();
-                }
-                entry = entry.getNext();
-            }
-
-            return insertEntry(index, valueOnStack);
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private long insertEntry(int index, T valueOnStack) {
-        T newEntry = copyToHeap(valueOnStack);
-        if (newEntry.isNonNull()) {
-            long id = ++nextId;
-            T existingEntry = table[index];
-            newEntry.setNext(existingEntry);
-            newEntry.setId(id);
-            table[index] = newEntry;
-            size++;
-            return id;
-        }
-        return 0L;
-    }
-
-    public T[] getTable() {
-        return table;
-    }
+    void teardown();
 }

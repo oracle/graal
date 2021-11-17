@@ -1118,7 +1118,8 @@ public abstract class Launcher {
      *
      * @param originalArgs the original arguments from main(), unmodified.
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
-     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
+     *            recognized by maybeExec are removed from the list.
      * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */
@@ -1126,10 +1127,10 @@ public abstract class Launcher {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType());
+        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean vmArgsApplied) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1194,8 +1195,14 @@ public abstract class Launcher {
         } else {
             assert vmType == VMType.Native;
 
-            for (String vmOption : vmOptions) {
-                nativeAccess.setNativeOption(vmOption);
+            /*
+             * If the VM args have already been applied (e.g. by the native launcher), there is no
+             * need to set them again at runtime
+             */
+            if (!vmArgsApplied) {
+                for (String vmOption : vmOptions) {
+                    nativeAccess.setNativeOption(vmOption);
+                }
             }
             /*
              * All options are processed, now we can run the startup hooks that can depend on the

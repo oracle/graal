@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.io.PrintWriter;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.util.List;
 
@@ -39,6 +41,8 @@ import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 public final class InspectorTestInstrument extends TruffleInstrument {
 
     public static final String ID = "InspectorTestInstrument";
+
+    private volatile Reference<InspectServerSession> lastServerSession;
 
     @Override
     protected void onCreate(final Env env) {
@@ -56,6 +60,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                         this.context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err(), true));
                         this.connectionWatcher = new ConnectionWatcher();
                         this.iss = InspectServerSession.create(context, suspend, connectionWatcher);
+                        lastServerSession = new WeakReference<>(iss);
                         this.id = context.getId();
                         // Fake connection open
                         ReflectionUtils.invoke(connectionWatcher, "notifyOpen");
@@ -84,6 +89,15 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                 }.init();
             }
         });
+    }
+
+    @Override
+    protected void onFinalize(Env env) {
+        Reference<InspectServerSession> sessionRef = lastServerSession;
+        InspectServerSession session = (sessionRef != null) ? sessionRef.get() : null;
+        if (session != null) {
+            session.notifyClosing();
+        }
     }
 
 }

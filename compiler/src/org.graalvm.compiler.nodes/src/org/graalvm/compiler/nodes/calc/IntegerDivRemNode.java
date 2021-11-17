@@ -57,7 +57,7 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
 
     private final Op op;
     private final Type type;
-    private final boolean canDeopt;
+    private boolean canDeopt;
 
     protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode x, ValueNode y, GuardingNode zeroCheck) {
         super(c, stamp, x, y);
@@ -65,10 +65,7 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         this.op = op;
         this.type = type;
 
-        // Assigning canDeopt during constructor, because it must never change during lifetime of
-        // the node.
-        IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
-        this.canDeopt = (yStamp.contains(0) && zeroCheck == null) || yStamp.contains(-1);
+        this.canDeopt = calculateCanDeoptimize();
     }
 
     public final GuardingNode getZeroCheck() {
@@ -83,8 +80,19 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         return type;
     }
 
+    private boolean calculateCanDeoptimize() {
+        IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
+        return (yStamp.contains(0) && zeroCheck == null) || yStamp.contains(-1);
+    }
+
     @Override
     public boolean canDeoptimize() {
+        /*
+         * Ensure canDeopt never gets weaker, i.e., that it never transfers from false -> true. If
+         * one were to rely exclusively on the y input's stamp, such a "weakening" could occur when
+         * PiNodes are removed during FixReadsPhase.
+         */
+        canDeopt = canDeopt && calculateCanDeoptimize();
         return canDeopt;
     }
 }

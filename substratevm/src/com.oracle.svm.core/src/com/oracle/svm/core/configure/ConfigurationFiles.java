@@ -93,9 +93,6 @@ public final class ConfigurationFiles {
 
         @Option(help = "Causes unknown attributes in configuration objects to abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
-
-        @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SubstitutionFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     public static List<Path> findConfigurationFiles(String fileName) {

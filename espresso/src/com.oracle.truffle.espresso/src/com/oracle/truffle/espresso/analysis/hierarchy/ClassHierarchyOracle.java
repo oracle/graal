@@ -29,30 +29,45 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * {@code ClassHierarchyOracle} provides information about class hierarchy in the guest code,
  * evolving as new classes are loaded. The oracle is safe, i.e. its answers never cause incorrect
- * optimizations, but not necessarily precise (e.g. may not detect an effectively leaf type).
+ * optimizations, but not necessarily precise (e.g. may not detect that a class has no subclasses).
  * <p>
  * The oracle is only valid within an {@link EspressoContext}.
  */
 public interface ClassHierarchyOracle {
-    final class LeafTypeAssumptionAccessor {
-        protected LeafTypeAssumptionAccessor() {
+    final class ClassHierarchyAccessor {
+        static final ClassHierarchyAccessor accessor = new ClassHierarchyAccessor();
+
+        private ClassHierarchyAccessor() {
         }
     }
 
     /**
-     * Must be called to initialize {@code leafTypeAssumption} of {@code newKlass}. In addition, it
-     * communicates to the oracle that a new klass has been created and its ancestors are no longer
-     * leaves.
+     * Must be called to initialize {@code noConcreteSubclassesAssumption} of {@code newKlass}. In
+     * addition, it communicates to the oracle that a new klass has been created and its ancestors
+     * are no longer leaves.
      *
      * @param newKlass -- newly created class
-     * @return the assumption, indicating whether the class is a leaf in class hierarchy.
+     * @return the assumption, indicating whether the class has subclasses
      */
-    LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
+    ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
 
     /**
-     * @return the assumption, valid iff {@code klass} is a leaf in class hierarchy. Automatically
-     *         invalidated in {@link #createAssumptionForNewKlass(ObjectKlass)} when a child of
+     * @return the assumption, valid only if {@code klass} is a concrete class and has no concrete
+     *         subclasses. Automatically invalidated in
+     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
      *         {@code klass} is created.
      */
-    LeafTypeAssumption isLeafClass(ObjectKlass klass);
+    ClassHierarchyAssumption isLeaf(ObjectKlass klass);
+
+    /**
+     * @return the assumption, valid only if {@code klass} has no implementors, including itself
+     *         (i.e. it must be abstract or an interface). Automatically invalidated in
+     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
+     *         {@code klass} is created.
+     */
+    ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass);
+
+    SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass);
+
+    AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
 }

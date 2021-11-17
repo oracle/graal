@@ -19,6 +19,9 @@ local sulong = import 'sulong/ci.jsonnet';
 # Tools
 local tools = import 'tools/ci.jsonnet';
 
+# Truffle
+local truffle = import 'truffle/ci.jsonnet';
+
 # JavaDoc
 local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 
@@ -43,6 +46,7 @@ local add_excludes_guard(build) = build + {
     sdk.builds +
     sulong.builds +
     tools.builds +
+    truffle.builds +
     javadoc.builds
   )]
 }

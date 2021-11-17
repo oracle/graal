@@ -124,7 +124,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.vm_args, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
@@ -163,7 +163,6 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
             self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
-            self.base_image_build_args += ['-H:+ConfigureReflectionMetadata']
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
             if vm.gc:
@@ -178,6 +177,7 @@ class NativeImageVM(GraalVm):
             mx.log_deprecation("Ignoring NativeImageVM custom configuration! Use named configuration instead.")
             mx.warn("Ignoring: {}".format(kwargs))
 
+        self.vm_args = None
         self.pgo_aot_inline = False
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
@@ -277,11 +277,12 @@ class NativeImageVM(GraalVm):
             basis. In the future we can convert this from a failure into a warning.
             :return: a list of args supported by native image.
         """
-        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC']
+        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC', '--add-opens', '--add-modules', '--add-exports',
+                '--add-reads']
 
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
-                                    '--module', '--module-source-path', '--add-exports', '--add-reads',
+                                    '--module', '--module-source-path', '--add-exports', '--add-opens', '--add-reads',
                                     '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath']
 
     @staticmethod
@@ -329,10 +330,15 @@ class NativeImageVM(GraalVm):
                 if not any(vm_arg.startswith(elem) for elem in NativeImageVM.supported_vm_arg_prefixes()):
                     mx.abort('Unsupported argument ' + vm_arg + '.' +
                              ' Currently supported argument prefixes are: ' + str(NativeImageVM.supported_vm_arg_prefixes()))
-                image_vm_args.append(vm_arg)
-                i += 1
+                if vm_arg in NativeImageVM._VM_OPTS_SPACE_SEPARATED_ARG:
+                    image_vm_args.append(vm_args[i])
+                    image_vm_args.append(vm_args[i + 1])
+                    i += 2
+                else:
+                    image_vm_args.append(vm_arg)
+                    i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args + image_run_args
+        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -644,6 +650,9 @@ class NativeImageVM(GraalVm):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
         hotspot_run_args = []
         hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
+
+        if config.vm_args is not None:
+            hotspot_vm_args += config.vm_args
 
         if self.hotspot_pgo:
             hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]

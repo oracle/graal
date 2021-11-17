@@ -1,5 +1,5 @@
 builds += [
-  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
+  ${vm_java_17} ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,substratevm"]
@@ -7,7 +7,7 @@ builds += [
     timelimit: "15:00"
     name: gate-vm-native-substratevm-truffle
   }
-  ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
@@ -15,7 +15,7 @@ builds += [
     timelimit: "45:00"
     name: gate-vm-native-graalpython
   }
-  ${vm_java_8} ${svm-common-linux-amd64} ${gate_vm_linux} {
+  ${vm_java_17} ${svm-common-linux-amd64} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,/tools", --disable-polyglot, "--skip-libraries=true", "--force-bash-launchers=gu,native-image-configure", gate, --no-warning-as-error, --tags, "build,svm_sl_tck"]

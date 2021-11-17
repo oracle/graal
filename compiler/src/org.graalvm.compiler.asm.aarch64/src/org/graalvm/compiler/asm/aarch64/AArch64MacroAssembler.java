@@ -151,6 +151,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *            be set to zero-register if scratch register is not available.
      */
     private AArch64Address tryMakeAddress(int bitMemoryTransferSize, Register base, long displacement, Register scratchReg) {
+        assert !base.equals(scratchReg);
         assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         if (displacement == 0) {
             return AArch64Address.createBaseRegisterOnlyAddress(bitMemoryTransferSize, base);

@@ -39,6 +39,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");
     public final ResolvedJavaType classExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType classArrayUtils = lookupType("com.oracle.truffle.api.ArrayUtils");
+    public final ResolvedJavaType classNode = lookupType("com.oracle.truffle.api.nodes.Node");
+    public final ResolvedJavaType classRootNode = lookupType("com.oracle.truffle.api.nodes.RootNode");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
 
     public final ResolvedJavaField fieldTags = findField(classFrameClass, "tags");
@@ -59,6 +61,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldFrameSlotKindTag = findField(classFrameSlotKind, "tag");
 
     public final ResolvedJavaField fieldOptimizedAssumptionIsValid = findField(lookupType("com.oracle.truffle.api.impl.AbstractAssumption"), "isValid");
+
+    public final ResolvedJavaField fieldNodeParent = findField(classNode, "parent");
 
     public final ResolvedJavaField fieldStringValue = findField(lookupType(String.class), "value");
 

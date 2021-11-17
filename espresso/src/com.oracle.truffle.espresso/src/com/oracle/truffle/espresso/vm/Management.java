@@ -434,7 +434,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
+    @TruffleBoundary // Lots of SVM + Windows methods blocked for PE.
     public long GetLongAttribute(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
         switch (att) {

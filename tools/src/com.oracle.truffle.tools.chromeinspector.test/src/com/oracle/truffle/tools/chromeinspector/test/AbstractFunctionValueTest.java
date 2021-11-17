@@ -26,6 +26,8 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -39,7 +41,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 /**
  * An abstract inspector test, that operates on a passed TruffleObject.
  */
-abstract class AbstractFunctionValueTest {
+public abstract class AbstractFunctionValueTest {
 
     private static final String CODE = "DEFINE(function, ROOT(\n" +
                     "  ARGUMENT(a), \n" +
@@ -57,7 +59,7 @@ abstract class AbstractFunctionValueTest {
     // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
     // CheckStyle: stop line length check
 
-    protected final void runWith(Object truffleObject) throws Exception {
+    protected final Future<?> runWith(Object truffleObject) throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, CODE, FILE_NAME).build();
         String testURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -71,14 +73,15 @@ abstract class AbstractFunctionValueTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":4}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
-        new Thread(() -> {
+        Thread thread = new Thread(() -> {
             Future<Value> eval = tester.eval(source);
             try {
                 eval.get().getContext().getBindings(InstrumentationTestLanguage.ID).getMember("function").execute(truffleObject);
             } catch (ExecutionException | InterruptedException ex) {
                 ex.printStackTrace();
             }
-        }).start();
+        });
+        thread.start();
         long id = tester.getContextId();
 
         assertTrue(tester.compareReceivedMessages(
@@ -94,6 +97,34 @@ abstract class AbstractFunctionValueTest {
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":16,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":2,\"lineNumber\":2}," +
                                                  "\"url\":\"" + testURI + "\"}]}}\n"));
+        return new Future<Void>() {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+
+            @Override
+            public boolean isDone() {
+                return !thread.isAlive();
+            }
+
+            @Override
+            public Void get() throws InterruptedException, ExecutionException {
+                thread.join();
+                return null;
+            }
+
+            @Override
+            public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                thread.join(unit.toMillis(timeout));
+                return null;
+            }
+        };
     }
 
     // @formatter:on
