@@ -56,7 +56,10 @@ public interface LibCBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isPlatformEquivalent(Class<? extends Platform> platformClass) {
         Platform platform = ImageSingletons.lookup(Platform.class);
-        return platformClass.getSimpleName().toLowerCase().equals(platform.getOS()) || Platform.includedIn(platformClass);
+        // Checkstyle: allow Class.getSimpleName
+        String simpleName = platformClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
+        return simpleName.toLowerCase().equals(platform.getOS()) || Platform.includedIn(platformClass);
     }
 
     @Fold
