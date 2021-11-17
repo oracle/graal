@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 // each instance of this class maps to one guest instance. Either a class object
 // for which static field state is maintained or a regular object for which
 // instance field state is managed.
-public final class ExtensionFieldObject {
+public final class ExtensionFieldObject implements TruffleObject {
 
     private static final FieldStorageObject NULL_OBJECT = new FieldStorageObject();
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
