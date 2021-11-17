@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.test.HiddenClassGenerator.HiddenClassInterface;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -64,16 +62,24 @@ public class HiddenClassProperty extends StaticObjectModelTest {
 
     @Parameterized.Parameter public TestConfiguration config;
 
+    // To support Native Image, the hidden class must be generated at image build time
+    private static Class<HiddenClassInterface> hiddenClass = generateHiddenClass();
+
+    private static Class<HiddenClassInterface> generateHiddenClass() {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            byte[] hiddenClassBytes = HiddenClassGenerator.getBytes();
+            return (Class<HiddenClassInterface>) lookup.defineHiddenClass(hiddenClassBytes, true, NESTMATE).lookupClass();
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void hiddenClass() throws Throwable {
-        Assume.assumeFalse(TruffleOptions.AOT);
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            byte[] hiddenClassBytes = HiddenClassGenerator.getBytes();
-            Class<HiddenClassInterface> hiddenClass = (Class<HiddenClassInterface>) lookup.defineHiddenClass(hiddenClassBytes, true, NESTMATE).lookupClass();
 
             StaticProperty property = new DefaultStaticProperty(("property"));
             try {
