@@ -48,7 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
-import com.oracle.truffle.espresso.analysis.hierarchy.LeafTypeAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -1255,20 +1255,6 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().getImplementor(accessor);
     }
 
-    /**
-     * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
-     * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
-     * classes and corresponding assumptions.
-     *
-     * @return the assumption, indicating if this class is a leaf in class hierarchy.
-     * @see ClassHierarchyOracle#isLeafClass(ObjectKlass)
-     */
-    public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
-        Objects.requireNonNull(assumptionAccessor);
-        return getKlassVersion().getLeafTypeAssumption(assumptionAccessor);
-    }
-
-
     public KlassVersion getKlassVersion() {
         KlassVersion cache = klassVersion;
         if (!cache.assumption.isValid()) {
@@ -1463,6 +1449,19 @@ public final class ObjectKlass extends Klass {
         return (ExtensionFieldObject) object;
     }
 
+    /**
+     * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
+     * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
+     * classes and corresponding assumptions.
+     *
+     * @see ClassHierarchyOracle#isLeaf(ObjectKlass)
+     * @see ClassHierarchyOracle#hasNoImplementors(ObjectKlass)
+     */
+    public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
+        Objects.requireNonNull(assumptionAccessor);
+        return getKlassVersion().getNoConcreteSubclassesAssumption(assumptionAccessor);
+    }
+
     public final class KlassVersion {
         final Assumption assumption;
         final RuntimeConstantPool pool;
@@ -1485,7 +1484,7 @@ public final class ObjectKlass extends Klass {
         // for convenience.
         // region class hierarchy information
         private final SingleImplementor implementor;
-        private final LeafTypeAssumption leafTypeAssumption;
+        private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
         // endregion
 
         // used to create the first version only
@@ -1528,7 +1527,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
             this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         }
 
@@ -1616,7 +1615,7 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.leafTypeAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
             this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         }
 
@@ -1641,9 +1640,9 @@ public final class ObjectKlass extends Klass {
             return ObjectKlass.this;
         }
 
-        public LeafTypeAssumption getLeafTypeAssumption(ClassHierarchyAccessor assumptionAccessor) {
+        public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
             Objects.requireNonNull(assumptionAccessor);
-            return leafTypeAssumption;
+            return noConcreteSubclassesAssumption;
         }
 
         public SingleImplementor getImplementor(ClassHierarchyAccessor accessor) {
@@ -1669,6 +1668,10 @@ public final class ObjectKlass extends Klass {
 
         public boolean isAbstract() {
             return Modifier.isAbstract(modifiers);
+        }
+
+        public boolean isConcrete()  {
+            return !isAbstract();
         }
 
         public int getModifiers() {

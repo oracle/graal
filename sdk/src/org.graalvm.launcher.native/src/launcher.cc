@@ -41,6 +41,10 @@
 
 #include <jni.h>
 #include <string.h>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <vector>
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -71,115 +75,271 @@
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
 
+#define VM_ARG_PREFIX "--vm."
+#define VM_CP_ARG_PREFIX "--vm.cp="
+#define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
+#define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
+#define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
+#define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
+#define IS_VM_ARG(ARG) (strncmp(ARG, VM_ARG_PREFIX, VM_ARG_OFFSET) == 0)
+#define IS_VM_CP_ARG(ARG) (strncmp(ARG, VM_CP_ARG_PREFIX, VM_CP_ARG_OFFSET) == 0)
+#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, VM_CLASSPATH_ARG_PREFIX, VM_CLASSPATH_ARG_OFFSET) == 0)
+
 #if defined (__linux__)
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
     #include <limits.h>
+    #include <unistd.h>
+    #include <errno.h>
 #elif defined (__APPLE__)
     #include <dlfcn.h>
     #include <stdlib.h>
     #include <libgen.h>
+    #include <unistd.h>
+    #include <errno.h>
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
 #elif defined (_WIN32)
     #include <windows.h>
     #include <libloaderapi.h>
     #include <cstdlib>
+    #include <process.h>
+    #include <errno.h>
 #else
     #error platform not supported or undefined
 #endif
 
 typedef jint(*CreateJVM)(JavaVM **, void **, void *);
+extern char **environ;
+bool debug = false;
+bool relaunch = false;
 
-char *exe_directory() {
+// platform-independent environment setter
+int setenv(std::string key, std::string value) {
+    #if defined (_WIN32)
+        if(_putenv_s(key.c_str(), value.c_str()) == -1) {
+            std::cerr << "_putenv_s failed" << std::endl;
+            return -1;
+        }
+    #else
+        if (setenv(key.c_str(), value.c_str(), 1) == -1) {
+            perror("setenv failed");
+            return -1;
+        }
+    #endif
+    return 0;
+}
+
+// get the path to the current executable
+std::string exe_path() {
     #if defined (__linux__)
-        return dirname(realpath("/proc/self/exe", NULL));
+        char *realPath = realpath("/proc/self/exe", NULL);
     #elif defined (__APPLE__)
         char path[PATH_MAX];
         uint32_t path_len = PATH_MAX;
         _NSGetExecutablePath(path, &path_len);
-        return dirname(realpath(path, NULL));
+        char *realPath = realpath(path, NULL);
     #elif defined (_WIN32)
-        char *path = (char *)malloc(_MAX_PATH);
-        GetModuleFileNameA(NULL, path, _MAX_PATH);
+        char *realPath = (char *)malloc(_MAX_PATH);
+        GetModuleFileNameA(NULL, realPath, _MAX_PATH);
+    #endif
+    std::string p(realPath);
+    free(realPath);
+    return p;
+}
+
+// get the directory of the current executable
+std::string exe_directory() {
+    char *path = strdup(exe_path().c_str());
+    #if defined (_WIN32)
         // get the directory part
         char drive[_MAX_DRIVE];
         char dir[_MAX_DIR];
+        char result[_MAX_DRIVE + _MAX_DIR];
         _splitpath_s(path, drive, _MAX_DRIVE, dir, _MAX_DIR, NULL, 0, NULL, 0);
-        _makepath_s(path, _MAX_PATH, drive, dir, NULL, NULL);
-        return path;
+        _makepath_s(result, _MAX_PATH, drive, dir, NULL, NULL);
+    #else
+        char *result = dirname(path);
     #endif
+    std::string exeDir(result);
+    free(path);
+    return exeDir;
 }
 
-CreateJVM loadliblang(char *exe_dir) {
-        int size = strlen(exe_dir) + sizeof(DIR_SEP_STR) + sizeof(LIBLANG_RELPATH_STR) + 1;
-        char *liblang_path = (char*)malloc(size);
-        strcpy(liblang_path, exe_dir);
-        strcat(liblang_path, DIR_SEP_STR);
-        strcat(liblang_path, LIBLANG_RELPATH_STR);
+// load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
+CreateJVM loadliblang(std::string exeDir) {
+    std::stringstream liblangPath;
+    liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+    if (debug) {
+        std::cout << "Loading library " << liblangPath.str() << std::endl;
+    }
 #if defined (__linux__) || defined (__APPLE__)
-        void* jvm_handle = dlopen(liblang_path, RTLD_NOW);
-        if (jvm_handle != NULL) {
-            return (CreateJVM) dlsym(jvm_handle, "JNI_CreateJavaVM");
+        void* jvmHandle = dlopen(liblangPath.str().c_str(), RTLD_NOW);
+        if (jvmHandle != NULL) {
+            return (CreateJVM) dlsym(jvmHandle, "JNI_CreateJavaVM");
         }
 #else
-        HMODULE jvm_handle = LoadLibraryA(liblang_path);
-        if (jvm_handle != NULL) {
-            return (CreateJVM) GetProcAddress(jvm_handle, "JNI_CreateJavaVM");
+        HMODULE jvmHandle = LoadLibraryA(liblangPath.str().c_str());
+        if (jvmHandle != NULL) {
+            return (CreateJVM) GetProcAddress(jvmHandle, "JNI_CreateJavaVM");
         }
 #endif
     return NULL;
 }
 
-int main(int argc, char **argv) {
-    char *exe_dir = exe_directory();
-    CreateJVM createJVM = loadliblang(exe_dir);
+// parse the VM arguments that should be passed to JNI_CreateJavaVM
+void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs) {
+    std::vector<std::string> vmArgs;
+
+    // check if vm args have been set on relaunch already
+    int vmArgCount = 0;
+    char *vmArgInfo = getenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS");
+    if (vmArgInfo != NULL) {
+        relaunch = true;
+        vmArgCount = strtol(vmArgInfo, NULL, 10);
+        // clear the env variable
+        setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", "");
+    }
+
+    // set optional vm args from LanguageLibraryConfig.option_vars
+    #ifdef LAUNCHER_OPTION_VARS
+        const char *launcherOptionVars[] = LAUNCHER_OPTION_VARS;
+    #endif
+
+    // in pure JVM mode, set org.graalvm.launcher.class system property
+    #ifdef JVM
+        vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
+    #endif
+
+    // construct classpath
+    std::stringstream cp;
+    cp << "-Djava.class.path=";
+    #ifdef JVM
+        // add the launcher classpath
+        const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
+        int launcherCpCnt = sizeof(launcherCpEntries) / sizeof(*launcherCpEntries);
+        for (int i = 0; i < launcherCpCnt; i++) {
+            cp << exeDir << DIR_SEP_STR << launcherCpEntries[i];
+            if (i < launcherCpCnt-1) {
+                cp << CP_SEP_STR;
+            }
+        }
+    #endif
+
+    // handle CLI arguments
+    if (!vmArgInfo) {
+        for (int i = 0; i < argc; i++) {
+            if (IS_VM_CP_ARG(argv[i])) {
+                cp << CP_SEP_STR << argv[i]+VM_CP_ARG_OFFSET;
+            } else if (IS_VM_CLASSPATH_ARG(argv[i])) {
+                cp << CP_SEP_STR << argv[i]+VM_CLASSPATH_ARG_OFFSET;
+            } else if (IS_VM_ARG(argv[i])) {
+                std::stringstream opt;
+                opt << '-' << argv[i]+VM_ARG_OFFSET;
+                vmArgs.push_back(opt.str());
+            }
+        }
+    }
+
+    // handle relaunch arguments
+    else {
+        if (debug) {
+            std::cout << "Relaunch environment variable detected" << std::endl;
+        }
+        for (int i = 0; i < vmArgCount; i++) {
+            std::stringstream ss;
+            ss << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
+            std::string envKey = ss.str();
+            char *cur = getenv(envKey.c_str());
+            if (!cur) {
+                std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
+                break;
+            }
+            if (IS_VM_CP_ARG(cur)) {
+                cp << CP_SEP_STR << cur+VM_CP_ARG_OFFSET;
+            } else if (IS_VM_CLASSPATH_ARG(cur)) {
+                cp << CP_SEP_STR << cur+VM_CLASSPATH_ARG_OFFSET;
+            } else if (IS_VM_ARG(cur)) {
+                std::stringstream opt;
+                opt << '-' << cur+VM_ARG_OFFSET;
+                vmArgs.push_back(opt.str());
+            }
+            // clean up env variable
+            setenv(envKey, "");
+        }
+    }
+
+    // handle optional vm args from LanguageLibraryConfig.option_vars
+    #ifdef LAUNCHER_OPTION_VARS
+    for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
+        if (IS_VM_CP_ARG(launcherOptionVars[i])) {
+            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CP_ARG_OFFSET;
+        } else if (IS_VM_CLASSPATH_ARG(launcherOptionVars[i])) {
+            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CLASSPATH_ARG_OFFSET;
+        } else if (IS_VM_ARG(launcherOptionVars[i])) {
+            std::stringstream opt;
+            opt << '-' << launcherOptionVars[i]+VM_ARG_OFFSET;
+            vmArgs.push_back(opt.str());
+        }
+    }
+    #endif
+
+    #ifdef JVM
+        // set classpath argument
+        vmArgs.push_back(cp.str());
+    #endif
+
+    vmInitArgs->options = (JavaVMOption *)malloc(vmArgs.size() * sizeof(JavaVMOption));
+    vmInitArgs->nOptions = vmArgs.size();
+    JavaVMOption *curOpt = vmInitArgs->options;
+    for(const auto& arg: vmArgs) {
+        if (debug) {
+            std::cout << "Setting VM argument " << arg << std::endl;
+        }
+        curOpt->optionString = strdup(arg.c_str());
+        curOpt++;
+    }
+}
+
+int main(int argc, char *argv[]) {
+    debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
+    std::string exeDir = exe_directory();
+    CreateJVM createJVM = loadliblang(exeDir);
     if (!createJVM) {
-        fprintf(stderr, "Could not load language library.\n");
+        std::cerr << "Could not load language library." << std::endl;
         return -1;
     }
     JavaVM *jvm;
     JNIEnv *env;
-    JavaVMInitArgs vm_args;
-    JavaVMOption options[4];
-    #ifdef JVM
-        const char *cp_entries[] = LAUNCHER_CLASSPATH;
-        int cp_cnt = sizeof(cp_entries) / sizeof(*cp_entries);
-        int size = (strlen(exe_dir) + sizeof(DIR_SEP_STR)) * cp_cnt + sizeof(CP_SEP_STR) * (cp_cnt-1) + 1;
-        for (int i = 0; i < cp_cnt; i++) {
-            size += strlen(cp_entries[i]);
-        }
-        const char cp_property[] = "-Djava.class.path=";
-        size += sizeof(cp_property);
-        char *cp = (char *)malloc(size);
-        strcpy(cp, cp_property);
-        for (int i = 0; i < cp_cnt; i++) {
-            strcat(cp, exe_dir);
-            strcat(cp, DIR_SEP_STR);
-            strcat(cp, cp_entries[i]);
-            if (i < cp_cnt-1) {
-                strcat(cp, CP_SEP_STR);
-            }
-        }
-        options[0].optionString = cp;
-        options[1].optionString = "-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR;
-        vm_args.nOptions = 2;
-    #else
-        vm_args.nOptions = 0;
-    #endif
-    vm_args.version = JNI_VERSION_1_8;
-    vm_args.options = options;
-    vm_args.ignoreUnrecognized = false;
+    JavaVMInitArgs vmInitArgs;
+    vmInitArgs.nOptions = 0;
+    parse_vm_options(argc, argv, exeDir, &vmInitArgs);
+    vmInitArgs.version = JNI_VERSION_1_8;
+    vmInitArgs.ignoreUnrecognized = false;
 
-    int res = createJVM(&jvm, (void**)&env, &vm_args);
+    int res = createJVM(&jvm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {
-        fprintf(stderr, "Creation of the JVM failed.\n");
+        std::cerr << "Creation of the JVM failed." << std::endl;
         return -1;
     }
+
+    // free the allocated vm arguments
+    for (int i = 0; i < vmInitArgs.nOptions; i++) {
+        free(vmInitArgs.options[i].optionString);
+    }
+
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {
-        fprintf(stderr, "Byte array class not found.\n");
+        std::cerr << "Byte array class not found." << std::endl;
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
+        return -1;
+    }
+    jclass relaunchExceptionClass = env->FindClass("org/graalvm/launcher/AbstractLanguageLauncher$RelaunchException");
+    if (relaunchExceptionClass == NULL) {
+        std::cerr << "RelaunchException class not found." << std::endl;
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
@@ -187,48 +347,113 @@ int main(int argc, char **argv) {
     }
     jclass launcherClass = env->FindClass("org/graalvm/launcher/AbstractLanguageLauncher");
     if (launcherClass == NULL) {
-        fprintf(stderr, "Launcher class not found.\n");
+        std::cerr << "Launcher class not found." << std::endl;
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
         return -1;
     }
-    jmethodID mid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJ)V");
-    if (mid == NULL) {
-        fprintf(stderr, "Launcher entry point not found.\n");
+    jmethodID runLauncherMid = env->GetStaticMethodID(launcherClass, "runLauncher", "([[BIJZ)V");
+    if (runLauncherMid == NULL) {
+        std::cerr << "Launcher entry point not found." << std::endl;
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+        }
+        return -1;
+    }
+    jfieldID vmArgsFid = env->GetFieldID(relaunchExceptionClass, "vmArgs", "[Ljava/lang/String;");
+    if (vmArgsFid == NULL) {
+        std::cerr << "RelaunchException vm args field not found." << std::endl;
         if (env->ExceptionCheck()) {
             env->ExceptionDescribe();
         }
         return -1;
     }
 
-    // create args string array
-    long argv_native = (long)argv;
+    // backup native args
+    char** argv_native = argv;
     int argc_native = argc;
+
     argv++;
     argc--;
 
+    // create args string array
     jobjectArray args = env->NewObjectArray(argc, byteArrayClass, NULL);
     for (int i = 0; i < argc; i++) {
         int arraySize = strlen(argv[i]);
         jbyteArray arg = env->NewByteArray(arraySize);
         env->SetByteArrayRegion(arg, 0, arraySize, (jbyte *)(argv[i]));
         if (env->ExceptionCheck()) {
-            fprintf(stderr, "Error in SetByteArrayRegion:\n");
+            std::cerr << "Error in SetByteArrayRegion:" << std::endl;
             env->ExceptionDescribe();
             return -1;
         }
         env->SetObjectArrayElement(args, i, arg);
         if (env->ExceptionCheck()) {
-            fprintf(stderr, "Error in SetObjectArrayElement:\n");
+            std::cerr << "Error in SetObjectArrayElement:" << std::endl;
             env->ExceptionDescribe();
             return -1;
         }
     }
 
     // invoke launcher entry point
-    env->CallStaticVoidMethod(launcherClass, mid, args, argc_native, argv_native);
-    if (env->ExceptionCheck()) {
+    env->CallStaticVoidMethod(launcherClass, runLauncherMid, args, argc_native, (long)argv_native, relaunch);
+    jthrowable t = env->ExceptionOccurred();
+    if (t) {
+        if (env->IsInstanceOf(t, relaunchExceptionClass)) {
+            if (debug) {
+                std::cout << "Relaunch exception has been thrown" << std::endl;
+            }
+            env->ExceptionClear();
+            // read correct VM arguments from exception
+            jobjectArray vmArgs = (jobjectArray)env->GetObjectField(t, vmArgsFid);
+            if (env->ExceptionCheck()) {
+                std::cerr << "Error in GetObjectField:" << std::endl;
+                env->ExceptionDescribe();
+                return -1;
+            }
+            jint vmArgCount = env->GetArrayLength(vmArgs);
+            if (env->ExceptionCheck()) {
+                std::cerr << "Error in GetArrayLength:" << std::endl;
+                env->ExceptionDescribe();
+                return -1;
+            }
+            if (debug) {
+                std::cout << "Relaunch VM arguments read: " << vmArgCount << std::endl;
+            }
+            std::stringstream ss;
+            ss << vmArgCount;
+            if (setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", ss.str()) == -1) {
+                return -1;
+            }
+            for (int i = 0; i < vmArgCount; i++) {
+                jstring vmArgString = (jstring)env->GetObjectArrayElement(vmArgs, i);
+                if (env->ExceptionCheck()) {
+                    std::cerr << "Error in GetObjectArrayElement:" << std::endl;
+                    env->ExceptionDescribe();
+                    return -1;
+                }    
+                const char *vmArg = env->GetStringUTFChars(vmArgString, NULL);
+                if (env->ExceptionCheck()) {
+                    std::cerr << "Error in GetStringUTFChars:" << std::endl;
+                    env->ExceptionDescribe();
+                    return -1;
+                }
+                // set environment variables
+                std::stringstream key;
+                key << "GRAALVM_LANGUAGE_LAUNCHER_VMARGS_" << i;
+                std::string arg(vmArg);
+                if (setenv(key.str(), arg) == -1) {
+                    return -1;
+                }
+            }
+            // relaunch with correct VM arguments
+            std::string path = exe_path();
+            execve(path.c_str(), argv_native, environ);
+            // if we reach here, execve failed for sure
+            perror("execve failed");
+            return -1;
+        }
         env->ExceptionDescribe();
         return -1;
     }

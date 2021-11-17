@@ -24,11 +24,32 @@
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-/**
- * A wrapper around {@link Assumption}. Ensures that class hierarchy assumptions are managed
- * exclusively by {@link ClassHierarchyOracle}.
- */
-public interface LeafTypeAssumption {
-    Assumption getAssumption();
+final class ClassHierarchyAssumptionImpl implements ClassHierarchyAssumption {
+    static final ClassHierarchyAssumption AlwaysValid = new ClassHierarchyAssumptionImpl(AlwaysValidAssumption.INSTANCE);
+    static final ClassHierarchyAssumption NeverValid = new ClassHierarchyAssumptionImpl(NeverValidAssumption.INSTANCE);
+
+    private final Assumption underlying;
+
+    // Used only to create never valid and always valid instances
+    private ClassHierarchyAssumptionImpl(Assumption underlyingAssumption) {
+        underlying = underlyingAssumption;
+    }
+
+    private ClassHierarchyAssumptionImpl(String assumptionName) {
+        underlying = Truffle.getRuntime().createAssumption(assumptionName);
+    }
+
+    ClassHierarchyAssumptionImpl(ObjectKlass klass) {
+        this(klass.getNameAsString() + " has no concrete subclasses");
+    }
+
+    @Override
+    public Assumption getAssumption() {
+        return underlying;
+    }
 }

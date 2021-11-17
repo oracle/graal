@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 22.0.0
+* GR-33316 Remove deprecated cpusampler APIs and CLIs
+* GR-34745 Allow short-hand usage of the `--cpusampler` flag to enable and specify output. For example, `--cpusampler=calltree` is equivalent to `--cpusampler --cpusampler.Output=calltree`. NOTE: Since the flame graph output is unreadable in the terminal `--cpusampler=flamegraph` is equivalent to `--cpusampler --cpusampler.Output=flamegraph -cpusampler.OutputFile=flamegraph.svg`.
+
 ## Version 21.3.0
 * Reimplemented CPUSampler to use the Truffle language safepoints thus deprecating several API functions.
 * Added new option `--cpusampler.SampleContextInitialization` which includes code executed during context initialization in the general sampling profile instead of grouping it into a single entry.

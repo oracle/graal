@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -35,11 +37,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -92,8 +96,23 @@ public abstract class InvokeInterface extends Node {
 
         public abstract Object execute(Object[] args);
 
+        protected ClassHierarchyAssumption getNoImplementorsAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(resolutionSeed.getDeclaringKlass());
+        }
+
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        @TruffleBoundary
+        EspressoException reportNotAnImplementor(Klass receiverKlass) {
+            ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
+
+            // check that receiver's klass indeed does not implement the interface
+            assert !interfaceKlass.checkInterfaceSubclassing(receiverKlass);
+
+            Meta meta = receiverKlass.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", receiverKlass.getName(), interfaceKlass.getName());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
@@ -113,14 +132,7 @@ public abstract class InvokeInterface extends Node {
             // interface
             if (receiver.getKlass() != implementor) {
                 notAnImplementorProfile.enter();
-                ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
-                Klass receiverKlass = receiver.getKlass();
-
-                // check that receiver's klass indeed does not implement the interface
-                assert !interfaceKlass.checkInterfaceSubclassing(receiverKlass);
-
-                Meta meta = receiver.getKlass().getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", receiverKlass.getName(), interfaceKlass.getName());
+                throw reportNotAnImplementor(receiver.getKlass());
             }
 
             assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
@@ -167,7 +179,7 @@ public abstract class InvokeInterface extends Node {
         int iTableIndex = resolutionSeed.getITableIndex();
         Method method = ((ObjectKlass) receiverKlass).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
         if (!method.isPublic()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            transferToInterpreterAndInvalidate();
             Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_IllegalAccessError);
         }

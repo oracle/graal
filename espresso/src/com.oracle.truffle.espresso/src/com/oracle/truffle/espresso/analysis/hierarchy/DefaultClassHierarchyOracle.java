@@ -28,22 +28,38 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
- * compute currently leaf classes, it creates {@code leafTypeAssumption} in the {@link ObjectKlass}
- * constructor and invalidates it when a descendant of this class is initialized.
+ * compute currently leaf classes, it creates {@code noConcreteSubclassesAssumption} in the
+ * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
+ * initialized.
  */
-public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implements ClassHierarchyOracle {
+public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public LeafTypeAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
-
-        if (newKlass.isAbstract() || newKlass.isInterface()) {
-            return NotLeaf;
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
+        if (newKlass.isConcrete()) {
+            addImplementorToAncestors(newKlass.getKlass());
         }
-        // this is a concrete klass, add it to implementors of super classes and interfaces
-        addImplementorToSuperInterfaces(newKlass.getKlass());
         if (newKlass.isFinalFlagSet()) {
-            return FinalIsAlwaysLeaf;
+            return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
-        return new LeafTypeAssumptionImpl(newKlass.getKlass());
+        return new ClassHierarchyAssumptionImpl(newKlass.getKlass());
+    }
+
+    @Override
+    public ClassHierarchyAssumption isLeaf(ObjectKlass klass) {
+        if (klass.isConcrete()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
+    }
+
+    @Override
+    public ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass) {
+        if (klass.isAbstract() || klass.isInterface()) {
+            return klass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor);
+        } else {
+            return ClassHierarchyAssumptionImpl.NeverValid;
+        }
     }
 
     /**
@@ -51,21 +67,23 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
      * parent interfaces.
      */
     private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
-        superInterface.getImplementor(classHierarchyInfoAccessor).addImplementor(implementor);
+        superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+        superInterface.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(implementor);
         for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
             addImplementor(ancestorInterface, implementor);
         }
     }
 
-    private void addImplementorToSuperInterfaces(ObjectKlass newKlass) {
+    private void addImplementorToAncestors(ObjectKlass newKlass) {
         for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
             addImplementor(superInterface, newKlass);
         }
 
         ObjectKlass currentKlass = newKlass.getSuperKlass();
         while (currentKlass != null) {
-            currentKlass.getKlassVersion().getLeafTypeAssumption(classHierarchyInfoAccessor).getAssumption().invalidate();
-            currentKlass.getKlassVersion().getImplementor(classHierarchyInfoAccessor).addImplementor(newKlass);
+            currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
+            currentKlass.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(newKlass);
+
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
@@ -87,6 +105,6 @@ public class DefaultClassHierarchyOracle extends NoOpClassHierarchyOracle implem
 
     @Override
     public AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass) {
-        return klass.getImplementor(classHierarchyInfoAccessor).read();
+        return klass.getImplementor(ClassHierarchyAccessor.accessor).read();
     }
 }

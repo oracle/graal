@@ -136,7 +136,7 @@ public abstract class InvokeVirtual extends Node {
                                         "resolutionSeed.getLeafAssumption()",
                                         "resolvedMethod.getRedefineAssumption()"
                         })
-        Object callLeaf(Object[] args,
+        Object callLeafMethod(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("methodLookup(resolutionSeed, receiver.getKlass())") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
@@ -149,7 +149,7 @@ public abstract class InvokeVirtual extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
-                        replaces = {"callSingleImplementor", "callLeaf"}, //
+                        replaces = {"callSingleImplementor", "callLeafMethod"}, //
                         guards = "receiver.getKlass() == cachedKlass", //
                         assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,

@@ -376,6 +376,8 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.ref.Reference
         public static final Symbol<Name> discovered = StaticSymbols.putName("discovered");
         public static final Symbol<Name> enqueue = StaticSymbols.putName("enqueue");
+        public static final Symbol<Name> getFromInactiveFinalReference = StaticSymbols.putName("getFromInactiveFinalReference");
+        public static final Symbol<Name> clearInactiveFinalReference = StaticSymbols.putName("clearInactiveFinalReference");
         public static final Symbol<Name> lock = StaticSymbols.putName("lock");
         public static final Symbol<Name> next = StaticSymbols.putName("next");
         public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");

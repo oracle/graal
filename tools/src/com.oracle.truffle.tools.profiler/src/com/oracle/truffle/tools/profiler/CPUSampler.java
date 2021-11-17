@@ -38,9 +38,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -75,32 +73,6 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 public final class CPUSampler implements Closeable {
 
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
-    private static final Supplier<Payload> PAYLOAD_FACTORY = new Supplier<Payload>() {
-        @Override
-        public Payload get() {
-            return new Payload();
-        }
-    };
-    private static final BiConsumer<Payload, Payload> MERGE_PAYLOAD = new BiConsumer<Payload, Payload>() {
-        @Override
-        public void accept(Payload sourcePayload, Payload destinationPayload) {
-            if (destinationPayload.selfTierCount.length < sourcePayload.selfTierCount.length) {
-                destinationPayload.selfTierCount = Arrays.copyOf(destinationPayload.selfTierCount, sourcePayload.selfTierCount.length);
-            }
-            for (int i = 0; i < sourcePayload.selfTierCount.length; i++) {
-                destinationPayload.selfTierCount[i] += sourcePayload.selfTierCount[i];
-            }
-            if (destinationPayload.tierCount.length < sourcePayload.tierCount.length) {
-                destinationPayload.tierCount = Arrays.copyOf(destinationPayload.tierCount, sourcePayload.tierCount.length);
-            }
-            for (int i = 0; i < sourcePayload.tierCount.length; i++) {
-                destinationPayload.tierCount[i] += sourcePayload.tierCount[i];
-            }
-            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
-                destinationPayload.addSelfHitTime(timestamp);
-            }
-        }
-    };
     private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
         @Override
         public Payload apply(Payload sourcePayload) {
@@ -237,19 +209,6 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the {@link Mode mode} for the sampler.
-     *
-     * @param mode the new mode for the sampler.
-     * @since 0.30
-     * @deprecated Will be removed without replacement. Has now no effect.
-     */
-    @SuppressWarnings("unused")
-    @Deprecated
-    public synchronized void setMode(Mode mode) {
-        // Deprecated, a noop.
-    }
-
-    /**
      * @return the sampling period i.e. the time between two samples of the stack are taken, in
      *         milliseconds.
      * @since 0.30
@@ -312,20 +271,6 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Sets the option to delay sampling until a non-internal language is initialized. Useful to
-     * avoid internal language initialisation code in the samples.
-     *
-     * @param delaySamplingUntilNonInternalLangInit Enable or disable this option.
-     * @since 0.31
-     * @deprecated Will be removed without replacement. Has now no effect.
-     */
-    @Deprecated
-    @SuppressWarnings("unused")
-    public synchronized void setDelaySamplingUntilNonInternalLangInit(boolean delaySamplingUntilNonInternalLangInit) {
-        // Deprecated, a noop.
-    }
-
-    /**
      * Enables or disables the sampling of the time spent during context initialization. If
      * <code>true</code> code executed during context initialization is included in the general
      * profile instead of grouping it into a single entry by default. If <code>false</code> a single
@@ -361,64 +306,12 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return Total number of samples taken during execution
-     * @deprecated Will be removed. Use {@link CPUSamplerData#samplesTaken} .
-     * @since 0.30
-     */
-    @Deprecated
-    public synchronized long getSampleCount() {
-        long sum = 0;
-        for (MutableSamplerData value : activeContexts.values()) {
-            sum += value.samplesTaken.get();
-        }
-        return sum;
-    }
-
-    /**
      * @return was the the maximum amount of stack frames that are sampled insufficient for the
      *         execution.
      * @since 0.30
      */
     public boolean hasStackOverflowed() {
         return safepointStackSampler.hasOverflowed();
-    }
-
-    /**
-     * Merges all the 'per thread' profiles into one set of nodes and returns it.
-     *
-     * @return The roots of the trees representing the profile of the execution.
-     * @deprecated Use {@link #getData()}.
-     * @since 0.30
-     */
-    @Deprecated
-    public synchronized Collection<ProfilerNode<Payload>> getRootNodes() {
-        ProfilerNode<Payload> mergedRoot = new ProfilerNode<>();
-        Map<Thread, Collection<ProfilerNode<Payload>>> threadToNodes = getThreadToNodesMap();
-        for (Collection<ProfilerNode<Payload>> nodes : threadToNodes.values()) {
-            for (ProfilerNode<Payload> node : nodes) {
-                mergedRoot.deepMergeNodeToChildren(node, MERGE_PAYLOAD, PAYLOAD_FACTORY);
-            }
-        }
-        return mergedRoot.getChildren();
-    }
-
-    /**
-     * @return The roots of the trees representing the profile of the execution per thread.
-     * @deprecated Use {@link #getData()}.
-     * @since 19.0
-     */
-    @Deprecated
-    public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
-        if (activeContexts.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
-        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : activeContexts.values().iterator().next().threadData.entrySet()) {
-            ProfilerNode<Payload> copy = new ProfilerNode<>();
-            copy.deepCopyChildrenFrom(entry.getValue(), COPY_PAYLOAD);
-            returnValue.put(entry.getKey(), copy.getChildren());
-        }
-        return Collections.unmodifiableMap(returnValue);
     }
 
     /**
@@ -593,38 +486,6 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Describes the different modes in which the CPU sampler can operate.
-     *
-     * @deprecated Will be removed without replacement.
-     * @since 0.30
-     */
-    @Deprecated
-    public enum Mode {
-        /**
-         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during
-         * compilation. This mode is the default and has the least amount of impact on peak
-         * performance.
-         *
-         * @since 0.30
-         */
-        EXCLUDE_INLINED_ROOTS,
-        /**
-         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
-         * compilation.
-         *
-         * @since 0.30
-         */
-        ROOTS,
-        /**
-         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag
-         * Statements}. This mode has serious impact on peek performance.
-         *
-         * @since 0.30
-         */
-        STATEMENTS
-    }
-
-    /**
      * Wrapper for information on how many times an element was seen on the stack. Used as a
      * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
      * code and in the interpreter.
@@ -671,65 +532,6 @@ public final class CPUSampler implements Closeable {
                 return 0;
             }
             return tierCount[tier];
-        }
-
-        /**
-         * @return The number of times the element was found below the top of the stack as compiled
-         *         code
-         * @since 0.30
-         * @deprecated Use {@link Payload#getTierTotalCount(int)}
-         */
-        @Deprecated
-        public int getCompiledHitCount() {
-            return sumWithoutFirst(tierCount);
-        }
-
-        /**
-         * @return The number of times the element was found bellow the top of the stack as
-         *         interpreted code
-         * @deprecated Use {@link Payload#getTierTotalCount(int)}
-         * @since 0.30
-         */
-        @Deprecated
-        public int getInterpretedHitCount() {
-            return firstOrZero(tierCount);
-        }
-
-        /**
-         * @return The number of times the element was found on the top of the stack as compiled
-         *         code
-         * @deprecated Use {@link Payload#getTierSelfCount(int)}
-         * @since 0.30
-         */
-        @Deprecated
-        public int getSelfCompiledHitCount() {
-            return sumWithoutFirst(selfTierCount);
-        }
-
-        private static int sumWithoutFirst(int[] tierCounts) {
-            if (tierCounts.length <= 1) {
-                return 0;
-            }
-            int sum = 0;
-            for (int i = 1; i < tierCounts.length; i++) {
-                sum += tierCounts[i];
-            }
-            return sum;
-        }
-
-        /**
-         * @return The number of times the element was found on the top of the stack as interpreted
-         *         code
-         * @deprecated Use {@link Payload#getTierSelfCount(int)}
-         * @since 0.30
-         */
-        @Deprecated
-        public int getSelfInterpretedHitCount() {
-            return firstOrZero(selfTierCount);
-        }
-
-        private static int firstOrZero(int[] selfTierCount) {
-            return selfTierCount.length == 0 ? 0 : selfTierCount[0];
         }
 
         /**
@@ -821,6 +623,9 @@ public final class CPUSampler implements Closeable {
             if (sample.stack.size() == 0) {
                 return;
             }
+            if (syntheticOnly(sample)) {
+                return;
+            }
             ProfilerNode<Payload> treeNode = threadNode;
             for (int i = sample.stack.size() - 1; i >= 0; i--) {
                 StackTraceEntry location = sample.stack.get(i);
@@ -829,6 +634,15 @@ public final class CPUSampler implements Closeable {
                 recordCompilationInfo(location, payload, i == 0, timestamp);
             }
             mutableSamplerData.samplesTaken.incrementAndGet();
+        }
+
+        private boolean syntheticOnly(StackSample sample) {
+            for (StackTraceEntry entry : sample.stack) {
+                if (!entry.isSynthetic()) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private void recordCompilationInfo(StackTraceEntry location, Payload payload, boolean topOfStack, long timestamp) {
