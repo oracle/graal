@@ -162,6 +162,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         }
     }
 
+    @Override
     @Platforms(Platform.AMD64.class)
     public EnumSet<AMD64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);

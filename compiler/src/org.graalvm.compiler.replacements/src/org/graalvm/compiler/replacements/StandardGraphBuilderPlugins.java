@@ -1586,13 +1586,18 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new RequiredInlineOnlyInvocationPlugin("isCompilationConstant", Object.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(value.isJavaConstant()));
-                return true;
+        for (JavaKind kind : JavaKind.values()) {
+            if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
+                Class<?> javaClass = getJavaClass(kind);
+                r.register(new RequiredInlineOnlyInvocationPlugin("isCompilationConstant", javaClass) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(value.isJavaConstant()));
+                        return true;
+                    }
+                });
             }
-        });
+        }
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -1620,6 +1625,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             r.register(new OptionalInvocationPlugin("consume", Receiver.class, Object[].class) {
+
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver blackhole, ValueNode value) {
                     blackhole.get();
@@ -1631,6 +1637,7 @@ public class StandardGraphBuilderPlugins {
                 public boolean isDecorator() {
                     return true;
                 }
+
             });
         }
     }

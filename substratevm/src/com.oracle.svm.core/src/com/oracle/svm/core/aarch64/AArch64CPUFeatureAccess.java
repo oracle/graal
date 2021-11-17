@@ -98,6 +98,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
         }
     }
 
+    @Override
     @Platforms(Platform.AARCH64.class)
     public EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);

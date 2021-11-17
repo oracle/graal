@@ -50,6 +50,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
+import java.util.ArrayDeque;
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
@@ -71,9 +72,26 @@ import jdk.vm.ci.meta.PlatformKind;
  */
 public abstract class AMD64BaseAssembler extends Assembler {
 
+    /**
+     * @see #getSimdEncoder()
+     */
     private final SIMDEncoder vexEncoder;
+    /**
+     * @see #getSimdEncoder()
+     */
     private final SIMDEncoder sseEncoder;
+    /**
+     * CPU features that are statically available.
+     */
     private final EnumSet<CPUFeature> features;
+    /**
+     * Stack of features that are temporarily available in a certain region of the code. Each
+     * element only contains the features which were added.
+     *
+     * @see #addFeatures
+     * @see #removeFeatures
+     */
+    private final ArrayDeque<EnumSet<CPUFeature>> featuresStack;
 
     /**
      * If {@code true}, always encode non-zero address displacements in 4 bytes, even if they would
@@ -90,6 +108,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         vexEncoder = new VEXEncoderImpl();
         sseEncoder = new SSEEncoderImpl();
         features = ((AMD64) target.arch).getFeatures().clone();
+        featuresStack = new ArrayDeque<>(1);
     }
 
     /**
@@ -280,13 +299,33 @@ public abstract class AMD64BaseAssembler extends Assembler {
         return features;
     }
 
-    public final void addFeature(CPUFeature feature) {
-        getFeatures().add(feature);
+    public void addFeatures(EnumSet<CPUFeature> newFeatures) {
+        EnumSet<CPUFeature> added = EnumSet.noneOf(CPUFeature.class);
+        for (CPUFeature feature : newFeatures) {
+            if (getFeatures().add(feature)) {
+                added.add(feature);
+            }
+        }
+        featuresStack.push(added);
     }
 
-    public final void removeFeature(CPUFeature feature) {
-        boolean removed = getFeatures().remove(feature);
-        GraalError.guarantee(removed, "trying to remove CPU feature that was not present: %s", feature);
+    public void removeFeatures() {
+        GraalError.guarantee(!featuresStack.isEmpty(), "cannot remove features since no features have been added");
+        EnumSet<CPUFeature> added = featuresStack.pop();
+        for (CPUFeature feature : added) {
+            getFeatures().remove(feature);
+        }
+
+    }
+
+    /**
+     * Returns {@code true} if the feature is included in the current feature stack.
+     */
+    public boolean isCurrentRegionFeature(CPUFeature feature) {
+        if (featuresStack.isEmpty()) {
+            return false;
+        }
+        return featuresStack.peek().contains(feature);
     }
 
     public final boolean supports(CPUFeature feature) {
