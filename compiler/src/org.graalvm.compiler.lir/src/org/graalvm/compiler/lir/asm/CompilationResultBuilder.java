@@ -562,6 +562,11 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
     }
 
+    public LIR getLIR() {
+        assert lir != null;
+        return lir;
+    }
+
     private void emitBlock(AbstractBlockBase<?> block) {
         if (block == null) {
             return;

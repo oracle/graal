@@ -247,7 +247,7 @@ public class AArch64Call {
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            masm.movNativeAddress(scratch.getRegister(), 0L);
+            masm.movNativeAddress(scratch.getRegister(), 0L, true);
             masm.jmp(scratch.getRegister());
             int after = masm.position();
             crb.recordDirectCall(before, after, callTarget, null);
