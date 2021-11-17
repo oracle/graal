@@ -34,8 +34,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -48,6 +46,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
@@ -180,7 +180,7 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
                     // Java 9+
                     if (valueKind == JavaKind.Byte && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
                         for (int i = fromIndexConstant; i < length; i++) {
-                            if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFF) == ch) {
+                            if ((provider.readArrayElement(arrayConstant, i).asInt()) == ch) {
                                 return ConstantNode.forInt(i);
                             }
                         }
