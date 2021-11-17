@@ -53,8 +53,8 @@ public class AnalysisReportsOptions {
         }
     };
 
-    @Option(help = "Change the output format of the analysis call tree. See: Reports.md.")//
-    public static final EnumOptionKey<CallTreeType> PrintAnalysisCallTreeType = new EnumOptionKey<CallTreeType>(CallTreeType.TXT) {
+    @Option(help = "Change the output format of the analysis call tree, available options are TXT and CSV. See: Reports.md.")//
+        public static final EnumOptionKey<CallTreeType> PrintAnalysisCallTreeType = new EnumOptionKey<CallTreeType>(CallTreeType.TXT) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, CallTreeType oldValue, CallTreeType newValue) {
             super.onValueUpdate(values, oldValue, newValue);
