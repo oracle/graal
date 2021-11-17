@@ -31,6 +31,7 @@ import java.nio.ByteOrder;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -179,6 +180,7 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
                 if (arrayKind == JavaKind.Byte) {
                     // Java 9+
                     if (valueKind == JavaKind.Byte && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
+                        GraalError.guarantee(ch == (byte) ch, "improperly passed argument");
                         for (int i = fromIndexConstant; i < length; i++) {
                             if ((provider.readArrayElement(arrayConstant, i).asInt()) == ch) {
                                 return ConstantNode.forInt(i);
@@ -187,6 +189,7 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
                         return ConstantNode.forInt(-1);
                     } else if (length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions()) * 2) {
                         assert valueKind == JavaKind.Char;
+                        GraalError.guarantee(ch == (char) ch, "improperly passed argument");
                         length >>= 1;
                         for (int i = fromIndexConstant; i < length; i++) {
                             int b0 = provider.readArrayElement(arrayConstant, i * 2).asInt() & 0xFF;
@@ -206,6 +209,7 @@ public class ArrayIndexOfDispatchNode extends FixedWithNextNode implements Canon
                 } else if (arrayKind == JavaKind.Char && length < GraalOptions.StringIndexOfLimit.getValue(tool.getOptions())) {
                     // Java 8
                     assert valueKind == JavaKind.Char;
+                    GraalError.guarantee(ch == (char) ch, "improperly passed argument");
                     for (int i = fromIndexConstant; i < length; i++) {
                         if ((provider.readArrayElement(arrayConstant, i).asInt() & 0xFFFF) == ch) {
                             return ConstantNode.forInt(i);
