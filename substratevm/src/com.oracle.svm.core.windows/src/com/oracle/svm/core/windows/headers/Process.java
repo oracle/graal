@@ -135,7 +135,7 @@ public class Process {
 
     @CFunction(value = "SleepConditionVariableCS", transition = Transition.NO_TRANSITION)
     public static native int SleepConditionVariableCSNoTrans(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
-    
+
     public static class NoTransitions {
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native HANDLE _beginthreadex(PointerBase security, int stacksize, PointerBase start_address,
