@@ -189,7 +189,6 @@ suite = {
         "com.oracle.truffle.espresso.native": {
             "subDir": "src",
             "native": "shared_lib",
-            "manifestType": "sulong-native",
             "deliverable": "nespresso",
             "platformDependent": True,
             "use_jdk_headers": True,
@@ -201,13 +200,12 @@ suite = {
                 "windows": {
                     "<others>": {
                         "cflags": ["-Wall"],
-                        "toolchain": "default",
                     },
                 },
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
-                        "toolchain": "native",
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
             },
@@ -242,7 +240,6 @@ suite = {
         "com.oracle.truffle.espresso.mokapot": {
             "subDir": "src",
             "native": "shared_lib",
-            "manifestType": "sulong-native",
             "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
@@ -260,7 +257,7 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
-                        "toolchain": "native",
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "linux": {
@@ -270,13 +267,12 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
-                        "toolchain": "native",
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "windows": {
                     "<others>": {
                         "cflags": ["-Wall"],
-                        "toolchain": "default",
                     },
                 }
             },

@@ -338,9 +338,16 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
                 result = os.path.join(self.get_output_root(), exe)
                 yield result, tool, exe
 
+    def ninja_toolchain_path(self):
+        return os.path.join(self.get_output_root(), 'toolchain.ninja')
+
     def getArchivableResults(self, use_relpath=True, single=False):
+        if single:
+            raise ValueError("Cannot produce single result for BootstrapToolchainLauncherProject")
         for result, _, exe in self.launchers():
             yield result, os.path.join('bin', exe)
+        toolchain_path = self.ninja_toolchain_path()
+        yield toolchain_path, os.path.basename(toolchain_path)
 
     def getBuildTask(self, args):
         return BootstrapToolchainLauncherBuildTask(self, args, 1)
@@ -388,6 +395,8 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             with open(result, "w") as f:
                 f.write(self.contents(tool, exe))
             os.chmod(result, 0o755)
+        with open(self.subject.ninja_toolchain_path(), "w") as f:
+            f.write(self.ninja_toolchain_contents())
 
     def clean(self, forBuild=False):
         if os.path.exists(self.subject.get_output_root()):
@@ -414,6 +423,42 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             return "@echo off\n" + " ".join(command) + "\n"
         else:
             return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+
+    def ninja_toolchain_contents(self):
+        return """# Ninja rules for the LLVM toolchain
+rule cc
+  command = {CC} -MMD -MF $out.d $includes $cflags -c $in -o $out
+  description = CC $out
+  depfile = $out.d
+  deps = gcc
+
+rule cxx
+  command = {CXX} -MMD -MF $out.d $includes $cflags -c $in -o $out
+  description = CXX $out
+  depfile = $out.d
+  deps = gcc
+
+rule link
+  command = {CC} $ldflags -o $out $in $ldlibs
+  description = LINK $out
+
+rule linkxx
+  command = {CXX} $ldflags -o $out $in $ldlibs
+  description = LINKXX $out
+
+rule ar
+  command = {AR} -rc $out $in
+  description = AR $out
+
+rule asm
+  command = {CC} -MMD -MF $out.d $includes $cflags -c $in -o $out
+  description = ASM $out
+  depfile = $out.d
+  deps = gcc
+
+""".format(CC=self.subject.suite.toolchain.get_toolchain_tool('CC'),
+           CXX=self.subject.suite.toolchain.get_toolchain_tool('CXX'),
+           AR=self.subject.suite.toolchain.get_toolchain_tool('AR'))
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
