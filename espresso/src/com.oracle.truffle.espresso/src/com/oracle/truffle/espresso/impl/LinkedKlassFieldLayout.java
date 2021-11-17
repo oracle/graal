@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -51,7 +52,9 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
+    LinkedKlassFieldLayout(EspressoContext context, ParserKlass parserKlass, LinkedKlass superKlass) {
+        EspressoLanguage language = context.getLanguage();
+        JavaVersion version = context.getJavaVersion();
         StaticShape.Builder instanceBuilder = StaticShape.newBuilder(language);
         StaticShape.Builder staticBuilder = StaticShape.newBuilder(language);
 
@@ -60,13 +63,19 @@ final class LinkedKlassFieldLayout {
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
         int nextStaticFieldSlot = 0;
-        // make room for extension fields which is used when
-        // adding new fields during class redefinition
-        staticFields = new LinkedField[fieldCounter.staticFields + 1];
-        if (superKlass != null) {
-            instanceFields = new LinkedField[fieldCounter.instanceFields];
+
+        if (context.JDWPOptions != null) {
+            // make room for extension fields which is used when
+            // adding new fields during class redefinition
+            staticFields = new LinkedField[fieldCounter.staticFields + 1];
+            if (superKlass != null) {
+                instanceFields = new LinkedField[fieldCounter.instanceFields];
+            } else {
+                instanceFields = new LinkedField[fieldCounter.instanceFields + 1];
+            }
         } else {
-            instanceFields = new LinkedField[fieldCounter.instanceFields + 1];
+            staticFields = new LinkedField[fieldCounter.staticFields];
+            instanceFields = new LinkedField[fieldCounter.instanceFields];
         }
 
         LinkedField.IdMode idMode = getIdMode(parserKlass);
@@ -83,10 +92,12 @@ final class LinkedKlassFieldLayout {
             }
         }
         // static extension field
-        LinkedField staticExtensionField = new LinkedField(new ParserField(ParserField.HIDDEN | Modifier.STATIC, Name.staticExtensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY),
-                        nextStaticFieldSlot, LinkedField.IdMode.REGULAR);
-        staticBuilder.property(staticExtensionField, Object.class, true);
-        staticFields[nextStaticFieldIndex] = staticExtensionField;
+        if (context.JDWPOptions != null) {
+            LinkedField staticExtensionField = new LinkedField(new ParserField(ParserField.HIDDEN | Modifier.STATIC, Name.staticExtensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY),
+                    nextStaticFieldSlot, LinkedField.IdMode.REGULAR);
+            staticBuilder.property(staticExtensionField, Object.class, true);
+            staticFields[nextStaticFieldIndex] = staticExtensionField;
+        }
 
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.versionRange.contains(version)) {
@@ -96,15 +107,18 @@ final class LinkedKlassFieldLayout {
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
+        if (context.JDWPOptions != null) {
+            if (superKlass == null) {
+                // instance extension field
+                LinkedField extensionField = new LinkedField(new ParserField(ParserField.HIDDEN, Name.extensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY), nextInstanceFieldSlot++,
+                        LinkedField.IdMode.REGULAR);
+                instanceBuilder.property(extensionField, Object.class, true);
+                instanceFields[nextInstanceFieldIndex++] = extensionField;
 
-        if (superKlass == null) {
-            // instance extension field
-            LinkedField extensionField = new LinkedField(new ParserField(ParserField.HIDDEN, Name.extensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY), nextInstanceFieldSlot++,
-                            LinkedField.IdMode.REGULAR);
-            instanceBuilder.property(extensionField, Object.class, true);
-            instanceFields[nextInstanceFieldIndex++] = extensionField;
-
-            instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
+                instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
+            } else {
+                instanceShape = instanceBuilder.build(superKlass.getShape(false));
+            }
         } else {
             instanceShape = instanceBuilder.build(superKlass.getShape(false));
         }
