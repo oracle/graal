@@ -107,18 +107,17 @@ final class LinkedKlassFieldLayout {
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
-        if (context.JDWPOptions != null) {
-            if (superKlass == null) {
+
+        if (superKlass == null) {
+            if (context.JDWPOptions != null) {
                 // instance extension field
                 LinkedField extensionField = new LinkedField(new ParserField(ParserField.HIDDEN, Name.extensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY), nextInstanceFieldSlot++,
-                                LinkedField.IdMode.REGULAR);
+                        LinkedField.IdMode.REGULAR);
                 instanceBuilder.property(extensionField, Object.class, true);
                 instanceFields[nextInstanceFieldIndex++] = extensionField;
-
-                instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
-            } else {
-                instanceShape = instanceBuilder.build(superKlass.getShape(false));
             }
+            instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
+
         } else {
             instanceShape = instanceBuilder.build(superKlass.getShape(false));
         }
