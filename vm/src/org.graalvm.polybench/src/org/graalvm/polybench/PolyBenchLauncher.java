@@ -203,6 +203,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                         config.warmupIterations = 0;
                         config.iterations = 1;
                         break;
+                    case "allocated-bytes":
+                        config.metric = new AllocatedBytesMetric();
+                        break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
                 }
