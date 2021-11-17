@@ -66,7 +66,11 @@ public final class Resources {
         return ImageSingletons.lookup(Resources.class);
     }
 
-    /** The hosted map used to collect registered resources. */
+    /**
+     * The hosted map used to collect registered resources. Using a {@link Pair} of (moduleName,
+     * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
+     * the map keys.
+     */
     private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     Resources() {
