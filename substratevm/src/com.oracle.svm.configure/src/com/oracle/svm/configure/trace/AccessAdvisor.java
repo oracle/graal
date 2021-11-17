@@ -66,7 +66,7 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("com.sun.nio.zipfs.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.io.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.lang.**", RuleNode.Inclusion.Exclude);
-        // The agent should not filter calls from native libraries.
+        // The agent should not filter calls from native libraries (JDK11).
         internalCallerFilter.addOrGetChildren("java.lang.ClassLoader$NativeLibrary", RuleNode.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.math.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.net.**", RuleNode.Inclusion.Exclude);
@@ -79,6 +79,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("javax.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.tools.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.internal.**", RuleNode.Inclusion.Exclude);
+        // The agent should not filter calls from native libraries (JDK17).
+        internalCallerFilter.addOrGetChildren("jdk.internal.loader.NativeLibraries$NativeLibraryImpl", RuleNode.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("jdk.jfr.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.nio.**", RuleNode.Inclusion.Exclude);
