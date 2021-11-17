@@ -65,12 +65,12 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * maintained by the Compatible (Original) Field. In this case the Redefine Added Field serves only
  * as an up-to-date representative of the field in the runtime.
  *
- * 3. A Synthetic Field is a special field that is created whenever a certain field requires to be
+ * 3. A Delegation Field is a special field that is created whenever a certain field requires to be
  * re-resolved due to class redefinition. It allows obsolete code that uses a field to continue
- * accessing that field even though the field could no longer be resolved by the caller. Synthetic
+ * accessing that field even though the field could no longer be resolved by the caller. Delegation
  * fields are always constructed as if they're Redefine Added Fields to trigger the alternative
  * access path as described above. Moreover, to delegate accesses to the field that maintains the
- * value (this could be either an Original Field or a Redefine Added Field) a synthetic field is
+ * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
 public class Field extends Member<Type> implements FieldRef {
