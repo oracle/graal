@@ -40,7 +40,7 @@ public class AnalysisReportsOptions {
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
 
-    @Option(help = "Change the output format of the analysis call tree. See: Reports.md.")//
+    @Option(help = "Change the output format of the analysis call tree. available options are TXT and CSV. See: Reports.md.")//
     public static final EnumOptionKey<CallTreeType> PrintAnalysisCallTreeType = new EnumOptionKey<CallTreeType>(CallTreeType.TXT) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, CallTreeType oldValue, CallTreeType newValue) {
