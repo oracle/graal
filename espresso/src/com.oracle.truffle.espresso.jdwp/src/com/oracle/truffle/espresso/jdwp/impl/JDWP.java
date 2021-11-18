@@ -1131,7 +1131,7 @@ public final class JDWP {
                 }
 
                 // check that method is member of the class type or a super class
-                KlassRef declaringKlass = method.getDeclaringKlass();
+                KlassRef declaringKlass = method.getDeclaringKlassRef();
                 KlassRef checkedKlass = klass;
                 boolean isMember = false;
                 while (checkedKlass != null) {
@@ -1328,7 +1328,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (method.getDeclaringKlass() != itf) {
+                if (method.getDeclaringKlassRef() != itf) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
@@ -1840,7 +1840,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (!context.isMemberOf(callee, method.getDeclaringKlass())) {
+                if (!context.isMemberOf(callee, method.getDeclaringKlassRef())) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }

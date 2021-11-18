@@ -1535,7 +1535,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public KlassRef getDeclaringKlass() {
+        public KlassRef getDeclaringKlassRef() {
             return getMethod().getDeclaringKlass();
         }
 
@@ -1655,6 +1655,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public ObjectKlass.KlassVersion getKlassVersion() {
             return klassVersion;
+        }
+
+        public Klass getDeclaringKlass() {
+            return declaringKlass;
+        }
+
+        public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+            getMethod().checkLoadingConstraints(loader1, loader2);
         }
     }
 

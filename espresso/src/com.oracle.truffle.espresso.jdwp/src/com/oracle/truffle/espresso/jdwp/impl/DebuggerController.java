@@ -240,7 +240,7 @@ public final class DebuggerController implements ContextsListener {
             // record the location that we'll land on after the step out completes
             MethodRef method = context.getMethodFromRootNode(callerRoot);
             if (method != null) {
-                KlassRef klass = method.getDeclaringKlass();
+                KlassRef klass = method.getDeclaringKlassRef();
                 steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
             }
         }
@@ -699,7 +699,7 @@ public final class DebuggerController implements ContextsListener {
                     return null;
                 }
 
-                klass = method.getDeclaringKlass();
+                klass = method.getDeclaringKlassRef();
                 long klassId = ids.getIdAsLong(klass);
                 long methodId = ids.getIdAsLong(method);
                 byte typeTag = TypeTag.getKind(klass);
@@ -1025,7 +1025,7 @@ public final class DebuggerController implements ContextsListener {
 
                 Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_WRITE);
                 MethodRef method = context.getMethodFromRootNode(root);
-                KlassRef klass = method.getDeclaringKlass();
+                KlassRef klass = method.getDeclaringKlassRef();
 
                 klassId = ids.getIdAsLong(klass);
                 methodId = ids.getIdAsLong(method);

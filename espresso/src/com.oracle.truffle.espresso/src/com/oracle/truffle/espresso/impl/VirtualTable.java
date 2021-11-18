@@ -43,7 +43,7 @@ public final class VirtualTable {
         ArrayList<Method.MethodVersion> tmp;
         ArrayList<Method.MethodVersion> overrides = new ArrayList<>();
         if (superKlass != null) {
-            tmp = new ArrayList<>(Arrays.asList(superKlass.getCurrentVTable()));
+            tmp = new ArrayList<>(Arrays.asList(superKlass.getVTable()));
         } else {
             tmp = new ArrayList<>();
         }

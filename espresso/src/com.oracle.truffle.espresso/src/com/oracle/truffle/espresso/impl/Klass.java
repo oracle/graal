@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -66,6 +65,7 @@ import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -848,7 +848,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * @return true if {@code this} is a super interface of {@code other}
      */
     public boolean checkInterfaceSubclassing(Klass other) {
-        Klass[] interfaces = other.getTransitiveInterfacesList();
+        ObjectKlass.KlassVersion[] interfaces = other.getTransitiveInterfacesList();
         return fastLookup(this, interfaces) >= 0;
     }
 
@@ -952,6 +952,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * {@link Class#getDeclaredMethods()} in terms of returned methods.
      */
     public abstract Method[] getDeclaredMethods();
+
+    /**
+     * Returns a version-specific array reflecting all the methods declared by this type. This
+     * method is similar to {@link Class#getDeclaredMethods()} in terms of returned methods.
+     */
+    public abstract Method.MethodVersion[] getDeclaredMethodVersions();
 
     /**
      * Returns an array reflecting all the methods declared by this type. This method is similar to
@@ -1067,14 +1073,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return result;
     }
 
-    @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
+    @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
 
-    protected final Klass[] getTransitiveInterfacesList() {
-        Klass[] transitiveInterfaces = transitiveInterfaceCache;
+    protected final ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (this.isArray() || this.isPrimitive()) {
-                transitiveInterfaces = this.getSuperInterfaces();
+                ObjectKlass[] superItfs = this.getSuperInterfaces();
+                transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
+                for (int i = 0; i < superItfs.length; i++) {
+                    transitiveInterfaces[i] = superItfs[i].getKlassVersion();
+                }
             } else {
                 // Use the itable construction.
                 transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
@@ -1262,11 +1272,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @TruffleBoundary(allowInlining = true)
-    protected static int fastLookupBoundary(Klass target, Klass[] klasses) {
+    protected static int fastLookupBoundary(Klass target, ObjectKlass.KlassVersion[] klasses) {
         return fastLookupImpl(target, klasses);
     }
 
-    protected static int fastLookup(Klass target, Klass[] klasses) {
+    protected static int fastLookup(Klass target, ObjectKlass.KlassVersion[] klasses) {
         if (!CompilerDirectives.isPartialEvaluationConstant(klasses)) {
             return fastLookupBoundary(target, klasses);
         }
@@ -1276,11 +1286,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    protected static int fastLookupImpl(Klass target, Klass[] klasses) {
-        assert isSorted(klasses, KLASS_ID_COMPARATOR);
+    protected static int fastLookupImpl(Klass target, ObjectKlass.KlassVersion[] klasses) {
+        assert isSorted(klasses, KLASS_VERSION_ID_COMPARATOR);
         if (klasses.length <= LINEAR_SEARCH_THRESHOLD) {
             for (int i = 0; i < klasses.length; i++) {
-                if (klasses[i] == target) {
+                if (klasses[i].getKlass() == target) {
                     return i;
                 }
             }
@@ -1289,7 +1299,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             int hi = klasses.length - 1;
             while (lo <= hi) {
                 int mid = (lo + hi) >>> 1;
-                int cmp = KLASS_ID_COMPARATOR.compare(target, klasses[mid]);
+                int cmp = KLASS_ID_COMPARATOR.compare(target, klasses[mid].getKlass());
                 if (cmp < 0) {
                     hi = mid - 1;
                 } else if (cmp > 0) {

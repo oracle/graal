@@ -69,7 +69,7 @@ public abstract class LookupDeclaredMethod extends AbstractLookupNode {
     }
 
     @Override
-    Method[] getMethodArray(Klass k) {
-        return k.getDeclaredMethods();
+    Method.MethodVersion[] getMethodArray(Klass k) {
+        return k.getDeclaredMethodVersions();
     }
 }

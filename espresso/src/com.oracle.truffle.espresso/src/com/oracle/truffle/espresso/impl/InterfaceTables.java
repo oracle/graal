@@ -205,7 +205,7 @@ final class InterfaceTables {
         // Second step
         // Remember here that the interfaces are sorted, most specific at the end.
         for (int i = iklassTable.length - 1; i >= 0; i--) {
-            fixVTable(self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getKlass().getCurrentInterfaceMethodsTable());
+            fixVTable(self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getKlass().getInterfaceMethodsTable());
         }
         // Third step
         for (int tableIndex = 0; tableIndex < tables.length; tableIndex++) {
@@ -243,10 +243,10 @@ final class InterfaceTables {
         for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
             Method.MethodVersion m = itable[methodIndex];
             // This class' itable entry for this method is not the interface's declared method.
-            if (m.getDeclaringKlass() != currInterface) {
-                Method.MethodVersion intfMethod = currInterface.getCurrentInterfaceMethodsTable()[methodIndex];
+            if (m.getDeclaringKlassRef() != currInterface) {
+                Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
                 // sanity checks
-                assert intfMethod.getDeclaringKlass() == currInterface;
+                assert intfMethod.getDeclaringKlassRef() == currInterface;
                 assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
                 if (intfMethod.leafAssumption()) {
                     intfMethod.invalidateLeaf();
@@ -260,8 +260,8 @@ final class InterfaceTables {
     private CreationResult create() {
         for (ObjectKlass interf : superInterfaces) {
             fillMirandas(interf.getKlassVersion());
-            for (ObjectKlass supInterf : interf.getiKlassTable()) {
-                fillMirandas(supInterf.getKlassVersion());
+            for (ObjectKlass.KlassVersion supInterf : interf.getiKlassTable()) {
+                fillMirandas(supInterf);
             }
         }
         // At this point, no more mirandas should be created.
@@ -276,10 +276,10 @@ final class InterfaceTables {
 
     private void fillMirandas(ObjectKlass.KlassVersion interf) {
         if (canInsert(interf, tmpKlassTable)) {
-            Method[] interfMethods = interf.getKlass().getInterfaceMethodsTable();
+            Method.MethodVersion[] interfMethods = interf.getKlass().getInterfaceMethodsTable();
             Entry[] res = new Entry[interfMethods.length];
             for (int i = 0; i < res.length; i++) {
-                Method im = interfMethods[i];
+                Method im = interfMethods[i].getMethod();
                 Symbol<Name> mname = im.getName();
                 Symbol<Signature> sig = im.getRawSignature();
                 res[i] = lookupLocation(im, mname, sig);
@@ -385,12 +385,12 @@ final class InterfaceTables {
     // lookup helpers
 
     private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
-        Method m = null;
+        Method m;
         int index = -1;
         // Look at VTable first. Even if this klass declares the method, it will be put in the same
         // place.
         if (superKlass != null) {
-            index = getMethodTableIndex(superKlass.getCurrentVTable(), im, mname, sig);
+            index = getMethodTableIndex(superKlass.getVTable(), im, mname, sig);
         }
         if (index != -1) {
             m = superKlass.vtableLookup(index);

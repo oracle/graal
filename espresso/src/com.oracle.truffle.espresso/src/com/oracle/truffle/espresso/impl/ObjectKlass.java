@@ -433,9 +433,9 @@ public final class ObjectKlass extends Klass {
     private void checkLoadingConstraints() {
         if (getSuperKlass() != null) {
             if (!isInterface()) {
-                Method[] thisVTable = getVTable();
+                Method.MethodVersion[] thisVTable = getVTable();
                 if (thisVTable != null) {
-                    Method[] superVTable = getSuperKlass().getVTable();
+                    Method.MethodVersion[] superVTable = getSuperKlass().getVTable();
                     Klass k1;
                     Klass k2;
                     for (int i = 0; i < superVTable.length; i++) {
@@ -448,16 +448,16 @@ public final class ObjectKlass extends Klass {
                 }
             }
             if (getItable() != null) {
-                Method[][] itables = getItable();
-                Klass[] klassTable = getiKlassTable();
-                for (int i = 0; i < getItable().length; i++) {
-                    Klass interfKlass = klassTable[i];
-                    Method[] table = itables[i];
-                    for (Method m : table) {
+                Method.MethodVersion[][] itables = getItable();
+                KlassVersion[] klassTable = getiKlassTable();
+                for (int i = 0; i < itables.length; i++) {
+                    KlassVersion interfKlass = klassTable[i];
+                    Method.MethodVersion[] table = itables[i];
+                    for (Method.MethodVersion m : table) {
                         if (m.getDeclaringKlass() == this) {
-                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getDefiningClassLoader());
+                            m.checkLoadingConstraints(this.getDefiningClassLoader(), interfKlass.getKlass().getDefiningClassLoader());
                         } else {
-                            m.checkLoadingConstraints(interfKlass.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
+                            m.checkLoadingConstraints(interfKlass.getKlass().getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                             m.checkLoadingConstraints(this.getDefiningClassLoader(), m.getDeclaringKlass().getDefiningClassLoader());
                         }
                     }
@@ -676,11 +676,12 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public MethodRef[] getDeclaredMethodRefs() {
-        MethodRef[] result = new MethodRef[getDeclaredMethods().length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = getDeclaredMethods()[i].getMethodVersion();
-        }
-        return result;
+        return getDeclaredMethodVersions();
+    }
+
+    @Override
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
+        return getKlassVersion().declaredMethods;
     }
 
     @Override
@@ -860,83 +861,46 @@ public final class ObjectKlass extends Klass {
     }
 
     // Exposed to LookupVirtualMethodNode
-    public Method[] getVTable() {
-        assert !isInterface();
-        Method.MethodVersion[] versionVTable = getKlassVersion().vtable;
-        Method[] methodVTable = new Method[versionVTable.length];
-        for (int i = 0; i < versionVTable.length; i++) {
-            methodVTable[i] = versionVTable[i].getMethod();
-        }
-        return methodVTable;
-    }
-
-    public Method.MethodVersion[] getCurrentVTable() {
+    public Method.MethodVersion[] getVTable() {
         assert !isInterface();
         return getKlassVersion().vtable;
     }
 
-    Method[] getInterfaceMethodsTable() {
-        assert isInterface();
-        Method.MethodVersion[] versionVTable = getKlassVersion().vtable;
-        Method[] methodVTable = new Method[versionVTable.length];
-        for (int i = 0; i < versionVTable.length; i++) {
-            methodVTable[i] = versionVTable[i].getMethod();
-        }
-        return methodVTable;
-    }
-
-    public Method.MethodVersion[] getCurrentInterfaceMethodsTable() {
+    public Method.MethodVersion[] getInterfaceMethodsTable() {
         assert isInterface();
         return getKlassVersion().vtable;
     }
 
-    Method vtableLookupImpl(int vtableIndex) {
-        assert (vtableIndex >= 0) : "Undeclared virtual method";
-        return getVTable()[vtableIndex];
+    Method.MethodVersion[][] getItable() {
+        return getKlassVersion().itable;
     }
 
-    public Method itableLookup(Klass interfKlass, int index) {
-        assert (index >= 0) : "Undeclared interface method";
-        try {
-            return getItable()[fastLookup(interfKlass, getiKlassTable())][index];
-        } catch (IndexOutOfBoundsException e) {
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
-        }
-    }
-
-    Method[][] getItable() {
-        Method.MethodVersion[][] itable = getKlassVersion().itable;
-        if (itable != null) {
-            Method[][] result = new Method[itable.length][];
-            for (int i = 0; i < itable.length; i++) {
-                Method.MethodVersion[] inner = itable[i];
-                result[i] = new Method[inner.length];
-                for (int j = 0; j < inner.length; j++) {
-                    result[i][j] = inner[j].getMethod();
-                }
-            }
-            return result;
-        }
-        return null;
-    }
-
-    ObjectKlass[] getiKlassTable() {
-        KlassVersion[] iKlassTable = getKlassVersion().iKlassTable;
-        ObjectKlass[] result = new ObjectKlass[iKlassTable.length];
-        for (int i = 0; i < iKlassTable.length; i++) {
-            result[i] = iKlassTable[i].getKlass();
-        }
-        return result;
+    ObjectKlass.KlassVersion[] getiKlassTable() {
+        return getKlassVersion().iKlassTable;
     }
 
     KlassVersion[] getVersionIKlassTable() {
         return getKlassVersion().iKlassTable;
     }
 
+    Method vtableLookupImpl(int vtableIndex) {
+        assert (vtableIndex >= 0) : "Undeclared virtual method";
+        return getVTable()[vtableIndex].getMethod();
+    }
+
+    public Method itableLookup(Klass interfKlass, int index) {
+        assert (index >= 0) : "Undeclared interface method";
+        try {
+            return getItable()[fastLookup(interfKlass, getiKlassTable())][index].getMethod();
+        } catch (IndexOutOfBoundsException e) {
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
+        }
+    }
+
     int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
         for (int i = 0; i < getVTable().length; i++) {
-            Method m = getVTable()[i];
+            Method.MethodVersion m = getVTable()[i];
             if (!m.isStatic() && !m.isPrivate() && m.getName() == methodName && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic() || m.getDeclaringKlass().sameRuntimePackage(subClass)) {
                     return i;
@@ -949,7 +913,7 @@ public final class ObjectKlass extends Klass {
     void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
-        for (Method.MethodVersion m : getCurrentVTable()) {
+        for (Method.MethodVersion m : getVTable()) {
             if (!m.isStatic() && !m.isPrivate() && m.getName() == methodName && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
@@ -963,7 +927,7 @@ public final class ObjectKlass extends Klass {
                             if (index >= currentKlass.getVTable().length) {
                                 break;
                             }
-                            Method.MethodVersion toExamine = currentKlass.getCurrentVTable()[index];
+                            Method.MethodVersion toExamine = currentKlass.getVTable()[index];
                             if (current.canOverride(toExamine.getMethod())) {
                                 result.add(toExamine);
                                 break;
@@ -1004,8 +968,9 @@ public final class ObjectKlass extends Klass {
          * maximally-specific first.
          */
         for (int i = getiKlassTable().length - 1; i >= 0; i--) {
-            ObjectKlass superInterf = getiKlassTable()[i];
-            for (Method superM : superInterf.getInterfaceMethodsTable()) {
+            ObjectKlass superInterf = getiKlassTable()[i].getKlass();
+            for (Method.MethodVersion superMVersion : superInterf.getInterfaceMethodsTable()) {
+                Method superM = superMVersion.getMethod();
                 /*
                  * Methods in superInterf.getInterfaceMethodsTable() are all non-static non-private
                  * methods declared in superInterf.
