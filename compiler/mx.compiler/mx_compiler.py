@@ -1361,7 +1361,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        support_libraries_distributions=['compiler:HSDIS'],
+        support_libraries_distributions=['compiler:HSDIS_GRAALVM_SUPPORT'],
     )
 ]
 

@@ -2329,5 +2329,24 @@ suite = {
       "testDistribution" : True,
       "maven": False,
     },
+
+    "HSDIS_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Disassembler support distribution for the GraalVM",
+      "os_arch" : {
+        "<others>" : {
+          "amd64" : {
+            "layout" : {
+              "<libsuffix:hsdis-amd64>" : "extracted-dependency:compiler:HSDIS/*",
+            },
+          },
+          "aarch64" : {
+            "layout" : {
+              "<libsuffix:hsdis-aarch64>" : "extracted-dependency:compiler:HSDIS/*",
+            },
+          }
+        },
+      },
+    },
   },
 }
