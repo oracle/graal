@@ -40,47 +40,47 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
-import com.oracle.truffle.api.staticobject.StaticShape;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import com.oracle.truffle.api.impl.asm.ClassWriter;
+import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.api.impl.asm.Type;
 
-import java.util.concurrent.Callable;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ALOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.BIPUSH;
+import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
+import static com.oracle.truffle.api.impl.asm.Opcodes.IRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.V1_6;
 
-@RunWith(Parameterized.class)
-public class ClassLoaderTest extends StaticObjectModelTest {
-    @Parameterized.Parameters(name = "{0}")
-    public static TestConfiguration[] data() {
-        return getTestConfigurations();
+public class HiddenClassGenerator {
+    public static byte[] getBytes() {
+        ClassWriter cw = new ClassWriter(0);
+        cw.visit(V1_6, ACC_PUBLIC + ACC_SUPER, Type.getInternalName(HiddenClassGenerator.class), null, "java/lang/Object", new String[]{Type.getInternalName(HiddenClassInterface.class)});
+        MethodVisitor mv;
+
+        // Add constructor
+        mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+        mv.visitCode();
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        mv.visitInsn(RETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
+        // Add test method
+        mv = cw.visitMethod(ACC_PUBLIC, "return42", "()I", null, null);
+        mv.visitCode();
+        mv.visitIntInsn(BIPUSH, 42);
+        mv.visitInsn(IRETURN);
+        mv.visitMaxs(1, 1);
+        mv.visitEnd();
+
+        cw.visitEnd();
+        return cw.toByteArray();
     }
 
-    @Parameterized.Parameter public TestConfiguration config;
-
-    public static class CustomStaticObject {
-    }
-
-    public interface CustomStaticObjectFactory {
-        CustomStaticObject create();
-    }
-
-    /**
-     * The implementation of the Static Object Model caches the class loader used to load static
-     * object classes. This test makes sure that the cache takes into account the class loader that
-     * loaded the factory interface.
-     */
-    @Test
-    public void testClassLoader() {
-        try (TestEnvironment te = new TestEnvironment(config)) {
-            // Callable.class is loaded by the system class loader
-            try {
-                StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
-            } catch (IllegalArgumentException e) {
-                Assert.assertTrue(e.getMessage().matches(
-                                "The class loader of factory interface 'java.util.concurrent.Callable' \\(cl: '.*'\\) must have visibility of 'com.oracle.truffle.api.staticobject.StaticShape' \\(cl: '.*'\\)"));
-            }
-            // CustomStaticObjectFactory.class is loaded by the application class loader
-            StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
-        }
+    interface HiddenClassInterface {
+        int return42();
     }
 }

@@ -464,7 +464,7 @@ final class ObjectSizeCalculator {
         private final boolean isReference;
 
         ObjectClassInfo(Class<?> clazz) {
-            this.resolvedJavaFields = EngineAccessor.RUNTIME.getNonPrimitiveResolvedFields(clazz);
+            this.resolvedJavaFields = EngineAccessor.RUNTIME.getResolvedFields(clazz, false, true);
             this.objectSize = EngineAccessor.RUNTIME.getBaseInstanceSize(clazz);
             this.isReference = Reference.class.isAssignableFrom(clazz);
         }

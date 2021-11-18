@@ -73,7 +73,7 @@ meth public final void setObjectVolatile(java.lang.Object,java.lang.Object)
 meth public final void setShort(java.lang.Object,short)
 meth public final void setShortVolatile(java.lang.Object,short)
 supr java.lang.Object
-hfds STORE_AS_FINAL,UNSAFE,flags,offset,shape
+hfds UNSAFE,offset,shape,storeAsFinal,type
 hcls CASSupport
 
 CLSS public abstract com.oracle.truffle.api.staticobject.StaticShape<%0 extends java.lang.Object>
@@ -91,7 +91,7 @@ meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.St
 meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty,java.lang.Class<?>,boolean)
 meth public com.oracle.truffle.api.staticobject.StaticShape<com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory> build()
 supr java.lang.Object
-hfds MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,hasLongPropertyId,isActive,language,staticProperties
+hfds DELIMITER,MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,counter,hasLongPropertyId,isActive,language,staticProperties,storageClassName
 
 CLSS public java.lang.Object
 cons public init()

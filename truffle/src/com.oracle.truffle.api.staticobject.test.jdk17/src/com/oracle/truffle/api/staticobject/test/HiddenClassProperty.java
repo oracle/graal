@@ -40,16 +40,21 @@
  */
 package com.oracle.truffle.api.staticobject.test;
 
+import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.api.staticobject.test.HiddenClassGenerator.HiddenClassInterface;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.concurrent.Callable;
+import java.lang.invoke.MethodHandles;
+
+import static java.lang.invoke.MethodHandles.Lookup.ClassOption.NESTMATE;
 
 @RunWith(Parameterized.class)
-public class ClassLoaderTest extends StaticObjectModelTest {
+public class HiddenClassProperty extends StaticObjectModelTest {
     @Parameterized.Parameters(name = "{0}")
     public static TestConfiguration[] data() {
         return getTestConfigurations();
@@ -57,30 +62,31 @@ public class ClassLoaderTest extends StaticObjectModelTest {
 
     @Parameterized.Parameter public TestConfiguration config;
 
-    public static class CustomStaticObject {
+    // To support Native Image, the hidden class must be generated at image build time
+    private static Class<HiddenClassInterface> hiddenClass = generateHiddenClass();
+
+    @SuppressWarnings("unchecked")
+    private static Class<HiddenClassInterface> generateHiddenClass() {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            byte[] hiddenClassBytes = HiddenClassGenerator.getBytes();
+            return (Class<HiddenClassInterface>) lookup.defineHiddenClass(hiddenClassBytes, true, NESTMATE).lookupClass();
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public interface CustomStaticObjectFactory {
-        CustomStaticObject create();
-    }
-
-    /**
-     * The implementation of the Static Object Model caches the class loader used to load static
-     * object classes. This test makes sure that the cache takes into account the class loader that
-     * loaded the factory interface.
-     */
     @Test
-    public void testClassLoader() {
+    public void hiddenClass() {
         try (TestEnvironment te = new TestEnvironment(config)) {
-            // Callable.class is loaded by the system class loader
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty property = new DefaultStaticProperty(("property"));
             try {
-                StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
+                builder.property(property, hiddenClass, false);
+                Assert.fail();
             } catch (IllegalArgumentException e) {
-                Assert.assertTrue(e.getMessage().matches(
-                                "The class loader of factory interface 'java.util.concurrent.Callable' \\(cl: '.*'\\) must have visibility of 'com.oracle.truffle.api.staticobject.StaticShape' \\(cl: '.*'\\)"));
+                Assert.assertEquals("Cannot use a hidden class as type of a static property", e.getMessage());
             }
-            // CustomStaticObjectFactory.class is loaded by the application class loader
-            StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
         }
     }
 }

@@ -38,49 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.staticobject.test;
+package com.oracle.truffle.api.staticobject;
 
-import com.oracle.truffle.api.staticobject.StaticShape;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.util.concurrent.Callable;
-
-@RunWith(Parameterized.class)
-public class ClassLoaderTest extends StaticObjectModelTest {
-    @Parameterized.Parameters(name = "{0}")
-    public static TestConfiguration[] data() {
-        return getTestConfigurations();
-    }
-
-    @Parameterized.Parameter public TestConfiguration config;
-
-    public static class CustomStaticObject {
-    }
-
-    public interface CustomStaticObjectFactory {
-        CustomStaticObject create();
-    }
-
-    /**
-     * The implementation of the Static Object Model caches the class loader used to load static
-     * object classes. This test makes sure that the cache takes into account the class loader that
-     * loaded the factory interface.
-     */
-    @Test
-    public void testClassLoader() {
-        try (TestEnvironment te = new TestEnvironment(config)) {
-            // Callable.class is loaded by the system class loader
-            try {
-                StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
-            } catch (IllegalArgumentException e) {
-                Assert.assertTrue(e.getMessage().matches(
-                                "The class loader of factory interface 'java.util.concurrent.Callable' \\(cl: '.*'\\) must have visibility of 'com.oracle.truffle.api.staticobject.StaticShape' \\(cl: '.*'\\)"));
-            }
-            // CustomStaticObjectFactory.class is loaded by the application class loader
-            StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
+class StaticPropertyValidator {
+    static void validate(Class<?> type) {
+        if (type.isAnonymousClass()) {
+            throw new IllegalArgumentException("Cannot use an anonymous class as type of a static property");
         }
     }
 }
