@@ -417,31 +417,42 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
     }
 
-    public static final class Clazz extends Struct {
+    public static final class CppClass extends Clazz {
+
+        CppClass(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, methods, size);
+            // TODO Auto-generated constructor stub
+        }
+
+    }
+
+    public static final class SwiftClass extends Clazz {
+
+        SwiftClass(String name, StructMember[] members, Method[] methods, long size) {
+            super(name, members, methods, size);
+            // TODO Auto-generated constructor stub
+        }
+
+    }
+
+    public static class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private SortedSet<ClazzInheritance> superclasses;
         private VTable vtable;
         private boolean virtualMethodsInitialized;
         private boolean virtualMethods;
-        private final DwLangNameRecord langNameRecord;
 
-        Clazz(String name, StructMember[] members, Method[] methods, long size, DwLangNameRecord langNameRecord) {
+        Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
-            System.out.println("register class " + name);
             this.methods = methods;
             this.vtable = null;
             this.virtualMethodsInitialized = false;
             this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
-            this.langNameRecord = langNameRecord;
         }
 
         public void addSuperClass(Clazz superclass, long offset, boolean virtual) {
             superclasses.add(new ClazzInheritance(superclass, offset, virtual));
-        }
-
-        public DwLangNameRecord getSourceLanguage() {
-            return langNameRecord;
         }
 
         public Method getMethod(int i) {
@@ -511,23 +522,6 @@ public abstract class LLVMInteropType implements TruffleObject {
                             return pair;
                         }
                     }
-                }
-            }
-            return null;
-        }
-
-        @Override
-        @TruffleBoundary
-        public StructMember findMember(String memberName) {
-            for (StructMember member : members) {
-                if (member.name.equals(memberName)) {
-                    return member;
-                }
-            }
-            for (ClazzInheritance ci : superclasses) {
-                StructMember member = ci.superClass.findMember(memberName);
-                if (member != null) {
-                    return member;
                 }
             }
             return null;
@@ -1005,8 +999,18 @@ public abstract class LLVMInteropType implements TruffleObject {
             return ret;
         }
 
+        interface ClazzConstructor {
+            Clazz create(String name, StructMember[] structMembers, Method[] methods, long size);
+        }
+
         private Clazz convertClass(LLVMSourceClassLikeType type) {
-            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8, type.getSourceLanguage());
+            final String typeName = type.getName();
+            final StructMember[] structMembers = new StructMember[type.getDynamicElementCount()];
+            final Method[] methods = new Method[type.getMethodCount()];
+
+            ClazzConstructor cc = type.getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT ? SwiftClass::new : CppClass::new;
+
+            Clazz ret = cc.create(typeName, structMembers, methods, type.getSize() / 8);
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);

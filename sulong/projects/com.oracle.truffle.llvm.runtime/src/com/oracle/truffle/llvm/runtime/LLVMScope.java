@@ -38,12 +38,10 @@ import java.util.HashMap;
 
 public class LLVMScope implements TruffleObject {
 
-    public static final String NO_EXPLICIT_SCOPE = "/NO_EXPLICIT_SCOPE";
-
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
     // TODO (pichristoph) remove 'static'
-    private static final HashMap<String, HashMap<String, String>> scopeLinkageNames = new HashMap<>();
+    private static final HashMap<String, String> linkageNames = new HashMap<>();
     private static final HashMap<String, long[]> symbolOffsets = new HashMap<>();
 
     public LLVMScope() {
@@ -89,22 +87,8 @@ public class LLVMScope implements TruffleObject {
         return null;
     }
 
-    public String getMangledName(String scopeName, String name) {
-        HashMap<String, String> scope = scopeLinkageNames.get(scopeName == null ? NO_EXPLICIT_SCOPE : scopeName);
-        if (scope != null) {
-            return scope.get(name);
-        } else {
-            return null;
-        }
-    }
-
     public String getMangledName(String name) {
-        for (HashMap<String, String> map : scopeLinkageNames.values()) {
-            if (map.containsKey(name)) {
-                return map.get(name);
-            }
-        }
-        return null;
+        return linkageNames.get(name);
     }
 
     public long[] getSymbolOffsets(String symbolName) {
@@ -118,18 +102,12 @@ public class LLVMScope implements TruffleObject {
     /**
      * Add a tuple of function name and function linkage name to the map.
      *
-     * @param scopeName name for the enclosing unit (e.g. classname for methods). Can be null.
      * @param name Function name as specified in original (e.g. C/C++) source.
      * @param linkageName Function name in LLVM code if @param name has been changed during
      *            compilation to LLVM bitcode.
      */
-    public void registerLinkageName(String scopeName, String name, String linkageName) {
-        final String scopeKey = scopeName == null ? NO_EXPLICIT_SCOPE : scopeName;
-        if (!scopeLinkageNames.containsKey(scopeKey)) {
-            scopeLinkageNames.put(scopeKey, new HashMap<>());
-        }
-        HashMap<String, String> scope = scopeLinkageNames.get(scopeKey);
-        scope.put(name, linkageName);
+    public void registerLinkageName(String name, String linkageName) {
+        linkageNames.put(name, linkageName);
     }
 
     /**

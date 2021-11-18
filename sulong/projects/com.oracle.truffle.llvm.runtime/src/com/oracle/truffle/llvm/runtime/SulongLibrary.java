@@ -39,11 +39,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -177,12 +179,23 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String member,
                     @Shared("lookup") @Cached LookupNode lookup,
-                    @Cached @Shared("notFound") BranchProfile notFound) throws UnknownIdentifierException {
+                    @Cached @Shared("notFound") BranchProfile notFound,
+                    @Cached @Exclusive BranchProfile swiftName) throws UnknownIdentifierException {
         Object ret = lookup.execute(this, member);
         if (ret == null) {
-            notFound.enter();
-            throw UnknownIdentifierException.create(member);
+            System.out.println("scope name " + this.name);
+            final String swiftMember = SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member});
+            ret = lookup.execute(this, swiftMember);
+            if (ret == null) {
+                notFound.enter();
+                throw UnknownIdentifierException.create(member);
+            } else {
+                System.out.println("read swift " + swiftMember);
+                swiftName.enter();
+
+            }
         }
+
         return ret;
     }
 
@@ -190,12 +203,21 @@ public final class SulongLibrary implements TruffleObject {
     Object invokeMember(String member, Object[] arguments,
                     @Shared("lookup") @Cached LookupNode lookup,
                     @CachedLibrary(limit = "1") InteropLibrary interop,
-                    @Cached @Shared("notFound") BranchProfile notFound) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                    @Cached @Shared("notFound") BranchProfile notFound,
+                    @Cached @Exclusive BranchProfile swiftName) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         LLVMFunctionDescriptor fn = lookup.execute(this, member);
         if (fn == null) {
-            notFound.enter();
-            throw UnknownIdentifierException.create(member);
+            fn = lookup.execute(this, SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member}));
+            if (fn == null) {
+                notFound.enter();
+                throw UnknownIdentifierException.create(member);
+            } else {
+                swiftName.enter();
+                System.out.println("invoke swift");
+            }
+
         }
+
         return interop.execute(fn, arguments);
     }
 

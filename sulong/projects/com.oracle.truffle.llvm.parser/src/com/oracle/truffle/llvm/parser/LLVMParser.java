@@ -66,6 +66,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public final class LLVMParser {
     private final Source source;
@@ -246,9 +247,11 @@ public final class LLVMParser {
         runtime.getFileScope().register(expressionSymbol);
         if (expressionSymbol.getName().endsWith("Tq")) {
             // if symbolname ends with "Tq", it is a Swift function descriptor
+            // SwiftDemangler.MethodDescriptor md =
+            // SwiftDemangler.decodeFunctionDescriptor(expressionSymbol.getName());
             // TODO (pichristoph) check if source language is swift
             String methodName = expressionSymbol.getName().substring(0, expressionSymbol.getName().length() - 2);
-            System.out.println("register " + expressionSymbol.getName());
+            // System.out.println("register " + expressionSymbol.getName() + " = " + md);
             SymbolImpl[] indices = elementPointerConstant.getIndices();
             long[] indexVals = new long[indices.length];
             for (int i = 0; i < indexVals.length; i++) {

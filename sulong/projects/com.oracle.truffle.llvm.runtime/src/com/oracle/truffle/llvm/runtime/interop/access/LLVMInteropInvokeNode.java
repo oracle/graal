@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.DwLangNameRecord;
 
 @GenerateUncached
 public abstract class LLVMInteropInvokeNode extends LLVMNode {
@@ -57,9 +56,9 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
         return LLVMInteropInvokeNodeGen.create();
     }
 
-    @Specialization(guards = "!isSwift(type)")
+    @Specialization
     @GenerateAOT.Exclude
-    Object doClazz(LLVMPointer receiver, LLVMInteropType.Clazz type, String method, Object[] arguments,
+    Object doCppClass(LLVMPointer receiver, LLVMInteropType.CppClass type, String method, Object[] arguments,
                     @Cached LLVMInteropMethodInvokeNode invoke,
                     @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
@@ -76,35 +75,15 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     /**
      * @param type
      */
-    @Specialization(guards = {"!isClass(type)", "!isSwift(type)"})
+    @Specialization
     @GenerateAOT.Exclude
-    Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
-                    @CachedLibrary(limit = "5") InteropLibrary interop)
-                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-        Object readMember = interop.readMember(receiver, member);
-        return interop.execute(readMember, arguments);
-    }
-
-    protected static boolean isClass(Object o) {
-        return o instanceof LLVMInteropType.Clazz;
-    }
-
-    protected static boolean isSwift(Object o) {
-        return o instanceof LLVMInteropType.Clazz &&
-                        ((LLVMInteropType.Clazz) o).getSourceLanguage() == DwLangNameRecord.DW_LANG_SWIFT;
-    }
-
-    /**
-     * @param type
-     */
-    @Specialization(guards = "isSwift(type)")
-    @GenerateAOT.Exclude
-    Object doSwift(LLVMPointer receiver, LLVMInteropType.Clazz type, String member, Object[] arguments,
+    Object doSwift(LLVMPointer receiver, LLVMInteropType.SwiftClass type, String member, Object[] arguments,
                     @Cached LLVMForeignReadNode read,
                     @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfArgumentPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-        String functionFound = getContext().getGlobalScopeChain().getMangledName(type.name, member);
+        // TODO scopes!
+        String functionFound = getContext().getGlobalScopeChain().getMangledName(member);
         if (functionFound != null) {
             long[] symbolOffsets = getContext().getGlobalScopeChain().getSymbolOffsets(functionFound);
 
@@ -119,6 +98,22 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
             }
         }
         throw UnknownIdentifierException.create(functionFound);
+    }
+
+    /**
+     * @param type
+     */
+    @Specialization(guards = {"!isClass(type)"})
+    @GenerateAOT.Exclude
+    Object doStruct(LLVMPointer receiver, LLVMInteropType.Struct type, String member, Object[] arguments,
+                    @CachedLibrary(limit = "5") InteropLibrary interop)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
+        Object readMember = interop.readMember(receiver, member);
+        return interop.execute(readMember, arguments);
+    }
+
+    protected static boolean isClass(Object o) {
+        return o instanceof LLVMInteropType.Clazz;
     }
 
     /**

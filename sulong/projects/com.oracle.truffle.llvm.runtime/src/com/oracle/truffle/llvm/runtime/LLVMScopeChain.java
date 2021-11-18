@@ -149,16 +149,6 @@ public class LLVMScopeChain implements TruffleObject {
     }
 
     @TruffleBoundary
-    public String getMangledName(String scopeName, String name) {
-        assert scope != null;
-        String mangledName = scope.getMangledName(scopeName, name);
-        if (mangledName == null && next != null) {
-            mangledName = next.getMangledName(scopeName, name);
-        }
-        return mangledName;
-    }
-
-    @TruffleBoundary
     public synchronized void concatNextChain(LLVMScopeChain scopeChain) {
         assert scopeChain.getPrev() == null && this.getNext() == null;
         this.setNext(scopeChain);
