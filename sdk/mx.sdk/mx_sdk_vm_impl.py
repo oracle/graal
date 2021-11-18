@@ -719,14 +719,15 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 else:
                     _svm_library_home = _component_base
                 _svm_library_dest = _svm_library_home + _library_config.destination
+                _library_project_name = GraalVmNativeImage.project_name(_library_config)
                 if not stage1 and _get_svm_support().is_supported():
                     _source_type = 'skip' if _skip_libraries(_library_config) else 'dependency'
-                    _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 if (not stage1 or _skip_libraries(_library_config)) and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                    _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(_library_project_name), _component)
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
                         _add(layout, join(_component_base, _executable), 'dependency:{}'.format(NativeLibraryLauncherProject.library_launcher_project_name(_library_config)), _component)
@@ -1837,6 +1838,30 @@ class GraalVmLanguageLauncher(GraalVmLauncher):  # pylint: disable=too-many-ance
         out = self.polyglot_config_output_file()
         yield out, basename(out)
 
+    def get_containing_graalvm(self):
+        if self.stage1:
+            return get_stage1_graalvm_distribution()
+        else:
+            return get_final_graalvm_distribution()
+
+class GraalVmLanguageLibrary(GraalVmLibrary):
+    def __init__(self, component, native_image_config, **kw_args):
+        super(GraalVmLanguageLibrary, self).__init__(component, GraalVmNativeImage.project_name(native_image_config), [], native_image_config, **kw_args)
+
+    def polyglot_config_output_file(self):
+        return join(self.get_output_base(), self.name, "polyglot.config")
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        for e in super(GraalVmLanguageLibrary, self).getArchivableResults(use_relpath=use_relpath, single=single):
+            yield e
+            if single:
+                return
+        out = self.polyglot_config_output_file()
+        yield out, basename(out)
+
+    def get_containing_graalvm(self):
+        return get_final_graalvm_distribution()
+
 
 class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
     def __init__(self, args, parallelism, project):
@@ -1873,7 +1898,7 @@ class GraalVmNativeImageBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask))
         return self._polyglot_config_contents
 
     def with_polyglot_config(self):
-        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig)
+        return isinstance(self.subject.native_image_config, mx_sdk.LanguageLauncherConfig) or isinstance(self.subject.native_image_config, mx_sdk.LanguageLibraryConfig)
 
     def native_image_needs_build(self, out_file):
         # TODO check if definition has changed
@@ -2690,7 +2715,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     register_project(GraalVmNativeProperties(component, launcher_config))
             for library_config in _get_library_configs(component):
                 if with_svm:
-                    register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
+                    if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                        register_project(GraalVmLanguageLibrary(component, library_config))
+                    else:
+                        register_project(GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config))
                     assert with_svm
                     register_project(GraalVmNativeProperties(component, library_config))
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
