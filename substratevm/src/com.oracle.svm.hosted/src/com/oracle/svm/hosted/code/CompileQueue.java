@@ -1370,7 +1370,14 @@ public class CompileQueue {
                 if (constant instanceof SubstrateMethodPointerConstant) {
                     MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                     final ResolvedJavaMethod method1 = pointer.getMethod();
-                    HostedMethod hMethod = (HostedMethod) method1;
+                    HostedMethod hMethod;
+                    if (method1 instanceof HostedMethod) {
+                        hMethod = (HostedMethod) method1;
+                    } else {
+                        hMethod = universe.lookup(method1);
+                        ConstantReference constantReference = new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(hMethod)));
+                        dataPatch.reference = constantReference;
+                    }
                     ensureCompiled(hMethod, new MethodCheckReason(method, hMethod, reason));
                 }
             }
