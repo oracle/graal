@@ -38,11 +38,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * An uninterruptible hashtable with a fixed size that uses chaining in case of a collision.
  */
-public abstract class AbstractUninterruptibleHashtable<T extends UninterruptibleEntry<T>> implements UninterruptibleHashtable<T> {
+public abstract class AbstractUninterruptibleHashtable implements UninterruptibleHashtable {
     private static final int DEFAULT_TABLE_LENGTH = 2053;
 
-    private final T[] table;
-
+    private final UninterruptibleEntry[] table;
     private int size;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -57,17 +56,17 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected abstract T[] createTable(int length);
+    protected abstract UninterruptibleEntry[] createTable(int length);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract boolean isEqual(T a, T b);
+    protected abstract boolean isEqual(UninterruptibleEntry a, UninterruptibleEntry b);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract T copyToHeap(T valueOnStack);
+    protected abstract UninterruptibleEntry copyToHeap(UninterruptibleEntry valueOnStack);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected T copyToHeap(T pointerOnStack, UnsignedWord sizeToAlloc) {
-        T pointerOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeToAlloc);
+    protected UninterruptibleEntry copyToHeap(UninterruptibleEntry pointerOnStack, UnsignedWord sizeToAlloc) {
+        UninterruptibleEntry pointerOnHeap = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(sizeToAlloc);
         if (pointerOnHeap.isNonNull()) {
             UnmanagedMemoryUtil.copy((Pointer) pointerOnStack, (Pointer) pointerOnHeap, sizeToAlloc);
             return pointerOnHeap;
@@ -76,14 +75,16 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void free(T t);
+    protected void free(UninterruptibleEntry entry) {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(entry);
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected T insertEntry(T valueOnStack) {
+    protected UninterruptibleEntry insertEntry(UninterruptibleEntry valueOnStack) {
         int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-        T newEntry = copyToHeap(valueOnStack);
+        UninterruptibleEntry newEntry = copyToHeap(valueOnStack);
         if (newEntry.isNonNull()) {
-            T existingEntry = table[index];
+            UninterruptibleEntry existingEntry = table[index];
             newEntry.setNext(existingEntry);
             table[index] = newEntry;
             size++;
@@ -100,15 +101,15 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T[] getTable() {
+    public UninterruptibleEntry[] getTable() {
         return table;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T get(T valueOnStack) {
+    public UninterruptibleEntry get(UninterruptibleEntry valueOnStack) {
         int index = Integer.remainderUnsigned(valueOnStack.getHash(), DEFAULT_TABLE_LENGTH);
-        T entry = table[index];
+        UninterruptibleEntry entry = table[index];
         while (entry.isNonNull()) {
             if (isEqual(valueOnStack, entry)) {
                 return entry;
@@ -120,10 +121,10 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public T getOrPut(T valueOnStack) {
+    public UninterruptibleEntry getOrPut(UninterruptibleEntry valueOnStack) {
         assert valueOnStack.isNonNull();
 
-        T entry = get(valueOnStack);
+        UninterruptibleEntry entry = get(valueOnStack);
         if (entry.isNonNull()) {
             return WordFactory.nullPointer();
         } else {
@@ -133,14 +134,14 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean putIfAbsent(T valueOnStack) {
+    public boolean putIfAbsent(UninterruptibleEntry valueOnStack) {
         assert valueOnStack.isNonNull();
 
-        T existingEntry = get(valueOnStack);
+        UninterruptibleEntry existingEntry = get(valueOnStack);
         if (existingEntry.isNonNull()) {
             return false;
         } else {
-            T newEntry = insertEntry(valueOnStack);
+            UninterruptibleEntry newEntry = insertEntry(valueOnStack);
             return newEntry.isNonNull();
         }
     }
@@ -149,9 +150,9 @@ public abstract class AbstractUninterruptibleHashtable<T extends Uninterruptible
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clear() {
         for (int i = 0; i < table.length; i++) {
-            T entry = table[i];
+            UninterruptibleEntry entry = table[i];
             while (entry.isNonNull()) {
-                T tmp = entry;
+                UninterruptibleEntry tmp = entry;
                 entry = entry.getNext();
                 free(tmp);
             }
