@@ -118,6 +118,7 @@ public class JfrFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
+        ModuleSupport.exportAndOpenPackageToClass("jdk.jfr", "jdk.jfr.events", false, JfrFeature.class);
         ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.hotspot", false, JfrEventSubstitution.class);
 
         // Initialize some parts of JFR/JFC at image build time.
