@@ -41,6 +41,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.hub.DynamicHub.ReflectionData;
+import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.util.VMError;
@@ -82,7 +83,7 @@ public final class DynamicHubCompanion {
 
     public ProtectionDomain getProtectionDomain() {
         if (protectionDomain == null) {
-            protectionDomain = DynamicHub.allPermDomainReference.get();
+            protectionDomain = ProtectionDomainSupport.allPermDomain();
         }
         return protectionDomain;
     }
