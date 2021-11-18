@@ -843,8 +843,6 @@ public final class LLVMContext {
             int index = bitcodeID.getId();
             assert symbolDynamicStorage == symbolFinalStorage;
             if (index < symbolDynamicStorage.length && symbolDynamicStorage[index] != null) {
-                // throw new IllegalStateException("Registering a new symbol table for an existing
-                // id.");
                 return;
             }
             if (index >= symbolDynamicStorage.length) {

@@ -67,7 +67,7 @@ public final class LoadDependencyNode extends LLVMNode {
         return new LoadDependencyNode(libraryName, libraryLocator, reason);
     }
 
-    public Object execute() {
+    public CallTarget execute() {
         CallTarget callTarget = getContext().getCalltargetFromCache(libraryName);
         if (callTarget != null) {
             return callTarget;
@@ -83,6 +83,8 @@ public final class LoadDependencyNode extends LLVMNode {
                 // context extension instead.
                 if (sourceOrCallTarget instanceof Source) {
                     return getContext().getEnv().parseInternal((Source) sourceOrCallTarget);
+                } else if (sourceOrCallTarget instanceof CallTarget) {
+                    return (CallTarget) sourceOrCallTarget;
                 }
             }
         }

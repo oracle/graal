@@ -443,40 +443,10 @@ final class ParserDriver {
         for (String lib : context.preprocessDependencies(binaryParserResult.getLibraries(), libFile)) {
             // don't add the library itself as one of it's own dependency.
             if (!libraryName.equals(lib)) {
-                //TODO: create the dependencies that's needed.
                 libraryDependencies.add(LoadDependencyNode.create(lib, binaryParserResult.getLocator(), lib));
             }
         }
     }
-
-    /*private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
-        assert file != null;
-        if (!file.isRegularFile()) {
-            if (!isNative) {
-                throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
-            } else {
-                TruffleFile nativeFile = createNativeTruffleFile(libName, libPath);
-                // null is returned if the NFIContextExtension does not exists.
-                if (nativeFile == null) {
-                    return null;
-                }
-                return createNativeLibraryCallTarget(nativeFile);
-            }
-        }
-
-        Source source;
-        if (language.containsLibrarySource(file.getPath())) {
-            source = language.getLibrarySource(file.getPath());
-        } else {
-            try {
-                source = Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build();
-                language.addLibrarySource(file.getPath(), source);
-            } catch (IOException | SecurityException | OutOfMemoryError ex) {
-                throw new LLVMParserException("Error reading file " + file.getName() + ".");
-            }
-        }
-        return source;
-    }*/
 
     private static void addExternalSymbolsToScopes(LLVMParserResult parserResult) {
         // TODO (chaeubl): in here, we should validate if the return type/argument type/global
