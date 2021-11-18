@@ -123,7 +123,7 @@ public final class ModuleLayerFeature implements Feature {
                         .stream()
                         .map(Module::getName)
                         .collect(Collectors.toSet());
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules);
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, baseModules, Set.of());
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
     }
 
@@ -140,7 +140,11 @@ public final class ModuleLayerFeature implements Feature {
 
         Set<Module> analysisReachableNamedModules = analysisReachableModules
                         .filter(Module::isNamed)
-                        .filter(m -> !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
+                        .collect(Collectors.toSet());
+
+        Set<Module> analysisReachableSyntheticModules = analysisReachableNamedModules
+                        .stream()
+                        .filter(m -> m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
                         .collect(Collectors.toSet());
 
         Set<String> allReachableModules = analysisReachableNamedModules
@@ -148,7 +152,7 @@ public final class ModuleLayerFeature implements Feature {
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
 
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules);
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, allReachableModules, analysisReachableSyntheticModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, analysisReachableNamedModules);
@@ -165,9 +169,6 @@ public final class ModuleLayerFeature implements Feature {
             }
             Class<?> clazz = type.getJavaClass();
             if (!clazz.getModule().isNamed()) {
-                continue;
-            }
-            if (clazz.getModule().getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC)) {
                 continue;
             }
             DynamicHub hub = host.dynamicHub(type);
@@ -188,11 +189,15 @@ public final class ModuleLayerFeature implements Feature {
         return Stream.concat(Stream.of(m.getName()), requiredModules);
     }
 
-    private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules) {
+    private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
         Configuration cf = synthesizeRuntimeBootLayerConfiguration(cl.modulepath(), reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
+            for (Module syntheticModule : syntheticModules) {
+                nameToModule.putIfAbsent(syntheticModule.getName(), syntheticModule);
+                moduleLayerFeatureUtils.patchModuleLayerField(syntheticModule, runtimeBootLayer);
+            }
             patchRuntimeBootLayer(runtimeBootLayer, nameToModule);
             return runtimeBootLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
@@ -418,7 +423,7 @@ public final class ModuleLayerFeature implements Feature {
                 ModuleDescriptor descriptor = mref.descriptor();
                 String name = descriptor.name();
                 Module m = moduleConstructor.newInstance(cl, descriptor);
-                moduleLayerField.set(m, runtimeBootLayer);
+                patchModuleLayerField(m, runtimeBootLayer);
                 nameToModule.put(name, m);
             }
 
@@ -582,6 +587,10 @@ public final class ModuleLayerFeature implements Feature {
         void clearJavaBaseLoaderField(ModuleLayer runtimeBootLayer) throws IllegalAccessException {
             Module base = runtimeBootLayer.findModule("java.base").get();
             moduleLoaderField.set(base, null);
+        }
+
+        void patchModuleLayerField(Module module, ModuleLayer runtimeBootLayer) throws IllegalAccessException {
+            moduleLayerField.set(module, runtimeBootLayer);
         }
     }
 }
