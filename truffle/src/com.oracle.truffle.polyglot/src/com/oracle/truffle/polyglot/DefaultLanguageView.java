@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -71,13 +69,8 @@ final class DefaultLanguageView<C> implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(boolean allowSideEffects) {
-        if (allowSideEffects) {
-            return Objects.toString(delegate);
-        } else {
-            return delegate.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(delegate));
-        }
+    Object toDisplayString(boolean allowSideEffects, @CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
+        return delegateLibrary.toDisplayString(delegate, allowSideEffects);
     }
 
     @SuppressWarnings("unchecked")
