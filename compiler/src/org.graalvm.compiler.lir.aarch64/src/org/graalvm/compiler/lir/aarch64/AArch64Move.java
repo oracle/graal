@@ -537,7 +537,7 @@ public class AArch64Move {
         }
     }
 
-    private static void move(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
+    public static void move(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
         if (isRegister(input)) {
             Register src = asRegister(input);
             if (isRegister(result)) {
@@ -573,13 +573,14 @@ public class AArch64Move {
                 Register rscratch1 = r1.getRegister();
                 Register rscratch2 = r2.getRegister();
 
-                final int size = moveKind.getSizeInBytes() * Byte.SIZE;
                 // Always perform stack -> stack copies through integer registers
                 crb.blockComment("[stack -> stack copy]");
-                AArch64Address src = loadStackSlotAddress(size, crb, masm, input, rscratch2);
-                masm.ldr(size, rscratch1, src);
-                AArch64Address dst = loadStackSlotAddress(size, crb, masm, result, rscratch2);
-                masm.str(size, rscratch1, dst);
+                int loadSize = determineStackSlotLoadSize(moveKind, input, rscratch1);
+                AArch64Address src = createStackSlotLoadAddress(loadSize, crb, masm, input, rscratch2);
+                masm.ldr(loadSize, rscratch1, src);
+                int storeSize = moveKind.getSizeInBytes() * Byte.SIZE;
+                AArch64Address dst = createStackSlotStoreAddress(storeSize, crb, masm, result, rscratch2);
+                masm.str(storeSize, rscratch1, dst);
             }
         }
     }
@@ -603,7 +604,7 @@ public class AArch64Move {
     static void reg2stack(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot result, Register input) {
         try (ScratchRegister scratch = masm.getScratchRegister()) {
             final int size = moveKind.getSizeInBytes() * Byte.SIZE;
-            AArch64Address dest = loadStackSlotAddress(size, crb, masm, result, scratch.getRegister());
+            AArch64Address dest = createStackSlotStoreAddress(size, crb, masm, result, scratch.getRegister());
             if (input.getRegisterCategory().equals(CPU)) {
                 masm.str(size, input, dest);
             } else {
@@ -614,21 +615,14 @@ public class AArch64Move {
     }
 
     static void stack2reg(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, StackSlot input) {
-        /*
-         * Since AArch64ArithmeticLIRGenerator.emitNarrow creates a move from a QWORD to DWORD, it
-         * is possible that the stack slot is an aligned QWORD while the moveKind is a DWORD. When
-         * this happens, it is better treat the move as a QWORD, as this allows an immediate
-         * addressing mode to be used more often.
-         */
-        final int size = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        assert moveKind.getSizeInBytes() * Byte.SIZE <= size;
+        int size = determineStackSlotLoadSize(moveKind, input, result);
         if (result.getRegisterCategory().equals(CPU)) {
-            AArch64Address src = loadStackSlotAddress(size, crb, masm, input, result);
+            AArch64Address src = createStackSlotLoadAddress(size, crb, masm, input, result);
             masm.ldr(size, result, src);
         } else {
             assert result.getRegisterCategory().equals(SIMD);
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                AArch64Address src = loadStackSlotAddress(size, crb, masm, input, sc.getRegister());
+                AArch64Address src = createStackSlotLoadAddress(size, crb, masm, input, sc.getRegister());
                 masm.fldr(size, result, src);
             }
         }
@@ -703,20 +697,51 @@ public class AArch64Move {
     }
 
     /**
-     * Returns AArch64Address of given StackSlot. We cannot use CompilationResultBuilder.asAddress
-     * since this calls AArch64MacroAssembler.makeAddress with displacements that may be larger than
-     * 9-bit signed, which cannot be handled by that method.
+     * Determines the optimal load size to use with given stack slot.
      *
-     * Instead we create an address ourselves. We use scaled unsigned addressing since we know the
-     * transfersize, which gives us a 15-bit address range (for longs/doubles) respectively a 14-bit
-     * range (for everything else).
+     * Due to AArch64ArithmeticLIRGenerator.emitNarrow, which creates a move from a QWORD to DWORD,
+     * and CastValue, which reads a subset of a value's bits, it is possible for a load to be
+     * smaller than the underlying stack slot size. When this happens, it is better load the entire
+     * stack slot, as this allows an immediate addressing mode to be used more often.
+     */
+    private static int determineStackSlotLoadSize(AArch64Kind originalLoadKind, StackSlot slot, Register targetReg) {
+        int slotBitSize = slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        int accessBitSize = originalLoadKind.getSizeInBytes() * Byte.SIZE;
+        assert accessBitSize <= slotBitSize;
+        // maximum load size of GP regs is 64 bits
+        assert targetReg.getRegisterCategory().equals(SIMD) || accessBitSize <= Long.SIZE;
+        if (accessBitSize == slotBitSize || targetReg.getRegisterCategory().equals(SIMD)) {
+            return slotBitSize;
+        } else {
+            assert targetReg.getRegisterCategory().equals(CPU);
+            // maximum load size of GP regs is 64 bits
+            return Integer.min(slotBitSize, Long.SIZE);
+        }
+    }
+
+    private static AArch64Address createStackSlotLoadAddress(int size, CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, Register scratchReg) {
+        return createStackSlotAddress(size, crb, masm, slot, scratchReg, true);
+    }
+
+    private static AArch64Address createStackSlotStoreAddress(int size, CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, Register scratchReg) {
+        return createStackSlotAddress(size, crb, masm, slot, scratchReg, false);
+    }
+
+    /**
+     * Returns AArch64Address of given StackSlot.
      *
      * @param scratchReg Scratch register that can be used to load address.
+     * @param isLoad whether the address will be used as part of a load or store
      * @return AArch64Address of given StackSlot. Uses scratch register if necessary to do so.
      */
-    private static AArch64Address loadStackSlotAddress(int size, CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, Register scratchReg) {
+    private static AArch64Address createStackSlotAddress(int size, CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot slot, Register scratchReg, boolean isLoad) {
         int displacement = crb.frameMap.offsetForStackSlot(slot);
-        assert size == slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        // Ensure memory access does not exceed the stack slot size.
+        if (isLoad) {
+            assert size <= slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        } else {
+            assert size == slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+        }
         return masm.makeAddress(size, sp, displacement, scratchReg);
     }
 
