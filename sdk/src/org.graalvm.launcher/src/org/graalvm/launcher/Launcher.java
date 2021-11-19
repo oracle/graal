@@ -989,10 +989,6 @@ public abstract class Launcher {
         }
     }
 
-    void printOption(PrintableOption option) {
-        printOption(option, 2);
-    }
-
     void printOption(PrintableOption option, int indentation) {
         printOption(option.option, option.description, indentation, optionIndent);
     }

@@ -69,26 +69,26 @@ public class CoverageInstrument extends TruffleInstrument {
                         }
                     });
     // @formatter:off
-    @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "", help = "Enable Coverage.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(help = "Keep count of each element's coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(help = "Keep count of each element's coverage.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> Count = new OptionKey<>(false);
-    @Option(name = "Output", help = "Can be: human readable 'histogram' (per file coverage summary) or 'detailed' (per line coverage summary), machine readable 'json', tool compliant 'lcov'. (default: histogram)",
+    @Option(name = "Output", help = "Can be: human readable 'histogram' (per file coverage summary) or 'detailed' (per line coverage summary), machine readable 'json', tool compliant 'lcov'.",
             category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WildcardHandler.WILDCARD_FILTER_TYPE);
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WildcardHandler.WILDCARD_FILTER_TYPE);
-    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterMimeType", help = "Only track languages with mime-type.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
-    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
-    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL)
+    @Option(name = "TrackInternal", help = "Track internal elements.", category = OptionCategory.INTERNAL)
     static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to standard output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-    @Option(help = "Consider a source code line covered only if covered in it's entirety. (default: true)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL)
+    @Option(help = "Consider a source code line covered only if covered in it's entirety.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL)
     static final OptionKey<Boolean> StrictLines = new OptionKey<>(true);
     // @formatter:on
 
@@ -140,20 +140,20 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     private static SourceSectionFilter getSourceSectionFilter(OptionValues options) {
-        final Object[] filterFile = FILTER_FILE.getValue(options);
+        final WildcardHandler filterFile = FILTER_FILE.getValue(options);
         final String filterMimeType = FILTER_MIME_TYPE.getValue(options);
         final String filterLanguage = FILTER_LANGUAGE.getValue(options);
         final Boolean internals = TRACK_INTERNAL.getValue(options);
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         builder.sourceIs(source -> {
             boolean internal = (internals || !source.isInternal());
-            boolean file = WildcardHandler.testWildcardExpressions(source.getPath(), filterFile);
+            boolean file = filterFile.testWildcardExpressions(source.getPath());
             boolean mimeType = filterMimeType.equals("") || filterMimeType.equals(source.getMimeType());
             final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
             return internal && file && mimeType && languageId;
         });
-        final Object[] filterRootName = FILTER_ROOT.getValue(options);
-        builder.rootNameIs(s -> WildcardHandler.testWildcardExpressions(s, filterRootName));
+        final WildcardHandler filterRootName = FILTER_ROOT.getValue(options);
+        builder.rootNameIs(filterRootName::testWildcardExpressions);
         return builder.build();
     }
 
@@ -202,7 +202,12 @@ public class CoverageInstrument extends TruffleInstrument {
         HISTOGRAM,
         DETAILED,
         JSON,
-        LCOV,
+        LCOV;
+
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
     }
 
 }

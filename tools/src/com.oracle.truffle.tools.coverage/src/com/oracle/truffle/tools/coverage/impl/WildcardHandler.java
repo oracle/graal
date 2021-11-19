@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.tools.coverage.impl;
 
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -33,35 +36,31 @@ import org.graalvm.options.OptionType;
 
 class WildcardHandler {
 
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
-                    new Function<String, Object[]>() {
+    static final OptionType<WildcardHandler> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
+                    new Function<String, WildcardHandler>() {
                         @Override
-                        public Object[] apply(String filterWildcardExpression) {
+                        public WildcardHandler apply(String filterWildcardExpression) {
                             if (filterWildcardExpression == null) {
                                 return null;
                             }
                             String[] expressions = filterWildcardExpression.split(",");
-                            Object[] builtExpressions = new Object[expressions.length];
+                            List<Pattern> patterns = new ArrayList<>();
+                            List<String> strings = new ArrayList<>();
                             for (int i = 0; i < expressions.length; i++) {
                                 String expression = expressions[i];
                                 expression = expression.trim();
-                                Object result = expression;
                                 if (expression.contains("?") || expression.contains("*")) {
                                     try {
-                                        result = Pattern.compile(wildcardToRegex(expression));
+                                        patterns.add(Pattern.compile(wildcardToRegex(expression)));
                                     } catch (PatternSyntaxException e) {
                                         throw new IllegalArgumentException(
                                                         String.format("Invalid wildcard pattern %s.", expression), e);
                                     }
+                                } else {
+                                    strings.add(expression);
                                 }
-                                builtExpressions[i] = result;
                             }
-                            return builtExpressions;
-                        }
-                    }, new Consumer<Object[]>() {
-                        @Override
-                        public void accept(Object[] objects) {
-
+                            return new WildcardHandler(strings, patterns, filterWildcardExpression);
                         }
                     });
 
@@ -101,26 +100,42 @@ class WildcardHandler {
         return s.toString();
     }
 
-    static boolean testWildcardExpressions(String value, Object[] fileFilters) {
-        if (fileFilters == null || fileFilters.length == 0) {
+    boolean testWildcardExpressions(String value) {
+        if (strings.isEmpty() && patterns.isEmpty()) {
             return true;
         }
         if (value == null) {
             return false;
         }
-        for (Object filter : fileFilters) {
-            if (filter instanceof Pattern) {
-                if (((Pattern) filter).matcher(value).matches()) {
-                    return true;
-                }
-            } else if (filter instanceof String) {
-                if (filter.equals(value)) {
-                    return true;
-                }
-            } else {
-                throw new AssertionError();
+        for (Pattern pattern : patterns) {
+            if (pattern.matcher(value).matches()) {
+                return true;
+            }
+        }
+        for (String string : strings) {
+            if (string.equals(value)) {
+                return true;
             }
         }
         return false;
+    }
+
+    static final WildcardHandler DEFAULT = new WildcardHandler(new ArrayList<>(0), new ArrayList<>(0), "*");
+    final List<String> strings;
+    final List<Pattern> patterns;
+    private final String expression;
+
+    WildcardHandler(List<String> strings, List<Pattern> patterns, String expression) {
+        Objects.requireNonNull(strings);
+        Objects.requireNonNull(patterns);
+        this.strings = strings;
+        this.patterns = patterns;
+        this.expression = expression;
+    }
+
+
+    @Override
+    public String toString() {
+        return expression;
     }
 }

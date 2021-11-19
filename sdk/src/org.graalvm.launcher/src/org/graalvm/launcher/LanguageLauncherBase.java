@@ -40,8 +40,9 @@
  */
 package org.graalvm.launcher;
 
-import java.io.IOException;
 import static java.lang.Integer.max;
+
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -346,23 +348,11 @@ public abstract class LanguageLauncherBase extends Launcher {
         return descriptor.getCategory().ordinal() == optionCategory.ordinal();
     }
 
-    void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
-        if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-            printOption(asPrintableOption(descriptor));
-        }
-    }
-
     private static Launcher.PrintableOption asPrintableOption(OptionDescriptor descriptor) {
         StringBuilder key = new StringBuilder("--");
         key.append(descriptor.getName());
-        Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (defaultValue instanceof Boolean && defaultValue == Boolean.FALSE) {
-            // nothing to print
-        } else {
-            key.append("=<");
-            key.append(descriptor.getKey().getType().getName());
-            key.append(">");
-        }
+        key.append("=");
+        key.append(descriptor.getKey().getDefaultValue());
         return new PrintableOption(key.toString(), descriptor.getHelp());
     }
 
