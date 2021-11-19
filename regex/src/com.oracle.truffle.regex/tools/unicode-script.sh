@@ -68,10 +68,11 @@ cat dat/CaseFolding.txt \
     > dat/UnicodeFoldTable.txt
 
 # We produce the table for the Canonicalize abstract function when the Unicode
-# flag is not present. We use the UnicodeData.txt file and extract the
-# Uppercase_Character field. We remove entries which do not have an
-# Uppercase_Character mapping and entries which map from non-ASCII
-# code points (>= 128) to ASCII code points (< 128), as per the ECMAScript spec.
+# flag is not present. We extract the Unicode Case Conversion table from the
+# UnicodeData.txt and SpecialCasing.txt files. We remove entries which map from
+# non-ASCII code points (>= 128) to ASCII code points (< 128), as per the
+# ECMAScript spec. We also drop the special entries which produce strings of more
+# than one UTF-16 code unit.
 ./generate_nonunicode_fold_table.py > dat/NonUnicodeFoldTable.txt
 
 # In Python's case insensitive regular expressions, characters are considered
