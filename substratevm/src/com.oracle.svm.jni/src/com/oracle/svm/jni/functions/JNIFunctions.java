@@ -127,9 +127,9 @@ import sun.misc.Unsafe;
  * {@code GetStatic<Type>Field}, and {@code SetStatic<Type>Field}) are generated in
  * {@link JNIFieldAccessorMethod}.</li>
  *
- * <li>Operations on primitive arrays {@code New<PrimitiveType>Array},
- * {@code Get<PrimitiveType>ArrayElements}, {@code Release<PrimitiveType>ArrayElements},
- * {@code Get<PrimitiveType>ArrayRegion} and {@code Set<PrimitiveType>ArrayRegion}) are generated in
+ * <li>Operations on primitive arrays {@code Get<PrimitiveType>ArrayElements},
+ * {@code Release<PrimitiveType>ArrayElements}, {@code Get<PrimitiveType>ArrayRegion} and
+ * {@code Set<PrimitiveType>ArrayRegion}) are generated in
  * {@link JNIPrimitiveArrayOperationMethod}</li>
  *
  * <li>Wrappers for the methods callable by JNI are generated in
@@ -653,6 +653,82 @@ public final class JNIFunctions {
     static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle hbuf) {
         Buffer buffer = JNIObjectHandles.getObject(hbuf);
         return buffer.capacity();
+    }
+
+    /*
+     * ArrayType New<PrimitiveType>Array(JNIEnv *env, jsize length);
+     */
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewBooleanArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new boolean[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewByteArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new byte[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewCharArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new char[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewDoubleArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new double[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewFloatArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new float[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewIntArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new int[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewLongArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new long[length]);
+    }
+
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterReturnNullHandleOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle NewShortArray(JNIEnvironment env, int length) {
+        if (length < 0) {
+            return JNIObjectHandles.nullHandle();
+        }
+        return JNIObjectHandles.createLocal(new short[length]);
     }
 
     /*
