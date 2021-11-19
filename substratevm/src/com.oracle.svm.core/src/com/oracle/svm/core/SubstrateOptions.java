@@ -252,6 +252,9 @@ public class SubstrateOptions {
     @Option(help = "List of comma separated URL protocols to enable.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @Option(help = "List of comma separated URL protocols that must never be included.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
     @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
     @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
