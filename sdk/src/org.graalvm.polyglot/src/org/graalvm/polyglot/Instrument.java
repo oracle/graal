@@ -118,4 +118,13 @@ public final class Instrument {
         return dispatch.lookup(receiver, type);
     }
 
+    /**
+     * Gets the website of this instrument.
+     *
+     * @return the website of this instrument.
+     * @since 22.0.0
+     */
+    public String getWebsite() {
+        return dispatch.getWebsite(receiver);
+    }
 }

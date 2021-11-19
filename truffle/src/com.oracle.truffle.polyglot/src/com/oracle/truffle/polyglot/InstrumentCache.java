@@ -73,6 +73,7 @@ final class InstrumentCache {
     private final String id;
     private final String name;
     private final String version;
+    private final String website;
     private final boolean internal;
     private final Set<String> services;
     private final TruffleInstrument.Provider provider;
@@ -101,10 +102,11 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    TruffleInstrument.Provider provider) {
+                    TruffleInstrument.Provider provider, String website) {
         this.id = id;
         this.name = name;
         this.version = version;
+        this.website = website;
         this.className = className;
         this.internal = internal;
         this.services = services;
@@ -196,6 +198,7 @@ final class InstrumentCache {
             id = className.substring(lastIndex + 1);
         }
         String version = reg.version();
+        String website = reg.website();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>();
         for (String service : provider.getServicesClassNames()) {
@@ -204,7 +207,7 @@ final class InstrumentCache {
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website));
         }
     }
 
@@ -243,5 +246,9 @@ final class InstrumentCache {
 
     String[] services() {
         return services.toArray(new String[0]);
+    }
+
+    public String getWebsite() {
+        return website;
     }
 }

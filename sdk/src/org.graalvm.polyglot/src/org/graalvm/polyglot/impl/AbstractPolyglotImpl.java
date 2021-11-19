@@ -649,6 +649,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T lookup(Object receiver, Class<T> type);
 
+        public abstract String getWebsite(Object receiver);
     }
 
     public abstract static class AbstractLanguageDispatch extends AbstractDispatchClass {

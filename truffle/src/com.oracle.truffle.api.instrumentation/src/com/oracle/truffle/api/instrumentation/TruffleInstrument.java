@@ -1221,6 +1221,14 @@ public abstract class TruffleInstrument {
          */
         Class<?>[] services() default {
         };
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         * 
+         * @since 22.0.0
+         */
+        String website() default "";
     }
 
     /**

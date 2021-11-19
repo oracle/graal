@@ -257,10 +257,15 @@ public abstract class LanguageLauncherBase extends Launcher {
             for (Instrument instrument : instruments) {
                 List<PrintableOption> options = instrumentsOptions.get(instrument);
                 if (options != null) {
-                    printOptions(options, "  " + instrument.getName() + ":", 4);
+                    printOptions(options, "  " + instrument.getName() + website(instrument) + ":", 4);
                 }
             }
         }
+    }
+
+    private static String website(Instrument instrument) {
+        String website = instrument.getWebsite();
+        return website.isEmpty() ? "" : " (" + website + ")";
     }
 
     private void printLanguageOptions(Engine engine, OptionCategory optionCategory) {

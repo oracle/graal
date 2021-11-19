@@ -73,7 +73,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class})
+@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class}, website = "https://www.graalvm.org/tools/lsp/")
 public final class LSPInstrument extends TruffleInstrument implements EnvironmentProvider {
 
     public static final String ID = "lsp";

@@ -61,7 +61,8 @@ import com.oracle.truffle.api.source.Source;
     id = Insight.ID,
     name = InsightInstrument.NAME,
     version = Insight.VERSION,
-    services = { Function.class }
+    services = { Function.class },
+    website = "https://www.graalvm.org/tools/graalvm-insight/"
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {

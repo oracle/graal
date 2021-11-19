@@ -43,7 +43,8 @@ import com.oracle.truffle.tools.profiler.CPUSampler;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {CPUSampler.class})
+@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {
+                CPUSampler.class}, website = "https://www.graalvm.org/tools/profiling/")
 public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**

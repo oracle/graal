@@ -40,7 +40,8 @@ import com.oracle.truffle.tools.profiler.CPUTracer;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = CPUTracerInstrument.VERSION, services = {CPUTracer.class})
+@TruffleInstrument.Registration(id = CPUTracerInstrument.ID, name = "CPU Tracer", version = CPUTracerInstrument.VERSION, services = {
+                CPUTracer.class}, website = "https://www.graalvm.org/tools/profiling/")
 public class CPUTracerInstrument extends TruffleInstrument {
 
     /**

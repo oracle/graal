@@ -47,7 +47,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 
-@Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
+@Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class, website = "https://www.graalvm.org/tools/code-coverage/")
 public class CoverageInstrument extends TruffleInstrument {
 
     public static final String ID = "coverage";

@@ -44,7 +44,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.tools.dap.server.DebugProtocolServerImpl;
 import com.oracle.truffle.tools.dap.server.ExecutionContext;
 
-@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1")
+@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1", website = "https://www.graalvm.org/tools/dap/")
 public final class DAPInstrument extends TruffleInstrument {
 
     public static final String ID = "dap";
