@@ -1204,5 +1204,5 @@ def register_graalvm_vms():
         if libgraal_location is not None:
             import mx_graal_benchmark
             mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                       ['-server', '-XX:+EnableJVMCI', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
                                                        mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

@@ -75,7 +75,7 @@
     c.weekly + hw.xgene3 + jdk + cc.jargraal + suite
     ]
   for jdk in cc.bench_jdks
-  for suite in bench.groups.main_suites
+  for suite in bench.groups.all_suites
   ]),
 
   local all_builds = main_builds + weekly_forks_builds + profiling_builds + aarch64_builds,

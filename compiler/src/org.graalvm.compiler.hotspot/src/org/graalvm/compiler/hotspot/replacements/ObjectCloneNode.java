@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -38,11 +41,13 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
@@ -105,16 +110,36 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph.Builder(graph().getOptions(), graph().getDebug(), AllowAssumptions.ifNonNull(assumptions)).name("<clone>").build();
                     ParameterNode param = newGraph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(getObject().stamp(NodeView.DEFAULT))));
-                    NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
-                    newGraph.addAfterFixed(newGraph.start(), newInstance);
-                    ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));
-                    newGraph.addAfterFixed(newInstance, returnNode);
 
+                    // Use a CommitAllocation node so that no FrameState is required when creating
+                    // the new instance.
+                    CommitAllocationNode commit = newGraph.add(new CommitAllocationNode());
+                    newGraph.addAfterFixed(newGraph.start(), commit);
+                    VirtualObjectNode virtualObj = newGraph.add(new VirtualInstanceNode(type, true));
+                    virtualObj.setObjectId(0);
+
+                    AllocatedObjectNode newObj = newGraph.addWithoutUnique(new AllocatedObjectNode(virtualObj));
+                    commit.getVirtualObjects().add(virtualObj);
+                    newObj.setCommit(commit);
+
+                    ReturnNode returnNode = newGraph.add(new ReturnNode(newObj));
+                    newGraph.addAfterFixed(commit, returnNode);
+
+                    /*
+                     * The commit values follow the same ordering as the declared fields returned by
+                     * JVMCI. Since the new object's fields are copies of the old one's, the values
+                     * are given by a load of the corresponding field in the old object.
+                     */
+                    List<ValueNode> commitValues = commit.getValues();
                     for (ResolvedJavaField field : type.getInstanceFields(true)) {
                         LoadFieldNode load = newGraph.add(LoadFieldNode.create(newGraph.getAssumptions(), param, field));
-                        newGraph.addBeforeFixed(returnNode, load);
-                        newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
+                        newGraph.addBeforeFixed(commit, load);
+                        commitValues.add(load);
                     }
+
+                    commit.addLocks(Collections.emptyList());
+                    commit.getEnsureVirtual().add(false);
+                    assert commit.verify();
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), newGraph, tool);
                 }
