@@ -68,6 +68,7 @@ import java.util.logging.StreamHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotLoggers {
@@ -90,13 +91,7 @@ final class PolyglotLoggers {
     }
 
     static PolyglotContextImpl getCurrentOuterContext() {
-        PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
-        if (currentContext != null) {
-            while (currentContext.parent != null) {
-                currentContext = currentContext.parent;
-            }
-        }
-        return currentContext;
+        return EngineImpl.getOuterContext(PolyglotFastThreadLocals.getContext(null));
     }
 
     static boolean isSameLogSink(Handler h1, Handler h2) {
@@ -189,6 +184,14 @@ final class PolyglotLoggers {
         }
         PolyglotStreamHandler phandler = ((PolyglotStreamHandler) handler);
         return phandler.isDefault;
+    }
+
+    static LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind) {
+        return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown, ImmutableLogRecord.FormatKind.valueOf(formatKind));
+    }
+
+    static String getFormatKind(LogRecord logRecord) {
+        return (logRecord instanceof ImmutableLogRecord ? ((ImmutableLogRecord) logRecord).getFormatKind() : ImmutableLogRecord.FormatKind.DEFAULT).name();
     }
 
     static final class LoggerCache {

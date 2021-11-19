@@ -80,6 +80,7 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
@@ -155,6 +156,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final Object lock = new Object();
     final Object instrumentationHandler;
+    final String[] permittedLanguages;
     final PolyglotImpl impl;
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
@@ -228,7 +230,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final boolean hostLanguageOnly;
 
     @SuppressWarnings("unchecked")
-    PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
+    PolyglotEngineImpl(PolyglotImpl impl, String[] permittedLanguages,
+                    DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
@@ -236,6 +239,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
+        this.permittedLanguages = permittedLanguages;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -378,6 +382,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                         prototype.in,
                         prototype.messageInterceptor, prototype.storeEngine);
         this.impl = prototype.impl;
+        this.permittedLanguages = prototype.permittedLanguages;
         this.out = prototype.out;
         this.err = prototype.err;
         this.in = prototype.in;
@@ -690,6 +695,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     static Map<String, String> readOptionsFromSystemProperties(Map<String, String> options) {
         Properties properties = System.getProperties();
+        Map<String, String> newOptions = null;
         synchronized (properties) {
             for (Object systemKey : properties.keySet()) {
                 if (PolyglotImpl.PROP_ALLOW_EXPERIMENTAL_OPTIONS.equals(systemKey)) {
@@ -702,13 +708,20 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
                         // system properties cannot override existing options
                         if (!options.containsKey(optionKey)) {
-                            options.put(optionKey, System.getProperty(key));
+                            if (newOptions == null) {
+                                newOptions = new HashMap<>(options);
+                            }
+                            newOptions.put(optionKey, System.getProperty(key));
                         }
                     }
                 }
             }
         }
-        return options;
+        if (newOptions == null) {
+            return options;
+        } else {
+            return newOptions;
+        }
     }
 
     static String parseOptionGroup(String key) {
@@ -1453,11 +1466,21 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static final class CancelExecution extends ThreadDeath {
 
         private final Node location;
+        private final SourceSection sourceSection;
         private final String cancelMessage;
         private final boolean resourceLimit;
 
         CancelExecution(Node location, String cancelMessage, boolean resourceLimit) {
+            this(location, null, cancelMessage, resourceLimit);
+        }
+
+        CancelExecution(SourceSection sourceSection, String cancelMessage, boolean resourceLimit) {
+            this(null, sourceSection, cancelMessage, resourceLimit);
+        }
+
+        private CancelExecution(Node location, SourceSection sourceSection, String cancelMessage, boolean resourceLimit) {
             this.location = location;
+            this.sourceSection = sourceSection;
             this.cancelMessage = cancelMessage;
             this.resourceLimit = resourceLimit;
         }
@@ -1467,6 +1490,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
 
         SourceSection getSourceLocation() {
+            if (sourceSection != null) {
+                return sourceSection;
+            }
             return location == null ? null : location.getEncapsulatingSourceSection();
         }
 
@@ -1490,14 +1516,48 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         private static final long serialVersionUID = 8652484189010224048L;
 
+        private final SourceSection sourceSection;
+
         InterruptExecution(Node location) {
+            this(location, null);
+        }
+
+        InterruptExecution(SourceSection sourceSection) {
+            this(null, sourceSection);
+        }
+
+        private InterruptExecution(Node location, SourceSection sourceSection) {
             super("Execution got interrupted.", location);
+            this.sourceSection = sourceSection;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
         ExceptionType getExceptionType() {
             return ExceptionType.INTERRUPT;
+        }
+
+        @ExportMessage
+        public boolean hasSourceLocation() {
+            if (sourceSection != null) {
+                return true;
+            }
+            Node location = getLocation();
+            return location != null && location.getEncapsulatingSourceSection() != null;
+        }
+
+        @ExportMessage(name = "getSourceLocation")
+        @TruffleBoundary
+        public SourceSection getSourceSection() throws UnsupportedMessageException {
+            if (sourceSection != null) {
+                return sourceSection;
+            }
+            Node location = getLocation();
+            SourceSection section = location != null ? location.getEncapsulatingSourceSection() : null;
+            if (section == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return section;
         }
     }
 
@@ -1539,7 +1599,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
-                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                    Map<String, String[]> arguments, String[] permittedContextLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                     EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
                     boolean allowValueSharing, boolean useSystemExit) {
         PolyglotContextImpl context;
@@ -1554,10 +1614,32 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
             EconomicSet<String> allowedLanguages = EconomicSet.create();
-            if (onlyLanguages.length == 0) {
-                allowedLanguages.addAll(getLanguages().keySet());
+            if (permittedContextLanguages.length == 0) {
+                if (this.permittedLanguages.length == 0) {
+                    allowedLanguages.addAll(getLanguages().keySet());
+                } else {
+                    allowedLanguages.addAll(Arrays.asList(this.permittedLanguages));
+                }
             } else {
-                allowedLanguages.addAll(Arrays.asList(onlyLanguages));
+                if (this.permittedLanguages.length == 0) {
+                    allowedLanguages.addAll(Arrays.asList(permittedContextLanguages));
+                } else {
+                    EconomicSet<String> engineLanguages = EconomicSet.create();
+                    engineLanguages.addAll(Arrays.asList(this.permittedLanguages));
+
+                    allowedLanguages.addAll(Arrays.asList(permittedContextLanguages));
+                    for (String language : allowedLanguages) {
+                        if (!engineLanguages.contains(language)) {
+                            throw PolyglotEngineException.illegalArgument(String.format(
+                                            "The language %s permitted for the created polyglot context was not permitted by the explicit engine. " + //
+                                                            "The engine only permits the use of the following languages: %s. " + //
+                                                            "Use Engine.newBuilder(\"%s\").build() to construct an engine with this language permitted " + //
+                                                            "or remove the language from the set of permitted languages when constructing the context in Context.newBuilder(...) to resolve this.",
+                                            language,
+                                            engineLanguages.toString(), language));
+                        }
+                    }
+                }
             }
             String error = getAPIAccess().validatePolyglotAccess(polyglotAccess, allowedLanguages);
             if (error != null) {
@@ -2031,7 +2113,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (fallbackEngine == null) {
             synchronized (PolyglotImpl.class) {
                 if (fallbackEngine == null) {
-                    fallbackEngine = PolyglotImpl.getInstance().createDefaultEngine();
+                    PolyglotImpl polyglot = PolyglotImpl.getInstance();
+                    TruffleLanguage<Object> hostLanguage = polyglot.createHostLanguage(polyglot.createHostAccess());
+                    fallbackEngine = PolyglotImpl.getInstance().createDefaultEngine(hostLanguage);
                 }
             }
         }

@@ -180,11 +180,13 @@ meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.pol
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public !varargs static org.graalvm.polyglot.Engine create(java.lang.String[])
+meth public !varargs static org.graalvm.polyglot.Engine$Builder newBuilder(java.lang.String[])
 meth public java.lang.String getImplementationName()
 meth public java.lang.String getVersion()
 meth public java.util.Map<java.lang.String,org.graalvm.polyglot.Instrument> getInstruments()
@@ -197,7 +199,7 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,JDK8_OR_EARLIER,currentAPI,dispatch,receiver
+hfds EMPTY,JDK8_OR_EARLIER,currentAPI,dispatch,initializationException,receiver
 hcls APIAccessImpl,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
@@ -214,7 +216,7 @@ meth public org.graalvm.polyglot.Engine$Builder out(java.io.OutputStream)
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,useSystemProperties
+hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT

@@ -488,7 +488,8 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNati
 
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
-               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
 
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
@@ -514,7 +515,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativ
 
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
-               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+
 
     def extraVmArgs(self):
         if mx_compiler.isJDK8:

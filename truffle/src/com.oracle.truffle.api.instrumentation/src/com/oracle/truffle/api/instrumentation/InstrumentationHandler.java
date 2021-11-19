@@ -2174,12 +2174,12 @@ final class InstrumentationHandler {
 
         @Override
         public <T extends ContextsListener> EventBinding<T> attachContextsListener(T listener, boolean includeActiveContexts) {
-            throw new UnsupportedOperationException("Not supported in engine instrumenter.");
+            return InstrumentationHandler.this.attachContextsListener(this, listener, includeActiveContexts);
         }
 
         @Override
         public <T extends ThreadsListener> EventBinding<T> attachThreadsListener(T listener, boolean includeStartedThreads) {
-            throw new UnsupportedOperationException("Not supported in engine instrumenter.");
+            return InstrumentationHandler.this.attachThreadsListener(this, listener, includeStartedThreads);
         }
 
         @Override

@@ -2244,11 +2244,21 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         private static final long serialVersionUID = -4838571769179260137L;
 
         private final Node location;
+        private final SourceSection sourceSection;
         private final String exitMessage;
         private final int exitCode;
 
         ExitException(Node location, int exitCode, String exitMessage) {
+            this(location, null, exitCode, exitMessage);
+        }
+
+        ExitException(SourceSection sourceSection, int exitCode, String exitMessage) {
+            this(null, sourceSection, exitCode, exitMessage);
+        }
+
+        private ExitException(Node location, SourceSection sourceSection, int exitCode, String exitMessage) {
             this.location = location;
+            this.sourceSection = sourceSection;
             this.exitCode = exitCode;
             this.exitMessage = exitMessage;
         }
@@ -2258,6 +2268,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
 
         SourceSection getSourceLocation() {
+            if (sourceSection != null) {
+                return sourceSection;
+            }
             return location == null ? null : location.getEncapsulatingSourceSection();
         }
 
