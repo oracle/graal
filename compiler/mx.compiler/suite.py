@@ -191,8 +191,8 @@ suite = {
         },
         "windows" : {
           "amd64" : {
-            "sha1" : "d2dc8ca4c9af811761ceb3c9873129c5f8c2e3b9",
-            "urls" : ["{urlbase}/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30.zip"],
+            "sha1" : "b603814c8136e0086f33355d38a5f67d115101da",
+            "urls" : ["{urlbase}/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30-2.zip"],
           },
           "<others>" : {
             "optional" : True,
