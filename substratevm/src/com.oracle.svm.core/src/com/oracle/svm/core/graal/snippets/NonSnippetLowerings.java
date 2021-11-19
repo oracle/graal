@@ -380,6 +380,7 @@ public abstract class NonSnippetLowerings {
                     ReadNode entry = graph.add(new ReadNode(address, NamedLocationIdentity.FINAL_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE));
                     loweredCallTarget = graph.add(
                                     new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+
                     graph.addBeforeFixed(node, entry);
                 }
 

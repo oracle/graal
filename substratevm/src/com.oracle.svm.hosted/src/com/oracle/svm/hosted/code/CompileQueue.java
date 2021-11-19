@@ -274,20 +274,20 @@ public class CompileQueue {
         }
     }
 
-    public static class MethodCheckReason extends CompileReason {
+    public static class MethodPointerConstantReason extends CompileReason {
 
-        private final HostedMethod method;
+        private final HostedMethod owner;
         private final HostedMethod callTarget;
 
-        public MethodCheckReason(HostedMethod method, HostedMethod callTarget, CompileReason prevReason) {
+        public MethodPointerConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
             super(prevReason);
-            this.method = method;
+            this.owner = owner;
             this.callTarget = callTarget;
         }
 
         @Override
         public String toString() {
-            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer from " + method.format("%r %h.%n(%p)");
+            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer from " + owner.format("%r %h.%n(%p)");
         }
     }
 
@@ -925,6 +925,14 @@ public class CompileQueue {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(nsp.getMethod(), node, replacements, hUniverse);
             newReplacement = new BytecodePosition(replacedCaller, replacedMethod, nsp.getBCI());
 
+        } else if (obj.getClass() == SubstrateMethodPointerConstant.class) {
+            SubstrateMethodPointerConstant methodPointerConstant = (SubstrateMethodPointerConstant) obj;
+
+            MethodPointer methodPointer = methodPointerConstant.pointer();
+            ResolvedJavaMethod method = methodPointer.getMethod();
+            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
+            newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
@@ -1370,15 +1378,8 @@ public class CompileQueue {
                 if (constant instanceof SubstrateMethodPointerConstant) {
                     MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                     final ResolvedJavaMethod method1 = pointer.getMethod();
-                    HostedMethod hMethod;
-                    if (method1 instanceof HostedMethod) {
-                        hMethod = (HostedMethod) method1;
-                    } else {
-                        hMethod = universe.lookup(method1);
-                        ConstantReference constantReference = new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(hMethod)));
-                        dataPatch.reference = constantReference;
-                    }
-                    ensureCompiled(hMethod, new MethodCheckReason(method, hMethod, reason));
+                    HostedMethod hMethod = (HostedMethod) method1;
+                    ensureCompiled(hMethod, new MethodPointerConstantReason(method, hMethod, reason));
                 }
             }
         }

@@ -416,7 +416,7 @@ public class MethodTypeFlowBuilder {
                 if (input instanceof ConstantNode && !typeFlows.contains((ConstantNode) input)) {
                     ConstantNode node = (ConstantNode) input;
                     Constant constant = node.getValue();
-                    if (constant instanceof VMConstant) {
+                    if (node.asJavaConstant() == null && constant instanceof VMConstant) {
                         // do nothing
                     } else if (node.asJavaConstant().isNull()) {
                         TypeFlowBuilder<SourceTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {

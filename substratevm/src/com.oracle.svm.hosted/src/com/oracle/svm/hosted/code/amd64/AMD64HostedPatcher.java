@@ -30,7 +30,6 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -135,10 +134,11 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
                 HostedMethod hMethod = (HostedMethod) method;
                 if (hMethod.isCompiled()) {
                     int pointerSize = ConfigurationValues.getTarget().wordSize;
+                    assert pointerSize == annotation.operandSize;
                     ObjectFile.RelocationKind relocationKind = pointerSize == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4;
                     relocs.addRelocationWithoutAddend((int) siteOffset, relocationKind, pointer);
                 } else {
-                    GraalError.shouldNotReachHere(String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                    VMError.shouldNotReachHere(String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
                 }
                 return;
             }

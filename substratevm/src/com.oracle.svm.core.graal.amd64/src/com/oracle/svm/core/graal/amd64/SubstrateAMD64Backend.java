@@ -922,7 +922,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             } else if (src instanceof SubstrateMethodPointerConstant) {
-                return new LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
+                return new AMD64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createLoad(dst, src);
         }
@@ -934,7 +934,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             } else if (src instanceof SubstrateMethodPointerConstant) {
-                return new LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
+                return new AMD64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createStackLoad(dst, src);
         }

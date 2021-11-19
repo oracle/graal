@@ -38,12 +38,12 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-public final class LoadMethodPointerConstantOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
-    public static final LIRInstructionClass<LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(LoadMethodPointerConstantOp.class);
+public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
+    public static final LIRInstructionClass<AMD64LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(AMD64LoadMethodPointerConstantOp.class);
     private final SubstrateMethodPointerConstant constant;
     @Def({REG, HINT}) protected AllocatableValue result;
 
-    protected LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
+    protected AMD64LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
         super(TYPE);
         this.constant = constant;
         this.result = result;

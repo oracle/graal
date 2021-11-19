@@ -61,7 +61,7 @@ public class SubstrateMethodPointerConstant implements VMConstant {
             return false;
         }
         SubstrateMethodPointerConstant that = (SubstrateMethodPointerConstant) obj;
-        return this == obj || this.pointer == that.pointer;
+        return this == obj || this.pointer.getMethod().equals(that.pointer.getMethod());
     }
 
     @Override

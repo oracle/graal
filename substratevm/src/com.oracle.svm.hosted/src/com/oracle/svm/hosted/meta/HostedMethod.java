@@ -77,7 +77,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
     protected int vtableIndex = -1;
-    private final MethodPointer methodPointer;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -106,7 +105,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
-        this.methodPointer = new MethodPointer(this);
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -432,7 +430,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public Constant getEncoding() {
-        return new SubstrateMethodPointerConstant(methodPointer);
+        return new SubstrateMethodPointerConstant(new MethodPointer(this));
     }
 
     @Override
