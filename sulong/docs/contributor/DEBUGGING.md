@@ -5,7 +5,7 @@
 The Chrome Developer Tools can be used to debug programs running on the GraalVM
 LLVM runtime.
 
-See [the user documentation at graalvm.org](https://www.graalvm.org/reference-manual/llvm/Debugging/) for details.
+See [the user documentation on debugging](../../../docs/reference-manual/llvm/Debugging.md) for details.
 
 If running from the source directory using `mx`, note that the `tools` suite
 needs to be imported for debugging to work:
