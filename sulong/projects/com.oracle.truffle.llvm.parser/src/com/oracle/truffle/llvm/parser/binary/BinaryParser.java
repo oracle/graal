@@ -137,9 +137,9 @@ public final class BinaryParser {
                 if (dynamicSection != null) {
                     List<String> elfLibraries = dynamicSection.getDTNeeded();
                     libraries.addAll(elfLibraries);
-                    String SOName = dynamicSection.getDTSOName();
-                    if (SOName != null) {
-                        libraryName = SOName;
+                    String soName = dynamicSection.getDTSOName();
+                    if (soName != null) {
+                        libraryName = soName;
                     }
                     locator = new ElfLibraryLocator(elfFile, source);
                 }

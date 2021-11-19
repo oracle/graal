@@ -158,13 +158,13 @@ public final class LoadModulesNode extends LLVMRootNode {
         return source.createUnavailableSection();
     }
 
-    public static LoadModulesNode create(String SOName, LLVMParserResult parserResult,
+    public static LoadModulesNode create(String soName, LLVMParserResult parserResult,
                     boolean lazyParsing, boolean isInternalSulongLibrary, List<LoadDependencyNode> libraryDependencies, Source source, LLVMLanguage language) {
         try {
             FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
             int stackId = builder.addSlot(FrameSlotKind.Object, null, null);
             assert stackId == LLVMStack.STACK_ID;
-            return new LoadModulesNode(SOName, parserResult, isInternalSulongLibrary, builder.build(), lazyParsing, libraryDependencies, source, language);
+            return new LoadModulesNode(soName, parserResult, isInternalSulongLibrary, builder.build(), lazyParsing, libraryDependencies, source, language);
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }

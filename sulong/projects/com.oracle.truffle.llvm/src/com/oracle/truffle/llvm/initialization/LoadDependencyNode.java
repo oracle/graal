@@ -51,7 +51,7 @@ import java.nio.file.Paths;
 
 public final class LoadDependencyNode extends LLVMNode {
 
-    public final static LoadDependencyNode[] EMPTY = {};
+    public static final LoadDependencyNode[] EMPTY = {};
 
     private final String libraryName;
     private final String reason;

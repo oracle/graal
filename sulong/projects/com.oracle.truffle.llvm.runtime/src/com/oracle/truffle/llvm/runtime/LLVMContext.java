@@ -683,15 +683,15 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void addCalltargetForCache(String SOName, CallTarget callTarget) {
-        if (!calltargetCache.containsKey(SOName)) {
-            calltargetCache.put(SOName, callTarget);
+    public void addCalltargetForCache(String soName, CallTarget callTarget) {
+        if (!calltargetCache.containsKey(soName)) {
+            calltargetCache.put(soName, callTarget);
         }
     }
 
     @TruffleBoundary
-    public CallTarget getCalltargetFromCache(String SOName) {
-        return calltargetCache.get(SOName);
+    public CallTarget getCalltargetFromCache(String soName) {
+        return calltargetCache.get(soName);
     }
 
     public LLVMLanguage getLanguage() {
