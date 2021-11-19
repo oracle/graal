@@ -104,7 +104,6 @@ final class ParserDriver {
     private final LLVMContext context;
     private final LLVMLanguage language;
     private final BitcodeID bitcodeID;
-    // All other dependencies are LoadDependencyNode.
     private final ArrayList<LoadDependencyNode> libraryDependencies = new ArrayList<>();
 
     private ParserDriver(LLVMContext context, BitcodeID bitcodeID) {
@@ -140,8 +139,6 @@ final class ParserDriver {
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, bytes);
-
-        //TODO: Can this be here, instead of being first?
         insertDefaultDependencies(source.getName());
 
         if (result == null) {
@@ -168,7 +165,7 @@ final class ParserDriver {
             resolveRenamedSymbols(result);
         }
         addExternalSymbolsToScopes(result);
-        return createLibraryCallTarget( result.getRuntime().getLibraryName(), result, source);
+        return createLibraryCallTarget(result.getRuntime().getLibraryName(), result, source);
     }
 
     @TruffleBoundary
@@ -331,7 +328,8 @@ final class ParserDriver {
         // Create a new public file scope to be returned inside sulong library.
         LLVMScope publicFileScope = new LLVMScope();
         LLVMScope fileScope = new LLVMScope();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, binaryParserResult.getLibraryName(), getSourceFilesWithChecksums(context.getEnv(), module),
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, binaryParserResult.getLibraryName(),
+                        getSourceFilesWithChecksums(context.getEnv(), module),
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
@@ -481,7 +479,8 @@ final class ParserDriver {
         } else {
             // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), libraryDependencies, source, language);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), libraryDependencies, source,
+                            language);
             return loadModules.getCallTarget();
         }
     }

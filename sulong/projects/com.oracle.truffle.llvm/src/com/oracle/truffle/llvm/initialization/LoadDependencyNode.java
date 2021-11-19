@@ -73,10 +73,10 @@ public final class LoadDependencyNode extends LLVMNode {
             return callTarget;
         } else {
             // only create a source if the library has not already been parsed.
-            TruffleFile file = createTruffleFile(libraryName, null, libraryLocator, reason);
+            TruffleFile file = createTruffleFile(libraryName, null, libraryLocator);
             CallTarget calls = getLanguage().getCachedLibrary(file.getPath());
-            if (calls != null ) {
-               return calls;
+            if (calls != null) {
+                return calls;
             } else {
                 Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, true, file);
                 // A source is null if it's a native library, which will be added to the NFI
@@ -142,12 +142,12 @@ public final class LoadDependencyNode extends LLVMNode {
             return RootNode.createConstantNode(0).getCallTarget();
         } else {
             // check if the functions should be resolved eagerly or lazily.
-            LoadNativeNode loadNative = LoadNativeNode.create(new FrameDescriptor(), getLanguage(), file);
+            LoadNativeNode loadNative = LoadNativeNode.create(getLanguage(), file);
             return loadNative.getCallTarget();
         }
     }
 
-    private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator, String reason) {
+    private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator) {
         LLVMContext context = getContext();
         TruffleFile file = locator.locate(context, libName, reason);
         if (file == null) {

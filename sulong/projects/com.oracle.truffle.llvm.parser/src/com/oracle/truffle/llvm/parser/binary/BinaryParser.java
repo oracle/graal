@@ -112,7 +112,9 @@ public final class BinaryParser {
     private ByteSequence parseBitcode(ByteSequence bytes, Source source) {
         BitStream b = BitStream.create(bytes);
         Magic magicWord = getMagic(b);
-        libraryName = source.getName();
+        if (source != null) {
+            libraryName = source.getName();
+        }
         switch (magicWord) {
             case BC_MAGIC_WORD:
                 return bytes;

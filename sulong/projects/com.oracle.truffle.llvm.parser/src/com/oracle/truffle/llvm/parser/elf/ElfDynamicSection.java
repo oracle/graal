@@ -142,8 +142,8 @@ public final class ElfDynamicSection {
         return null;
     }
 
-    private String getSingleEntry(int tag){
-        for (Entry entry: entries) {
+    private String getSingleEntry(int tag) {
+        for (Entry entry : entries) {
             if (entry.tag == tag) {
                 return getString(entry.getValue());
             }

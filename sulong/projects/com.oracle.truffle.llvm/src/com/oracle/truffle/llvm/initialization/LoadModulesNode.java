@@ -90,36 +90,25 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     private static final String MAIN_METHOD_NAME = "main";
 
-    @CompilationFinal
-    RootCallTarget mainFunctionCallTarget;
+    @CompilationFinal RootCallTarget mainFunctionCallTarget;
     final String libraryName;
     final BitcodeID bitcodeID;
     final Source source;
 
-    @Child
-    LLVMStatementNode initContext;
-    @Child
-    InitializeSymbolsNode initSymbols;
-    @Child
-    InitializeExternalNode initExternals;
-    @Child
-    InitializeGlobalNode initGlobals;
-    @Child
-    InitializeOverwriteNode initOverwrite;
-    @Child
-    InitializeModuleNode initModules;
-    @Child
-    IndirectCallNode indirectCall;
+    @Child LLVMStatementNode initContext;
+    @Child InitializeSymbolsNode initSymbols;
+    @Child InitializeExternalNode initExternals;
+    @Child InitializeGlobalNode initGlobals;
+    @Child InitializeOverwriteNode initOverwrite;
+    @Child InitializeModuleNode initModules;
+    @Child IndirectCallNode indirectCall;
 
-    @Child
-    IndirectCallNode callDependencies;
-    @Children
-    final LoadDependencyNode[] libraryDependencies;
+    @Child IndirectCallNode callDependencies;
+    @Children final LoadDependencyNode[] libraryDependencies;
     final LLVMParserRuntime parserRuntime;
     final LLVMLanguage language;
     private boolean hasInitialised;
-    @CompilationFinal
-    private CachedMainFunction main;
+    @CompilationFinal private CachedMainFunction main;
 
     protected enum LLVMLoadingPhase {
         ALL,
@@ -170,7 +159,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     public static LoadModulesNode create(String SOName, LLVMParserResult parserResult,
-                                         boolean lazyParsing, boolean isInternalSulongLibrary, List<LoadDependencyNode> libraryDependencies, Source source, LLVMLanguage language) {
+                    boolean lazyParsing, boolean isInternalSulongLibrary, List<LoadDependencyNode> libraryDependencies, Source source, LLVMLanguage language) {
         try {
             FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
             int stackId = builder.addSlot(FrameSlotKind.Object, null, null);
@@ -444,6 +433,12 @@ public final class LoadModulesNode extends LLVMRootNode {
 
         for (CallTarget callTarget : dependencies) {
             if (callTarget != null) {
+                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_MODULE);
+            }
+        }
+
+        for (CallTarget callTarget : dependencies) {
+            if (callTarget != null) {
                 callDependencies.call(callTarget, LLVMLoadingPhase.INIT_DONE);
             }
         }
@@ -460,7 +455,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     }
 
     @TruffleBoundary
-    private BitSet createBitset(int length) {
+    private static BitSet createBitset(int length) {
         return new BitSet(length);
     }
 
