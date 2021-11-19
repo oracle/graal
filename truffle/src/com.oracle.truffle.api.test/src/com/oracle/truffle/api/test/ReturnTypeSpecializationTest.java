@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Specializing Return Types</h3>
@@ -66,6 +68,11 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * </p>
  */
 public class ReturnTypeSpecializationTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void test() {

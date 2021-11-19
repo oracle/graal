@@ -94,6 +94,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -116,6 +117,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPreInitializationTest {
 
@@ -128,6 +130,11 @@ public class ContextPreInitializationTest {
     private static final String SYS_OPTION2_KEY = "polyglot." + FIRST + ".Option2";
     private static final List<CountingContext> emittedContexts = new ArrayList<>();
     private static final Set<String> patchableLanguages = new HashSet<>();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Before
     public void setUp() throws Exception {

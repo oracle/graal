@@ -69,6 +69,7 @@ import org.graalvm.polyglot.proxy.ProxyIterable;
 import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -100,6 +101,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class IteratorTest extends AbstractPolyglotTest {
 
@@ -108,6 +110,11 @@ public class IteratorTest extends AbstractPolyglotTest {
 
     private static final TypeLiteral<Iterable<Value>> ITERABLE_VALUE = new TypeLiteral<Iterable<Value>>() {
     };
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private VerifyingHandler verifyingHandler;
 

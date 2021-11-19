@@ -47,10 +47,12 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NodeAdoptableTest {
 
@@ -75,6 +77,11 @@ public class NodeAdoptableTest {
         public boolean isAdoptable() {
             return false;
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

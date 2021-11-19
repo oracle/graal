@@ -153,6 +153,10 @@ public class MaterializationAssertionsViolationTest extends AbstractPolyglotTest
         }
     }
 
+    public MaterializationAssertionsViolationTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Before
     public void setup() {
         setupEnv(Context.create(), new ProxyLanguage() {

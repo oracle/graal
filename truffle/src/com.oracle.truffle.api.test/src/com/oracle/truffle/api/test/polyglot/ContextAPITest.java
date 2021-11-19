@@ -109,11 +109,17 @@ import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextAPITest extends AbstractPolyglotTest {
     private static HostAccess CONFIG;
 
     static LanguageContext langContext;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @BeforeClass
     public static void initHostAccess() throws Exception {
@@ -1314,6 +1320,107 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         static final LanguageReference<ValidExclusiveLanguage> REFERENCE = LanguageReference.create(ValidExclusiveLanguage.class);
+
+    }
+
+    @Test
+    public void testPermittedLanguages() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return RootNode.createConstantNode(42).getCallTarget();
+            }
+        });
+
+        try (Context c = Context.create()) {
+            c.eval(ContextAPITestLanguage.ID, "");
+            c.eval(ProxyLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Context c = Context.create(ContextAPITestLanguage.ID)) {
+            c.eval(ContextAPITestLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Context c = Context.create(ProxyLanguage.ID)) {
+            c.eval(ProxyLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder(ContextAPITestLanguage.ID).engine(e).build()) {
+                c.eval(ContextAPITestLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                c.eval(ContextAPITestLanguage.ID, "");
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        // restricted languages are inherited from the engine if not further specified in the
+        // context
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                c.eval(ContextAPITestLanguage.ID, "");
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            Context.Builder b = Context.newBuilder(ContextAPITestLanguage.ID).engine(e);
+            // fails language id is nost specified by the engine
+            AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            Context.Builder b = Context.newBuilder(ContextAPITestInternalLanguage.ID).engine(e);
+            AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
+        }
+
+        AbstractPolyglotTest.assertFails(() -> Context.create((String) null), NullPointerException.class);
+        AbstractPolyglotTest.assertFails(() -> Engine.create((String) null), NullPointerException.class);
 
     }
 

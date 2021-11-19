@@ -59,12 +59,14 @@ import java.util.TimerTask;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -81,9 +83,13 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
-import org.graalvm.polyglot.HostAccess;
 
 public class SLDebugTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private DebuggerTester tester;
 

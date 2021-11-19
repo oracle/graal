@@ -40,22 +40,33 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.io.IOException;
-
-import org.junit.Assert;
-import org.junit.Test;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class MessageTransportTest extends AbstractPolyglotTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     private final URI testUri = createTestUri();
+
+    public MessageTransportTest() {
+        needsInstrumentEnv = true;
+    }
 
     private static URI createTestUri() {
         try {

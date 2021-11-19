@@ -88,6 +88,10 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
 
     @Rule public TestName testNameRule = new TestName();
 
+    public ContextInterruptCloseCancelOrExitTest() {
+        needsInstrumentEnv = true;
+    }
+
     @After
     public void checkInterrupted() {
         Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());

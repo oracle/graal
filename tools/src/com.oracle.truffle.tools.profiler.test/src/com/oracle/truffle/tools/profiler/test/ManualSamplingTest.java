@@ -74,6 +74,10 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         assertTrue(entry.equals(entry));
     }
 
+    public ManualSamplingTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     public void testFindActiveEngines() {
@@ -199,7 +203,8 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
      * @param lazyAttach the instrument should be attached while executing, requiring the shadow
      *            stack to be reconstructed.
      */
-    private void testSampling(String[] sources, Consumer<Map<Thread, List<StackTraceEntry>>> verifier, boolean lazyAttach) throws InterruptedException {
+    private void testSampling(String[] sources, Consumer<Map<Thread, List<StackTraceEntry>>> verifier,
+                    boolean lazyAttach) throws InterruptedException {
         List<Thread> threads = new ArrayList<>(sources.length);
         int numThreads = sources.length;
         for (int i = 0; i < numThreads; i++) {

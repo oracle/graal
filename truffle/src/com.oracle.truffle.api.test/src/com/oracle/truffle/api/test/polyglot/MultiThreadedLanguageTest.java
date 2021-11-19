@@ -78,12 +78,14 @@ import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.MultiThreadedLanguage.ThreadRequest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class MultiThreadedLanguageTest {
 
@@ -96,6 +98,11 @@ public class MultiThreadedLanguageTest {
         } finally {
             MultiThreadedLanguage.runinside.set(null);
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

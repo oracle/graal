@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.api.test.source;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -54,13 +50,26 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class FileTypeDetectorTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private File testFile1;
     private File testFile2;
@@ -84,6 +93,10 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         if (testFile3 != null) {
             testFile3.delete();
         }
+    }
+
+    public FileTypeDetectorTest() {
+        needsLanguageEnv = true;
     }
 
     @Test

@@ -60,6 +60,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -69,11 +70,17 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /*
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testDisableCaching() throws Exception {

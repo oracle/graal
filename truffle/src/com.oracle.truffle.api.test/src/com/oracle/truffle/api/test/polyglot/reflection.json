@@ -48,6 +48,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$2",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
     "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$3",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
@@ -61,10 +65,6 @@
   },
   {
     "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$6",
-    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
-  },
-  {
-    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$7",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {

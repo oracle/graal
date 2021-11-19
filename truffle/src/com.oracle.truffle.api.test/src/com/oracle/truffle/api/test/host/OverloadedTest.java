@@ -49,12 +49,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class OverloadedTest extends ProxyLanguageEnvTest {
 
@@ -110,6 +112,11 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
             this.x = value;
             this.parameter = "float";
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     private Object obj;

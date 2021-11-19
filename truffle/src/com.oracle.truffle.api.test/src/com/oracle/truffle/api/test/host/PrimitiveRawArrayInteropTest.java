@@ -48,11 +48,18 @@ import static org.junit.Assert.fail;
 import java.util.List;
 
 import org.graalvm.polyglot.PolyglotException;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PrimitiveRawArrayInteropTest extends ProxyLanguageEnvTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private Object[] objArr;
     private byte[] byteArr;

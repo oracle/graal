@@ -46,12 +46,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.ArrayUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class ArrayUtilsIndexOfWithMaskTest {
@@ -132,6 +134,11 @@ public class ArrayUtilsIndexOfWithMaskTest {
             }
         }
         return true;
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     private final String haystack;

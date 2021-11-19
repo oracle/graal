@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,35 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.utilities;
+package com.oracle.truffle.sl.test;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Assume;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+public class TruffleTestAssumptions {
+    private static final boolean spawnIsolate = "true".equals(System.getProperty("polyglot.engine.SpawnIsolate"));
 
-import com.oracle.truffle.api.utilities.AssumedValue;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
-
-public class AssumedValueTest {
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
+    public static void assumeWeakEncapsulation() {
+        Assume.assumeFalse(spawnIsolate);
     }
 
-    @Test
-    public void testGet() {
-        final AssumedValue<String> assumedValue = new AssumedValue<>("assumed-value", "1");
-        assertEquals("1", assumedValue.get());
+    public static boolean isWeakEncapsulation() {
+        return !spawnIsolate;
     }
-
-    @Test
-    public void testSet() {
-        final AssumedValue<String> assumedValue = new AssumedValue<>("assumed-value", "1");
-        assertEquals("1", assumedValue.get());
-        assumedValue.set("2");
-        assertEquals("2", assumedValue.get());
-    }
-
 }

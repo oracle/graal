@@ -52,15 +52,22 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class VarArgsTest extends ProxyLanguageEnvTest {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testStringJoin1() throws InteropException {

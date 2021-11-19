@@ -49,6 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
 import org.junit.experimental.theories.Theories;
@@ -56,6 +57,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.ByteValueProfile;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
 public class ByteValueProfileTest {
@@ -64,6 +66,11 @@ public class ByteValueProfileTest {
     @DataPoint public static final byte VALUE1 = 0;
     @DataPoint public static final byte VALUE2 = 14;
     @DataPoint public static final byte VALUE3 = Byte.MAX_VALUE;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private ByteValueProfile profile;
 
