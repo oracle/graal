@@ -536,7 +536,7 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java11-linux-amd64
+    name: deploy-vm-complete-java11-linux-amd64
   }
 
   # Darwin/AMD64
@@ -548,6 +548,6 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
-    name: deploy-vm-no-fastr-java11-darwin-amd64
+    name: deploy-vm-complete-java11-darwin-amd64
   }
 ]
