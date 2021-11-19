@@ -36,7 +36,6 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -426,9 +425,9 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
-    StackOverflowCheckSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate) {
-        super(options, factories, providers, snippetReflection);
+    StackOverflowCheckSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings,
+                    Predicate<ResolvedJavaMethod> mustNotAllocatePredicate) {
+        super(options, providers);
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(StackOverflowCheckNode.class, new StackOverflowCheckLowering());
@@ -481,13 +480,13 @@ final class StackOverflowCheckFeature implements GraalFeature {
 
     @Override
     @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
         if (hosted) {
             mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
         }
 
-        new StackOverflowCheckSnippets(options, factories, providers, snippetReflection, lowerings, mustNotAllocatePredicate);
+        new StackOverflowCheckSnippets(options, providers, lowerings, mustNotAllocatePredicate);
     }
 }

@@ -412,7 +412,7 @@ public class SymbolicSnippetEncoder {
         if (context == IntrinsicContext.CompilationContext.ROOT_COMPILATION) {
             contextToUse = IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
         }
-        try (DebugContext debug = snippetReplacements.openSnippetDebugContext("LibGraalBuildGraph_", method, options)) {
+        try (DebugContext debug = snippetReplacements.openDebugContext("LibGraalBuildGraph_", method, options)) {
             StructuredGraph graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, original, trackNodeSourcePosition, null,
                             contextToUse);
 
@@ -525,7 +525,7 @@ public class SymbolicSnippetEncoder {
         }
         EconomicMap<GraphKey, StructuredGraph> graphs = this.preparedSnippetGraphs;
         if (encodedGraphs != graphs.size()) {
-            DebugContext debug = snippetReplacements.openDebugContext("SnippetEncoder", null, options);
+            DebugContext debug = snippetReplacements.openSnippetDebugContext("SnippetEncoder", null, options);
             try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
                 encodedGraphs = graphs.size();
                 for (StructuredGraph graph : graphs.getValues()) {

@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -67,10 +65,10 @@ public class CEntryPointFeature implements GraalFeature {
     }
 
     @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        CEntryPointSnippets.registerLowerings(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
+        CEntryPointSnippets.registerLowerings(options, providers, vmThreadSize, lowerings);
     }
 
     @Override

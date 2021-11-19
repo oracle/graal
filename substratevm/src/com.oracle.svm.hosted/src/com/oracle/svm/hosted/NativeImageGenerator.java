@@ -71,7 +71,6 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -203,7 +202,6 @@ import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
-import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -254,6 +252,7 @@ import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInterface;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -974,7 +973,7 @@ public class NativeImageGenerator {
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, bb.getHostVM().getClassInitializationSupport(), ConfigurationValues.getTarget());
-            registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
+            registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
             for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
                 HostedConfiguration.instance().createMethodTypeFlowBuilder(((NativeImagePointsToAnalysis) bb), graph).registerUsedElements(false);
@@ -1197,7 +1196,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     public static void registerReplacements(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, Providers providers,
-                    SnippetReflectionProvider snippetReflection, boolean hosted, boolean initForeignCalls) {
+                    boolean hosted, boolean initForeignCalls) {
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
@@ -1209,18 +1208,17 @@ public class NativeImageGenerator {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
-            Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
-            lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
-            ExceptionSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+            lowerer.setConfiguration(runtimeConfig, options, providers);
+            TypeSnippets.registerLowerings(runtimeConfig, options, providers, lowerings);
+            ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {
-                DeoptHostedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+                DeoptHostedSnippets.registerLowerings(options, providers, lowerings);
             } else {
-                DeoptRuntimeSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+                DeoptRuntimeSnippets.registerLowerings(options, providers, lowerings);
             }
 
-            featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings, hosted));
+            featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, providers, lowerings, hosted));
         } catch (Throwable e) {
             throw debug.handle(e);
         }

@@ -81,7 +81,6 @@ import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -123,7 +122,6 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -559,10 +557,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo verifyHeap;
         private final SnippetInfo threadBeingInitializedCheck;
 
-        public Templates(HotSpotAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
-                        TargetDescription target,
+        public Templates(HotSpotAllocationSnippets receiver, OptionValues options, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
                         GraalHotSpotVMConfig config) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+            super(options, providers);
             this.config = config;
             snippetCounters = new AllocationSnippetCounters(groupFactory);
 

@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.amd64.AMD64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.calc.RemNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -55,9 +53,9 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
     }
 
     @Override
-    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
-        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, factories, providers, snippetReflection, target));
-        super.initialize(options, factories, factory, providers, snippetReflection);
+    public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
+        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, providers));
+        super.initialize(options, factory, providers);
     }
 
     @SuppressWarnings("unchecked")

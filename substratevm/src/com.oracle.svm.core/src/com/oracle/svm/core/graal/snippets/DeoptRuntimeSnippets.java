@@ -29,12 +29,11 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DynamicDeoptimizeNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -44,7 +43,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
-import org.graalvm.compiler.nodes.UnreachableNode;
 
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
@@ -57,14 +55,12 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new DeoptRuntimeSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new DeoptRuntimeSnippets(options, providers, lowerings);
     }
 
-    private DeoptRuntimeSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private DeoptRuntimeSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         AbstractDeoptimizeLowering lowering = new AbstractDeoptimizeLowering();
         lowerings.put(DeoptimizeNode.class, lowering);

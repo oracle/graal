@@ -34,15 +34,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -74,6 +70,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -102,6 +99,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: stop
@@ -624,16 +622,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
+    public static void registerLowerings(OptionValues options, Providers providers, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        new CEntryPointSnippets(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
+        new CEntryPointSnippets(options, providers, vmThreadSize, lowerings);
     }
 
-    private CEntryPointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
+    private CEntryPointSnippets(OptionValues options, Providers providers, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        super(options, factories, providers, snippetReflection);
+        super(options, providers);
         lowerings.put(CEntryPointEnterNode.class, new EnterLowering(vmThreadSize));
         lowerings.put(CEntryPointLeaveNode.class, new LeaveLowering());
         lowerings.put(CEntryPointUtilityNode.class, new UtilityLowering());

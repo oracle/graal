@@ -33,7 +33,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PAT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -46,8 +45,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-
-import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Performs conditional finalizer registration via a runtime call. The condition will be constant
@@ -69,8 +66,8 @@ public class RegisterFinalizerSnippets implements Snippets {
 
         private final SnippetInfo registerFinalizerSnippet = snippet(RegisterFinalizerSnippets.class, "registerFinalizerSnippet", HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION);
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
         }
 
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {

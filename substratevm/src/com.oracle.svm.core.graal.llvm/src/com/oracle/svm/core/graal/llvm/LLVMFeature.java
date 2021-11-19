@@ -27,8 +27,6 @@ package com.oracle.svm.core.graal.llvm;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -118,7 +116,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     }
 
     @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         lowerings.put(LoadExceptionObjectNode.class, new LLVMLoadExceptionObjectLowering());
     }

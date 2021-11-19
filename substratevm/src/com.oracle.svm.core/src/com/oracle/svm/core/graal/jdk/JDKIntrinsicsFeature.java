@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.jdk;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -59,11 +58,10 @@ final class JDKIntrinsicsFeature implements GraalFeature {
 
     @Override
     @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection,
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        new SubstrateArraycopySnippets(options, factories, providers, snippetReflection, lowerings);
-        SubstrateObjectCloneSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        new SubstrateArraycopySnippets(options, providers, lowerings);
+        SubstrateObjectCloneSnippets.registerLowerings(options, providers, lowerings);
     }
 
     @Override
