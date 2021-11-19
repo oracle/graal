@@ -55,6 +55,7 @@ import java.util.concurrent.Callable;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
@@ -62,10 +63,20 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.Data;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public LanguageSPIHostInteropTest() {
+        needsLanguageEnv = true;
+    }
 
     @Before
     public void before() {

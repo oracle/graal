@@ -44,14 +44,15 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.TreeSet;
+
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.AfterClass;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.Assume;
 
 @RunWith(Parameterized.class)
 public class InvalidSyntaxTest {

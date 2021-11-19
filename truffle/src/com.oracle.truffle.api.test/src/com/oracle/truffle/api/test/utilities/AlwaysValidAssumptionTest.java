@@ -42,12 +42,19 @@ package com.oracle.truffle.api.test.utilities;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class AlwaysValidAssumptionTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testCheck() throws InvalidAssumptionException {

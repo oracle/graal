@@ -49,6 +49,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
 import org.junit.experimental.theories.Theories;
@@ -56,6 +57,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.IntValueProfile;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
 public class IntValueProfileTest {
@@ -64,6 +66,11 @@ public class IntValueProfileTest {
     @DataPoint public static final int VALUE1 = 0;
     @DataPoint public static final int VALUE2 = 14;
     @DataPoint public static final int VALUE3 = Integer.MAX_VALUE;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private IntValueProfile profile;
 

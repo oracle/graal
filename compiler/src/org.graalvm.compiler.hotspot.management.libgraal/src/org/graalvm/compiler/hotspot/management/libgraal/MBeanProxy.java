@@ -30,7 +30,7 @@ import static org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFro
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callGetFactory;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignalRegistrationRequest;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callUnregister;
-import static org.graalvm.nativebridge.jni.JNIUtil.getBinaryName;
+import static org.graalvm.jniutils.JNIUtil.getBinaryName;
 import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.DataInputStream;
@@ -56,10 +56,10 @@ import org.graalvm.compiler.hotspot.management.LibGraalMBean;
 import org.graalvm.compiler.hotspot.management.JMXFromLibGraalEntryPoints;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXFromLibGraal;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
-import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;

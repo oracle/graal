@@ -52,12 +52,18 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SourceBuilderDocumentationTest extends AbstractPolyglotTest {
 
     private static final Class<?> SOURCE_SNIPPETS = loadRelative(SourceBuilderDocumentationTest.class, "SourceSnippets");
 
     private static boolean loadedOK;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @BeforeClass
     public static void isAvailable() {

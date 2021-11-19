@@ -32,14 +32,14 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsCancelled;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsLastTier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callHasNextTier;
-import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIMethodScope.env;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.nativebridge.jni.HSObject;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNIMethodScope;
 
 /**
  * Proxy for a {@code Supplier<Boolean>} object in the HotSpot heap.

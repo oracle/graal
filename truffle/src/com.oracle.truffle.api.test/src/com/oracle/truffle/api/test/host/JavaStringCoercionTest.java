@@ -49,6 +49,7 @@ import java.util.List;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -64,10 +65,20 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.examples.TargetMappings;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class JavaStringCoercionTest extends AbstractPolyglotTest {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public JavaStringCoercionTest() {
+        needsLanguageEnv = true;
+    }
 
     @Before
     public void before() {

@@ -135,6 +135,11 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
+    public InstrumentationTest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
+
     /*
      * Test that metadata is properly propagated to Instrument handles.
      */
@@ -2500,17 +2505,17 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                             checkNull(asyncStack);
                             break;
                         case 1:
-                            checkEquals(testDepth, asyncStack.size());
-                            TruffleStackTraceElement lastElement = asyncStack.get(testDepth - 1);
+                            checkEquals(testDepth, listSize(asyncStack));
+                            TruffleStackTraceElement lastElement = listGet(asyncStack, testDepth - 1);
                             checkNull(lastElement.getFrame());
                             env.setAsynchronousStackDepth(Integer.MAX_VALUE);
                             break;
                         case 2:
-                            checkEquals(prgDepth, asyncStack.size());
-                            lastElement = asyncStack.get(prgDepth - 1);
+                            checkEquals(prgDepth, listSize(asyncStack));
+                            lastElement = listGet(asyncStack, prgDepth - 1);
                             asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastElement.getTarget(), lastElement.getFrame());
-                            checkEquals(testDepth, asyncStack.size());
-                            lastElement = asyncStack.get(testDepth - 1);
+                            checkEquals(testDepth, listSize(asyncStack));
+                            lastElement = listGet(asyncStack, testDepth - 1);
                             checkNull(lastElement.getFrame());
                             instrumentationFinished.countDown();
                             break;
@@ -2518,6 +2523,16 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                             illegalState();
                     }
                     count++;
+                }
+
+                @TruffleBoundary
+                private int listSize(List<TruffleStackTraceElement> list) {
+                    return list.size();
+                }
+
+                @TruffleBoundary
+                private TruffleStackTraceElement listGet(List<TruffleStackTraceElement> list, int i) {
+                    return list.get(i);
                 }
 
                 @TruffleBoundary

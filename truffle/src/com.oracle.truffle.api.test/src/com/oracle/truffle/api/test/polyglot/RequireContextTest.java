@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -56,12 +57,20 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class RequireContextTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     public RequireContextTest() {
         super();
         enterContext = false;
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
     }
 
     @Test

@@ -84,6 +84,10 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
 
     final Deque<ExecutionEvent> events = new ArrayDeque<>();
 
+    public ExecutionListenerTest() {
+        needsInstrumentEnv = true;
+    }
+
     private void add(ExecutionEvent event) {
         assertNotNull(event.toString()); // does not crash
         events.add(event);

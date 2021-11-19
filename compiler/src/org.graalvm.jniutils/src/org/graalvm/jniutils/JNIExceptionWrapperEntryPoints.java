@@ -22,10 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.jni;
+package org.graalvm.jniutils;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 /**
  * Entry points in HotSpot for exception handling from a JNI native method.
@@ -66,24 +70,22 @@ final class JNIExceptionWrapperEntryPoints {
         return new RuntimeException(message);
     }
 
-    static StackTraceElement[] getStackTrace(Throwable throwable) {
-        return throwable.getStackTrace();
-    }
-
-    static String getStackTraceElementClassName(StackTraceElement element) {
-        return element.getClassName();
-    }
-
-    static String getStackTraceElementFileName(StackTraceElement element) {
-        return element.getFileName();
-    }
-
-    static int getStackTraceElementLineNumber(StackTraceElement element) {
-        return element.getLineNumber();
-    }
-
-    static String getStackTraceElementMethodName(StackTraceElement element) {
-        return element.getMethodName();
+    static byte[] getStackTrace(Throwable throwable) {
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bout)) {
+            StackTraceElement[] stackTraceElements = throwable.getStackTrace();
+            out.writeInt(stackTraceElements.length);
+            for (StackTraceElement stackTraceElement : stackTraceElements) {
+                out.writeUTF(stackTraceElement.getClassName());
+                out.writeUTF(stackTraceElement.getMethodName());
+                String fileName = stackTraceElement.getFileName();
+                out.writeUTF(fileName == null ? "" : fileName);
+                out.writeInt(stackTraceElement.getLineNumber());
+            }
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+        return bout.toByteArray();
     }
 
     static String getThrowableMessage(Throwable t) {

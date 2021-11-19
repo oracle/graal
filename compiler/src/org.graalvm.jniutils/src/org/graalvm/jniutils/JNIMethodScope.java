@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.jni;
+package org.graalvm.jniutils;
 
-import static org.graalvm.nativebridge.jni.JNIUtil.getFeatureName;
+import static org.graalvm.jniutils.JNIUtil.getFeatureName;
 
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
 
 import java.util.Objects;
 

@@ -132,7 +132,7 @@ public class GuestToHostService extends AbstractHostService {
     }
 
     @Override
-    public boolean isHostException(Throwable exception) {
+    public boolean isHostException(Object exception) {
         return false;
     }
 

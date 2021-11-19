@@ -45,9 +45,11 @@ import static org.junit.Assert.assertNull;
 
 import java.util.List;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PrimitiveArrayInteropTest extends ProxyLanguageEnvTest {
     public Object[] stringArr;
@@ -78,6 +80,11 @@ public class PrimitiveArrayInteropTest extends ProxyLanguageEnvTest {
         List<Character> charArr();
 
         List<Boolean> boolArr();
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     private TruffleObject obj;

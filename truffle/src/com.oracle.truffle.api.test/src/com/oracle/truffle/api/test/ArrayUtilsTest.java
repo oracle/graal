@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.ArrayUtils;
-import org.junit.Test;
-
 import static com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.mask;
 import static org.junit.Assert.assertEquals;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.ArrayUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ArrayUtilsTest {
 
@@ -175,6 +178,11 @@ public class ArrayUtilsTest {
                     204,
                     204,
     };
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testIndexOf() {

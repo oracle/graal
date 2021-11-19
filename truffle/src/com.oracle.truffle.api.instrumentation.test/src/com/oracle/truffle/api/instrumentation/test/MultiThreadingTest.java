@@ -62,6 +62,10 @@ public class MultiThreadingTest extends AbstractPolyglotTest {
     private static final Node INVALID_NODE = new Node() {
     };
 
+    public MultiThreadingTest() {
+        needsLanguageEnv = true;
+    }
+
     @Test
     public void testInitMultiThreading() throws ExecutionException, InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(2);

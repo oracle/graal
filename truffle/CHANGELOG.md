@@ -44,6 +44,8 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Added `ExecuteTracingSupport` interface that allows tracing the calls to `execute` methods of a `Node`. 
 * Changed `--engine.InstrumentExceptionsAreThrown` to true by default and deprecated [EventContext#createError](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html#createError-java.lang.RuntimeException-) without replacement. Instrument exception are now thrown by default and observable by the guest language application.
 * `TruffleLanguage.Env#getPublicTruffleFile(URI)` and `TruffleLanguage.Env#getInternalTruffleFile(URI)` have been fixed to behave as specified and throw `UnsupportedOperationException` instead of `FileSystemNotFoundException`.
+* Added `LibraryFactory.getMessages()` to allow to enumerate all messages of a library.
+* Added `Engine.newBuilder(String...)` that also allows to restrict the permitted languages of an engine. The permitted languages of an engine are inherited by all created contexts.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.

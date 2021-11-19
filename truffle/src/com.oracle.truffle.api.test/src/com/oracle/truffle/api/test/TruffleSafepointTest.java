@@ -111,6 +111,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleSafepointTest {
 
@@ -128,6 +129,11 @@ public class TruffleSafepointTest {
      * debugging failures in this class.
      */
     private static final boolean RERUN_THREAD_CONFIG_ASYNC = true;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Rule public TestName name = new TestName();
 

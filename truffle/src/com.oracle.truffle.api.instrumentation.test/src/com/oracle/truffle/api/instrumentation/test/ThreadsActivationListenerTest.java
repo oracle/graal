@@ -69,6 +69,8 @@ public class ThreadsActivationListenerTest extends AbstractPolyglotTest {
     public ThreadsActivationListenerTest() {
         enterContext = false; // allows to test manual enters
         cleanupOnSetup = false; // allows to create multiple contexts
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
     }
 
     @Test

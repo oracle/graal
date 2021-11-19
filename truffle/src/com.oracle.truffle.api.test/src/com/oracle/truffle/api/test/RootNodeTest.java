@@ -44,6 +44,7 @@ import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -61,6 +62,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Creating a Root Node</h3>
@@ -80,6 +82,11 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
  * </p>
  */
 public class RootNodeTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void test() {

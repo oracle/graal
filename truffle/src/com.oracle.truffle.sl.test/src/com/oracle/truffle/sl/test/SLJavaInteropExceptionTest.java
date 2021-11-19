@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static com.oracle.truffle.sl.test.SLExceptionTest.assertGuestFrame;
+import static com.oracle.truffle.sl.test.SLExceptionTest.assertHostFrame;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertFalse;
@@ -47,9 +49,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import static com.oracle.truffle.sl.test.SLExceptionTest.assertGuestFrame;
-import static com.oracle.truffle.sl.test.SLExceptionTest.assertHostFrame;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -65,6 +64,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.sl.SLLanguage;
@@ -107,6 +107,11 @@ public class SLJavaInteropExceptionTest {
         public void validateMap(Map<String, Object> map) {
             Assert.assertNull(map.get(null));
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

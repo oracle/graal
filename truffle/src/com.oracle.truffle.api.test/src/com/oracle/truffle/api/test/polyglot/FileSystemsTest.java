@@ -112,6 +112,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class FileSystemsTest {
@@ -146,6 +147,9 @@ public class FileSystemsTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
+        if (!TruffleTestAssumptions.isWeakEncapsulation()) {
+            return Collections.emptyList();
+        }
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystem.newDefaultFileSystem();
