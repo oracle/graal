@@ -54,10 +54,12 @@ Next, use git to clone the graal repository:
 git clone https://github.com/oracle/graal
 ```
 
-Next, you need to download a recent
-[JVMCI-enabled JDK 8](https://github.com/graalvm/graal-jvmci-8/releases).
+Next, you need to download a recent JVMCI-enabled JDK.
+```
+mx fetch-jdk
+```
 
-Set the `JAVA_HOME` environment variable to point to the extracted JDK from above.
+Set the `JAVA_HOME` environment variable to point to the downloaded JDK from above.
 The `sulong/mx.sulong/env` file can be used to store environment variables for use with `mx`:
 
 ```
