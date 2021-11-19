@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -82,11 +82,6 @@ class NativeString implements TruffleObject {
     @ExportMessage
     long asPointer() {
         return nativePointer;
-    }
-
-    @ExportMessage
-    NativeString toNative() {
-        return this;
     }
 
     @ExportMessage

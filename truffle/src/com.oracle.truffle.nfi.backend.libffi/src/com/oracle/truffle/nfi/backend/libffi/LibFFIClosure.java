@@ -91,11 +91,6 @@ final class LibFFIClosure implements TruffleObject {
         return nativePointer.getCodePointer();
     }
 
-    @ExportMessage
-    LibFFIClosure toNative() {
-        return this;
-    }
-
     static final class RetPatches {
 
         final int count;
