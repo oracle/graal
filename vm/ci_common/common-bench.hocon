@@ -15,9 +15,9 @@ vm_bench_js_linux: ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${cus
     [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
   ]
   run: [
-      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm-interpreter"]
+      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm"]
       ${vm_bench_common.upload}
-      ${vm_bench_js_linux.cmd} ["--jvm-config=native-interpreter"]
+      ${vm_bench_js_linux.cmd} ["--jvm-config=native"]
       ${vm_bench_common.upload}
   ]
 }
