@@ -326,7 +326,7 @@ int main(int argc, char *argv[]) {
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs);
     vmInitArgs.version = JNI_VERSION_1_8;
-    vmInitArgs.ignoreUnrecognized = false;
+    vmInitArgs.ignoreUnrecognized = true;
 
     int res = createJVM(&jvm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {

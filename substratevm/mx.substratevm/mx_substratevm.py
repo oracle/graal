@@ -404,8 +404,7 @@ def svm_gate_body(args, tasks):
                                          dynamicimports=['/' + svm_suite().name, '/graal-js'])
             with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
                 jslib = build_js_lib(native_image)
-                env = os.environ.copy()
-                env['GRAALVM_LAUNCHER_LIBRARY']=jslib
+                env = launcher_library_overrride_env(jslib)
                 test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n', env=env)
                 test_js(jslib, [('octane-richards', 1000, 100, 300)])
 
@@ -546,8 +545,7 @@ def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, ti
         stderrdata.append(x)
         mx.warn(x.rstrip())
 
-    env = os.environ.copy()
-    env['GRAALVM_LAUNCHER_LIBRARY']=jslib
+    env = launcher_library_overrride_env(jslib)
 
     returncode = mx.run(jsruncmd, cwd=bench_location, out=stdout_collector, err=stderr_collector, nonZeroIsFatal=False, timeout=timeout, env=env)
 
@@ -564,6 +562,10 @@ def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, ti
     if not passing:
         mx.abort('JS benchmark ' + name + ' failed')
 
+def launcher_library_overrride_env(lib_path):
+    env = os.environ.copy()
+    env['GRAALVM_LAUNCHER_LIBRARY'] = lib_path
+    return env
 
 def build_js_lib(native_image):
     return mx.add_lib_suffix(native_image(['--macro:js-library']))
