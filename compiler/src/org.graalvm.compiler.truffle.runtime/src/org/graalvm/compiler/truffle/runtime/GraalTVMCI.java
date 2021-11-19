@@ -38,13 +38,13 @@ public final class GraalTVMCI extends TVMCI {
 
     static EngineData getEngineData(RootNode rootNode) {
         final EngineSupport engineAccess = GraalRuntimeAccessor.ENGINE;
-        final Object polyglotEngine;
+        final Object layer;
         if (rootNode == null) {
-            polyglotEngine = engineAccess.getCurrentPolyglotEngine();
+            layer = engineAccess.getCurrentSharingLayer();
         } else {
-            polyglotEngine = GraalRuntimeAccessor.NODES.getPolyglotEngine(rootNode);
+            layer = GraalRuntimeAccessor.NODES.getSharingLayer(rootNode);
         }
-        return engineAccess.getOrCreateRuntimeData(polyglotEngine);
+        return engineAccess.getOrCreateRuntimeData(layer);
     }
 
 }

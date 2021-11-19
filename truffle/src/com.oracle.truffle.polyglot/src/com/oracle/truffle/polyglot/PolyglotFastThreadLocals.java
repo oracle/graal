@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
-import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 
 // 0: PolyglotThreadInfo
 // 1: PolyglotContextImpl
@@ -170,9 +170,9 @@ final class PolyglotFastThreadLocals {
         Arrays.fill(threadLocals, null);
     }
 
-    public static PolyglotThreadInfo getCurrentThread(PolyglotEngineImpl inEngine) {
-        if (CompilerDirectives.inCompiledCode() && inEngine != null) {
-            PolyglotContextImpl singleContext = inEngine.singleContextValue.getConstant();
+    public static PolyglotThreadInfo getCurrentThread(PolyglotSharingLayer layer) {
+        if (CompilerDirectives.inCompiledCode() && layer != null) {
+            PolyglotContextImpl singleContext = layer.getSingleConstantContext();
             if (singleContext != null && CompilerDirectives.isPartialEvaluationConstant(singleContext)) {
                 PolyglotThreadInfo constantThread = singleContext.singleThreadValue.getConstant();
                 if (constantThread != null) {
@@ -183,11 +183,44 @@ final class PolyglotFastThreadLocals {
         return IMPL.fastGet(THREAD_INDEX, PolyglotThreadInfo.class, true);
     }
 
-    public static PolyglotContextImpl getContext(PolyglotEngineImpl inEngine) {
-        if (CompilerDirectives.inCompiledCode() && inEngine != null) {
-            Object value = inEngine.singleContextValue.getConstant();
+    public static PolyglotThreadInfo getCurrentThreadEngine(PolyglotEngineImpl engine) {
+        if (CompilerDirectives.inCompiledCode() && engine != null) {
+            PolyglotContextImpl singleContext = engine.singleContextValue.getConstant();
+            if (singleContext != null) {
+                PolyglotThreadInfo constantThread = singleContext.singleThreadValue.getConstant();
+                if (constantThread != null) {
+                    return constantThread;
+                }
+            }
+        }
+        return IMPL.fastGet(THREAD_INDEX, PolyglotThreadInfo.class, true);
+    }
+
+    public static PolyglotContextImpl getContext(PolyglotSharingLayer layer) {
+        if (CompilerDirectives.inCompiledCode() && layer != null) {
+            PolyglotContextImpl value = layer.getSingleConstantContext();
             if (value != null) {
-                return (PolyglotContextImpl) value;
+                return value;
+            }
+        }
+        return IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true);
+    }
+
+    public static PolyglotContextImpl getContextWithEngine(PolyglotEngineImpl engine) {
+        if (CompilerDirectives.inCompiledCode() && engine != null) {
+            PolyglotContextImpl context = engine.singleContextValue.getConstant();
+            if (context != null) {
+                return context;
+            }
+        }
+        return IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true);
+    }
+
+    public static PolyglotContextImpl getContextWithNode(Node node) {
+        if (CompilerDirectives.inCompiledCode()) {
+            PolyglotSharingLayer layer = resolveLayer(node);
+            if (layer != null) {
+                return layer.getSingleConstantContext();
             }
         }
         return IMPL.fastGet(CONTEXT_INDEX, PolyglotContextImpl.class, true);
@@ -222,17 +255,21 @@ final class PolyglotFastThreadLocals {
     }
 
     private static boolean validSharing(Node node) {
-        PolyglotEngineImpl engine = resolveEngine(node);
-        if (engine == null) {
-            return true;
-        }
-        PolyglotContextImpl context = getContext(null);
-        if (context == null) {
+        PolyglotContextImpl currentContext = getContext(null);
+        if (currentContext == null) {
             // no current context, let us be optimistic that this is fine
             return true;
         }
-        if (context.engine != engine) {
-            throw EngineImpl.invalidSharingError(context.engine);
+
+        PolyglotSharingLayer astLayer = resolveLayer(node);
+        if (astLayer == null) {
+            // cannot validate with null layer
+            return true;
+        }
+
+        PolyglotSharingLayer currentLayer = currentContext.layer;
+        if (!Objects.equals(astLayer, currentLayer)) {
+            throw PolyglotSharingLayer.invalidSharingError(node, astLayer, currentLayer);
         }
         return true;
     }
@@ -278,26 +315,12 @@ final class PolyglotFastThreadLocals {
             return null;
         }
 
-        TruffleLanguage<?> inLanguageSpi = EngineAccessor.NODES.getLanguage(root);
-        PolyglotLanguageInstance inLanguageInstance = null;
-        PolyglotEngineImpl engine;
-        if (inLanguageSpi != null) {
-            inLanguageInstance = (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(inLanguageSpi);
-            engine = inLanguageInstance.getEngine();
-        } else {
-            engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
-            if (engine == null) {
-                return null;
-            }
+        PolyglotSharingLayer layer = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(root);
+        if (layer == null) {
+            return null;
         }
         int languageIndex = resolveLanguageIndex(index);
-        PolyglotLanguage forLanguage = engine.languages[languageIndex];
-
-        if (inLanguageInstance != null && inLanguageInstance.language == forLanguage) {
-            return inLanguageInstance;
-        } else {
-            return forLanguage.singleLanguageInstance.getConstant();
-        }
+        return layer.getInstance(layer.engine.languages[languageIndex]);
     }
 
     private static int computeLanguageIndex(Class<?> languageClass, int offset) {
@@ -348,7 +371,7 @@ final class PolyglotFastThreadLocals {
         return indexValue + offset;
     }
 
-    private static PolyglotEngineImpl resolveEngine(Node node) {
+    private static PolyglotSharingLayer resolveLayer(Node node) {
         if (!CompilerDirectives.isPartialEvaluationConstant(node)) {
             // no constant folding without node
             return null;
@@ -360,7 +383,16 @@ final class PolyglotFastThreadLocals {
         if (root == null) {
             return null;
         }
-        return (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+        return (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(root);
+    }
+
+    private static PolyglotEngineImpl resolveEngine(Node node) {
+        PolyglotSharingLayer layer = resolveLayer(node);
+        if (layer != null) {
+            return layer.engine;
+        } else {
+            return null;
+        }
     }
 
     private static PolyglotLanguage findLanguage(Node node, int index) {

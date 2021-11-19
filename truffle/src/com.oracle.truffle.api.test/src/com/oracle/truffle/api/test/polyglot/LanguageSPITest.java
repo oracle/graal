@@ -770,6 +770,11 @@ public class LanguageSPITest {
             return CONTEXT_REF.get(null);
         }
 
+        @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return false;
+        }
+
     }
 
     @TruffleLanguage.Registration(id = MultiContextLanguage.ID, name = MultiContextLanguage.ID, version = "1.0", contextPolicy = ContextPolicy.SHARED)
@@ -895,44 +900,50 @@ public class LanguageSPITest {
         context.enter();
 
         context.initialize(MultiContextLanguage.ID);
-        MultiContextLanguage lang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context);
+        MultiContextLanguage outerLang = MultiContextLanguage.getInstance(MultiContextLanguage.class, context);
 
-        assertEquals(1, lang.createContextCalled.size());
-        assertTrue(lang.initializeMultiContextCalled.isEmpty());
-        assertTrue(lang.parseCalled.isEmpty());
-        Env env = lang.createContextCalled.get(0);
+        assertEquals(1, outerLang.createContextCalled.size());
+        assertTrue(outerLang.initializeMultiContextCalled.isEmpty());
+        assertTrue(outerLang.parseCalled.isEmpty());
+        Env env = outerLang.createContextCalled.get(0);
 
         context.eval(source1);
-        assertEquals(1, lang.parseCalled.size());
-        assertEquals(source1.getCharacters(), lang.parseCalled.get(0).getCharacters());
+        assertEquals(1, outerLang.parseCalled.size());
+        assertEquals(source1.getCharacters(), outerLang.parseCalled.get(0).getCharacters());
 
         TruffleContext innerContext = env.newContextBuilder().build();
         Object prev = innerContext.enter(null);
+        MultiContextLanguage innerLang = MultiContextLanguage.REFERENCE.get(null);
+        assertNotSame(innerLang, outerLang);
+
         Env innerEnv = MultiContextLanguage.getContext().env;
         innerEnv.parsePublic(truffleSource1);
-        assertEquals(1, lang.parseCalled.size());
-        assertEquals(1, lang.initializeMultiContextCalled.size());
-        assertEquals(1, lang.initializeMultipleContextsCalled.size());
-        assertEquals(3, (int) lang.initializeMultipleContextsCalled.get(0));
-        assertEquals(4, (int) lang.initializeMultiContextCalled.get(0));
-        assertEquals(2, lang.createContextCalled.size());
+        assertEquals(1, outerLang.parseCalled.size());
+        assertEquals(0, outerLang.initializeMultipleContextsCalled.size());
+        assertEquals(1, outerLang.createContextCalled.size());
+
+        assertEquals(1, innerLang.parseCalled.size());
+        assertEquals(0, innerLang.initializeMultipleContextsCalled.size());
+        assertEquals(1, innerLang.createContextCalled.size());
 
         innerEnv.parsePublic(truffleSource1);
-        assertEquals(1, lang.parseCalled.size());
+        assertEquals(1, outerLang.parseCalled.size());
+        assertEquals(1, innerLang.parseCalled.size());
 
         innerEnv.parsePublic(truffleSource2);
-        assertEquals(2, lang.parseCalled.size());
+        assertEquals(1, outerLang.parseCalled.size());
+        assertEquals(2, innerLang.parseCalled.size());
 
         innerContext.leave(null, prev);
         innerContext.close();
 
         context.eval(source2);
-        assertEquals(2, lang.parseCalled.size());
+        assertEquals(2, outerLang.parseCalled.size());
 
         context.leave();
         context.close();
-        assertEquals(1, lang.initializeMultiContextCalled.size());
-        assertEquals(2, lang.createContextCalled.size());
+        assertEquals(0, outerLang.initializeMultiContextCalled.size());
+        assertEquals(1, outerLang.createContextCalled.size());
     }
 
     @Test

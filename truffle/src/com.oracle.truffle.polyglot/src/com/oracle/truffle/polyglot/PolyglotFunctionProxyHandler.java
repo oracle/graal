@@ -210,7 +210,8 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         final Class<?> receiverClass;
         final Method method;
 
-        FunctionProxyNode(Class<?> receiverType, Method method) {
+        FunctionProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Method method) {
+            super(languageInstance);
             this.receiverClass = receiverType;
             this.method = method;
         }
@@ -252,7 +253,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         }
 
         static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method) {
-            FunctionProxyNode node = FunctionProxyNodeGen.create(receiverClass, method);
+            FunctionProxyNode node = FunctionProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, method);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);

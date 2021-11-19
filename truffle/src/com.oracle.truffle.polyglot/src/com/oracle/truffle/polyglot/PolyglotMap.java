@@ -376,6 +376,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> keyClass;
         final Type keyType;
@@ -394,7 +395,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
         final CallTarget hashSize;
         final CallTarget apply;
 
-        Cache(Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+        Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.keyClass = keyClass;
             this.keyType = keyType;
@@ -417,7 +419,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
             Key cacheKey = new Key(receiverClass, keyClass, keyType, valueClass, valueType);
             Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, keyType, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(languageContext.getLanguageInstance(), receiverClass, keyClass, keyType, valueClass, valueType),
+                                Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -476,6 +479,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
             final Cache cache;
 
             PolyglotMapNode(Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 

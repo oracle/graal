@@ -308,10 +308,26 @@ final class OptionValuesImpl implements OptionValues {
 
     @Override
     public String toString() {
+        Map<OptionKey<?>, ? extends Object> options;
         if (unparsedValues != null) {
-            return unparsedValues.toString();
+            options = this.unparsedValues;
         } else {
-            return values.toString();
+            options = this.values;
         }
+
+        StringBuilder b = new StringBuilder("{");
+        String sep = "";
+        for (OptionDescriptor descriptor : getDescriptors()) {
+            OptionKey<?> key = descriptor.getKey();
+            if (hasBeenSet(key)) {
+                b.append(sep);
+                b.append(descriptor.getName());
+                b.append("=");
+                b.append(options.get(key));
+                sep = ", ";
+            }
+        }
+        b.append("}");
+        return b.toString();
     }
 }

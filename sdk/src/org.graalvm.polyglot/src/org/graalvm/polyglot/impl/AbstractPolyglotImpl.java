@@ -240,7 +240,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
-        public abstract String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
+        public abstract String validatePolyglotAccess(PolyglotAccess access, Set<String> language);
 
     }
 

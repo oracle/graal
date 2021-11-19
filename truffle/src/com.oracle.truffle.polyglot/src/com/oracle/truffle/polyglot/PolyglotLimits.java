@@ -120,7 +120,7 @@ final class PolyglotLimits {
         }
 
         private PolyglotContextImpl getLimitContext() {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(engine);
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithEngine(engine);
             if (engine.noInnerContexts.isValid() || context.parent == null) {
                 // fast path for no inner contexts
                 return context;

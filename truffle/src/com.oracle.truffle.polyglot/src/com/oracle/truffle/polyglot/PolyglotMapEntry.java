@@ -128,6 +128,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> keyClass;
         final Type keyType;
@@ -138,7 +139,8 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
         final CallTarget getValue;
         final CallTarget apply;
 
-        Cache(Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+        Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.keyClass = keyClass;
             this.keyType = keyType;
@@ -154,7 +156,8 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             PolyglotMapEntry.Cache.Key cacheKey = new PolyglotMapEntry.Cache.Key(receiverClass, keyClass, keyType, valueClass, valueType);
             PolyglotMapEntry.Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, PolyglotMapEntry.Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new PolyglotMapEntry.Cache(receiverClass, keyClass, keyType, valueClass, valueType),
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey,
+                                new PolyglotMapEntry.Cache(languageContext.getLanguageInstance(), receiverClass, keyClass, keyType, valueClass, valueType),
                                 PolyglotMapEntry.Cache.class);
             }
             assert cache.receiverClass == receiverClass;
@@ -214,6 +217,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             final PolyglotMapEntry.Cache cache;
 
             PolyglotMapEntryNode(PolyglotMapEntry.Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 

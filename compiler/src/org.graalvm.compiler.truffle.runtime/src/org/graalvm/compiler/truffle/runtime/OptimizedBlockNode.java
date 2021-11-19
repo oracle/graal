@@ -649,7 +649,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 }
 
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
-                GraalRuntimeAccessor.NODES.applyPolyglotEngine(rootNode, partialRootNode);
+                GraalRuntimeAccessor.NODES.applySharingLayer(rootNode, partialRootNode);
 
                 targets[i] = (OptimizedCallTarget) partialRootNode.getCallTarget();
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);

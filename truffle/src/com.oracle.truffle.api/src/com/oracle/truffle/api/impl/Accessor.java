@@ -167,7 +167,7 @@ public abstract class Accessor {
         public abstract LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal,
                         boolean interactive);
 
-        public abstract Object getPolyglotEngine(RootNode rootNode);
+        public abstract Object getSharingLayer(RootNode rootNode);
 
         public abstract List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame);
 
@@ -177,7 +177,7 @@ public abstract class Accessor {
 
         public abstract Lock getLock(Node node);
 
-        public abstract void applyPolyglotEngine(RootNode from, RootNode to);
+        public abstract void applySharingLayer(RootNode from, RootNode to);
 
         public abstract void forceAdoption(Node parent, Node child);
 
@@ -187,7 +187,7 @@ public abstract class Accessor {
 
         public abstract ExecutionSignature prepareForAOT(RootNode rootNode);
 
-        public abstract void setPolyglotEngine(RootNode rootNode, Object engine);
+        public abstract void setSharingLayer(RootNode rootNode, Object engine);
 
         public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
     }
@@ -295,6 +295,8 @@ public abstract class Accessor {
 
         public abstract Object getInstrumentationHandler(Object polyglotObject);
 
+        public abstract Object getInstrumentationHandler(RootNode rootNode);
+
         public abstract void exportSymbol(Object polyglotLanguageContext, String symbolName, Object value);
 
         public abstract Map<String, ? extends Object> getExportedSymbols();
@@ -318,6 +320,8 @@ public abstract class Accessor {
         public final void detachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.detach(out);
         }
+
+        public abstract Object getCurrentSharingLayer();
 
         public abstract Object getCurrentPolyglotEngine();
 
@@ -356,6 +360,8 @@ public abstract class Accessor {
         public abstract Object toGuestValue(Node node, Object obj, Object languageContext);
 
         public abstract Object getPolyglotEngine(Object polyglotLanguageInstance);
+
+        public abstract Object getPolyglotSharingLayer(Object polyglotLanguageInstance);
 
         public abstract Object lookupHostSymbol(Object polyglotLanguageContext, Env env, String symbolName);
 
@@ -550,7 +556,7 @@ public abstract class Accessor {
 
         public abstract boolean skipEngineValidation(RootNode rootNode);
 
-        public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
+        public abstract AssertionError invalidSharingError(Node node, Object previousSharingLayer, Object newSharingLayer) throws AssertionError;
 
         public abstract boolean isPolyglotObject(Object polyglotObject);
 

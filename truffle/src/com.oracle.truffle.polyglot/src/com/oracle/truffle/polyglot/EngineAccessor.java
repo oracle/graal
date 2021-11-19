@@ -94,14 +94,11 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -471,6 +468,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object getCurrentSharingLayer() {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+            if (context == null) {
+                return null;
+            }
+            return context.layer;
+        }
+
+        @Override
         public Object getCurrentPolyglotEngine() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
@@ -595,6 +601,15 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getInstrumentationHandler(Object polyglotObject) {
             return getEngine(polyglotObject).instrumentationHandler;
+        }
+
+        @Override
+        public Object getInstrumentationHandler(RootNode rootNode) {
+            PolyglotSharingLayer sharing = (PolyglotSharingLayer) NODES.getSharingLayer(rootNode);
+            if (sharing == null) {
+                return null;
+            }
+            return getInstrumentationHandler(sharing.engine);
         }
 
         @Override
@@ -810,7 +825,8 @@ final class EngineAccessor extends Accessor {
                     throw new IllegalStateException("Passed node is not yet adopted. Adopt it first.");
                 }
                 CompilerAsserts.partialEvaluationConstant(root);
-                engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+                PolyglotSharingLayer sharing = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(root);
+                engine = sharing.engine;
                 CompilerAsserts.partialEvaluationConstant(engine);
                 assert engine != null : "root node engine must not be null";
             } else {
@@ -836,7 +852,6 @@ final class EngineAccessor extends Accessor {
             }
             synchronized (impl) {
                 impl.initializeContextLocals();
-                impl.engine.initializeMultiContext();
                 impl.notifyContextCreated();
                 if (initializeCreatorContext) {
                     impl.initializeInnerContextLanguage(creator.language.getId());
@@ -928,7 +943,7 @@ final class EngineAccessor extends Accessor {
         public PolyglotException wrapGuestException(Object polyglotObject, Throwable e) {
             if (polyglotObject instanceof PolyglotContextImpl) {
                 PolyglotContextImpl polyglotContext = (PolyglotContextImpl) polyglotObject;
-                PolyglotLanguage language = polyglotContext.engine.hostLanguageInstance.language;
+                PolyglotLanguage language = polyglotContext.getHostContext().language;
                 PolyglotLanguageContext languageContext = polyglotContext.getContextInitialized(language, null);
                 return PolyglotImpl.guestToHostException(languageContext, e, true);
             } else if (polyglotObject instanceof PolyglotEngineImpl) {
@@ -945,12 +960,13 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine) {
-            PolyglotEngineImpl useEngine = (PolyglotEngineImpl) polyglotEngine;
-            if (useEngine == null) {
-                useEngine = PolyglotEngineImpl.getFallbackEngine();
+        public <T> T getOrCreateRuntimeData(Object layer) {
+            PolyglotSharingLayer useLayer = ((PolyglotSharingLayer) layer);
+            PolyglotEngineImpl engine = useLayer != null ? useLayer.engine : null;
+            if (engine == null) {
+                engine = PolyglotEngineImpl.getFallbackEngine();
             }
-            return (T) useEngine.runtimeData;
+            return (T) engine.runtimeData;
         }
 
         @Override
@@ -1278,65 +1294,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
-            return invalidSharingError((PolyglotEngineImpl) polyglotEngine);
-        }
-
-        static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
-            Exception e = new Exception();
-            StringBuilder stack = new StringBuilder();
-            Exception exceptionCreating = null;
-            try {
-                TruffleStackTrace.fillIn(e);
-                ContextPolicy prevPolicy = null;
-                for (TruffleStackTraceElement stackTrace : TruffleStackTrace.getStackTrace(e)) {
-                    RootNode root = stackTrace.getTarget().getRootNode();
-                    PolyglotEngineImpl engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
-                    if (engine != null && usedEngine != engine) {
-                        // different engine different assertion
-                        break;
-                    }
-                    PolyglotLanguageInstance instance = lookupLanguageInstance(root);
-                    ContextPolicy policy = instance.language.getEffectiveContextPolicy(instance.language);
-
-                    SourceSection sourceSection = null;
-                    Node location = stackTrace.getLocation();
-                    if (location != null) {
-                        sourceSection = location.getEncapsulatingSourceSection();
-                    }
-                    if (sourceSection == null) {
-                        sourceSection = root.getSourceSection();
-                    }
-                    if ((prevPolicy == ContextPolicy.EXCLUSIVE || policy == ContextPolicy.EXCLUSIVE) && prevPolicy != policy && prevPolicy != null) {
-                        stack.append(String.format("    <-- Likely Invalid Sharing --> %n"));
-                    }
-                    stack.append(String.format("  %-9s %s%n", policy, createJavaStackFrame(instance.language, root.getName(), sourceSection)));
-                    prevPolicy = policy;
-                }
-            } catch (Exception ex) {
-                exceptionCreating = ex;
-            }
-            AssertionError error = new AssertionError(String.format("Invalid sharing of runtime values in AST nodes detected.Stack trace: %n%s", stack.toString()));
-            if (exceptionCreating != null) {
-                error.addSuppressed(exceptionCreating);
-            }
-            throw error;
-        }
-
-        static StackTraceElement createJavaStackFrame(PolyglotLanguage language, String rootName, SourceSection sourceLocation) {
-            String declaringClass = "<" + language.getId() + ">";
-            String methodName = rootName == null ? "" : rootName;
-            String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
-            int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
-            return new StackTraceElement(declaringClass, methodName, fileName, startLine);
-        }
-
-        private static PolyglotLanguageInstance lookupLanguageInstance(RootNode root) {
-            TruffleLanguage<?> spi = EngineAccessor.NODES.getLanguage(root);
-            if (spi != null) {
-                return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(spi);
-            }
-            return null;
+        public AssertionError invalidSharingError(Node node, Object previousSharingLayer, Object newSharingLayer) throws AssertionError {
+            return PolyglotSharingLayer.invalidSharingError(node, (PolyglotSharingLayer) previousSharingLayer, (PolyglotSharingLayer) newSharingLayer);
         }
 
         @Override
@@ -1448,7 +1407,7 @@ final class EngineAccessor extends Accessor {
                 }
                 context.cancel(resourceExhaused, resourceExhausedReason);
                 if (entered) {
-                    TruffleSafepoint.pollHere(closeLocation != null ? closeLocation : context.engine.getUncachedLocation());
+                    TruffleSafepoint.pollHere(closeLocation != null ? closeLocation : context.uncachedLocation);
                 }
             } else {
                 synchronized (context) {
@@ -1668,6 +1627,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getHostNull() {
             return EngineAccessor.HOST.getHostNull();
+        }
+
+        @Override
+        public Object getPolyglotSharingLayer(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).sharing;
         }
     }
 

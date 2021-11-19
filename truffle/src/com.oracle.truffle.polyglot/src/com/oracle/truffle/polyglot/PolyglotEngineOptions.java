@@ -73,7 +73,7 @@ final class PolyglotEngineOptions {
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables conservative context references. " +
                     "This allows invalid sharing between contexts. " +
-                    "For testing purposes only.")//
+                    "For testing purposes only.", deprecated = true, deprecationMessage = "Has no longer any effect. Scheduled for removal in in 22.1.")//
     static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. " +
@@ -107,6 +107,18 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.")//
+    static final OptionKey<Boolean> ForceCodeSharing = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Option to force disable code sharing for this engine, even if the context was created with an explicit engine. This option is intended for testing purposes only.")//
+    static final OptionKey<Boolean> DisableCodeSharing = new OptionKey<>(false);
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.")//
+    static final OptionKey<Boolean> TraceCodeSharing = new OptionKey<>(false);
 
     enum StaticObjectStorageStrategies {
         DEFAULT,
