@@ -67,8 +67,8 @@ for line in open("dat/SpecialCasing.txt"):
     upper_map[char] = upper
 
 for (char, upper) in upper_map.items():
-    # Only follow rules which give map to a single code point
-    if len(upper) > 1:
+    # Only follow rules which give map to a single code unit
+    if len(upper) > 1 or upper[0] >= 0x10000:
         continue
     # Do not allow non-ASCII characters to cross into ASCII.
     if char >= 128 and upper[0] < 128:

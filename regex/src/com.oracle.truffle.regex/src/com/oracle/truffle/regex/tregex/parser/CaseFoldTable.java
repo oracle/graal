@@ -623,27 +623,7 @@ public class CaseFoldTable {
                     0x00ab53, 0x00ab53, INTEGER_OFFSET, -928,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, -38864,
                     0x00ff21, 0x00ff3a, INTEGER_OFFSET, 32,
-                    0x00ff41, 0x00ff5a, INTEGER_OFFSET, -32,
-                    0x010400, 0x010427, INTEGER_OFFSET, 40,
-                    0x010428, 0x01044f, INTEGER_OFFSET, -40,
-                    0x0104b0, 0x0104d3, INTEGER_OFFSET, 40,
-                    0x0104d8, 0x0104fb, INTEGER_OFFSET, -40,
-                    0x010570, 0x01057a, INTEGER_OFFSET, 39,
-                    0x01057c, 0x01058a, INTEGER_OFFSET, 39,
-                    0x01058c, 0x010592, INTEGER_OFFSET, 39,
-                    0x010594, 0x010595, INTEGER_OFFSET, 39,
-                    0x010597, 0x0105a1, INTEGER_OFFSET, -39,
-                    0x0105a3, 0x0105b1, INTEGER_OFFSET, -39,
-                    0x0105b3, 0x0105b9, INTEGER_OFFSET, -39,
-                    0x0105bb, 0x0105bc, INTEGER_OFFSET, -39,
-                    0x010c80, 0x010cb2, INTEGER_OFFSET, 64,
-                    0x010cc0, 0x010cf2, INTEGER_OFFSET, -64,
-                    0x0118a0, 0x0118bf, INTEGER_OFFSET, 32,
-                    0x0118c0, 0x0118df, INTEGER_OFFSET, -32,
-                    0x016e40, 0x016e5f, INTEGER_OFFSET, 32,
-                    0x016e60, 0x016e7f, INTEGER_OFFSET, -32,
-                    0x01e900, 0x01e921, INTEGER_OFFSET, 34,
-                    0x01e922, 0x01e943, INTEGER_OFFSET, -34
+                    0x00ff41, 0x00ff5a, INTEGER_OFFSET, -32
     });
 
     private static final CaseFoldTableImpl UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
