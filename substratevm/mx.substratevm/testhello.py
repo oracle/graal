@@ -298,17 +298,6 @@ def test():
     checker = Checker("info func greet", rexp)
     checker.check(exec_string)
 
-    # look up PrintStream.println methods
-    # expect "All functions matching regular expression "java.io.PrintStream.println":"
-    # expect ""
-    # expect "File java.base/java/io/PrintStream.java:"
-    # expect "      void java.io.PrintStream::println(java.lang.Object *);"
-    # expect "      void java.io.PrintStream::println(java.lang.String *);"
-    exec_string = execute("info func java.io.PrintStream::println")
-    rexp = r"%svoid java.io.PrintStream::println\(java\.lang\.String \*\)"%maybe_spaces_pattern
-    checker = Checker("info func java.io.PrintStream::println", rexp)
-    checker.check(exec_string)
-
     # step into method call
     execute("step")
 
@@ -541,7 +530,8 @@ def test():
     checker = Checker('ptype hello.Hello', rexp)
     checker.check(exec_string, skip_fails=False)
 
-    # list methods matching regural expression "nlined", inline methods are not listed
+    # list methods matching regural expression "nline", inline methods are not listed because they lack a definition
+    # (this is true for C/C++ as well)
     exec_string = execute("info func nline")
     rexp = [r"All functions matching regular expression \"nline\":",
             r"File hello/Hello\.java:",
