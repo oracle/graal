@@ -91,6 +91,7 @@ public final class LoadDependencyNode extends LLVMNode {
         return null;
     }
 
+    @TruffleBoundary
     private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
         assert file != null;
         if (!file.isRegularFile()) {
@@ -147,6 +148,7 @@ public final class LoadDependencyNode extends LLVMNode {
         }
     }
 
+    @TruffleBoundary
     private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator) {
         LLVMContext context = getContext();
         TruffleFile file = locator.locate(context, libName, reason);
