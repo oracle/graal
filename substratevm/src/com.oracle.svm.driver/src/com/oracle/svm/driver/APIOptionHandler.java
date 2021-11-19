@@ -240,16 +240,18 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (apiAnnotation.valueSeparator().length == 0) {
                     throw VMError.shouldNotReachHere(String.format("APIOption %s(%s) does not specify any valueSeparator", apiOptionName, rawOptionName));
                 }
-                if (Arrays.asList(apiAnnotation.valueSeparator()).contains(APIOption.WHITESPACE_SEPARATOR)) {
-                    String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
-                    if (booleanOption) {
-                        throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
-                    }
-                    if (hasFixedValue) {
-                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
-                    }
-                    if (defaultValue != null) {
-                        VMError.shouldNotReachHere(String.format("APIOption %s(%s) with default value" + msgTail, apiOptionName, rawOptionName));
+                for (char valueSeparator : apiAnnotation.valueSeparator()) {
+                    if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
+                        String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
+                        if (booleanOption) {
+                            throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
+                        }
+                        if (hasFixedValue) {
+                            VMError.shouldNotReachHere(String.format("APIOption %s(%s) with fixed value" + msgTail, apiOptionName, rawOptionName));
+                        }
+                        if (defaultValue != null) {
+                            VMError.shouldNotReachHere(String.format("APIOption %s(%s) with default value" + msgTail, apiOptionName, rawOptionName));
+                        }
                     }
                 }
                 boolean defaultFinal = booleanOption || hasFixedValue;
