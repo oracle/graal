@@ -207,7 +207,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected JfrSymbol copyToHeap(UninterruptibleEntry symbolOnStack) {
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry symbolOnStack) {
             JfrSymbol result = (JfrSymbol) copyToHeap(symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
             result.setId(++nextId);
             return result;

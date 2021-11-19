@@ -252,8 +252,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected JfrVisited copyToHeap(UninterruptibleEntry visitedOnStack) {
-            return (JfrVisited) copyToHeap(visitedOnStack, SizeOf.unsigned(JfrVisited.class));
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
+            return copyToHeap(visitedOnStack, SizeOf.unsigned(JfrVisited.class));
         }
     }
 
