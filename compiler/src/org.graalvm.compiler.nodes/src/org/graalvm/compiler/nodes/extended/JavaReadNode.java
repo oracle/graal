@@ -31,12 +31,13 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
@@ -78,7 +79,10 @@ public final class JavaReadNode extends FixedAccessNode implements Lowerable, Gu
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        return ReadNode.canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
+        if (getAddress() instanceof OffsetAddressNode) {
+            OffsetAddressNode objAddress = (OffsetAddressNode) getAddress();
+            return ReadNode.canonicalizeRead(this, tool, this.readKind, objAddress.getBase(), objAddress.getOffset(), getLocationIdentity());
+        }
+        return this;
     }
-
 }
