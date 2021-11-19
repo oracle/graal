@@ -24,8 +24,61 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ThreadFactory;
+
+/** Continuation implementation <em>independent of</em> Project Loom. */
 public final class Continuations {
+    private static final Thread.UncaughtExceptionHandler UNCAUGHT_EXCEPTION_HANDLER = (t, e) -> {
+    };
+
+    /**
+     * A pool with the maximum number of threads so we can likely start a platform thread for each
+     * virtual thread, which we might need when blocking I/O does not yield.
+     */
+    static final ForkJoinPool SCHEDULER = new ForkJoinPool(32767, CarrierThread::new, UNCAUGHT_EXCEPTION_HANDLER, true);
+
+    public static ThreadFactory virtualThreadFactory() {
+        return VirtualThread::new;
+    }
 
     private Continuations() {
+    }
+}
+
+final class VirtualThread extends Thread {
+    private final Continuation cont;
+    private final Runnable runContinuation;
+
+    VirtualThread(Runnable r) {
+        super(r);
+        this.cont = new Continuation(r);
+        this.runContinuation = this::runContinuation;
+    }
+
+    @Override
+    public void start() {
+        submit();
+    }
+
+    private void submit() {
+        Continuations.SCHEDULER.execute(runContinuation);
+    }
+
+    private void runContinuation() {
+        try {
+            cont.enter();
+        } finally {
+            if (!cont.isDone()) {
+                submit();
+            }
+        }
+    }
+}
+
+final class CarrierThread extends ForkJoinWorkerThread {
+    CarrierThread(ForkJoinPool pool) {
+        super(pool);
     }
 }

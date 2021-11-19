@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -35,10 +32,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @TargetClass(className = "java.lang.Continuation", onlyWith = LoomJDK.class)
 public final class Target_java_lang_Continuation {
@@ -173,37 +167,14 @@ public final class Target_java_lang_Continuation {
     }
 
     @Substitute
-    @NeverInline("access stack pointer")
-    @Uninterruptible(reason = "write stack", calleeMustBe = false)
     private static void enter(Target_java_lang_Continuation cont, boolean isContinue) {
-        Pointer currentSP = KnownIntrinsics.readCallerStackPointer();
-        CodePointer currentIP = KnownIntrinsics.readReturnAddress();
-
-        if (isContinue) {
-            assert cont.internal.stored != null;
-            assert cont.internal.ip.isNonNull();
-
-            byte[] buf = StoredContinuationImpl.allocateBuf(cont.internal.stored);
-            StoredContinuationImpl.writeBuf(cont.internal.stored, buf);
-
-            for (int i = 0; i < buf.length; i++) {
-                currentSP.writeByte(i - buf.length, buf[i]);
-            }
-
-            CodePointer ip = cont.internal.ip;
-
-            cont.internal.stored = null;
-            cont.internal.sp = currentSP;
-            cont.internal.ip = currentIP;
-            KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), ip, false);
-        } else {
-            assert cont.internal.sp.isNull() && cont.internal.ip.isNull() && cont.internal.stored == null;
+        if (!isContinue) {
+            assert cont.internal == null;
+            cont.internal = new Continuation(cont::enter0);
             cont.monitorBefore = 0;
-            cont.internal.sp = currentSP;
-            cont.internal.ip = currentIP;
-
-            cont.enter0();
         }
+
+        cont.internal.enter();
     }
 
     @Substitute

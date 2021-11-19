@@ -31,23 +31,72 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 public final class Continuation {
+    private final Runnable target;
+
     public StoredContinuation stored;
 
     /**
-     * Frame pointer of
-     * {@link Target_java_lang_Continuation#enterSpecial(Target_java_lang_Continuation, boolean)} if
-     * continuation is running, else frame pointer of
-     * {@link LoomSupport#yield(Target_java_lang_Continuation)}.
+     * Frame pointer of {@link #enter} if continuation is running, otherwise frame pointer of
+     * {@link #yield}.
      */
     Pointer sp;
     CodePointer ip;
     private boolean done;
+
+    Continuation(Runnable target) {
+        this.target = target;
+    }
+
+    void enter() {
+        enter0(ip.isNonNull());
+    }
+
+    @NeverInline("access stack pointer")
+    @Uninterruptible(reason = "write stack", calleeMustBe = false)
+    private void enter0(boolean isContinue) {
+        Pointer currentSP = KnownIntrinsics.readCallerStackPointer();
+        CodePointer currentIP = KnownIntrinsics.readReturnAddress();
+
+        if (isContinue) {
+            assert this.stored != null;
+            assert this.ip.isNonNull();
+
+            byte[] buf = StoredContinuationImpl.allocateBuf(this.stored);
+            StoredContinuationImpl.writeBuf(this.stored, buf);
+
+            for (int i = 0; i < buf.length; i++) {
+                currentSP.writeByte(i - buf.length, buf[i]);
+            }
+
+            CodePointer storedIP = this.ip;
+
+            this.stored = null;
+            this.sp = currentSP;
+            this.ip = currentIP;
+            KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), storedIP, false);
+        } else {
+            assert this.sp.isNull() && this.ip.isNull() && this.stored == null;
+            this.sp = currentSP;
+            this.ip = currentIP;
+
+            enter0();
+        }
+    }
+
+    private void enter0() {
+        try {
+            target.run();
+        } finally {
+            finish();
+        }
+    }
 
     int tryPreempt(Thread thread) {
         TryPreemptThunk thunk = new TryPreemptThunk(this, thread);
@@ -81,6 +130,10 @@ public final class Continuation {
 
     public boolean isEmpty() {
         return sp.isNull();
+    }
+
+    public boolean isDone() {
+        return done;
     }
 
     public void finish() {

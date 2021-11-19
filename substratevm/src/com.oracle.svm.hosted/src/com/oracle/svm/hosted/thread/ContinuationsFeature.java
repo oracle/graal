@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.image;
+package com.oracle.svm.hosted.thread;
 
 import java.util.concurrent.ForkJoinPool;
 
@@ -31,21 +31,39 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
 @Platforms(Platform.HOSTED_ONLY.class)
-public class LoomContinuationFeature implements Feature {
+public class ContinuationsFeature implements Feature {
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        if (LoomSupport.isEnabled()) {
-            FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) arg;
+    public void afterRegistration(AfterRegistrationAccess access) {
+        UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + " cannot be enabled without option " +
+                        SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (JavaContinuations.isSupported()) {
             access.registerAsInHeap(StoredContinuation.class);
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
+
+            if (LoomSupport.isEnabled()) {
+                RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
+            }
+        } else {
+            access.registerReachabilityHandler(a -> UserError.abort(
+                            "Continuation support is used, but not enabled. Use options " +
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+") +
+                                            " or " + SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + "."),
+                            StoredContinuationImpl.class);
         }
     }
 }

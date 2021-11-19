@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -36,12 +35,14 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -158,7 +159,7 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isStoredContinuation(int encoding) {
-        return encoding == STORED_CONTINUATION_VALUE;
+        return JavaContinuations.isSupported() && encoding == STORED_CONTINUATION_VALUE;
     }
 
     // May be inlined because it does not deal in Pointers.

@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 
+/** Foundation for continuation support with and without Project Loom. */
 public final class JavaContinuations {
     public static final int YIELDING = -2;
     public static final int YIELD_SUCCESS = 0;
