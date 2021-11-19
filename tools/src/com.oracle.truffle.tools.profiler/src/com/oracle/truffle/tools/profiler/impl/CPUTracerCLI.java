@@ -47,7 +47,12 @@ class CPUTracerCLI extends ProfilerCLI {
 
     enum Output {
         HISTOGRAM,
-        JSON,
+        JSON;
+
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
@@ -62,34 +67,34 @@ class CPUTracerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the CPU tracer (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "", help = "Enable the CPU tracer.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "TraceRoots", help = "Capture roots when tracing (default:true).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "TraceRoots", help = "Capture roots when tracing.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
 
-    @Option(name = "TraceStatements", help = "Capture statements when tracing (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "TraceStatements", help = "Capture statements when tracing.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(false);
 
-    @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "TraceCalls", help = "Capture calls when tracing.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
 
-    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    @Option(name = "TraceInternal", help = "Trace internal elements.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
-    @Option(name = "Output", help = "Print a 'histogram' or 'json' as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "Print a 'histogram' or 'json' as output.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //

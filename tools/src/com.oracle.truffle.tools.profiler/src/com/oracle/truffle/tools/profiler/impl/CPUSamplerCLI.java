@@ -86,6 +86,10 @@ class CPUSamplerCLI extends ProfilerCLI {
             }
         }
 
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
     }
 
     static final OptionType<EnableOptionData> ENABLE_OPTION_TYPE = new OptionType<>("Enable",
@@ -132,6 +136,11 @@ class CPUSamplerCLI extends ProfilerCLI {
         public int hashCode() {
             return Objects.hash(enabled, output);
         }
+
+        @Override
+        public String toString() {
+            return enabled ? output.toString() : "false";
+        }
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output", Output::fromString);
@@ -176,37 +185,37 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
-                    "Note: Interpreter is considered Tier 0. (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+                    "Note: Interpreter is considered Tier 0.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
-    @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    @Option(name = "SampleInternal", help = "Capture internal elements.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
 
-    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample (default:false).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
 
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
-    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> MIN_SAMPLES = new OptionKey<>(0);
 
-    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization (default: false).", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
