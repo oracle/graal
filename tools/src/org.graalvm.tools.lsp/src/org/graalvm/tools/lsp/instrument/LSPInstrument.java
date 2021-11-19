@@ -105,16 +105,16 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         return hostPorts;
     }, (Consumer<List<LanguageAndAddress>>) (addresses) -> addresses.forEach((address) -> address.verify()));
 
-    @Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DeveloperMode = new OptionKey<>(false);
 
-    @Option(help = "Include internal sources in goto-definition, references and symbols search. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Include internal sources in goto-definition, references and symbols search.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
+    @Option(name = "", help = "Start the Language Server on [[host:]port].", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections.", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
     @Option(help = "Delegate language servers", category = OptionCategory.USER) //
@@ -447,6 +447,11 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                 ia = inetAddress;
             }
             return new InetSocketAddress(ia, port);
+        }
+
+        @Override
+        public String toString() {
+            return (host != null ? host : "<loopback address>") + ":" + port;
         }
     }
 
