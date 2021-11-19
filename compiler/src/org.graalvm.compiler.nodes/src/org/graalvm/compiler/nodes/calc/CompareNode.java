@@ -406,6 +406,14 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 }
             }
         }
+        if (condition() == otherCondition && sameValue(getX(), otherY) && sameValue(getY(), otherX)) {
+            if ((condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT) && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                if (!thisNegated && otherNegated) {
+                    // a < b => !(b < a)
+                    return true;
+                }
+            }
+        }
         if (sameValue(getX(), otherX) && getY().isJavaConstant() && otherY.isJavaConstant() && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp &&
                         otherY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
             long thisYLong = getY().asJavaConstant().asLong();
