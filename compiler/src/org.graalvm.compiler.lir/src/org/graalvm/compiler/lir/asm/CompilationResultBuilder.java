@@ -181,6 +181,9 @@ public class CompilationResultBuilder {
      */
     private boolean needsMHDeoptHandler = false;
 
+    /** PCOffset passed within last call to {@link #recordImplicitException(int, LIRFrameState)}. */
+    private int lastImplicitExceptionOffset = Integer.MIN_VALUE;
+
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
                     Assembler asm,
@@ -296,6 +299,7 @@ public class CompilationResultBuilder {
     }
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
+        lastImplicitExceptionOffset = pcOffset;
         if (GraalServices.supportsArbitraryImplicitException() && info instanceof ImplicitLIRFrameState) {
             if (pendingImplicitExceptionList == null) {
                 pendingImplicitExceptionList = new ArrayList<>(4);
@@ -311,7 +315,11 @@ public class CompilationResultBuilder {
         assert info.exceptionEdge == null;
     }
 
-    public boolean isImplicitExceptionExist(int pcOffset) {
+    public int getLastImplicitExceptionOffset() {
+        return lastImplicitExceptionOffset;
+    }
+
+    public boolean hasImplicitException(int pcOffset) {
         List<Infopoint> infopoints = compilationResult.getInfopoints();
         for (Infopoint infopoint : infopoints) {
             if (infopoint.pcOffset == pcOffset && infopoint.reason == InfopointReason.IMPLICIT_EXCEPTION) {
@@ -550,8 +558,10 @@ public class CompilationResultBuilder {
     public void emit(@SuppressWarnings("hiding") LIR lir) {
         assert this.lir == null;
         assert currentBlockIndex == 0;
+        assert lastImplicitExceptionOffset == Integer.MIN_VALUE;
         this.lir = lir;
         this.currentBlockIndex = 0;
+        this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
@@ -560,6 +570,7 @@ public class CompilationResultBuilder {
         }
         this.lir = null;
         this.currentBlockIndex = 0;
+        this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
     }
 
     public LIR getLIR() {
@@ -636,6 +647,7 @@ public class CompilationResultBuilder {
         }
         lir = null;
         currentBlockIndex = 0;
+        lastImplicitExceptionOffset = Integer.MIN_VALUE;
     }
 
     public OptionValues getOptions() {

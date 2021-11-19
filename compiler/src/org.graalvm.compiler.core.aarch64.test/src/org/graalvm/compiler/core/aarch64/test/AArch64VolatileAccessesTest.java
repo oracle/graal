@@ -48,11 +48,11 @@ public class AArch64VolatileAccessesTest extends MatchRuleTest {
     private static volatile double volatileDoubleField;
 
     private static Predicate<LIRInstruction> storePredicate(AArch64Kind kind) {
-        return op -> (op instanceof AArch64Move.VolatileStoreOp && ((AArch64Move.VolatileStoreOp) op).getKind() == kind);
+        return op -> (op instanceof AArch64Move.VolatileStoreOp && ((AArch64Move.VolatileStoreOp) op).getAccessKind() == kind);
     }
 
     private static Predicate<LIRInstruction> loadPredicate(AArch64Kind kind) {
-        return op -> (op instanceof AArch64Move.VolatileLoadOp && ((AArch64Move.VolatileLoadOp) op).getKind() == kind);
+        return op -> (op instanceof AArch64Move.VolatileLoadOp && ((AArch64Move.VolatileLoadOp) op).getAccessKind() == kind);
     }
 
     @Before
