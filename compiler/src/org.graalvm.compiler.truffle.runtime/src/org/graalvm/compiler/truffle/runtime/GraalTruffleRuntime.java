@@ -1258,6 +1258,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     protected abstract AbstractFastThreadLocal getFastThreadLocalImpl();
 
+    public long getStackOverflowLimit() {
+        throw new UnsupportedOperationException();
+    }
+
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);

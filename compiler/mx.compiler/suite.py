@@ -429,7 +429,7 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
-    "org.graalvm.nativebridge.jni" : {
+    "org.graalvm.jniutils" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -444,12 +444,38 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.nativebridge" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.jniutils",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.nativebridge.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      	"org.graalvm.compiler.processor",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.libgraal.jni" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
-        "org.graalvm.nativebridge.jni",
+        "org.graalvm.jniutils",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
         "JVMCI_HOTSPOT",
@@ -2160,6 +2186,15 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_NATIVEBRIDGE_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor"
+      ],
+      "distDependencies" : ["GRAAL_PROCESSOR"],
+      "maven": False,
+    },
+
     "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2223,6 +2258,7 @@ suite = {
         "GRAAL_GRAPHIO",
         "GRAAL_LIBGRAAL_PROCESSOR"],
       "dependencies" : [
+        "org.graalvm.nativebridge",
         "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.options",

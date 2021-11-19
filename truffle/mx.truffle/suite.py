@@ -1152,7 +1152,8 @@ suite = {
         "mx:JUNIT",
       ],
       "distDependencies" : [
-        "sdk:POLYGLOT_TCK"
+        "sdk:POLYGLOT_TCK",
+        "TRUFFLE_SL"
       ],
       "maven" : False
     },

@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.jni;
+package org.graalvm.jniutils;
 
-import static org.graalvm.nativebridge.jni.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-import static org.graalvm.nativebridge.jni.JNIUtil.createString;
-import static org.graalvm.nativebridge.jni.JNIUtil.trace;
+import static org.graalvm.jniutils.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
+import static org.graalvm.jniutils.JNIUtil.createString;
+import static org.graalvm.jniutils.JNIUtil.trace;
 
-import org.graalvm.nativebridge.jni.JNI.JClass;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNI.JMethodID;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JMethodID;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler;
 import org.graalvm.word.WordFactory;
 
 import java.lang.annotation.ElementType;
