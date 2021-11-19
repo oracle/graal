@@ -497,7 +497,6 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8}  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java8-linux-amd64}
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64}
   ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64}
 
@@ -512,8 +511,6 @@ builds += [
   ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java17-darwin-amd64}
 
   # Windows/AMD64
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_base_windows_amd64}                       {name: deploy-vm-base-java8-windows-amd64}
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_installables_windows_amd64}               {name: deploy-vm-installable-java8-windows-amd64}
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java11-windows-amd64}
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java11-windows-amd64}
   ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64}
@@ -531,16 +528,6 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
-    run: [
-      ${mx_vm_installables} [graalvm-show]
-      ${mx_vm_installables} [build]
-      ${mx_vm_installables} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java8-linux-amd64
-  }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       ${mx_vm_installables} [graalvm-show]
@@ -549,7 +536,7 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java11-linux-amd64
+    name: deploy-vm-complete-java11-linux-amd64
   }
 
   # Darwin/AMD64
@@ -561,6 +548,6 @@ builds += [
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
-    name: deploy-vm-no-fastr-java11-darwin-amd64
+    name: deploy-vm-complete-java11-darwin-amd64
   }
 ]
