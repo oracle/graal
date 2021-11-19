@@ -1350,7 +1350,7 @@ public class CompileQueue {
         if (method.wrapped.isIntrinsicMethod()) {
             return false;
         }
-        if (method.getAnnotation(Uninterruptible.class) != null) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
             return false;
         }
         if (method.getAnnotation(RestrictHeapAccess.class) != null) {

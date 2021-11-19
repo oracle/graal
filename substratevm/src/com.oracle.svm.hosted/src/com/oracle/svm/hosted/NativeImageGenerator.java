@@ -185,9 +185,9 @@ import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.phases.CollectDeoptimizationSourcePositionsPhase;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
-import com.oracle.svm.core.graal.phases.MethodSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
+import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptHostedSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
@@ -1305,8 +1305,9 @@ public class NativeImageGenerator {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             /*
              * Graal inserts only loop safepoints. We want a SafepointNode also before every return.
+             * Our safepoint insertion phase inserts both kinds of safepoints.
              */
-            midTier.findPhase(LoopSafepointInsertionPhase.class).add(new MethodSafepointInsertionPhase());
+            midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
         } else {
             /* No need for safepoints when we have only one thread. */
             VMError.guarantee(midTier.removePhase(LoopSafepointInsertionPhase.class));
