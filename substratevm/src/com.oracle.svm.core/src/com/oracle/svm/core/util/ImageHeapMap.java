@@ -79,7 +79,7 @@ final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
     final EconomicMap<Object, Object> runtimeMap;
 
     HostedImageHeapMap(Equivalence strategy) {
-        super(new ConcurrentHashMap<>());
+        super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
         this.runtimeMap = EconomicMap.create(strategy);
     }
 }
