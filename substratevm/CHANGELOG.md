@@ -9,3 +9,4 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-34577) Remove support for outdated JDK versions between 11 and 17. Since JDK versions 12, 13, 14, 15, 16 are no longer supported, there is no need to explicitly check for and allow these versions.
 * (GR-29957) Removed the option -H:SubstitutionFiles= to register substitutions via a JSON file. This was an early experiment and is no longer necessary.
 * (GR-32403) Use more compressed encoding for stack frame metadata.
+* (GR-35152) Add -H:DisableURLProtocols to allow specifying URL protocols that must never be included in the image.
