@@ -212,12 +212,6 @@ class AccessControlContextFeature implements Feature {
     }
 }
 
-@TargetClass(java.security.AccessControlContext.class)
-final class Target_java_security_AccessControlContext {
-
-    @Alias protected boolean isPrivileged;
-}
-
 @TargetClass(SecurityManager.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_java_lang_SecurityManager {
