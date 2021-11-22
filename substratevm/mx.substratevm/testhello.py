@@ -513,64 +513,37 @@ def test():
     checker = Checker('ptype info func nline', rexp)
     checker.check(exec_string)
 
-    # list inlineMee and inlineMoo and check that the listing maps to the inlined code instead of the actual code,
+    # list inlineIs and inlineA and check that the listing maps to the inlined code instead of the actual code,
     # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [r"115%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
-    checker = Checker('list inlineMee', rexp)
-    checker.check(execute("list inlineMee"))
-    checker = Checker('list inlineMoo', rexp)
-    checker.check(execute("list inlineMoo"))
+    rexp = [r"130%snoInlineTest\(\);"%spaces_pattern]
+    checker = Checker('list inlineIs', rexp)
+    checker.check(execute("list inlineIs"))
+    checker = Checker('list inlineA', rexp)
+    checker.check(execute("list inlineA"))
 
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
-    exec_string = execute("break hello.Hello::inlineMee")
-    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineMee\. \(3 locations\)"%(digits_pattern, address_pattern)
-    checker = Checker('break inlineMee', rexp)
+    exec_string = execute("break hello.Hello::inlineIs")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 130\."%(digits_pattern, address_pattern)
+    checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
-
-    exec_string = execute("info break 4")
-    # The breakpoint will be set to the inlined code instead of the actual code,
-    # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [r"4.1%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:115"%(spaces_pattern, spaces_pattern, address_pattern),
-            r"4.2%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:115"%(spaces_pattern, spaces_pattern, address_pattern),
-            r"4.3%sy%s%s in hello\.Hello::inlineMee at hello/Hello\.java:115"%(spaces_pattern, spaces_pattern, address_pattern)]
-    checker = Checker('info break inlineMee', rexp)
-    checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = [r"110%sinlineMoo\(\);"%spaces_pattern]
-    checker = Checker('hit break at inlineMee', rexp)
+    rexp = [r"125%sinlineA\(\);"%spaces_pattern]
+    checker = Checker('hit break at inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
     execute("step")
     exec_string = execute("list")
-    rexp = [r"115%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
-    checker = Checker('step in inlineMee', rexp)
+    rexp = [r"130%snoInlineTest\(\);"%spaces_pattern]
+    checker = Checker('step in inlineA', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 4")
-    rexp = [r"#0%shello\.Hello::inlineMoo \(\) at hello/Hello\.java:115"%spaces_pattern,
-            r"#1%shello\.Hello::inlineMee \(\) at hello/Hello\.java:110"%spaces_pattern,
-            r"#2%shello\.Hello::noInlineFoo\(void\) \(\) at hello/Hello\.java:100"%spaces_pattern,
-            r"#3%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:91"%(spaces_pattern, address_pattern)]
+    rexp = [r"#0%shello\.Hello::inlineA \(\) at hello/Hello\.java:130"%spaces_pattern,
+            r"#1%shello\.Hello::inlineIs \(\) at hello/Hello\.java:125"%spaces_pattern,
+            r"#2%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:120"%spaces_pattern,
+            r"#3%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:93"%(spaces_pattern, address_pattern)]
     checker = Checker('backtrace inlineMee', rexp)
-    checker.check(exec_string, skip_fails=False)
-
-    execute("continue")
-    exec_string = execute("list")
-    rexp = [r"110%sinlineMoo\(\);"%spaces_pattern]
-    checker = Checker('hit break at inlineMee', rexp)
-    checker.check(exec_string, skip_fails=False)
-    execute("step")
-    exec_string = execute("list")
-    rexp = [r"115%sSystem\.out\.println\(\"This is a cow\"\);"%spaces_pattern]
-    checker = Checker('step in inlineMee', rexp)
-    checker.check(exec_string, skip_fails=False)
-    exec_string = execute("backtrace 4")
-    rexp = [r"#0%shello\.Hello::inlineMoo \(\) at hello/Hello\.java:115"%spaces_pattern,
-            r"#1%shello\.Hello::inlineMee \(\) at hello/Hello\.java:110"%spaces_pattern,
-            r"#2%shello\.Hello::inlineCallChain \(\) at hello/Hello\.java:105"%spaces_pattern,
-            r"#3%shello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:92"%spaces_pattern]
-    checker = Checker('backtrace inlineMee 2', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
