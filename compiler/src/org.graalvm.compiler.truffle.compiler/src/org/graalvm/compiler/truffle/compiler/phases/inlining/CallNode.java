@@ -151,7 +151,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         properties.put("Truffle Callees", truffleCallees.length);
         properties.put("Explore/inline ratio", exploreInlineRatio());
         properties.put("Depth", depth);
-        properties.put("Forced", isRoot() ? false : isForced());
+        properties.put("Forced", isForced());
         getPolicy().putProperties(this, properties);
     }
 
@@ -298,7 +298,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public boolean isForced() {
-        return truffleCaller.isInliningForced();
+        return truffleCaller != null && truffleCaller.isInliningForced();
     }
 
     public CallNode getParent() {
@@ -318,7 +318,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public String getName() {
-        if (state == State.Indirect) {
+        if (truffleAST == null) {
             return "<indirect>";
         }
         return truffleAST.toString();
