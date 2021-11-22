@@ -731,7 +731,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
                         _add(layout, join(_component_base, _executable), 'dependency:{}'.format(NativeLibraryLauncherProject.library_launcher_project_name(_library_config)), _component)
-                        _add_link(_jdk_jre_bin, _component_base + _executable)
+                        _link_path = _add_link(_jdk_jre_bin, _component_base + _executable)
+                        _jre_bin_names.append(basename(_link_path))
                 _add_native_image_macro(_library_config, _component)
 
             graalvm_dists.update(_component.polyglot_lib_jar_dependencies)
