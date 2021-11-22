@@ -60,9 +60,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * This is based on {@code test/hotspot/jtreg/compiler/unsafe/UnsafeGetStableArrayElement.java} and
- * differs in that it only asserts the behavior of Graal with respect to reading an element from a
- * {@code Stable} array via Unsafe.
+ * Exercise the constant folding of {@link RawLoadNode} and it's lowered form to ensure that it
+ * always succeeds when it's possible.
  */
 @AddExports("java.base/jdk.internal.misc")
 public class ReadConstantFoldingTest extends GraalCompilerTest {
@@ -183,7 +182,16 @@ public class ReadConstantFoldingTest extends GraalCompilerTest {
         return t;
     }
 
+    /**
+     * Should the compilation completely constant fold.
+     */
     private boolean shouldFold;
+
+    /**
+     * Insert an {@link OpaqueNode} after parsing that is removed by
+     * {@link #checkHighTierGraph(StructuredGraph)} to ensure that the lowered form also correctly
+     * constant folds.
+     */
     private boolean insertOpaque;
 
     @Before
@@ -205,6 +213,9 @@ public class ReadConstantFoldingTest extends GraalCompilerTest {
         return super.getCode(installedCodeOwner, g, true, installAsDefault, options);
     }
 
+    /**
+     * Only parse the test methods since the compiled might form crash because of oop unsafety.
+     */
     void doParse(String name) {
         ResolvedJavaMethod method = getResolvedJavaMethod(name);
         getCode(method);
@@ -228,6 +239,7 @@ public class ReadConstantFoldingTest extends GraalCompilerTest {
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
         if (insertOpaque) {
+            // Remove the OpaquNode so that the lowered form can be tested as well.
             for (OpaqueNode node : graph.getNodes().filter(OpaqueNode.class)) {
                 node.replaceAndDelete(node.getValue());
             }

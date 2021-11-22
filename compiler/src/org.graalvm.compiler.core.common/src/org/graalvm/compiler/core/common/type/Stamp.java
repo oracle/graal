@@ -26,7 +26,6 @@ package org.graalvm.compiler.core.common.type;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
 
 import jdk.vm.ci.meta.Constant;
@@ -166,13 +165,15 @@ public abstract class Stamp implements SpeculationContextObject {
      * size. {@code accessStamp} is used to specify the size of access if it differs from the size
      * of the result.
      *
-     * @return the value read or null if the value can't be read for some reason.
+     * @return the value read or null if the value can't be read for some reason
+     * @throws IllegalArgumentException if this stamp does not support reading a value of the size
+     *             specified by {@code accessStamp}
      */
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement, Stamp accessStamp) {
         if (this.equals(accessStamp)) {
             return readConstant(provider, base, displacement);
         }
-        throw GraalError.shouldNotReachHere("Access mismatch:" + this + " != " + accessStamp);
+        throw new IllegalArgumentException("Access mismatch:" + this + " != " + accessStamp);
     }
 
     /**

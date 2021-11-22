@@ -77,6 +77,8 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isJavaConstant()) {
+            // This doesn't match the semantics of CVTTSS2SI but since this is only used by
+            // AMD64ConvertSnippets this will fold to still produce the right result.
             UnaryOp<FloatConvertOp> floatConvertOp = getOp(getArithmeticOpTable(value));
             return ConstantNode.forPrimitive(floatConvertOp.foldStamp(forValue.stamp(NodeView.DEFAULT)), floatConvertOp.foldConstant(forValue.asConstant()));
         }

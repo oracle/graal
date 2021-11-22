@@ -73,6 +73,9 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
         return readJavaConstant(provider, base, displacement, getBits());
     }
 
+    /**
+     * @param accessBits the number of bits to read from memory (must be 8, 16, 32 or 64)
+     */
     protected JavaConstant readJavaConstant(MemoryAccessProvider provider, Constant base, long displacement, int accessBits) {
         if (!isAligned(displacement, accessBits)) {
             // Avoid crash when performing unaligned reads (JDK-8275645)
