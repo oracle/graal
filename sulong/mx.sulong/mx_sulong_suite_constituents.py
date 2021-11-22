@@ -329,6 +329,7 @@ class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeP
 class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
         super(BootstrapToolchainLauncherProject, self).__init__(suite, name, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kwArgs)
+        self.buildDependencies += ['mx:GCC_NINJA_TOOLCHAIN']
 
     def launchers(self):
         for tool in self.suite.toolchain._supported_tools():
@@ -425,38 +426,16 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
 
     def ninja_toolchain_contents(self):
+        gcc_ninja_toolchain = mx.distribution('mx:GCC_NINJA_TOOLCHAIN')
+        assert isinstance(gcc_ninja_toolchain, mx.AbstractDistribution) and gcc_ninja_toolchain.get_output()
         return """# Ninja rules for the LLVM toolchain
-rule cc
-  command = {CC} -MMD -MF $out.d $includes $cflags -c $in -o $out
-  description = CC $out
-  depfile = $out.d
-  deps = gcc
+include {gcc_toolchain}
+CC = {CC}
+CXX = {CXX}
+AR = {AR}
 
-rule cxx
-  command = {CXX} -MMD -MF $out.d $includes $cflags -c $in -o $out
-  description = CXX $out
-  depfile = $out.d
-  deps = gcc
-
-rule link
-  command = {CC} $ldflags -o $out $in $ldlibs
-  description = LINK $out
-
-rule linkxx
-  command = {CXX} $ldflags -o $out $in $ldlibs
-  description = LINKXX $out
-
-rule ar
-  command = {AR} -rc $out $in
-  description = AR $out
-
-rule asm
-  command = {CC} -MMD -MF $out.d $includes $cflags -c $in -o $out
-  description = ASM $out
-  depfile = $out.d
-  deps = gcc
-
-""".format(CC=self.subject.suite.toolchain.get_toolchain_tool('CC'),
+""".format(gcc_toolchain=os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja'),
+           CC=self.subject.suite.toolchain.get_toolchain_tool('CC'),
            CXX=self.subject.suite.toolchain.get_toolchain_tool('CXX'),
            AR=self.subject.suite.toolchain.get_toolchain_tool('AR'))
 
