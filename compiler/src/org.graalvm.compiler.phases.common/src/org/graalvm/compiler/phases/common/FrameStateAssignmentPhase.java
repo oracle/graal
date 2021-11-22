@@ -49,13 +49,13 @@ import jdk.vm.ci.code.BytecodeFrame;
 
 /**
  * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to
- * {@link DeoptimizingNode DeoptimizingNodes}.
+ * {@link DeoptimizingNode}s.
  *
- * This allow to enter the {@link GuardsStage#AFTER_FSA AFTER_FSA} stage of the graph where no new
- * node that may cause deoptimization can be introduced anymore.
+ * This allows the graph to enter the {@link GuardsStage#AFTER_FSA AFTER_FSA} stage, where no new
+ * nodes that may cause deoptimizations can be introduced anymore.
  * <p>
  * This Phase processes the graph in post order, assigning the {@link FrameState} from the last
- * {@link StateSplit} node to {@link DeoptimizingNode DeoptimizingNodes}.
+ * {@link StateSplit} node to {@link DeoptimizingNode}s.
  */
 public class FrameStateAssignmentPhase extends Phase {
 

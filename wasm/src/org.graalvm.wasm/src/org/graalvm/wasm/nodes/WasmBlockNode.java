@@ -153,6 +153,10 @@ import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_F32_S;
 import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_F32_U;
 import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_F64_S;
 import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_F64_U;
+import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_SAT_F32_S;
+import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_SAT_F32_U;
+import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_SAT_F64_S;
+import static org.graalvm.wasm.constants.Instructions.I32_TRUNC_SAT_F64_U;
 import static org.graalvm.wasm.constants.Instructions.I32_WRAP_I64;
 import static org.graalvm.wasm.constants.Instructions.I32_XOR;
 import static org.graalvm.wasm.constants.Instructions.I64_ADD;
@@ -202,6 +206,10 @@ import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_F32_S;
 import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_F32_U;
 import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_F64_S;
 import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_F64_U;
+import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F32_S;
+import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F32_U;
+import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F64_S;
+import static org.graalvm.wasm.constants.Instructions.I64_TRUNC_SAT_F64_U;
 import static org.graalvm.wasm.constants.Instructions.I64_XOR;
 import static org.graalvm.wasm.constants.Instructions.IF;
 import static org.graalvm.wasm.constants.Instructions.LOCAL_GET;
@@ -210,6 +218,7 @@ import static org.graalvm.wasm.constants.Instructions.LOCAL_TEE;
 import static org.graalvm.wasm.constants.Instructions.LOOP;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_GROW;
 import static org.graalvm.wasm.constants.Instructions.MEMORY_SIZE;
+import static org.graalvm.wasm.constants.Instructions.MISC;
 import static org.graalvm.wasm.constants.Instructions.NOP;
 import static org.graalvm.wasm.constants.Instructions.RETURN;
 import static org.graalvm.wasm.constants.Instructions.SELECT;
@@ -237,7 +246,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -327,7 +335,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return profileCount;
     }
 
-    public int startOfset() {
+    public int startOffset() {
         return startOffset;
     }
 
@@ -571,7 +579,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Object[] args = createArgumentsForCall(stacklocals, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    Object result = executeDirectCall(childrenOffset, args);
+                    Object result = executeDirectCall(childrenOffset, function, args);
                     childrenOffset++;
 
                     // At the moment, WebAssembly functions may return up to one value.
@@ -1398,6 +1406,40 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // and interpreted appropriately upon access), we don't need to do anything
                     // for these instructions.
                     break;
+                case MISC:
+                    byte miscByteOpcode = BinaryStreamParser.rawPeek1(data, offset);
+                    int miscOpcode = miscByteOpcode & 0xFF;
+                    offset++;
+                    CompilerAsserts.partialEvaluationConstant(offset);
+                    switch (miscOpcode) {
+                        case I32_TRUNC_SAT_F32_S:
+                            i32_trunc_sat_f32_s(stacklocals, stackPointer);
+                            break;
+                        case I32_TRUNC_SAT_F32_U:
+                            i32_trunc_sat_f32_u(stacklocals, stackPointer);
+                            break;
+                        case I32_TRUNC_SAT_F64_S:
+                            i32_trunc_sat_f64_s(stacklocals, stackPointer);
+                            break;
+                        case I32_TRUNC_SAT_F64_U:
+                            i32_trunc_sat_f64_u(stacklocals, stackPointer);
+                            break;
+                        case I64_TRUNC_SAT_F32_S:
+                            i64_trunc_sat_f32_s(stacklocals, stackPointer);
+                            break;
+                        case I64_TRUNC_SAT_F32_U:
+                            i64_trunc_sat_f32_u(stacklocals, stackPointer);
+                            break;
+                        case I64_TRUNC_SAT_F64_S:
+                            i64_trunc_sat_f64_s(stacklocals, stackPointer);
+                            break;
+                        case I64_TRUNC_SAT_F64_U:
+                            i64_trunc_sat_f64_u(stacklocals, stackPointer);
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
@@ -1428,9 +1470,35 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private Object executeDirectCall(int childrenOffset, Object[] args) {
+    private Object executeDirectCall(int childrenOffset, WasmFunction function, Object[] args) {
+        final boolean imported = function.isImported();
+        CompilerAsserts.partialEvaluationConstant(imported);
         DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
-        return callNode.call(args);
+        assert assertDirectCall(function, callNode);
+        if (imported) {
+            WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
+            TruffleContext truffleContext = functionInstance.getTruffleContext();
+            Object prev = truffleContext.enter(this);
+            try {
+                return callNode.call(args);
+            } finally {
+                truffleContext.leave(this, prev);
+            }
+        } else {
+            return callNode.call(args);
+        }
+    }
+
+    private boolean assertDirectCall(WasmFunction function, DirectCallNode callNode) {
+        WasmFunctionInstance functionInstance = instance().functionInstance(function.index());
+        // functionInstance may be null for calls between functions of the same module.
+        if (functionInstance == null) {
+            assert !function.isImported();
+            return true;
+        }
+        assert functionInstance.target() == callNode.getCallTarget();
+        assert function.isImported() || functionInstance.context() == WasmContext.get(this);
+        return true;
     }
 
     @BytecodeInterpreterSwitchBoundary
@@ -2772,6 +2840,44 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         pushInt(stack, stackPointer - 1, result);
     }
 
+    private void i32_trunc_sat_f32_s(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        final int result = (int) ExactMath.truncate(x);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_trunc_sat_f32_u(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        final int result;
+        if (Float.isNaN(x) || x < MIN_FLOAT_TRUNCATABLE_TO_U_INT) {
+            result = 0;
+        } else if (x > MAX_FLOAT_TRUNCATABLE_TO_U_INT) {
+            result = 0xffff_ffff;
+        } else {
+            result = (int) WasmMath.truncFloatToUnsignedLong(x);
+        }
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_trunc_sat_f64_s(long[] stack, int stackPointer) {
+        final double x = popAsDouble(stack, stackPointer - 1);
+        final int result = (int) ExactMath.truncate(x);
+        pushInt(stack, stackPointer - 1, result);
+    }
+
+    private void i32_trunc_sat_f64_u(long[] stack, int stackPointer) {
+        final double x = popAsDouble(stack, stackPointer - 1);
+        final int result;
+        if (Double.isNaN(x) || x < MIN_DOUBLE_TRUNCATABLE_TO_U_INT) {
+            result = 0;
+        } else if (x > MAX_DOUBLE_TRUNCATABLE_TO_U_INT) {
+            result = 0xffff_ffff;
+        } else {
+            result = (int) WasmMath.truncDoubleToUnsignedLong(x);
+        }
+        pushInt(stack, stackPointer - 1, result);
+    }
+
     private void i64_extend_i32_s(long[] stack, int stackPointer) {
         int x = popInt(stack, stackPointer - 1);
         long result = x;
@@ -2833,6 +2939,40 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             throw WasmException.create(Failure.INT_OVERFLOW);
         }
         final long result = WasmMath.truncDoubleToUnsignedLong(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_sat_f32_s(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        final long result = (long) ExactMath.truncate(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_sat_f32_u(long[] stack, int stackPointer) {
+        final float x = popAsFloat(stack, stackPointer - 1);
+        final long result;
+        if (Float.isNaN(x) || x < MIN_FLOAT_TRUNCATABLE_TO_U_LONG) {
+            result = 0;
+        } else {
+            result = WasmMath.truncFloatToUnsignedLong(x);
+        }
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_sat_f64_s(long[] stack, int stackPointer) {
+        final double x = popAsDouble(stack, stackPointer - 1);
+        final long result = (long) ExactMath.truncate(x);
+        push(stack, stackPointer - 1, result);
+    }
+
+    private void i64_trunc_sat_f64_u(long[] stack, int stackPointer) {
+        final double x = popAsDouble(stack, stackPointer - 1);
+        final long result;
+        if (Double.isNaN(x) || x < MIN_DOUBLE_TRUNCATABLE_TO_U_LONG) {
+            result = 0;
+        } else {
+            result = WasmMath.truncDoubleToUnsignedLong(x);
+        }
         push(stack, stackPointer - 1, result);
     }
 
@@ -2907,7 +3047,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     public void resolveCallNode(int childOffset) {
         final WasmFunction function = ((WasmCallStubNode) children[childOffset]).function();
         final CallTarget target = instance().target(function.index());
-        children[childOffset] = Truffle.getRuntime().createDirectCallNode(target);
+        children[childOffset] = DirectCallNode.create(target);
     }
 
     @ExplodeLoop

@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 
 public class ReassociateAndCanonicalTest extends GraalCompilerTest {
 
@@ -251,9 +252,9 @@ public class ReassociateAndCanonicalTest extends GraalCompilerTest {
 
     @Test
     public void testMathMax() {
-        if (getTarget().arch instanceof AArch64) {
-            // Test only on AArch64 as it uses MinNode/MaxNode to intrinsify Math.min/max with
-            // float/double types that can be re-associated.
+        if (getTarget().arch instanceof AArch64 || (getTarget().arch instanceof AMD64 && ((AMD64) getTarget().arch).getFeatures().contains(AMD64.CPUFeature.AVX))) {
+            // Test only on AArch64 and AMD64/AVX as they use MinNode/MaxNode to intrinsify
+            // Math.min/max with float/double types that can be re-associated.
             compareGraphs("testMathMaxFloatSnippet", "refMathMaxFloatSnippet");
             compareGraphs("testMathMinFloatSnippet", "refMathMinFloatSnippet");
             compareGraphs("testMathMaxDoubleSnippet", "refMathMaxDoubleSnippet");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -86,7 +85,7 @@ public final class InsightObjectFactory extends ProxyLanguage {
         final Source source = request.getSource();
         String scriptName = source.getName();
         final AgentRootNode root = new AgentRootNode(ProxyLanguage.get(null), this, scriptName, source, request.getArgumentNames());
-        return Truffle.getRuntime().createCallTarget(root);
+        return root.getCallTarget();
     }
 
     public static Value readInsight(Context context, Object[] interopValue) throws Exception {

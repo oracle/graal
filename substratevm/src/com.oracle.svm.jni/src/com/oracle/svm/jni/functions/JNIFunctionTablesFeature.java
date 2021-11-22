@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -56,7 +57,6 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJavaVMArgument;
@@ -192,7 +192,7 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMethod hostedTrampoline = access.getUniverse().lookup(analysisTrampoline);
         hostedTrampoline.compilationInfo.setCustomParseFunction(trampolineMethod.createCustomParseFunction());
         hostedTrampoline.compilationInfo.setCustomCompileFunction(trampolineMethod.createCustomCompileFunction());
-        return MethodPointer.factory(hostedTrampoline);
+        return new MethodPointer(hostedTrampoline);
     }
 
     private static ResolvedJavaMethod getSingleMethod(MetaAccessProvider metaAccess, Class<?> holder) {
@@ -203,7 +203,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {
         AnalysisMethod stub = CEntryPointCallStubSupport.singleton().getStubForMethod(method.getWrapped());
-        return MethodPointer.factory(access.getUniverse().lookup(stub));
+        return new MethodPointer(access.getUniverse().lookup(stub));
     }
 
     private void fillJNIInvocationInterfaceTable(CompilationAccessImpl access, CFunctionPointer[] table, CFunctionPointer defaultValue) {
@@ -236,7 +236,7 @@ public class JNIFunctionTablesFeature implements Feature {
             HostedMethod hostedMethod = access.getUniverse().lookup(analysisMethod);
 
             int offset = field.getOffsetInfo().getProperty();
-            setFunctionPointerTable(table, offset, MethodPointer.factory(hostedMethod));
+            setFunctionPointerTable(table, offset, new MethodPointer(hostedMethod));
         }
         for (CallVariant variant : CallVariant.values()) {
             CFunctionPointer trampoline = prepareCallTrampoline(access, variant, false);

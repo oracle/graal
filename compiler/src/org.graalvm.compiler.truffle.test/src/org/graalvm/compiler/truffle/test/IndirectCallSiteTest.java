@@ -55,19 +55,19 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
     @Test
     public void testIndirectCallNodeDoesNotDeopOnFirstCall() {
         final Object[] noArguments = new Object[0];
-        final OptimizedCallTarget innerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget innerTarget = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
-        final OptimizedCallTarget uninitializedInnerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        }.getCallTarget();
+        final OptimizedCallTarget uninitializedInnerTarget = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
-        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        }.getCallTarget();
+        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) new RootNode(null) {
             @Child OptimizedIndirectCallNode indirectCallNode = (OptimizedIndirectCallNode) runtime.createIndirectCallNode();
 
             @Override
@@ -78,7 +78,7 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
                     return indirectCallNode.call(uninitializedInnerTarget, noArguments);
                 }
             }
-        });
+        }.getCallTarget();
         final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             outerTarget.call(noArguments);
@@ -206,11 +206,11 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testIndirectCallNodeDoesNotDeoptOnTypeChangeWithInlining1() {
-        final OptimizedCallTarget toInterpreterOnString = (OptimizedCallTarget) runtime.createCallTarget(new WritesToGlobalState());
+        final OptimizedCallTarget toInterpreterOnString = (OptimizedCallTarget) new WritesToGlobalState().getCallTarget();
         final Object[] directArguments = new Object[]{1};
-        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(toInterpreterOnString, directArguments));
-        final OptimizedCallTarget noOp = (OptimizedCallTarget) runtime.createCallTarget(new DummyTarget());
-        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) new DirectlyCallsTargetWithArguments(toInterpreterOnString, directArguments).getCallTarget();
+        final OptimizedCallTarget noOp = (OptimizedCallTarget) new DummyTarget().getCallTarget();
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) new IndirectCallTargetFromArgument().getCallTarget();
 
         final int compilationThreshold = toInterpreterOnString.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
 
@@ -248,10 +248,10 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testIndirectCallDoesNotDeoptInliningDirectCaller() {
-        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final OptimizedCallTarget callee = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         final Object[] directArguments = new Object[]{"direct arg"};
-        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
-        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) new DirectlyCallsTargetWithArguments(callee, directArguments).getCallTarget();
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) new IndirectCallTargetFromArgument().getCallTarget();
         final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
 
         try (DeoptInvalidateListener directListener = new DeoptInvalidateListener(runtime, directCall)) {
@@ -278,10 +278,10 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
     public void testIndirectCallDoesNotDeoptNotInliningDirectCaller() {
         setupContext("engine.MultiTier", "false", "engine.Inlining", "false");
 
-        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final OptimizedCallTarget callee = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         final Object[] directArguments = new Object[]{"direct arg"};
-        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
-        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) new DirectlyCallsTargetWithArguments(callee, directArguments).getCallTarget();
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) new IndirectCallTargetFromArgument().getCallTarget();
         final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
 
         try (DeoptInvalidateListener directListener = new DeoptInvalidateListener(runtime, directCall)) {
@@ -305,10 +305,10 @@ public class IndirectCallSiteTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testIndirectCallDoesNotDeoptCallee() {
-        final OptimizedCallTarget callee = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(0));
+        final OptimizedCallTarget callee = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         final Object[] directArguments = new Object[]{"direct arg"};
-        final OptimizedCallTarget directCall = (OptimizedCallTarget) runtime.createCallTarget(new DirectlyCallsTargetWithArguments(callee, directArguments));
-        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) runtime.createCallTarget(new IndirectCallTargetFromArgument());
+        final OptimizedCallTarget directCall = (OptimizedCallTarget) new DirectlyCallsTargetWithArguments(callee, directArguments).getCallTarget();
+        final OptimizedCallTarget indirectCall = (OptimizedCallTarget) new IndirectCallTargetFromArgument().getCallTarget();
         final int compilationThreshold = callee.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
 
         try (DeoptInvalidateListener calleeListener = new DeoptInvalidateListener(runtime, callee)) {

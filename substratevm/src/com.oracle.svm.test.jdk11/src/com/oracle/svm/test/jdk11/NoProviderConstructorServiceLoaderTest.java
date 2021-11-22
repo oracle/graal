@@ -67,7 +67,7 @@ public class NoProviderConstructorServiceLoaderTest {
         /**
          * Not a provider constructor. This violates the contract of {@link ServiceLoader}.
          */
-        NoProviderConstructorService(Class<?> clazz) {
+        NoProviderConstructorService(@SuppressWarnings("unused") Class<?> clazz) {
         }
     }
 
@@ -75,7 +75,7 @@ public class NoProviderConstructorServiceLoaderTest {
 
     /**
      * This should actually throw an {@link ServiceConfigurationError}.
-     * 
+     *
      * @see #testLazyStreamHotspot()
      */
     @Test
@@ -89,7 +89,7 @@ public class NoProviderConstructorServiceLoaderTest {
 
     /**
      * This should actually throw an {@link ServiceConfigurationError}.
-     * 
+     *
      * @see #testEagerStreamHotspot()
      */
     @Test
@@ -103,7 +103,7 @@ public class NoProviderConstructorServiceLoaderTest {
 
     /**
      * This should actually throw an {@link ServiceConfigurationError}.
-     * 
+     *
      * @see #testEagerIteratorHotspot()
      */
     @Test

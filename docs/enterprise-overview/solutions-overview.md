@@ -96,7 +96,7 @@ vulnerabilities.
 
 ## Get Started with GraalVM Enterprise
 
-[Get started with GraalVM Enterprise](/getting-started/) and:
+[Get started with GraalVM Enterprise](../getting-started/graalvm-enterprise/get-started-graalvm-enterprise.md) and:
 * reduce IT and storage costs
 * provide customers with quicker response time
 * employ fewer resources, freeing up CPU

@@ -54,13 +54,13 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispa
  */
 public final class SourceSection {
 
-    static volatile AbstractSourceSectionDispatch DISPATCH;
-
     final Source source;
+    final AbstractSourceSectionDispatch dispatch;
     final Object receiver;
 
-    SourceSection(Source source, Object receiver) {
+    SourceSection(Source source, AbstractSourceSectionDispatch dispatch, Object receiver) {
         this.source = source;
+        this.dispatch = dispatch;
         this.receiver = receiver;
     }
 
@@ -73,7 +73,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean isAvailable() {
-        return DISPATCH.isAvailable(receiver);
+        return dispatch.isAvailable(receiver);
     }
 
     /**
@@ -85,7 +85,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasLines() {
-        return DISPATCH.hasLines(receiver);
+        return dispatch.hasLines(receiver);
     }
 
     /**
@@ -98,7 +98,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasColumns() {
-        return DISPATCH.hasColumns(receiver);
+        return dispatch.hasColumns(receiver);
     }
 
     /**
@@ -111,7 +111,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasCharIndex() {
-        return DISPATCH.hasCharIndex(receiver);
+        return dispatch.hasCharIndex(receiver);
     }
 
     /**
@@ -134,7 +134,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getStartLine() {
-        return DISPATCH.getStartLine(receiver);
+        return dispatch.getStartLine(receiver);
     }
 
     /**
@@ -147,7 +147,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getStartColumn() {
-        return DISPATCH.getStartColumn(receiver);
+        return dispatch.getStartColumn(receiver);
     }
 
     /**
@@ -160,7 +160,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getEndLine() {
-        return DISPATCH.getEndLine(receiver);
+        return dispatch.getEndLine(receiver);
     }
 
     /**
@@ -173,7 +173,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getEndColumn() {
-        return DISPATCH.getEndColumn(receiver);
+        return dispatch.getEndColumn(receiver);
     }
 
     /**
@@ -187,7 +187,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharIndex() {
-        return DISPATCH.getCharIndex(receiver);
+        return dispatch.getCharIndex(receiver);
     }
 
     /**
@@ -201,7 +201,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharLength() {
-        return DISPATCH.getCharLength(receiver);
+        return dispatch.getCharLength(receiver);
     }
 
     /**
@@ -215,7 +215,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharEndIndex() {
-        return DISPATCH.getCharEndIndex(receiver);
+        return dispatch.getCharEndIndex(receiver);
     }
 
     /**
@@ -224,7 +224,7 @@ public final class SourceSection {
      */
     @Deprecated
     public CharSequence getCode() {
-        return DISPATCH.getCode(receiver);
+        return dispatch.getCode(receiver);
     }
 
     /**
@@ -235,7 +235,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public CharSequence getCharacters() {
-        return DISPATCH.getCode(receiver);
+        return dispatch.getCode(receiver);
     }
 
     /**
@@ -247,13 +247,13 @@ public final class SourceSection {
      */
     @Override
     public String toString() {
-        return DISPATCH.toString(receiver);
+        return dispatch.toString(receiver);
     }
 
     /** @since 19.0 or earlier */
     @Override
     public int hashCode() {
-        return DISPATCH.hashCode(receiver);
+        return dispatch.hashCode(receiver);
     }
 
     /** @since 19.0 or earlier */
@@ -267,7 +267,7 @@ public final class SourceSection {
         if (otherImpl instanceof SourceSection) {
             otherImpl = ((SourceSection) obj).receiver;
         }
-        return DISPATCH.equals(receiver, otherImpl);
+        return dispatch.equals(receiver, otherImpl);
     }
 
 }

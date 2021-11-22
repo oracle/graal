@@ -29,19 +29,27 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK11To14;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class, onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module_JDK11OrLater {
+
+    @SuppressWarnings({"unused", "static-method"})
+    @Substitute
+    public boolean isReflectivelyExportedOrOpen(String pn, Module other, boolean open) {
+        // This workaround should be removed once GR-34444 is fixed.
+        return true;
+    }
 
     @SuppressWarnings("static-method")
     @Substitute
@@ -51,7 +59,7 @@ public final class Target_java_lang_Module_JDK11OrLater {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11To14.class)
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
         ModuleUtil.defineModule(module, isOpen, Arrays.asList(pns));
     }
@@ -89,6 +97,10 @@ public final class Target_java_lang_Module_JDK11OrLater {
 
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class) //
     private static final class Target_java_lang_Module_ReflectionData {
+        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
+        static Target_java_lang_WeakPairMap<Module, Module, Boolean> reads;
+        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
+        static Target_java_lang_WeakPairMap<Module, Module, Map<String, Boolean>> exports;
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
         static Target_java_lang_WeakPairMap<Module, Class<?>, Boolean> uses;
     }

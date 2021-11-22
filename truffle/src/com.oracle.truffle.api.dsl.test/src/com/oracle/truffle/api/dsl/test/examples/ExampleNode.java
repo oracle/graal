@@ -42,7 +42,6 @@ package com.oracle.truffle.api.dsl.test.examples;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -76,7 +75,7 @@ public abstract class ExampleNode extends Node {
     }
 
     public static CallTarget createTarget(ExampleNode node) {
-        return Truffle.getRuntime().createCallTarget(new ExampleRootNode(node));
+        return new ExampleRootNode(node).getCallTarget();
     }
 
     public static ExampleArgumentNode[] getArguments(CallTarget target) {
@@ -160,7 +159,7 @@ public abstract class ExampleNode extends Node {
     }
 
     public static CallTarget createDummyTarget(int argumentIndex) {
-        return Truffle.getRuntime().createCallTarget(new DummyCallRootNode(argumentIndex));
+        return new DummyCallRootNode(argumentIndex).getCallTarget();
     }
 
     private static class DummyCallRootNode extends RootNode {

@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public abstract class ReflectionGetCallerClassNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
+public abstract class ReflectionGetCallerClassNode extends MacroNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<ReflectionGetCallerClassNode> TYPE = NodeClass.create(ReflectionGetCallerClassNode.class);
 

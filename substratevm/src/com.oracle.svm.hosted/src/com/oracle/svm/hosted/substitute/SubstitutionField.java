@@ -28,8 +28,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;

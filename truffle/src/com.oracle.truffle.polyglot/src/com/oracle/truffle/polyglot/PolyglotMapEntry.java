@@ -144,13 +144,9 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             this.keyType = keyType;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.getKey = initializeCall(PolyglotMapEntryFactory.CacheFactory.GetNodeGen.create(this, "getKey", 0, keyClass, keyType));
-            this.getValue = initializeCall(PolyglotMapEntryFactory.CacheFactory.GetNodeGen.create(this, "getValue", 1, valueClass, valueType));
-            this.apply = initializeCall(new Apply(this));
-        }
-
-        private static CallTarget initializeCall(PolyglotMapEntry.Cache.PolyglotMapEntryNode node) {
-            return HostToGuestRootNode.createTarget(node);
+            this.getKey = PolyglotMapEntryFactory.CacheFactory.GetNodeGen.create(this, "getKey", 0, keyClass, keyType).getCallTarget();
+            this.getValue = PolyglotMapEntryFactory.CacheFactory.GetNodeGen.create(this, "getValue", 1, valueClass, valueType).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
         }
 
         static PolyglotMapEntry.Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass,

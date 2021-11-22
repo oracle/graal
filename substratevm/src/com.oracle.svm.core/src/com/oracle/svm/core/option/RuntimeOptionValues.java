@@ -203,6 +203,6 @@ class OptionAccessFeature implements Feature {
 final class Target_org_graalvm_compiler_options_OptionKey {
 
     @AnnotateOriginal
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
     native Object getValue(OptionValues values);
 }

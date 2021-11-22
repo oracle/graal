@@ -60,7 +60,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -176,7 +175,9 @@ public final class LibGraalEntryPoints {
      * {@code org.graalvm.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
      *
      * @param methodHandle the method to be compiled. This is a handle to a
-     *            {@link HotSpotResolvedJavaMethod} in HotSpot's heap.
+     *            {@link HotSpotResolvedJavaMethod} in HotSpot's heap. A value of 0L can be passed
+     *            to use this method for the side effect of initializing a
+     *            {@link HotSpotGraalCompiler} instance without doing any compilation.
      * @param useProfilingInfo specifies if profiling info should be used during the compilation
      * @param installAsDefault specifies if the compiled code should be installed for the
      *            {@code Method*} associated with {@code methodHandle}
@@ -202,8 +203,7 @@ public final class LibGraalEntryPoints {
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal")
-    @CEntryPointOptions(include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(PointerBase jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
@@ -218,11 +218,14 @@ public final class LibGraalEntryPoints {
                     int stackTraceCapacity) {
         try {
             HotSpotJVMCIRuntime runtime = runtime();
+            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
+            if (methodHandle == 0L) {
+                return 0L;
+            }
             HotSpotResolvedJavaMethod method = LibGraal.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
 
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
-            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
             try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
 
                 OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);

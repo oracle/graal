@@ -33,7 +33,6 @@ import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class OverrideOptionsTest extends TruffleCompilerImplTest {
@@ -43,7 +42,7 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
     public void testOverrideOptionsUsingContext() {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompileImmediately",
                         Boolean.TRUE.toString()).build());
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         OptionValues values = TruffleCompilerImpl.getOptionsForCompiler(GraalTruffleRuntime.getOptionsForCompiler(callTarget));
         Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
         Assert.assertEquals(true, values.get(PolyglotCompilerOptions.CompileImmediately));

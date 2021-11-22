@@ -168,9 +168,9 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.hasNext = HostToGuestRootNode.createTarget(HasNextNodeGen.create(this));
-            this.next = HostToGuestRootNode.createTarget(NextNodeGen.create(this));
-            this.apply = HostToGuestRootNode.createTarget(new Apply(this));
+            this.hasNext = HasNextNodeGen.create(this).getCallTarget();
+            this.next = NextNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {

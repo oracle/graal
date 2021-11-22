@@ -29,7 +29,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -51,7 +50,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ObjectSnippets implements Snippets {
@@ -81,8 +79,8 @@ public class ObjectSnippets implements Snippets {
         private final SnippetInfo notifySnippet = snippet(ObjectSnippets.class, "fastNotify", originalNotifyCall(false), null);
         private final SnippetInfo notifyAllSnippet = snippet(ObjectSnippets.class, "fastNotifyAll", originalNotifyCall(true), null);
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
         }
 
         private ResolvedJavaMethod originalNotifyCall(boolean notifyAll) throws GraalError {
@@ -103,10 +101,10 @@ public class ObjectSnippets implements Snippets {
                 args.add("thisObj", fn.object);
                 SnippetTemplate template = template(fn, args);
                 graph.getDebug().log("Lowering fast notify in %s: node=%s, template=%s, arguments=%s", graph, fn, template, args);
-                UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), fn, DEFAULT_REPLACER, args);
-                for (Node originalNode : replacements.getKeys()) {
+                UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), fn, DEFAULT_REPLACER, args);
+                for (Node originalNode : duplicates.getKeys()) {
                     if (originalNode instanceof InvokeNode) {
-                        InvokeNode invoke = (InvokeNode) replacements.get(originalNode);
+                        InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
                         assert invoke.asNode().graph() == graph;
                         // Here we need to fix the bci of the invoke
                         invoke.setBci(fn.getBci());

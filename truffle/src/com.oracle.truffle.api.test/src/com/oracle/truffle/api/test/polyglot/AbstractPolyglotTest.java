@@ -51,7 +51,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -194,9 +193,8 @@ public abstract class AbstractPolyglotTest {
     @SuppressWarnings({"unchecked", "static-method"})
     protected final <T extends Node> Supplier<T> adoptNode(TruffleLanguage<?> lang, T node) {
         TestRootNode root = new TestRootNode(lang, node);
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
         // execute it to trigger instrumentations
-        target.call();
+        root.getCallTarget().call();
         return () -> (T) root.node;
     }
 

@@ -57,7 +57,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -302,7 +301,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final com.oracle.truffle.api.source.Source source = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Node.Child private BlockNode variables = parse(source);
 
@@ -311,7 +310,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     return variables.execute(frame);
                 }
 
-            });
+            }.getCallTarget();
         }
 
         private BlockNode parse(com.oracle.truffle.api.source.Source source) {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
@@ -80,6 +79,11 @@ public class StatementTest {
                                 return context.getValueConstructors(null, lang);
                             }
                         });
+        if (testRuns.isEmpty()) {
+            // BeforeClass and AfterClass annotated methods are not called when there are no tests
+            // to run. But we need to free TestContext.
+            afterClass();
+        }
         return testRuns;
     }
 
@@ -89,7 +93,7 @@ public class StatementTest {
     }
 
     @AfterClass
-    public static void afterClass() throws IOException {
+    public static void afterClass() {
         context.close();
         context = null;
     }

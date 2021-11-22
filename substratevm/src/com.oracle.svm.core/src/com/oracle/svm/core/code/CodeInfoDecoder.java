@@ -24,29 +24,19 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+// Checkstyle: allow reflection
 
-// Checkstyle: stop
-import java.lang.reflect.Executable;
-// Checkstyle: resume
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
@@ -367,7 +357,7 @@ public final class CodeInfoDecoder {
         }
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info,
-                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
+                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")
@@ -502,138 +492,6 @@ public final class CodeInfoDecoder {
     @Fold
     static CodeInfoDecoderCounters counters() {
         return ImageSingletons.lookup(CodeInfoDecoderCounters.class);
-    }
-
-    public static Executable[] getMethodMetadata(DynamicHub declaringType) {
-        return getMethodMetadata(declaringType.getTypeID());
-    }
-
-    public static Executable[] getAllMethodMetadata() {
-        List<Executable> allMethods = new ArrayList<>();
-        for (int i = 0; i < ImageSingletons.lookup(MethodMetadataEncoding.class).getIndexEncoding().length / Integer.BYTES; ++i) {
-            allMethods.addAll(Arrays.asList(getMethodMetadata(i)));
-        }
-        return allMethods.toArray(new Executable[0]);
-    }
-
-    /**
-     * The metadata for methods in the image is split into two arrays: one for the index and the
-     * other for data. The index contains an array of integers pointing to offsets in the data, and
-     * indexed by type ID. The data array contains arrays of method metadata, ordered by type ID,
-     * such that all methods declared by a class are stored consecutively. The data for a method is
-     * stored in the following format:
-     *
-     * <pre>
-     * {
-     *     int methodNameIndex;        // index in frameInfoSourceMethodNames ("<init>" for constructors)
-     *     int modifiers;
-     *     int paramCount;
-     *     {
-     *         int paramTypeIndex;     // index in frameInfoSourceClasses
-     *     } paramTypes[paramCount];
-     *     int returnTypeIndex;        // index in frameInfoSourceClasses (void for constructors)
-     *     int exceptionTypeCount;
-     *     {
-     *         int exceptionTypeIndex; // index in frameInfoSourceClasses
-     *     } exceptionTypes[exceptionTypeCount];
-     *     // Annotation encodings (see {@link CodeInfoEncoder})
-     *     int annotationsLength;
-     *     byte[] annotationsEncoding[annotationsLength];
-     *     int parameterAnnotationsLength;
-     *     byte[] parameterAnnotationsEncoding[parameterAnnotationsLength];
-     * }
-     * </pre>
-     */
-    public static Executable[] getMethodMetadata(int typeID) {
-        CodeInfo info = CodeInfoTable.getImageCodeInfo();
-        MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
-        byte[] index = encoding.getIndexEncoding();
-        UnsafeArrayTypeReader indexReader = UnsafeArrayTypeReader.create(index, Integer.BYTES * typeID, ByteArrayReader.supportsUnalignedMemoryAccess());
-        int offset = indexReader.getS4();
-        if (offset == MethodMetadataEncoder.NO_METHOD_METADATA) {
-            return new Executable[0];
-        }
-        byte[] data = ImageSingletons.lookup(MethodMetadataEncoding.class).getMethodsEncoding();
-        UnsafeArrayTypeReader dataReader = UnsafeArrayTypeReader.create(data, offset, ByteArrayReader.supportsUnalignedMemoryAccess());
-
-        int methodCount = dataReader.getUVInt();
-        Executable[] methods = new Executable[methodCount];
-        for (int i = 0; i < methodCount; ++i) {
-            int classIndex = dataReader.getSVInt();
-            Class<?> declaringClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), classIndex);
-
-            int nameIndex = dataReader.getSVInt();
-            /* Interning the string to ensure JDK8 method search succeeds */
-            String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), nameIndex).intern();
-
-            int modifiers = dataReader.getUVInt();
-
-            int paramCount = dataReader.getUVInt();
-            Class<?>[] paramTypes = new Class<?>[paramCount];
-            for (int j = 0; j < paramCount; ++j) {
-                int paramTypeIndex = dataReader.getSVInt();
-                paramTypes[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), paramTypeIndex);
-            }
-
-            int returnTypeIndex = dataReader.getSVInt();
-            Class<?> returnType = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), returnTypeIndex);
-
-            int exceptionCount = dataReader.getUVInt();
-            Class<?>[] exceptionTypes = new Class<?>[exceptionCount];
-            for (int j = 0; j < exceptionCount; ++j) {
-                int exceptionTypeIndex = dataReader.getSVInt();
-                exceptionTypes[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), exceptionTypeIndex);
-            }
-
-            int signatureIndex = dataReader.getSVInt();
-            String signature = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), signatureIndex);
-
-            int annotationsLength = dataReader.getUVInt();
-            byte[] annotations = new byte[annotationsLength];
-            for (int j = 0; j < annotationsLength; ++j) {
-                annotations[j] = (byte) dataReader.getS1();
-            }
-
-            int parameterAnnotationsLength = dataReader.getUVInt();
-            byte[] parameterAnnotations = new byte[parameterAnnotationsLength];
-            for (int j = 0; j < parameterAnnotationsLength; ++j) {
-                parameterAnnotations[j] = (byte) dataReader.getS1();
-            }
-
-            int typeAnnotationsLength = dataReader.getUVInt();
-            byte[] typeAnnotations = new byte[typeAnnotationsLength];
-            for (int j = 0; j < typeAnnotationsLength; ++j) {
-                typeAnnotations[j] = (byte) dataReader.getS1();
-            }
-
-            boolean parameterDataPresent = dataReader.getU1() == 1;
-            String[] parameterNames = null;
-            int[] parameterModifiers = null;
-            if (parameterDataPresent) {
-                int parameterCount = dataReader.getUVInt();
-                parameterNames = new String[parameterCount];
-                parameterModifiers = new int[parameterCount];
-                for (int j = 0; j < paramCount; ++j) {
-                    int parameterNameIndex = dataReader.getSVInt();
-                    parameterNames[j] = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), parameterNameIndex);
-                    parameterModifiers[j] = dataReader.getS4();
-                }
-            }
-
-            if (name.equals("<init>")) {
-                assert returnType == void.class;
-                methods[i] = ImageSingletons.lookup(RuntimeReflectionConstructors.class).newConstructor(declaringClass, paramTypes, exceptionTypes, modifiers, signature,
-                                annotations, parameterAnnotations, typeAnnotations, parameterNames, parameterModifiers);
-            } else {
-                methods[i] = ImageSingletons.lookup(RuntimeReflectionConstructors.class).newMethod(declaringClass, name, paramTypes, returnType, exceptionTypes, modifiers, signature,
-                                annotations, parameterAnnotations, null, typeAnnotations, parameterNames, parameterModifiers);
-            }
-        }
-        return methods;
-    }
-
-    public static Target_jdk_internal_reflect_ConstantPool getMetadataPseudoConstantPool() {
-        return new Target_jdk_internal_reflect_ConstantPool();
     }
 }
 

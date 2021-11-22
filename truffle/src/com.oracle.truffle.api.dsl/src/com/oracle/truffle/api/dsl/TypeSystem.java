@@ -40,61 +40,87 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.nodes.Node;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Type guards are the most common form of guards used in Truffle languages. By default all type
+ * checks and casts use the default method of checking and casting a type in Java. A default type
+ * check is performed using the <code>instanceof</code> operator, and a default cast is done using a
+ * standard Java cast conversion. However, for some types, this behavior needs to be customized or
+ * extended. Therefore, operations can decide to use type systems. If used, type systems are applied
+ * to operation classes using the {@link TypeSystemReference} annotation. Only one type system can
+ * be active for a single operation. Type systems are inherited from operation superclasses so that
+ * the most concrete type system reference is used. If no type system reference is found in the type
+ * hierarchy, all type checks and casts are kept default.
  * <p>
- * Each {@link Node} has one {@link TypeSystem} at its root to define the types that can be used
- * throughout the system. Multiple {@link TypeSystem}s are allowed, but they cannot be mixed inside
- * a single {@link Node} hierarchy. A {@link TypeSystem} optionally defines a list of types as its
- * child elements, in which every type precedes its super types. The latter condition ensures that
- * the most concrete type is found first when searching the list sequentially for the type of a
- * given generic value.
- * </p>
- *
- * <p>
- * Each {@link #value()} is represented as a Java type. A type can specify two annotations:
- * {@link TypeCheck} and {@link TypeCast}. The {@link TypeCheck} checks whether a given generic
- * value matches to the current type. The {@link TypeCast} casts a generic type value to the current
- * type. If the {@link TypeCheck} and {@link TypeCast} annotations are not declared in the
- * {@link TypeSystem} the a default implementation is provided. The default implementation of
- * {@link TypeCheck} returns <code>true</code> only on an exact type match and {@link TypeCast} is
- * only a cast to this type. Specified methods with {@link TypeCheck} and {@link TypeCast} may be
- * used to extend the definition of a type in the language. In our example, the
- * <code>isInteger</code> and <code>asInteger</code> methods are defined in a way so that they
- * accept also {@link Integer} values, implicitly converting them to {@link Double} . This example
- * points out how we express implicit type conversions.
- * </p>
- *
- * <p>
- * <b>Example:</b> The {@link TypeSystem} contains the types {@link Boolean}, {@link Integer}, and
- * {@link Double}. The type {@link Object} is always used implicitly as the generic type represent
- * all values.
+ * Example usage:
  *
  * <pre>
+ * &#64;TypeSystem
+ * public static class ExampleTypeSystem {
  *
- * {@literal @}TypeSystem(types = {boolean.class, int.class, double.class})
- * public abstract class ExampleTypeSystem {
- * 
- *     {@literal @}TypeCheck
- *     public boolean isInteger(Object value) {
- *         return value instanceof Integer || value instanceof Double;
+ *     &#64;TypeCast(Undefined.class)
+ *     public static Undefined asUndefined(Object value) {
+ *         return Undefined.INSTANCE;
  *     }
- * 
- *     {@literal @}TypeCast
- *     public double asInteger(Object value) {
- *         return ((Number)value).doubleValue();
+ *
+ *     &#64;TypeCheck(Undefined.class)
+ *     public static boolean isUndefined(Object value) {
+ *         return value == Undefined.INSTANCE;
  *     }
+ *
+ *     &#64;ImplicitCast
+ *     public static double castInt(int value) {
+ *         return value;
+ *     }
+ * }
+ *
+ * &#64;TypeSystemReference(ExampleTypeSystem.class)
+ * public abstract class BaseNode extends Node {
+ *     abstract Object execute();
+ * }
+ *
+ * public static final class Undefined {
+ *     public static final Undefined INSTANCE = new Undefined();
  * }
  * </pre>
  *
+ * The example type system declared in here defines a special type check and cast for the type
+ * Undefined using methods annotated with {@link TypeCheck} and {@link TypeCast}. Undefined is a
+ * singleton type and therefore, only a single instance of it exists at a time. For singleton types
+ * the type check can be implemented using an identity comparison and instead of casting a value to
+ * Undefined we can implement it by returning a constant value. Both the singleton check and cast
+ * are considered more efficient than the default check and cast behavior.
+ * <p>
+ * Multiple distinct Java types can be used to represent values of the same semantic guest language
+ * type. For example our JavaScript implementation uses the Java types <code>int</code> and
+ * <code>double</code> to represent the JavaScript numeric type. Whenever a type needs to be checked
+ * for the type numeric we need to check the value for each representation type. Defining a
+ * specialization with two numeric parameters would normally require us to specify four
+ * specializations, for each combination of the representation type. However, in Java, an
+ * <code>int</code> type has the interesting property of always being representable with a double
+ * value without losing precision. Type systems allows the user to specify such relationships using
+ * implicit casts such as the <code>castInt</code> method declared in the example After declaring an
+ * implicit cast from <code>int</code> to <code>double</code> we can specify a single specialization
+ * with double type guards to implicitly represent all the cases of the JavaScript numeric type.
+ * Whenever the DSL implementation needs to cast a value from <code>int</code> to
+ * <code>double</code> then the implicit cast method is called. Specializations with
+ * <code>int</code> type guards can be declared before specializations with <code>double</code> type
+ * guards. If an int specialization is declared after the <code>double</code> specialization then
+ * the <code>int</code> specialization is unreachable due to the implicit cast. The requirements for
+ * implicit casts can vary between guest languages. Therefore, no implicit cast is enabled by
+ * default or if no type system is referenced.
+ * <p>
+ * If multiple implicit casts are declared for a single target type then their types are checked in
+ * declaration order. Languages implementations are encouraged to optimize their implicit cast
+ * declaration order by sorting them starting with the most frequently used type.
  *
  * @see TypeCast
  * @see TypeCheck
+ * @see ImplicitCast
  * @since 0.8 or earlier
  */
 @Retention(RetentionPolicy.CLASS)
@@ -103,7 +129,7 @@ public @interface TypeSystem {
 
     /**
      * The list of types as child elements of the {@link TypeSystem}. Each precedes its super type.
-     * 
+     *
      * @since 0.8 or earlier
      */
     Class<?>[] value() default {};

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -115,6 +116,7 @@ public final class InspectorRuntime extends RuntimeDomain {
     private InspectorExecutionContext.Listener contextListener;
     private ScriptsHandler slh;
     private Enabler enabler;
+    private List<ConsoleOutputListener> outputListeners;
 
     public InspectorRuntime(InspectorExecutionContext context) {
         this.context = context;
@@ -130,8 +132,20 @@ public final class InspectorRuntime extends RuntimeDomain {
         enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
         enabler.enable();
         OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
-        oh.setOutListener(new ConsoleOutputListener("log"));
-        oh.setErrListener(new ConsoleOutputListener("error"));
+        ConsoleOutputListener outL = new ConsoleOutputListener("log");
+        ConsoleOutputListener errL = new ConsoleOutputListener("error");
+        oh.setOutListener(outL);
+        oh.setErrListener(errL);
+        outputListeners = Arrays.asList(new ConsoleOutputListener[]{outL, errL});
+    }
+
+    @Override
+    public void notifyClosing() {
+        if (outputListeners != null) {
+            for (ConsoleOutputListener listener : outputListeners) {
+                listener.flush();
+            }
+        }
     }
 
     @Override
@@ -213,10 +227,8 @@ public final class InspectorRuntime extends RuntimeDomain {
             exceptionText[0] = "<Not suspended>";
         }
         if (parsed && persistScript) {
-            int id = slh.assureLoaded(source);
-            if (id != -1) {
-                ret.put("scriptId", Integer.toString(id));
-            }
+            int id = slh.assureLoaded(source).getId();
+            ret.put("scriptId", Integer.toString(id));
         }
         if (exceptionText[0] != null) {
             fillExceptionDetails(ret, exceptionText[0]);
@@ -1001,5 +1013,12 @@ public final class InspectorRuntime extends RuntimeDomain {
             } while (output.length() > 0);
         }
 
+        void flush() {
+            String text = output.toString();
+            if (!text.isEmpty()) {
+                output.delete(0, text.length());
+                notifyConsoleAPICalled(type, text);
+            }
+        }
     }
 }

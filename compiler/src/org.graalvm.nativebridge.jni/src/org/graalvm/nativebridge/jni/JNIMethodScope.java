@@ -24,8 +24,6 @@
  */
 package org.graalvm.nativebridge.jni;
 
-import static org.graalvm.nativebridge.jni.JNIUtil.PopLocalFrame;
-import static org.graalvm.nativebridge.jni.JNIUtil.PushLocalFrame;
 import static org.graalvm.nativebridge.jni.JNIUtil.getFeatureName;
 
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
@@ -42,7 +40,7 @@ import java.util.Objects;
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
  * This is necessary to support use of JNI local frames.
  */
-public final class JNIMethodScope implements AutoCloseable {
+public class JNIMethodScope implements AutoCloseable {
 
     private static final ThreadLocal<JNIMethodScope> topScope = new ThreadLocal<>();
 
@@ -104,9 +102,6 @@ public final class JNIMethodScope implements AutoCloseable {
         JNIMethodScope top = topScope.get();
         this.env = env;
         if (top == null) {
-            // Only push a JNI frame for the top level native method call.
-            // HotSpot's JNI implementation currently ignores the `capacity` argument
-            PushLocalFrame(env, 64);
             top = this;
             parent = null;
             topScope.set(this);
@@ -143,7 +138,6 @@ public final class JNIMethodScope implements AutoCloseable {
                 throw new IllegalStateException("Unexpected JNI scope: " + topScope.get());
             }
             topScope.set(null);
-            objResult = PopLocalFrame(env, objResult);
         } else {
             JNIMethodScope top = parent;
             while (top.parent != null) {

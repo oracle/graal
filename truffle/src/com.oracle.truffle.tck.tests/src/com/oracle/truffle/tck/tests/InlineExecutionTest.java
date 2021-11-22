@@ -41,7 +41,6 @@
 package com.oracle.truffle.tck.tests;
 
 import com.oracle.truffle.tck.common.inline.InlineVerifier;
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Objects;
@@ -73,6 +72,11 @@ public class InlineExecutionTest {
                 res.add(new InlineTestRun(new AbstractMap.SimpleImmutableEntry<>(lang, snippet.getScript()), snippet));
             }
         }
+        if (res.isEmpty()) {
+            // BeforeClass and AfterClass annotated methods are not called when there are no tests
+            // to run. But we need to free TestContext.
+            afterClass();
+        }
         return res;
     }
 
@@ -82,7 +86,7 @@ public class InlineExecutionTest {
     }
 
     @AfterClass
-    public static void afterClass() throws IOException {
+    public static void afterClass() {
         context.close();
         context = null;
     }

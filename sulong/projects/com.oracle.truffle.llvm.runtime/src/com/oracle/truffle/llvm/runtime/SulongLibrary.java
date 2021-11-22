@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,10 +62,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Objects;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -107,7 +107,7 @@ public final class SulongLibrary implements TruffleObject {
             RootCallTarget startCallTarget = language.getStartFunctionCode().getLLVMIRFunctionSlowPath();
             Path applicationPath = Paths.get(mainFunction.getStringPath());
             RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-            return LLVMLanguage.createCallTarget(rootNode);
+            return rootNode.getCallTarget();
         }
     }
 

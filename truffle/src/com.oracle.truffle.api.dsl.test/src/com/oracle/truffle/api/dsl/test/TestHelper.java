@@ -119,15 +119,11 @@ class TestHelper {
     }
 
     static CallTarget createCallTarget(ValueNode node) {
-        return createCallTarget(new TestRootNode<>(node));
-    }
-
-    static CallTarget createCallTarget(TestRootNode<? extends ValueNode> node) {
-        return Truffle.getRuntime().createCallTarget(node);
+        return new TestRootNode<>(node).getCallTarget();
     }
 
     static RootCallTarget createCallTarget(NodeFactory<? extends ValueNode> factory, Object... constants) {
-        return Truffle.getRuntime().createCallTarget(createRoot(factory, constants));
+        return createRoot(factory, constants).getCallTarget();
     }
 
     static boolean assertionsEnabled() {

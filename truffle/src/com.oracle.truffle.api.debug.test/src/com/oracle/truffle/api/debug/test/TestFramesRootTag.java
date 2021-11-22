@@ -44,9 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
 
 import java.util.Iterator;
+
+import org.graalvm.polyglot.Source;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -65,8 +67,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-
-import org.graalvm.polyglot.Source;
 
 /**
  * Test that debugger stack frames are based only on call nodes that are enclosed in a node tagged
@@ -163,11 +163,11 @@ public class TestFramesRootTag extends AbstractDebugTest {
                 if (root == null) {
                     root = newRoot;
                 } else {
-                    lastRoot.setDescendant(Truffle.getRuntime().createCallTarget(newRoot));
+                    lastRoot.setDescendant(newRoot.getCallTarget());
                 }
                 lastRoot = newRoot;
             }
-            return Truffle.getRuntime().createCallTarget(root);
+            return root.getCallTarget();
         }
 
         private static final class TestRoot extends RootNode {

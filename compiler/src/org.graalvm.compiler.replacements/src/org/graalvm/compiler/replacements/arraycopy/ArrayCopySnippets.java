@@ -25,7 +25,6 @@
 package org.graalvm.compiler.replacements.arraycopy;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -36,8 +35,6 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -58,7 +55,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
-import org.graalvm.compiler.replacements.SnippetCounter.Group.Factory;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -67,7 +63,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -84,7 +79,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * object array and the other one a primitive array.</li>
  * <li>{@link #arraycopyExactStubCallSnippet}: this snippet is used for array copies that do not
  * require a store check. This is the case if the array copy is either
- * {@linkplain ArrayCopy#isExact() exact}, i.e., we can prove that the source array type is
+ * {@linkplain BasicArrayCopyNode#isExact() exact}, i.e., we can prove that the source array type is
  * assignable to the destination array type, or if one of the objects is a primitive array (and the
  * other is unknown). In the latter case, it is sufficient to dynamically check that the array types
  * are the same. No store check is needed.</li>
@@ -147,10 +142,11 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * Snippet that performs an {@linkplain ArrayCopy#isExact() exact} array copy. Used when the
-     * array copy might be {@linkplain Templates#lower(ArrayCopyNode, boolean, LoweringTool)
-     * expanded}. Lowering is delayed using an {@link ArrayCopyWithDelayedLoweringNode} which will
-     * dispatch to {@link #exactArraycopyWithExpandedLoopSnippet}.
+     * Snippet that performs an {@linkplain BasicArrayCopyNode#isExact() exact} array copy. Used
+     * when the array copy might be
+     * {@linkplain Templates#lower(ArrayCopyNode, boolean, LoweringTool) expanded}. Lowering is
+     * delayed using an {@link ArrayCopyWithDelayedLoweringNode} which will dispatch to
+     * {@link #exactArraycopyWithExpandedLoopSnippet}.
      *
      * @see Templates#lower(ArrayCopyNode, boolean, LoweringTool)
      * @see #exactArraycopyWithExpandedLoopSnippet
@@ -175,7 +171,8 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * Snippet that performs a stub call for an {@linkplain ArrayCopy#isExact() exact} array copy.
+     * Snippet that performs a stub call for an {@linkplain BasicArrayCopyNode#isExact() exact}
+     * array copy.
      */
     @Snippet
     public void arraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
@@ -251,8 +248,9 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
-     * Inlines a loop that performs an {@linkplain ArrayCopy#isExact() exact} element-by-element
-     * array copy. The explict loop allows subsequent phases to optimize the code.
+     * Inlines a loop that performs an {@linkplain BasicArrayCopyNode#isExact() exact}
+     * element-by-element array copy. The explict loop allows subsequent phases to optimize the
+     * code.
      */
     @SuppressWarnings("unused")
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
@@ -446,9 +444,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
 
-        public Templates(ArrayCopySnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, Factory factory, Providers providers,
-                        SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, factories, providers, snippetReflection, target);
+        public Templates(ArrayCopySnippets receiver, Group.Factory factory, OptionValues options, Providers providers) {
+            super(options, providers);
             this.counters = new Counters(factory);
 
             useOriginalArraycopy = receiver.useOriginalArraycopy();
@@ -493,7 +490,7 @@ public abstract class ArrayCopySnippets implements Snippets {
          * @see ArrayCopySnippets
          */
         public void lower(ArrayCopyNode arraycopy, boolean mayExpandThisArraycopy, LoweringTool tool) {
-            JavaKind elementKind = ArrayCopy.selectComponentKind(arraycopy);
+            JavaKind elementKind = BasicArrayCopyNode.selectComponentKind(arraycopy);
             SnippetInfo snippetInfo;
             final ArrayCopyTypeCheck arrayTypeCheck;
 
@@ -516,10 +513,6 @@ public abstract class ArrayCopySnippets implements Snippets {
                     // we don't know anything about the types - use the generic copying
                     snippetInfo = delayedGenericArraycopySnippet;
                     // no need for additional type check to avoid duplicated work
-                    arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
-                } else if (GeneratePIC.getValue(options)) {
-                    // use generic copying for AOT compilation
-                    snippetInfo = delayedGenericArraycopySnippet;
                     arrayTypeCheck = ArrayCopyTypeCheck.NO_ARRAY_TYPE_CHECK;
                 } else if (srcComponentType != null && destComponentType != null) {
                     if (!srcComponentType.isPrimitive() && !destComponentType.isPrimitive()) {
@@ -620,10 +613,10 @@ public abstract class ArrayCopySnippets implements Snippets {
         private void instantiate(Arguments args, BasicArrayCopyNode arraycopy) {
             StructuredGraph graph = arraycopy.graph();
             SnippetTemplate template = template(arraycopy, args);
-            UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
-            for (Node originalNode : replacements.getKeys()) {
+            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
+            for (Node originalNode : duplicates.getKeys()) {
                 if (originalNode instanceof InvokeNode) {
-                    InvokeNode invoke = (InvokeNode) replacements.get(originalNode);
+                    InvokeNode invoke = (InvokeNode) duplicates.get(originalNode);
                     assert invoke.asNode().graph() == graph;
                     CallTargetNode call = invoke.callTarget();
 
@@ -643,10 +636,8 @@ public abstract class ArrayCopySnippets implements Snippets {
                 } else if (originalNode instanceof InvokeWithExceptionNode) {
                     throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 } else if (originalNode instanceof ArrayCopyWithDelayedLoweringNode) {
-                    ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) replacements.get(originalNode);
+                    ArrayCopyWithDelayedLoweringNode slowPath = (ArrayCopyWithDelayedLoweringNode) duplicates.get(originalNode);
                     assert arraycopy.stateAfter() != null : arraycopy;
-                    assert slowPath.stateAfter() == arraycopy.stateAfter() : "States do not match for slowpath=" + slowPath + " and array copy=" + arraycopy + " slowPathState=" +
-                                    slowPath.stateAfter() + " and arraycopyState=" + arraycopy.stateAfter();
                     slowPath.setBci(arraycopy.getBci());
                 }
             }

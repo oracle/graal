@@ -24,11 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -47,6 +42,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -54,6 +50,12 @@ import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class TraceCompilationTest extends TestWithPolyglotOptions {
 
@@ -130,7 +132,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             PrintStream origSystemErr = System.err;
             ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
             System.setErr(new PrintStream(rawStdErr, true, "UTF-8"));
-            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(10));
+            OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(10).getCallTarget();
             target.call();
             System.setErr(origSystemErr);
             String strStdErr = rawStdErr.toString("UTF-8");
@@ -221,7 +223,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
     }
 
     private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
     }
@@ -249,10 +251,10 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
             }
             TestHandler handler = builder.build();
             setupContext(newContextBuilder(additionalOptions, handler));
-            OptimizedCallTarget warmUpTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
+            OptimizedCallTarget warmUpTarget = (OptimizedCallTarget) rootProvider.get().getCallTarget();
             warmUpTarget.call();
             handler.start();
-            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
+            OptimizedCallTarget target = (OptimizedCallTarget) rootProvider.get().getCallTarget();
             target.call();
             handler.assertLogs();
             return null;

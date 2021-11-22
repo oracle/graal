@@ -129,7 +129,14 @@ The registration of the Espresso library ('lib:espresso') is skipped. Please run
                             break
 
                 with open(generated_header, 'r') as generated_header_file:
-                    generated_header_lines = generated_header_file.readlines()
+                    generated_header_lines = []
+                    for line in generated_header_file.readlines():
+                        # Ignore definitions that are not needed for Espresso
+                        if not line.startswith("typedef") or "(*Espresso_" in line or "__graal" in line or "(*graal_" in line:
+                            generated_header_lines.append(line)
+                        else:
+                            newline = generated_header_lines.pop()  # Remove newline before ignored declaration
+                            assert newline == "\n"
 
                 errors = errors or mx.update_file(committed_header, ''.join(committed_header_copyright + generated_header_lines), showDiff=True)
 
@@ -166,6 +173,7 @@ espresso_library_config = mx_sdk_vm.LibraryConfig(
         '--language:java',
         '--tool:all',
         '-H:+EnableSignalAPI',
+        '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--features=com.oracle.truffle.espresso.FinalizationFeature',
     ],

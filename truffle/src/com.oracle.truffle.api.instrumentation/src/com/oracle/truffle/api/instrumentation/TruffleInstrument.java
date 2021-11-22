@@ -232,7 +232,7 @@ public abstract class TruffleInstrument {
      * }
      *
      * &#64;Registration(...)
-     * class MyInstrument extends TruffleInstruement {
+     * class MyInstrument extends TruffleInstrument {
      *
      *   static final OptionDescriptors CONTEXT_OPTIONS = new MyContextOptionDescriptors();
      *

@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
@@ -56,6 +57,7 @@ import com.oracle.truffle.tools.chromeinspector.types.ScriptTypeProfile;
 import com.oracle.truffle.tools.chromeinspector.types.TypeObject;
 import com.oracle.truffle.tools.chromeinspector.types.TypeProfileEntry;
 import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
@@ -123,17 +125,34 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public Params stop() {
         long time = System.currentTimeMillis();
+        Map<TruffleContext, CPUSamplerData> data;
+        long period;
         synchronized (sampler) {
             sampler.setCollecting(false);
             sampler.setGatherSelfHitTimes(oldGatherSelfHitTimes);
-            long idleHitCount = (time - startTimestamp) / sampler.getPeriod() - sampler.getSampleCount();
-            Params profile = getProfile(sampler.getRootNodes(), idleHitCount, startTimestamp, time);
+            data = sampler.getData();
             sampler.clearData();
-            return profile;
+            period = sampler.getPeriod();
         }
+        long idleHitCount = (time - startTimestamp) / period - getSampleCount(data);
+        Params profile = getProfile(getRootNodes(data), idleHitCount, startTimestamp, time);
+        return profile;
+    }
+
+    private static Collection<ProfilerNode<CPUSampler.Payload>> getRootNodes(Map<TruffleContext, CPUSamplerData> data) {
+        Collection<ProfilerNode<CPUSampler.Payload>> retVal = new ArrayList<>();
+        for (CPUSamplerData samplerData : data.values()) {
+            for (Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes : samplerData.getThreadData().values()) {
+                retVal.addAll(profilerNodes);
+            }
+        }
+        return retVal;
+    }
+
+    private static long getSampleCount(Map<TruffleContext, CPUSamplerData> data) {
+        return data.values().stream().map(CPUSamplerData::getSamples).reduce(0L, Long::sum);
     }
 
     @Override
@@ -198,9 +217,12 @@ public final class InspectorProfiler extends ProfilerDomain {
         JSONObject json = new JSONObject();
         Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new LinkedHashMap<>();
         payloads.forEach(payload -> {
-            Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(payload.getSourceSection().getSource(), s -> new LinkedHashMap<>());
-            Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
-            pls.add(payload);
+            SourceSection sourceSection = payload.getSourceSection();
+            if (sourceSection != null) {
+                Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(sourceSection.getSource(), s -> new LinkedHashMap<>());
+                Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
+                pls.add(payload);
+            }
         });
         JSONArray result = new JSONArray();
         sourceToRoots.entrySet().stream().map(sourceEntry -> {
@@ -214,9 +236,8 @@ public final class InspectorProfiler extends ProfilerDomain {
                 }
                 functions.add(new FunctionCoverage(rootEntry.getKey(), isBlockCoverage, ranges.toArray(new CoverageRange[ranges.size()])));
             });
-            int scriptId = slh.getScriptId(sourceEntry.getKey());
-            Script script = scriptId < 0 ? null : slh.getScript(scriptId);
-            return new ScriptCoverage(script != null ? script.getId() : 0, script != null ? script.getUrl() : "", functions.toArray(new FunctionCoverage[functions.size()]));
+            Script script = slh.assureLoaded(sourceEntry.getKey());
+            return new ScriptCoverage(script.getId(), script.getUrl(), functions.toArray(new FunctionCoverage[functions.size()]));
         }).forEachOrdered(scriptCoverage -> {
             result.put(scriptCoverage.toJSON());
         });
@@ -248,10 +269,9 @@ public final class InspectorProfiler extends ProfilerDomain {
             int id = node2id.get(childProfilerNode);
             if (id < 0) { // not computed yet
                 id = -id;
-                int scriptId = slh.getScriptId(childProfilerNode.getSourceSection().getSource());
-                Script script = scriptId < 0 ? null : slh.getScript(scriptId);
                 SourceSection sourceSection = childProfilerNode.getSourceSection();
-                ProfileNode childNode = new ProfileNode(id, new RuntimeCallFrame(childProfilerNode.getRootName(), script != null ? script.getId() : 0, script != null ? script.getUrl() : "",
+                Script script = slh.assureLoaded(sourceSection.getSource());
+                ProfileNode childNode = new ProfileNode(id, new RuntimeCallFrame(childProfilerNode.getRootName(), script.getId(), script.getUrl(),
                                 sourceSection.getStartLine(), sourceSection.getStartColumn()), childProfilerNode.getPayload().getSelfHitCount());
                 nodes.add(childNode);
                 for (Long timestamp : childProfilerNode.getPayload().getSelfHitTimes()) {
@@ -297,9 +317,8 @@ public final class InspectorProfiler extends ProfilerDomain {
                     entries.add(new TypeProfileEntry(sectionProfile.getSourceSection().getCharEndIndex(), types.toArray(new TypeObject[types.size()])));
                 }
             });
-            int scriptId = slh.getScriptId(entry.getKey());
-            Script script = scriptId < 0 ? null : slh.getScript(scriptId);
-            result.put(new ScriptTypeProfile(script != null ? script.getId() : 0, script != null ? script.getUrl() : "", entries.toArray(new TypeProfileEntry[entries.size()])).toJSON());
+            Script script = slh.assureLoaded(entry.getKey());
+            result.put(new ScriptTypeProfile(script.getId(), script.getUrl(), entries.toArray(new TypeProfileEntry[entries.size()])).toJSON());
         });
         json.put("result", result);
         return new Params(json);

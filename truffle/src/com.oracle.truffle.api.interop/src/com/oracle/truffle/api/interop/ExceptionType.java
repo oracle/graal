@@ -53,9 +53,18 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
  */
 public enum ExceptionType {
     /**
-     * Indicates that the application was exited within the guest language program. To obtain the
-     * exit status use {@link InteropLibrary#getExceptionExitStatus(Object) getExceptionExitStatus}.
-     *
+     * Indicates that the application was soft-exited within the guest language program. To obtain
+     * the exit status use {@link InteropLibrary#getExceptionExitStatus(Object)
+     * getExceptionExitStatus}. See
+     * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context Exit</a>
+     * for further information.
+     * <p>
+     * If a language uses hard exits, it should not use soft exits, i.e. throw exceptions of this
+     * type on its own.
+     * <p>
+     * If a language that does not use soft exits sees an exception of this type, it should re-throw
+     * it like other foreign exceptions, triggering finally blocks.
+     * 
      * @see InteropLibrary#getExceptionExitStatus(Object)
      * @since 20.3
      */

@@ -49,7 +49,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,6 +75,11 @@ public class ValueTest {
                 testRuns.add(testRun);
             }
         }
+        if (testRuns.isEmpty()) {
+            // BeforeClass and AfterClass annotated methods are not called when there are no tests
+            // to run. But we need to free TestContext.
+            afterClass();
+        }
         return testRuns;
     }
 
@@ -85,7 +89,7 @@ public class ValueTest {
     }
 
     @AfterClass
-    public static void afterClass() throws IOException {
+    public static void afterClass() {
         context.close();
         context = null;
     }

@@ -94,6 +94,7 @@ final class PolyglotContextConfig {
     private final List<PolyglotInstrument> configuredInstruments;
     final HostAccess hostAccess;
     final boolean allowValueSharing;
+    final boolean useSystemExit;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -101,7 +102,7 @@ final class PolyglotContextConfig {
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -157,7 +158,7 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
+            targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;
         this.processHandler = processHandler;
@@ -165,6 +166,7 @@ final class PolyglotContextConfig {
         this.environment = environment == null ? Collections.emptyMap() : environment;
         this.hostAccess = hostAccess;
         this.hostClassLoader = hostClassLoader;
+        this.useSystemExit = useSystemExit;
     }
 
     public ZoneId getTimeZone() {

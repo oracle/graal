@@ -61,12 +61,16 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -74,8 +78,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 public class ContextLocalTest extends AbstractPolyglotTest {
 
@@ -687,8 +696,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
-    public void testInstrumentCreatedBeforeContextsInitialized() {
-
+    @Test
+    public void testInnerContextLocals() {
+        try (Context ctx = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            Assert.assertEquals(0, ctx.eval(VALID_SHARED_LANGUAGE, "").asInt());
+        }
     }
 
     @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
@@ -708,6 +720,17 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            RootNode rootNode = new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            };
+            return rootNode.getCallTarget();
         }
 
         static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ValidExclusiveLanguage.class);
@@ -782,8 +805,68 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             return createContextThreadLocal((e, t) -> value);
         }
 
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return (new VSLRootNode(this)).getCallTarget();
+        }
+
         static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ValidSharedLanguage.class);
         static final LanguageReference<ValidSharedLanguage> REFERENCE = LanguageReference.create(ValidSharedLanguage.class);
+
+    }
+
+    public static class VSLRootNode extends RootNode {
+
+        @Node.Child private VSLNode node = new VSLNode();
+
+        public VSLRootNode(ValidSharedLanguage language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame virtualFrame) {
+            return node.execute(virtualFrame);
+        }
+
+    }
+
+    public static class VSLNode extends Node {
+
+        private final Source source = Source.newBuilder(VALID_EXCLUSIVE_LANGUAGE, "", "").build();
+
+        private final IndirectCallNode callNode = IndirectCallNode.create();
+
+        @SuppressWarnings("unused")
+        public Object execute(VirtualFrame virtualFrame) {
+            Env outerLanguageOuterEnv = ValidSharedLanguage.CONTEXT_REF.get(this);
+            TruffleContext innerTruffleContext = createInnerContext(outerLanguageOuterEnv);
+            Object outerTruffleContext = innerTruffleContext.enter(this);
+            try {
+                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(this);
+                createInstrument(outerLanguageInnerEnv);
+                CallTarget callTarget = parse(outerLanguageInnerEnv);
+                return callNode.call(callTarget);
+            } finally {
+                innerTruffleContext.leave(this, outerTruffleContext);
+                innerTruffleContext.close();
+            }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private CallTarget parse(Env env) {
+            return env.parsePublic(source);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static TruffleContext createInnerContext(Env env) {
+            return env.newContextBuilder().build();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static void createInstrument(Env env) {
+            InstrumentInfo instrumentInfo = env.getInstruments().get(VALID_INSTRUMENT);
+            env.lookup(instrumentInfo, ValidInstrument.class);
+        }
 
     }
 
@@ -804,6 +887,23 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         protected void onCreate(Env env) {
             this.environment = env;
             env.registerService(this);
+            env.getInstrumenter().attachThreadsActivationListener(new ThreadsActivationListener() {
+                @Override
+                public void onEnterThread(TruffleContext c) {
+                    if (threadLocalDynamicValue != null && contextLocalDynamicValue != null) {
+                        local0.get(c);
+                        threadLocal0.get(c);
+                    }
+                }
+
+                @Override
+                public void onLeaveThread(TruffleContext c) {
+                    if (threadLocalDynamicValue != null && contextLocalDynamicValue != null) {
+                        local0.get(c);
+                        threadLocal0.get(c);
+                    }
+                }
+            });
         }
 
         InstrumentThreadLocalValue newInstrumentThreadLocal(TruffleContext context, Thread t) {

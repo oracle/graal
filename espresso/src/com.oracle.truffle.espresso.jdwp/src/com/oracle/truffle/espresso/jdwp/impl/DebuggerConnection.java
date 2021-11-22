@@ -286,6 +286,9 @@ public final class DebuggerConnection implements Commands {
                                 case JDWP.VirtualMachine.INSTANCE_COUNTS.ID:
                                     result = JDWP.VirtualMachine.INSTANCE_COUNTS.createReply(packet);
                                     break;
+                                case JDWP.VirtualMachine.ALL_MODULES.ID:
+                                    result = JDWP.VirtualMachine.ALL_MODULES.createReply(packet, context);
+                                    break;
                                 default:
                                     break;
                             }
@@ -346,6 +349,9 @@ public final class DebuggerConnection implements Commands {
                                     break;
                                 case JDWP.ReferenceType.CONSTANT_POOL.ID:
                                     result = JDWP.ReferenceType.CONSTANT_POOL.createReply(packet, context);
+                                    break;
+                                case JDWP.ReferenceType.MODULE.ID:
+                                    result = JDWP.ReferenceType.MODULE.createReply(packet, context);
                                     break;
                             }
                             break;
@@ -571,6 +577,19 @@ public final class DebuggerConnection implements Commands {
                             }
                             break;
                         }
+                        case JDWP.ModuleReference.ID: {
+                            switch (packet.cmd) {
+                                case JDWP.ModuleReference.NAME.ID:
+                                    result = JDWP.ModuleReference.NAME.createReply(packet, context);
+                                    break;
+                                case JDWP.ModuleReference.CLASSLOADER.ID:
+                                    result = JDWP.ModuleReference.CLASSLOADER.createReply(packet, context);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        }
                         case JDWP.Event.ID: {
                             switch (packet.cmd) {
                                 case JDWP.Event.COMPOSITE.ID:
@@ -587,8 +606,16 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                JDWP.LOGGER.warning(() -> "[Internal error]: " + t.getClass());
-                JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "processPacket", t);
+                if (entered) {
+                    // we can only use the Truffle logger if we were able to enter the context
+                    JDWP.LOGGER.warning(() -> "[Internal error]");
+                    JDWP.LOGGER.throwing(DebuggerConnection.class.getName(), "processPacket", t);
+                } else {
+                    // Checkstyle: stop allow error output
+                    System.out.println("[internal error]: " + t.getMessage());
+                    t.printStackTrace();
+                    // Checkstyle: resume allow error output
+                }
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));

@@ -30,14 +30,14 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 import jdk.vm.ci.meta.TriState;
 

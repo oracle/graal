@@ -80,9 +80,6 @@ final class SafepointStackSampler {
     }
 
     List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData, boolean useSyntheticFrames) {
-        if (context.isActive()) {
-            throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
-        }
         if (context.isClosed()) {
             return Collections.emptyList();
         }
@@ -101,7 +98,7 @@ final class SafepointStackSampler {
             return Collections.emptyList();
         }
         try {
-            future.get(10 * period, TimeUnit.MILLISECONDS);
+            future.get(period, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException e) {
             env.getLogger(getClass()).log(Level.SEVERE, "Sampling failed", e);
             return null;

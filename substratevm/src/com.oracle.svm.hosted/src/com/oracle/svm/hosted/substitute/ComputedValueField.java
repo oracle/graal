@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueTransformer;
@@ -51,7 +53,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -96,6 +97,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal,
                     boolean disableCaching) {
+        assert original != null;
+        assert targetClass != null;
+
         this.original = original;
         this.annotated = annotated;
         this.kind = kind;
@@ -236,12 +240,43 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 return constantValue;
         }
 
-        JavaConstant result = getCached(receiver);
-        if (result != null) {
-            return result;
+        ReadLock readLock = valueCacheLock.readLock();
+        try {
+            readLock.lock();
+            JavaConstant result = getCached(receiver);
+            if (result != null) {
+                return result;
+            }
+        } finally {
+            readLock.unlock();
         }
 
+        WriteLock writeLock = valueCacheLock.writeLock();
+        try {
+            writeLock.lock();
+            /*
+             * Check the cache again, now that we are holding the write-lock, i.e., we know that no
+             * other thread is computing a value right now.
+             */
+            JavaConstant result = getCached(receiver);
+            if (result != null) {
+                return result;
+            }
+            /*
+             * Note that the value computation must be inside the lock, because we want to guarantee
+             * that field-value computers are only executed once per unique receiver.
+             */
+            result = computeValue(metaAccess, receiver);
+            putCached(receiver, result);
+            return result;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    private JavaConstant computeValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
+        JavaConstant result;
         switch (kind) {
             case NewInstance:
                 try {
@@ -296,9 +331,10 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
                 }
                 break;
             default:
-                throw shouldNotReachHere("Field recomputation of kind " + kind + " specified by alias " + annotated.format("%H.%n") + " not yet supported");
+                throw shouldNotReachHere("Field recomputation of kind " + kind + " for field " + original.format("%H.%n") +
+                                (annotated != null ? " specified by alias " + annotated.format("%H.%n") : "") +
+                                " not yet supported");
         }
-        putCached(receiver, result);
         return result;
     }
 
@@ -306,33 +342,19 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         if (disableCaching) {
             return;
         }
-        WriteLock writeLock = valueCacheLock.writeLock();
-        try {
-            writeLock.lock();
-            if (receiver == null) {
-                valueCacheNullKey = result;
-            } else {
-                valueCache.put(receiver, result);
-            }
-        } finally {
-            writeLock.unlock();
+        if (receiver == null) {
+            valueCacheNullKey = result;
+        } else {
+            valueCache.put(receiver, result);
         }
     }
 
     private JavaConstant getCached(JavaConstant receiver) {
-        JavaConstant result;
-        ReadLock readLock = valueCacheLock.readLock();
-        try {
-            readLock.lock();
-            if (receiver == null) {
-                result = valueCacheNullKey;
-            } else {
-                result = valueCache.get(receiver);
-            }
-        } finally {
-            readLock.unlock();
+        if (receiver == null) {
+            return valueCacheNullKey;
+        } else {
+            return valueCache.get(receiver);
         }
-        return result;
     }
 
     @Override
@@ -418,6 +440,18 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return original.getAnnotation(annotationClass);
+    }
+
+    public boolean isCompatible(ResolvedJavaField o) {
+        if (this.equals(o)) {
+            return true;
+        } else if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        ComputedValueField that = (ComputedValueField) o;
+        return isFinal == that.isFinal && disableCaching == that.disableCaching && original.equals(that.original) && kind == that.kind &&
+                        Objects.equals(targetClass, that.targetClass) && Objects.equals(targetField, that.targetField) && Objects.equals(constantValue, that.constantValue);
     }
 
     @Override

@@ -457,7 +457,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Only write stmt_list if the entry actually has line number info. */
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
             log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
-            pos = writeAttrData4(lineIndex, buffer, pos);
+            pos = writeAttrSecOffset(lineIndex, buffer, pos);
         }
 
         /* Now write the child DIEs starting with the layout and pointer type. */

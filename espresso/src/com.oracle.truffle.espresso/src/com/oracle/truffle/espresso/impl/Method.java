@@ -263,13 +263,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         initRefKind();
         this.proxy = null;
 
-        if (getDeclaringKlass().isInterface() || isAbstract()) {
-            /*
-             * TODO(peterssen): GR-33781 Leaf method assumption cannot be trusted for default
-             * methods.
-             *
-             * Also disabled for abstract methods to reduce footprint.
-             */
+        if (isAbstract()) {
+            // Disabled for abstract methods to reduce footprint.
             this.isLeaf = NeverValidAssumption.INSTANCE;
         } else if (isStatic() || isPrivate() || isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet()) {
             // Nothing to assume, spare an assumption.
@@ -460,7 +455,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 // Look in libjava
                 TruffleObject nativeMethod = lookupAndBind(getVM().getJavaLibrary(), mangledName);
                 if (nativeMethod != null) {
-                    return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+                    return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())).getCallTarget();
                 }
             }
         }
@@ -473,7 +468,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             String mangledName = Mangle.mangleMethod(this, withSignature);
             TruffleObject nativeMethod = getContext().bindToAgent(this, mangledName);
             if (nativeMethod != null) {
-                return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+                return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())).getCallTarget();
             }
         }
         return null;
@@ -499,7 +494,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol);
-        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion())));
+        return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion())).getCallTarget();
     }
 
     public boolean isConstructor() {
@@ -975,7 +970,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Method result = new Method(this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
-        result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
+        result.getMethodVersion().callTarget = root.getCallTarget();
         return result;
     }
 
@@ -1362,7 +1357,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                      */
                     EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
                     if (redirectedMethod != null) {
-                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        callTarget = redirectedMethod.getCallTarget();
                         return callTarget;
                     }
 
@@ -1416,7 +1411,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
                 FrameDescriptor frameDescriptor = new FrameDescriptor();
                 EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
-                target = Truffle.getRuntime().createCallTarget(rootNode);
+                target = rootNode.getCallTarget();
             }
             return target;
         }

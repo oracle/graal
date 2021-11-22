@@ -54,6 +54,7 @@ import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -150,6 +151,10 @@ final class Target_java_lang_Enum {
             throw new IllegalArgumentException("No enum constant " + enumType.getName() + "." + name);
         }
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native int ordinal();
 }
 
 @TargetClass(java.lang.String.class)
@@ -160,6 +165,32 @@ final class Target_java_lang_String {
         String thisStr = SubstrateUtil.cast(this, String.class);
         return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
     }
+
+    @AnnotateOriginal
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    native boolean isLatin1();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native int length();
+
+    @AnnotateOriginal
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    native byte coder();
+
+    @Alias @TargetElement(name = "value", onlyWith = JDK11OrLater.class) byte[] valueJDK11;
+
+    @Alias @TargetElement(name = "value", onlyWith = JDK8OrEarlier.class) char[] valueJDK8;
+}
+
+@TargetClass(className = "java.lang.StringUTF16", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_StringUTF16 {
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static native char getChar(byte[] val, int index);
 }
 
 @TargetClass(java.lang.Throwable.class)
@@ -647,7 +678,7 @@ final class Target_java_lang_Compiler {
 final class Target_java_lang_NullPointerException {
 
     @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
         return null;
@@ -662,6 +693,16 @@ final class Target_jdk_internal_loader_ClassLoaders {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static byte[] getBytes(String string) {
+        return SubstrateUtil.cast(string, Target_java_lang_String.class).valueJDK11;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isLatin1(String string) {
+        return SubstrateUtil.cast(string, Target_java_lang_String.class).isLatin1();
+    }
 
     public static final class ClassValueSupport {
 

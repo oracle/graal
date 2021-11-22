@@ -7,22 +7,20 @@ permalink: /tools/graalvm-insight/
 
 # GraalVM Insight
 
-GraalVM Insight is a multipurpose, flexible tool for writing reliable
-microservices solutions that traces program runtime behavior and gathers insights.
+* [Start Using GraalVM Insight](#start-using-graalvm-insight)
+* [Polyglot Tracing](#polyglot-tracing)
+* [Inspecting Values](#inspecting-values)
 
-The dynamic nature of the tool helps users to selectively apply tracing pointcuts on
-already running applications with no loss of performance. Insight
-also provides detailed access to runtime behavior of a program, allowing users to
-inspect values and types at invocation or allocation sites. GraalVM Insight further permits users to
-modify computed values, interrupt execution, and quickly experiment with
-behavioral changes without modifying the application code.
+GraalVM Insight is a multipurpose, flexible tool for writing reliable microservices solutions that traces program runtime behavior and gathers insights.
+
+The dynamic nature of the tool helps users to selectively apply tracing pointcuts on already running applications with no loss of performance.
+GraalVM Insight also provides detailed access to runtime behavior of a program, allowing users to inspect values and types at invocation or allocation sites.
+The tool further permits users to modify computed values, interrupt execution, and quickly experiment with behavioral changes without modifying the application code.
 
 This page provides information on GraalVM Insight as of the 20.1 version.
 To learn about Insight on versions 20.0 and 19.3, proceed [here](https://github.com/oracle/graal/blob/release/graal-vm/20.0/tools/docs/T-Trace.md).
 
-Note: The GraalVM Insight tool is offered as a technology preview and requires the user to
-pass the `--experimental-options` option in order to enable the `--insight`
-instrument.
+Note: The GraalVM Insight tool is offered as a technology preview and requires the user to pass the `--experimental-options` option in order to enable the `--insight` instrument.
 
 ## Start Using GraalVM Insight
 
@@ -32,30 +30,25 @@ insight.on('source', function(ev) {
     print(`Loading ${ev.characters.length} characters from ${ev.name}`);
 });
 ```
-2. Having set `JAVA_HOME` to the GraalVM home directory, start the `node` launcher with
-the `--insight` tool and observe what scripts are being loaded and
-evaluated:
+2. Having set `JAVA_HOME` to the GraalVM home directory, start the `node` launcher with the `--insight` tool and observe what scripts are being loaded and evaluated:
 ```shell
 $JAVA_HOME/bin/node --experimental-options --insight=source-tracing.js --js.print -e "print('The result: ' + 6 * 7)" | tail -n 10
-Loading 29938 characters from url.js
-Loading 345 characters from internal/idna.js
-Loading 12642 characters from punycode.js
-Loading 33678 characters from internal/modules/cjs/loader.js
-Loading 13058 characters from vm.js
-Loading 52408 characters from fs.js
-Loading 15920 characters from internal/fs/utils.js
-Loading 505 characters from [eval]-wrapper
+Loading 215 characters from internal/modules/esm/transform_source.js
+Loading 12107 characters from internal/modules/esm/translators.js
+Loading 1756 characters from internal/modules/esm/create_dynamic_module.js
+Loading 12930 characters from internal/vm/module.js
+Loading 2710 characters from internal/modules/run_main.js
+Loading 308 characters from module.js
+Loading 10844 characters from internal/source_map/source_map.js
+Loading 170 characters from [eval]-wrapper
 Loading 29 characters from [eval]
 The result: 42
 ```
-The _source-tracing.js_ script used the provided `insight` object to
-attach a source listener to the runtime. Whenever the script was loaded, the
-listener got notified of it and could take an action -- printing the length and
-name of the processed script.
+The _source-tracing.js_ script used the provided `insight` object to attach a source listener to the runtime.
+Whenever the script was loaded, the listener got notified of it and could take an action -- printing the length and name of the processed script.
 
 The Insight information can be collected to a print statement or a histogram.
-The following _function-histogram-tracing.js_ script counts all method invocations
-and dumps the most frequent ones when the execution of a program is over:
+The following _function-histogram-tracing.js_ script counts all method invocations and dumps the most frequent ones when the execution of a program is over:
 
 ```javascript
 var map = new Map();
@@ -90,39 +83,31 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpHistogram);
 ```
 
-The `map` is a global variable shared inside of the Insight script that allows the
-code to share data between the `insight.on('enter')` function and the `dumpHistogram`
-function. The latter is executed when the node process execution is over
-(registered via `insight.on('close', dumpHistogram`). Invoke it as:
+The `map` is a global variable shared inside of the Insight script that allows the code to share data between the `insight.on('enter')` function and the `dumpHistogram`
+function.
+The latter is executed when the node process execution is over (registered via `insight.on('close', dumpHistogram`).
+Invoke it as:
 ```shell
 $JAVA_HOME/bin/node --experimental-options --insight=function-histogram-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
 The result: 42
-=== Histogram ===
-543 calls to isPosixPathSeparator
-211 calls to E
-211 calls to makeNodeErrorWithCode
-205 calls to NativeModule
-198 calls to uncurryThis
-154 calls to :=>
-147 calls to nativeModuleRequire
-145 calls to NativeModule.compile
- 55 calls to internalBinding
- 53 calls to :anonymous
- 49 calls to :program
- 37 calls to getOptionValue
- 24 calls to copyProps
+==== Histogram ====
+328 calls to isPosixPathSeparator
+236 calls to E
+235 calls to makeNodeErrorWithCode
+137 calls to :=>
+ 64 calls to :program
+ 64 calls to :anonymous
+ 45 calls to getOptionValue
+ 45 calls to getOptionsFromBinding
+ 26 calls to hideStackFrames
  18 calls to validateString
- 13 calls to copyPrototype
- 13 calls to hideStackFrames
- 13 calls to addReadOnlyProcessAlias
-=================
+ 12 calls to defineColorAlias
+===================
 ```
 
 ## Polyglot Tracing
 
-The previous examples were written in JavaScript, but due to GraalVM's polyglot
-nature, you can take the same instrument and use it in a program written in,
-e.g., the Ruby language.
+The previous examples were written in JavaScript, but due to GraalVM's polyglot nature, you can take the same instrument and use it in a program written in, e.g., the Ruby language.
 
 1. Create the _source-trace.js_ file:
 ```javascript
@@ -145,8 +130,7 @@ Hello from GraalVM Ruby!
 ```
 It is necessary to start the Ruby launcher with the `--polyglot` parameter, as the _source-tracing.js_ script remains written in JavaScript.
 
-A user can instrument any language on top of GraalVM, but also the Insight scripts can be
-written in any of the GraalVM supported languages (implemented with the [Truffle language implementation framework](../graalvm-as-a-platform/truffle-framework/README.md)).
+A user can instrument any language on top of GraalVM, but also the Insight scripts can be written in any of the GraalVM supported languages (implemented with the [Truffle language implementation framework](../../truffle/docs/README.md)).
 
 1. Create the _source-tracing.rb_ Ruby file:
 ```ruby
@@ -178,10 +162,9 @@ With Ruby: 42
 
 ## Inspecting Values
 
-GraalVM Insight not only allows one to trace where the program execution is happening,
-it also offers access to values of local variables and function arguments during
-program execution. You can, for example, write an instrument that shows the value of
-argument `n` in the function `fib`:
+GraalVM Insight not only allows one to trace where the program execution is happening, it also offers access to values of local variables and function arguments during program execution.
+You can, for example, write an instrument that shows the value of argument `n` in the function `fib`:
+
 ```javascript
 insight.on('enter', function(ctx, frame) {
    print('fib for ' + frame.n);
@@ -191,9 +174,9 @@ insight.on('enter', function(ctx, frame) {
 });
 ```
 
-This instrument uses the second function argument, `frame`, to get access to values of
-local variables inside every instrumented function. The above script
-also uses `rootNameFilter` to apply its hook only to the function named `fib`:
+This instrument uses the second function argument, `frame`, to get access to values of local variables inside every instrumented function.
+The above script also uses `rootNameFilter` to apply its hook only to the function named `fib`:
+
 ```javascript
 function fib(n) {
   if (n < 1) return 0;
@@ -203,9 +186,7 @@ function fib(n) {
 print("Two is the result " + fib(3));
 ```
 
-When the instrument is stored in a `fib-trace.js` file and the actual code is in
-`fib.js`, invoking the following command yields detailed information about the
-program execution and parameters passed between function invocations:
+When the instrument is stored in a `fib-trace.js` file and the actual code is in `fib.js`, invoking the following command yields detailed information about the program execution and parameters passed between function invocations:
 ```shell
 $JAVA_HOME/bin/node --experimental-options --insight=fib-trace.js --js.print fib.js
 fib for 3

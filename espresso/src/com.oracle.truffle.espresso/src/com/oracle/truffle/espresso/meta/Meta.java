@@ -359,9 +359,7 @@ public final class Meta implements ContextAccess {
                         .field(higher(14), Name.interrupted, Type._boolean) //
                         .maybeHiddenfield(java_lang_Thread);
         HIDDEN_HOST_THREAD = java_lang_Thread.requireHiddenField(Name.HIDDEN_HOST_THREAD);
-        HIDDEN_DEATH = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH);
-        HIDDEN_DEATH_THROWABLE = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEATH_THROWABLE);
-        HIDDEN_SUSPEND_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_SUSPEND_LOCK);
+        HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
 
         if (context.EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
@@ -486,6 +484,12 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
         java_lang_ref_Reference_referent = java_lang_ref_Reference.requireDeclaredField(Name.referent, Type.java_lang_Object);
         java_lang_ref_Reference_enqueue = java_lang_ref_Reference.requireDeclaredMethod(Name.enqueue, Signature._boolean);
+        java_lang_ref_Reference_getFromInactiveFinalReference = diff() //
+                        .method(VERSION_16_OR_HIGHER, Name.getFromInactiveFinalReference, Signature.Object) //
+                        .notRequiredMethod(java_lang_ref_Reference);
+        java_lang_ref_Reference_clearInactiveFinalReference = diff() //
+                        .method(VERSION_16_OR_HIGHER, Name.clearInactiveFinalReference, Signature._void) //
+                        .notRequiredMethod(java_lang_ref_Reference);
 
         java_lang_ref_Reference_discovered = java_lang_ref_Reference.requireDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_next = java_lang_ref_Reference.requireDeclaredField(Name.next, Type.java_lang_ref_Reference);
@@ -1171,9 +1175,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Thread_stop;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_INTERRUPTED;
-    public final Field HIDDEN_DEATH;
-    public final Field HIDDEN_DEATH_THROWABLE;
-    public final Field HIDDEN_SUSPEND_LOCK;
+    public final Field HIDDEN_DEPRECATION_SUPPORT;
     public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
@@ -1282,6 +1284,8 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ref_Reference_queue;
     public final Field java_lang_ref_Reference_lock;
     public final Method java_lang_ref_Reference_enqueue;
+    public final Method java_lang_ref_Reference_getFromInactiveFinalReference;
+    public final Method java_lang_ref_Reference_clearInactiveFinalReference;
     public final ObjectKlass java_lang_ref_WeakReference;
     public final ObjectKlass java_lang_ref_SoftReference;
     public final ObjectKlass java_lang_ref_PhantomReference;

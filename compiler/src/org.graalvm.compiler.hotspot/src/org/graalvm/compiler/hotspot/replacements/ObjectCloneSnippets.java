@@ -30,17 +30,15 @@ import java.util.EnumMap;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectCloneSnippets implements Snippets {
@@ -49,8 +47,8 @@ public class ObjectCloneSnippets implements Snippets {
 
         final EnumMap<JavaKind, SnippetInfo> arrayCloneMethods = new EnumMap<>(JavaKind.class);
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
             arrayCloneMethods.put(JavaKind.Boolean, snippet(ObjectCloneSnippets.class, "booleanArrayClone"));
             arrayCloneMethods.put(JavaKind.Byte, snippet(ObjectCloneSnippets.class, "byteArrayClone"));
             arrayCloneMethods.put(JavaKind.Char, snippet(ObjectCloneSnippets.class, "charArrayClone"));

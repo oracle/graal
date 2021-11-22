@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -67,7 +69,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -118,8 +119,28 @@ public class NativeImageGeneratorRunner {
         int exitStatus;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath);
-            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), imageClassLoader);
+            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath, arguments);
+            List<String> remainingArguments = imageClassLoader.classLoaderSupport.getRemainingArguments();
+            if (!remainingArguments.isEmpty()) {
+                throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
+            }
+            exitStatus = new NativeImageGeneratorRunner().build(imageClassLoader);
+        } catch (UserException e) {
+            reportUserError(e.getMessage());
+            exitStatus = 1;
+        } catch (InterruptImageBuilding e) {
+            if (e.getReason().isPresent()) {
+                if (!e.getReason().get().isEmpty()) {
+                    NativeImageGeneratorRunner.info(e.getReason().get());
+                }
+                exitStatus = 0;
+            } else {
+                /* InterruptImageBuilding without explicit reason is exit code 3 */
+                exitStatus = 3;
+            }
+        } catch (Throwable err) {
+            reportFatalError(err);
+            exitStatus = 1;
         } finally {
             uninstallNativeImageClassLoader();
             Thread.currentThread().setContextClassLoader(applicationClassLoader);
@@ -149,12 +170,18 @@ public class NativeImageGeneratorRunner {
      *
      * @param classpath for the application and image should be built for.
      * @param modulepath for the application and image should be built for (only for Java >= 11).
+     * @param arguments
      * @return NativeImageClassLoaderSupport that exposes the {@code ClassLoader} for image building
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
-    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath) {
+    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         AbstractNativeImageClassLoaderSupport nativeImageClassLoaderSupport = createNativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
+        nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
+        for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
+            postProcessing.apply(nativeImageClassLoaderSupport);
+        }
         ClassLoader nativeImageClassLoader = nativeImageClassLoaderSupport.getClassLoader();
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
         /*
@@ -183,7 +210,7 @@ public class NativeImageGeneratorRunner {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             /* Instantiate module-aware NativeImageClassLoaderSupport */
             try {
-                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk11.NativeImageClassLoaderSupportJDK11OrLater");
+                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater");
                 Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
                 return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
             } catch (ReflectiveOperationException e) {
@@ -259,32 +286,24 @@ public class NativeImageGeneratorRunner {
     }
 
     @SuppressWarnings("try")
-    private int buildImage(String[] arguments, ImageClassLoader classLoader) {
+    private int buildImage(ImageClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
         String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
+
+        HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
+        OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
+
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
-        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
                 classLoader.initAllClasses();
             }
 
-            HostedOptionParser optionParser = new HostedOptionParser(classLoader);
-            String[] remainingArgs = optionParser.parse(arguments);
-            if (remainingArgs.length > 0) {
-                throw UserError.abort("Unknown options: %s", Arrays.toString(remainingArgs));
-            }
-
-            /*
-             * We do not have the VMConfiguration and the HostedOptionValues set up yet, so we need
-             * to pass the OptionValues explicitly when accessing options.
-             */
-            parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
             imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
@@ -322,8 +341,6 @@ public class NativeImageGeneratorRunner {
                 throw UserError.abort("Must specify main entry point class when building %s native image. Use '%s'.", imageKind,
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
-
-            classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
 
             if (!className.isEmpty() || !moduleName.isEmpty()) {
                 Method mainEntryPoint;
@@ -409,15 +426,7 @@ public class NativeImageGeneratorRunner {
             if (compilationExecutor != null) {
                 compilationExecutor.shutdownNow();
             }
-            if (e.getReason().isPresent()) {
-                if (!e.getReason().get().isEmpty()) {
-                    NativeImageGeneratorRunner.info(e.getReason().get());
-                }
-                return 0;
-            } else {
-                /* InterruptImageBuilding without explicit reason is exit code 3 */
-                return 3;
-            }
+            throw e;
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {
                 NativeImageGeneratorRunner.reportFatalError(e, "FallbackImageRequest while building fallback image.");
@@ -496,7 +505,7 @@ public class NativeImageGeneratorRunner {
      * @param e error to be reported.
      */
     protected static void reportFatalError(Throwable e) {
-        System.err.print("Fatal error:");
+        System.err.print("Fatal error: ");
         e.printStackTrace();
     }
 
@@ -565,8 +574,8 @@ public class NativeImageGeneratorRunner {
         System.err.println("Warning: " + msg);
     }
 
-    public int build(String[] args, ImageClassLoader imageClassLoader) {
-        return buildImage(args, imageClassLoader);
+    public int build(ImageClassLoader imageClassLoader) {
+        return buildImage(imageClassLoader);
     }
 
     /**
@@ -586,12 +595,12 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler.management", true);
             ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.misc", false);
             }
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.org.objectweb.asm", false);
-            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
                 ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
                 ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);

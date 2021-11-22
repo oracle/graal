@@ -1,5 +1,4 @@
-DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-js
+DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
+COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,js,llrc,llrl,llrn,lsp,nfi,ni,nic,nil,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+NATIVE_IMAGES=false
 DISABLE_INSTALLABLES=ni,nil
-FORCE_BASH_LAUNCHERS=true
-SKIP_LIBRARIES=true
-EXCLUDE_COMPONENTS=nju,nic,llp,lg,dis,pbm,pmh,llmulrl

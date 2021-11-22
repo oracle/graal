@@ -465,7 +465,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                      * Allow multiple @Alias definitions for the same field as long as only one of
                      * them has a @RecomputeValueField annotation.
                      */
-                    if (computedAlias.equals(original)) {
+                    if (computedAlias.equals(original) || isCompatible(computedAlias, existingAlias)) {
                         /*
                          * The currently processed field does not have a @RecomputeValueField
                          * annotation. Use whatever alias was registered previously.
@@ -482,10 +482,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                     } else {
                         /*
                          * Both the current and the previous registration have
-                         * a @RecomputeValueField annotation. We could now check if the
-                         * recomputation is exactly the same and allow that. But we have no use case
-                         * for this right now, so we do nothing and let the register() call below
-                         * report an error.
+                         * a @RecomputeValueField annotation or there is some other mismatch. Let
+                         * the register() call below report an error.
                          */
                     }
                 }
@@ -493,6 +491,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 register(fieldSubstitutions, annotated, original, alias);
             }
         }
+    }
+
+    private static boolean isCompatible(ResolvedJavaField computedAlias, ResolvedJavaField existingAlias) {
+        /* The only use case at the moment are multiple @Alias definitions for a final field. */
+        if (computedAlias instanceof ComputedValueField) {
+            ComputedValueField c = (ComputedValueField) computedAlias;
+            if (c.getRecomputeValueKind() == RecomputeFieldValue.Kind.None) {
+                return c.isCompatible(existingAlias);
+            }
+        }
+        return false;
     }
 
     private static boolean hasDefaultValue(Field annotatedField) {
@@ -819,11 +828,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
         if (annotated != null) {
-            guarantee(!substitutions.containsKey(annotated) || substitutions.get(annotated) == original || substitutions.get(annotated) == target, "Already registered: %s", annotated);
+            guarantee(!substitutions.containsKey(annotated) || substitutions.get(annotated) == original || substitutions.get(annotated) == target,
+                            "Substition: %s conflicts with previously registered: %s", annotated, substitutions.get(annotated));
             substitutions.put(annotated, target);
         }
         if (original != null) {
-            guarantee(!substitutions.containsKey(original) || substitutions.get(original) == original || substitutions.get(original) == target, "Already registered: %s", original);
+            guarantee(!substitutions.containsKey(original) || substitutions.get(original) == original || substitutions.get(original) == target,
+                            "Substition: %s conflicts with previously registered: %s", original, substitutions.get(original));
             substitutions.put(original, target);
         }
     }

@@ -31,8 +31,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -120,14 +118,12 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new DeoptHostedSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new DeoptHostedSnippets(options, providers, lowerings);
     }
 
-    private DeoptHostedSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private DeoptHostedSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(DeoptimizeNode.class, new DeoptimizeLowering());
     }

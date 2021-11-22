@@ -126,36 +126,35 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
     }
 
     @Override
-    public Element getOrCreateRelocationElement(boolean useImplicitAddend) {
+    public Element getOrCreateRelocationElement(long addend) {
         ELFSymtab syms = (ELFSymtab) getOwner().elementForName(".symtab");
         if (syms == null) {
             throw new IllegalStateException("cannot create a relocation section without corresponding symtab");
         }
-        boolean withExplicitAddends = !useImplicitAddend;
-        ELFRelocationSection rs = withExplicitAddends ? rela : rel;
-        if (rs == null) {
-            // we have to create the section if it doesn't exist
-            rs = getOwner().getOrCreateRelocSection(this, syms, withExplicitAddends);
-            assert rs != null;
-            if (withExplicitAddends) {
-                rela = rs;
-            } else {
-                rel = rs;
+
+        if (ELFObjectFile.useExplicitAddend(addend)) {
+            if (rela == null) {
+                rela = getOwner().getOrCreateRelocSection(this, syms, true);
+                assert rela != null;
             }
+            return rela;
+        } else {
+            // use implicit addend
+            if (rel == null) {
+                rel = getOwner().getOrCreateRelocSection(this, syms, false);
+                assert rel != null;
+            }
+            return rel;
         }
-        return rs;
     }
 
     @Override
-    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        if (useImplicitAddend != (explicitAddend == null)) {
-            throw new IllegalArgumentException("must have either an explicit or implicit addend");
-        }
+    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, long addend) {
         ELFSymtab syms = (ELFSymtab) getOwner().elementForName(".symtab");
-        ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(useImplicitAddend);
+        ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(addend);
         assert symbolName != null;
         ELFSymtab.Entry ent = syms.getSymbol(symbolName);
         assert ent != null;
-        rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+        rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, addend);
     }
 }

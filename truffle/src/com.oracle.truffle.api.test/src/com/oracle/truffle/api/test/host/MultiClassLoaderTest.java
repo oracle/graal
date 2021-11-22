@@ -56,7 +56,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -85,7 +84,7 @@ public class MultiClassLoaderTest {
                 String req = request.getSource().getCharacters().toString();
                 if (req.startsWith("get:")) {
                     String name = req.substring(4);
-                    RootCallTarget reader = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                    RootCallTarget reader = new RootNode(ProxyLanguage.get(null)) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             Object obj = frame.getArguments()[0];
@@ -96,8 +95,8 @@ public class MultiClassLoaderTest {
                                 throw new IllegalStateException(e);
                             }
                         }
-                    });
-                    return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new CatcherObject(reader)));
+                    }.getCallTarget();
+                    return RootNode.createConstantNode(new CatcherObject(reader)).getCallTarget();
                 }
                 throw new IllegalArgumentException();
             }

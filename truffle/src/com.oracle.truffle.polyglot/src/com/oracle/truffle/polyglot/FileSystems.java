@@ -74,7 +74,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.polyglot.PolyglotSourceDispatch.EmbedderFileSystemContext;
+import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 
 import java.nio.charset.Charset;
 import org.graalvm.nativeimage.ImageInfo;

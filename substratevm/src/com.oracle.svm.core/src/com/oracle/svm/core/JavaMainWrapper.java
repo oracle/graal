@@ -178,8 +178,8 @@ public class JavaMainWrapper {
         return exitCode;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class)
     @SuppressWarnings("unused")
     public static int run(int argc, CCharPointerPointer argv) {
         return runCore();

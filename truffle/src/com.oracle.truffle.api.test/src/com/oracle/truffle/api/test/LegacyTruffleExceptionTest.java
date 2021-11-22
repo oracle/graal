@@ -43,8 +43,13 @@ package com.oracle.truffle.api.test;
 import static com.oracle.truffle.api.test.TruffleExceptionTest.createAST;
 import static com.oracle.truffle.api.test.TruffleExceptionTest.createContext;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -58,11 +63,6 @@ import com.oracle.truffle.api.test.TruffleExceptionTest.TestRootNode;
 import com.oracle.truffle.api.test.TruffleExceptionTest.ThrowNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
 
@@ -135,7 +135,7 @@ public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
                 ThrowNode throwNode = new ThrowNode((n) -> {
                     return new LegacyCatchableException("Test exception", n);
                 });
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", null, throwNode));
+                return new TestRootNode(languageInstance, "test", null, throwNode).getCallTarget();
             }
         });
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {

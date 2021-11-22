@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Provides container awareness to the rest of the VM.
  *
- * The implementation is based on the Container Metrics API from JDK 15.
+ * The implementation is based on the Container Metrics API from JDK 17.
  */
 public class Containers {
 

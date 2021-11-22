@@ -28,6 +28,7 @@ import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TI
 import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
@@ -107,13 +108,15 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         sampler = factory.create(env);
-        if (env.getOptions().get(CPUSamplerCLI.ENABLED)) {
-            sampler.setPeriod(env.getOptions().get(CPUSamplerCLI.SAMPLE_PERIOD));
-            sampler.setDelay(env.getOptions().get(CPUSamplerCLI.DELAY_PERIOD));
-            sampler.setStackLimit(env.getOptions().get(CPUSamplerCLI.STACK_LIMIT));
+        OptionValues options = env.getOptions();
+        CPUSamplerCLI.EnableOptionData enableOptionData = options.get(CPUSamplerCLI.ENABLED);
+        if (enableOptionData.enabled) {
+            sampler.setPeriod(options.get(CPUSamplerCLI.SAMPLE_PERIOD));
+            sampler.setDelay(options.get(CPUSamplerCLI.DELAY_PERIOD));
+            sampler.setStackLimit(options.get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
-            sampler.setGatherSelfHitTimes(env.getOptions().get(GATHER_HIT_TIMES));
-            sampler.setSampleContextInitialization(env.getOptions().get(SAMPLE_CONTEXT_INITIALIZATION));
+            sampler.setGatherSelfHitTimes(options.get(GATHER_HIT_TIMES));
+            sampler.setSampleContextInitialization(options.get(SAMPLE_CONTEXT_INITIALIZATION));
             sampler.setCollecting(true);
         }
         env.registerService(sampler);
@@ -145,7 +148,9 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      */
     @Override
     protected void onDispose(Env env) {
-        if (env.getOptions().get(CPUSamplerCLI.ENABLED)) {
+        OptionValues options = env.getOptions();
+        CPUSamplerCLI.EnableOptionData enableOptionData = options.get(CPUSamplerCLI.ENABLED);
+        if (enableOptionData.enabled) {
             CPUSamplerCLI.handleOutput(env, sampler);
         }
         sampler.close();

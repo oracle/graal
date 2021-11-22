@@ -178,14 +178,6 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             return isRunning.get();
         }
 
-        @Override
-        @TruffleBoundary
-        protected void finalize() throws Throwable {
-            super.finalize();
-            stop();
-            unregisterFromContext();
-        }
-
         private static final long HANDLE_MAX_WAITING_TIME = 250; // ms
 
         @Override

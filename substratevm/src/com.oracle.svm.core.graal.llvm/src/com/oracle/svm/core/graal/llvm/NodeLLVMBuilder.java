@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -158,7 +160,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         ResolvedJavaMethod rootMethod = graph.method();
         if (rootMethod != null) {
             result.setMethods(rootMethod, graph.getMethods());
-            result.setFields(graph.getFields());
         }
 
         result.setHasUnsafeAccess(graph.hasUnsafeAccess());
@@ -760,8 +761,14 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (operand instanceof LLVMValueWrapper) {
             llvmOperand = (LLVMValueWrapper) operand;
         } else if (operand instanceof ConstantValue) {
-            /* This only happens when emitting null object constants */
-            llvmOperand = new LLVMVariable(builder.constantNull(((LLVMKind) operand.getPlatformKind()).get()));
+            /* This only happens when emitting null or illegal object constants */
+            PlatformKind kind = operand.getPlatformKind();
+            if (kind instanceof LLVMKind) {
+                llvmOperand = new LLVMVariable(builder.constantNull(((LLVMKind) kind).get()));
+            } else {
+                assert kind == ValueKind.Illegal.getPlatformKind();
+                llvmOperand = new LLVMVariable(builder.getUndef());
+            }
         } else if (operand instanceof LLVMAddressValue) {
             LLVMAddressValue addressValue = (LLVMAddressValue) operand;
             Value wrappedBase = addressValue.getBase();

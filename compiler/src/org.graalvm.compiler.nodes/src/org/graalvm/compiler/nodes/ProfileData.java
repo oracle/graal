@@ -86,6 +86,7 @@ public abstract class ProfileData {
         public static boolean isTrusted(ProfileSource source) {
             return source == INJECTED || source == PROFILED;
         }
+
     }
 
     public ProfileSource getProfileSource() {

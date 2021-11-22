@@ -184,10 +184,10 @@ final class NativeClosure {
         }
     }
 
-    static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class);
+    static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "NativeClosure.pendingException");
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
@@ -238,8 +238,8 @@ final class NativeClosure {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
@@ -271,8 +271,8 @@ final class NativeClosure {
         lookup(user).call(args, null);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
@@ -305,8 +305,8 @@ final class NativeClosure {
         ret.write(serializeStringRet(retValue));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */

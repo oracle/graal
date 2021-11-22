@@ -32,8 +32,7 @@ import org.graalvm.word.LocationIdentity;
  * Base class for fast thread local variables.
  */
 public abstract class FastThreadLocal {
-
-    static class FastThreadLocalLocationIdentity extends LocationIdentity {
+    class FastThreadLocalLocationIdentity extends LocationIdentity {
         @Override
         public boolean isImmutable() {
             return false;
@@ -41,15 +40,18 @@ public abstract class FastThreadLocal {
 
         @Override
         public String toString() {
-            return "THREAD_LOCAL@" + Integer.toHexString(hashCode());
+            return "FastThreadLocal:" + name;
         }
+
     }
 
     private final LocationIdentity locationIdentity;
+    private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocal() {
+    FastThreadLocal(String name) {
         this.locationIdentity = new FastThreadLocalLocationIdentity();
+        this.name = name;
     }
 
     /**
@@ -122,4 +124,9 @@ public abstract class FastThreadLocal {
     public boolean getAllowFloatingReads() {
         return this.allowFloatingReads;
     }
+
+    public String getName() {
+        return name;
+    }
+
 }

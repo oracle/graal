@@ -29,7 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;

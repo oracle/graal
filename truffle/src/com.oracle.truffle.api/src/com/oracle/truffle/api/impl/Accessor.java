@@ -153,8 +153,6 @@ public abstract class Accessor {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
-        public abstract void setCallTarget(RootNode rootNode, RootCallTarget callTarget);
-
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
         public abstract RootNode cloneUninitialized(RootNode rootNode);
@@ -378,6 +376,8 @@ public abstract class Accessor {
 
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
 
+        public abstract void exitContext(Object polyglotContext, Node exitLocation, int exitCode);
+
         public abstract boolean isContextEntered(Object polyglotContext);
 
         public abstract boolean isContextActive(Object polyglotContext);
@@ -436,7 +436,7 @@ public abstract class Accessor {
 
         public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);
 
-        public abstract boolean isInstrumentExceptionsAreThrown(Object polyglotEngine);
+        public abstract boolean isInstrumentExceptionsAreThrown(Object polyglotInstrument);
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext);
 
@@ -571,6 +571,8 @@ public abstract class Accessor {
 
         public abstract boolean isContextCancelling(Object polyglotContext);
 
+        public abstract boolean isContextExiting(Object polyglotContext);
+
         public abstract Future<Void> pause(Object polyglotContext);
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
@@ -703,6 +705,8 @@ public abstract class Accessor {
 
         public abstract void finalizeContext(Env localEnv);
 
+        public abstract void exitContext(Env localEnv, TruffleLanguage.ExitMode exitMode, int exitCode);
+
         public abstract Iterable<com.oracle.truffle.api.Scope> findLegacyLocalScopes(Env env, Node node, Frame frame);
 
         public abstract Iterable<com.oracle.truffle.api.Scope> findTopScopes(Env env);
@@ -831,6 +835,8 @@ public abstract class Accessor {
         public abstract void onNodeInserted(RootNode rootNode, Node tree);
 
         public abstract boolean hasContextBindings(Object engine);
+
+        public abstract boolean hasThreadBindings(Object engine);
 
         public abstract void notifyContextCreated(Object engine, TruffleContext context);
 
@@ -969,6 +975,8 @@ public abstract class Accessor {
             }
         }
 
+        public abstract RootCallTarget newCallTarget(RootNode rootNode);
+
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
@@ -1071,7 +1079,7 @@ public abstract class Accessor {
 
         public abstract int getBaseInstanceSize(Class<?> type);
 
-        public abstract Object[] getNonPrimitiveResolvedFields(Class<?> type);
+        public abstract Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
 

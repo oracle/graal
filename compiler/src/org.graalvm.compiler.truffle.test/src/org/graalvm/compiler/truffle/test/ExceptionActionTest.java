@@ -24,12 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.OptimizationFailedException;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,10 +33,11 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -50,9 +45,15 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
-import org.junit.Test;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.OptimizationFailedException;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class ExceptionActionTest extends TestWithPolyglotOptions {
 
@@ -66,7 +67,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @BeforeClass
     public static void setUp() {
-        Truffle.getRuntime().createCallTarget(createPermanentBailoutNode()).call();
+        createPermanentBailoutNode().getCallTarget().call();
     }
 
     @Test
@@ -190,7 +191,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             verifier.accept(log);
         } else {
             setupContext(contextOptions);
-            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
+            OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
             try {
                 target.call();
             } catch (RuntimeException e) {
@@ -282,7 +283,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
     }

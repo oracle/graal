@@ -135,8 +135,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFl
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadKeyIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMPanicNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
@@ -214,7 +212,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return LLVMLanguage.createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
+        return LLVMIntrinsicExpressionNodeGen.create(language, functionName, node).getCallTarget();
     }
 
     protected final LLVMLanguage language;
@@ -484,8 +482,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerRustIntrinsics() {
-        add("std::rt::lang_start", (args, nodeFactory) -> LLVMLangStartNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3)));
-        add("std::rt::lang_start_internal", (args, nodeFactory) -> LLVMLangStartInternalNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4)));
         add("std::process::exit", (args, nodeFactory) -> LLVMExitNodeGen.create(args.get(1)));
         add("core::panicking::panic", (args, nodeFactory) -> LLVMPanicNodeGen.create(args.get(1)));
     }

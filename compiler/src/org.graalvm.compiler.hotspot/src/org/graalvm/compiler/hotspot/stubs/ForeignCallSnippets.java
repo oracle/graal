@@ -34,11 +34,10 @@ import static org.graalvm.compiler.hotspot.stubs.StubUtil.fatal;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.DeoptimizeCallerNode;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
@@ -53,7 +52,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 
 public class ForeignCallSnippets implements Snippets {
@@ -64,8 +62,8 @@ public class ForeignCallSnippets implements Snippets {
         final SnippetInfo getAndClearObjectResult = snippet(ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
         final SnippetInfo verifyObject = snippet(ForeignCallSnippets.class, "verifyObject");
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
         }
     }
 
@@ -87,15 +85,15 @@ public class ForeignCallSnippets implements Snippets {
      */
     @Snippet
     public static Object verifyObject(Object object) {
-        if (GraalHotSpotVMConfigNode.verifyOops()) {
-            Word verifyOopCounter = WordFactory.unsigned(GraalHotSpotVMConfigNode.verifyOopCounterAddress());
+        if (HotSpotReplacementsUtil.verifyOops(INJECTED_VMCONFIG)) {
+            Word verifyOopCounter = WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopCounterAddress(INJECTED_VMCONFIG));
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
             Pointer oop = Word.objectToTrackedPointer(object);
             if (object != null) {
                 GuardingNode anchorNode = SnippetAnchorNode.anchor();
                 // make sure object is 'reasonable'
-                if (!oop.and(WordFactory.unsigned(GraalHotSpotVMConfigNode.verifyOopMask())).equal(WordFactory.unsigned(GraalHotSpotVMConfigNode.verifyOopBits()))) {
+                if (!oop.and(WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopMask(INJECTED_VMCONFIG))).equal(WordFactory.unsigned(HotSpotReplacementsUtil.verifyOopBits(INJECTED_VMCONFIG)))) {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 

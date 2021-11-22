@@ -56,7 +56,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -309,7 +308,7 @@ public class BlockNodeTest {
         DummyRootNode root = new DummyRootNode();
         BlockNode<TestBlockElement> block = BlockNode.create(elements, executor);
         root.block = block;
-        Truffle.getRuntime().createCallTarget(root);
+        root.getCallTarget();
         assertNotNull(root.block.getParent());
         return block;
     }

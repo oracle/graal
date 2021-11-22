@@ -79,6 +79,4 @@ int graal_detach_thread(graal_isolatethread_t* thread);
  */
 int graal_tear_down_isolate(graal_isolatethread_t* thread);
 ```
-In addition to the C level API, there is also a way to initialize an isolate
-from Java and thus use Java and Native Image to
-[implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).
+In addition to the C level API, there is also a way to initialize an isolate from Java and thus use Java and Native Image to [implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).

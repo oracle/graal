@@ -33,13 +33,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
@@ -107,7 +107,7 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
     @Override
     public boolean isNarrowable(int resultBits) {
         assert CodeUtil.isPowerOf2(resultBits);
-        int narrowMask = resultBits - 1;
+        int narrowMask = resultBits <= 32 ? Integer.SIZE - 1 : Long.SIZE - 1;
         int wideMask = getShiftAmountMask();
         assert (wideMask & narrowMask) == narrowMask : String.format("wideMask %x should be wider than narrowMask %x", wideMask, narrowMask);
 

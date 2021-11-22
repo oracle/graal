@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -42,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -56,8 +53,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
 
     protected final LLVMSymbol symbol;
-
-    @CompilationFinal private LLVMStackAccess stackAccess;
 
     LLVMAccessSymbolNode(LLVMSymbol symbol) {
         this.symbol = LLVMAlias.resolveAlias(symbol);
@@ -98,13 +93,14 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
         return checkNull(getContext().getSymbol(symbol, exception), exception);
     }
 
+    protected LLVMStack.LLVMStackAccessHolder createStackAccessHolder() {
+        return new LLVMStack.LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
+    }
+
     @Specialization
     public LLVMPointer accessMultiContext(VirtualFrame frame,
+                    @Cached("createStackAccessHolder()") LLVMStack.LLVMStackAccessHolder stackAccessHolder,
                     @Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
-        if (stackAccess == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackAccess = ((LLVMRootNode) getRootNode()).getStackAccess();
-        }
-        return checkNull(stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
+        return checkNull(stackAccessHolder.stackAccess.executeGetStack(frame).getContext().getSymbol(symbol, exception), exception);
     }
 }

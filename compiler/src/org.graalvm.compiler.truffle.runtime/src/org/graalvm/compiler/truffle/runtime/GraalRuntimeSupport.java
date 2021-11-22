@@ -32,6 +32,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
@@ -53,6 +54,14 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
+    }
+
+    @Override
+    public RootCallTarget newCallTarget(RootNode rootNode) {
+        CompilerAsserts.neverPartOfCompilation();
+        final OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().newCallTarget(rootNode, null);
+        TruffleSplittingStrategy.newTargetCreated(target);
+        return target;
     }
 
     @ExplodeLoop
@@ -83,21 +92,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         TruffleSafepoint.poll((Node) osrNode);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
-            Node node = (Node) osrNode;
-            osrMetadata = node.atomic(() -> { // double checked locking
-                BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-                if (metadata == null) {
-                    OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
-                    } else {
-                        metadata = BytecodeOSRMetadata.DISABLED;
-                    }
-
-                    osrNode.setOSRMetadata(metadata);
-                }
-                return metadata;
-            });
+            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
         }
 
         // metadata can be set to DISABLED during initialization (above) or dynamically after
@@ -107,6 +102,24 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         } else {
             return osrMetadata.incrementAndPoll();
         }
+    }
+
+    private static BytecodeOSRMetadata initializeBytecodeOSRMetadata(BytecodeOSRNode osrNode) {
+        Node node = (Node) osrNode;
+        return node.atomic(() -> { // double checked locking
+            BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+            if (metadata == null) {
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
+                if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                } else {
+                    metadata = BytecodeOSRMetadata.DISABLED;
+                }
+
+                osrNode.setOSRMetadata(metadata);
+            }
+            return metadata;
+        });
     }
 
     @Override
@@ -291,8 +304,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
-        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
+        return GraalTruffleRuntime.getRuntime().getResolvedFields(type, includePrimitive, includeSuperclasses);
     }
 
     @Override

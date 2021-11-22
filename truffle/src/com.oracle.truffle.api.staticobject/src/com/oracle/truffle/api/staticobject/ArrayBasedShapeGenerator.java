@@ -92,6 +92,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
+    private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(ArrayBasedStaticShape.class);
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -131,7 +132,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     // Invoked also from TruffleBaseFeature.StaticObjectSupport
     @SuppressWarnings("unchecked")
-    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface,
+                    String storageClassName) {
         ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache;
         if (TruffleOptions.AOT) {
             cache = generatorCache;
@@ -144,7 +146,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             if (ImageInfo.inImageRuntimeCode()) {
                 throw new IllegalStateException("This code should not be executed at Native Image run time. Please report this issue");
             }
-            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
+            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, storageClassName);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
             ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) cache.putIfAbsent(pair, sg);
@@ -164,7 +166,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
         return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
@@ -183,8 +185,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (Class<?> parameter : superConstructor.getParameterTypes()) {
             sb.append(Type.getDescriptor(parameter));
         }
-        sb.append("Ljava/lang/Object;II");
-        return sb.append(")V").toString();
+        sb.append(STATIC_SHAPE_DESCRIPTOR);
+        return sb.append("II)V").toString();
     }
 
     private static Object getFrameLocal(Class<?> clazz) {
@@ -212,7 +214,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         for (; idx <= constructorParameters.length; idx++) {
             frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
         }
-        frameLocals[idx++] = "java/lang/Object"; // shape
+        frameLocals[idx++] = Type.getInternalName(ArrayBasedStaticShape.class); // shape
         frameLocals[idx++] = INTEGER; // primitiveArraySize
         frameLocals[idx++] = INTEGER; // objectArraySize
         return frameLocals;
@@ -242,7 +244,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             // this.shape = shape;
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, var);
-            mv.visitFieldInsn(PUTFIELD, storageName, "shape", "Ljava/lang/Object;");
+            mv.visitFieldInsn(PUTFIELD, storageName, "shape", STATIC_SHAPE_DESCRIPTOR);
 
             // primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null;
             mv.visitVarInsn(ALOAD, 0);
@@ -357,19 +359,19 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addFactoryFields(ClassVisitor cv) {
-        cv.visitField(ACC_PUBLIC | ACC_FINAL, "shape", "Ljava/lang/Object;", null, null).visitEnd();
+        cv.visitField(ACC_PUBLIC | ACC_FINAL, "shape", STATIC_SHAPE_DESCRIPTOR, null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "primitiveArraySize", "I", null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "objectArraySize", "I", null, null).visitEnd();
     }
 
     private static void addFactoryConstructor(ClassVisitor cv, String className) {
-        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(Ljava/lang/Object;II)V", null, null);
+        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(" + STATIC_SHAPE_DESCRIPTOR + "II)V", null, null);
         mv.visitCode();
         mv.visitVarInsn(ALOAD, 0);
         mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(Object.class), "<init>", "()V", false);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, 1);
-        mv.visitFieldInsn(PUTFIELD, className, "shape", "Ljava/lang/Object;");
+        mv.visitFieldInsn(PUTFIELD, className, "shape", STATIC_SHAPE_DESCRIPTOR);
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ILOAD, 2);
         mv.visitFieldInsn(PUTFIELD, className, "primitiveArraySize", "I");
@@ -399,9 +401,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             }
             int maxLocals = maxStack - 1;
 
-            constructorDescriptor.append("Ljava/lang/Object;");
+            constructorDescriptor.append(STATIC_SHAPE_DESCRIPTOR);
             mv.visitVarInsn(ALOAD, 0);
-            mv.visitFieldInsn(GETFIELD, factoryName, "shape", "Ljava/lang/Object;");
+            mv.visitFieldInsn(GETFIELD, factoryName, "shape", STATIC_SHAPE_DESCRIPTOR);
             maxStack++;
             for (String fieldName : ARRAY_SIZE_FIELDS) {
                 constructorDescriptor.append("I");
@@ -419,22 +421,21 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, String storageClassName) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
-        String storageName = generateStorageName();
 
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
-        storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
-        addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
-        addStorageField(storageWriter, "primitive", StaticPropertyKind.BYTE_ARRAY, true);
-        addStorageField(storageWriter, "object", StaticPropertyKind.OBJECT_ARRAY, true);
-        addStorageField(storageWriter, "shape", StaticPropertyKind.Object.toByte(), true);
+        storageWriter.visit(V1_8, storageAccess, storageClassName, null, storageSuperName, null);
+        addStorageConstructors(storageWriter, storageClassName, storageSuperClass, storageSuperName);
+        addStorageField(storageWriter, "primitive", "[B", true);
+        addStorageField(storageWriter, "object", "[Ljava/lang/Object;", true);
+        addStorageField(storageWriter, "shape", STATIC_SHAPE_DESCRIPTOR, true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
-            addCloneMethod(storageSuperClass, storageWriter, storageName);
+            addCloneMethod(storageSuperClass, storageWriter, storageClassName);
         }
         storageWriter.visitEnd();
-        return load(gcl, storageName, storageWriter.toByteArray());
+        return load(gcl, storageClassName, storageWriter.toByteArray());
     }
 
     private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {

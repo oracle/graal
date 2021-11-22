@@ -86,6 +86,9 @@ public class Pthread {
     @CFunction
     public static native int pthread_create(pthread_tPointer newthread, pthread_attr_t attr, WordBase start_routine, WordBase arg);
 
+    @CFunction(value = "pthread_create", transition = Transition.NO_TRANSITION)
+    public static native int pthread_create_no_transition(pthread_tPointer newthread, pthread_attr_t attr, WordBase start_routine, WordBase arg);
+
     @CFunction
     public static native int pthread_join(pthread_t th, WordPointer thread_return);
 

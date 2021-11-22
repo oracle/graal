@@ -207,7 +207,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
     }
 
     public double invokeProbability(Invoke invoke) {
-        return probability * probabilities.applyAsDouble(invoke.asNode());
+        return probability * probabilities.applyAsDouble(invoke.asFixedNode());
     }
 
     public double invokeRelevance(Invoke invoke) {

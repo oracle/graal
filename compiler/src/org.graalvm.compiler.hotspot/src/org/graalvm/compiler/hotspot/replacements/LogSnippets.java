@@ -29,7 +29,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,8 +41,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.word.Word;
-
-import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Collection of snippets to lower {@link LogNode} with different input edge constellations.
@@ -71,8 +68,8 @@ public class LogSnippets implements Snippets {
         private final SnippetInfo printf1 = snippet(LogSnippets.class, "printf1");
         private final SnippetInfo printf2 = snippet(LogSnippets.class, "printf2");
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
         }
 
         public void lower(LogNode logNode, LoweringTool tool) {

@@ -113,8 +113,8 @@ import jdk.vm.ci.code.Register;
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp",
           lineStart = 0,
           lineEnd   = 1880,
-          commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
-          sha1      = "b9ee010c248b0a1ccb29e3348fc158eafbe00115")
+          commit    = "e58c12e61828485bfffbc9d1b865302b93a94158",
+          sha1      = "ff1905731c30cf343460e72d58537d4672b0dce2")
 // @formatter:on
 public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
 

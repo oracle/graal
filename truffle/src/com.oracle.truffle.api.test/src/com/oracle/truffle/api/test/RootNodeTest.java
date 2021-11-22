@@ -42,13 +42,12 @@ package com.oracle.truffle.api.test;
 
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -62,7 +61,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import org.graalvm.polyglot.Context;
 
 /**
  * <h3>Creating a Root Node</h3>
@@ -71,10 +69,9 @@ import org.graalvm.polyglot.Context;
  * A Truffle root node is the entry point into a Truffle tree that represents a guest language
  * method. It contains a {@link RootNode#execute(VirtualFrame)} method that can return a
  * {@link java.lang.Object} value as the result of the guest language method invocation. This method
- * must however never be called directly. Instead, the Truffle runtime must be used to create a
- * {@link CallTarget} object from a root node using the
- * {@link TruffleRuntime#createCallTarget(RootNode)} method. This call target object can then be
- * executed using the {@link CallTarget#call(Object...)} method or one of its overloads.
+ * must however never be called directly. Instead, its {@link CallTarget} object must be obtained
+ * via {@link RootNode#getCallTarget()}. This call target object can then be executed using the
+ * {@link CallTarget#call(Object...)} method or one of its overloads.
  * </p>
  *
  * <p>
@@ -86,10 +83,7 @@ public class RootNodeTest {
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
-        TestRootNode rootNode = new TestRootNode();
-        CallTarget target = runtime.createCallTarget(rootNode);
-        Object result = target.call();
+        Object result = new TestRootNode().getCallTarget().call();
         Assert.assertEquals(42, result);
     }
 
@@ -122,7 +116,7 @@ public class RootNodeTest {
         TestRootNode3 rootNode = new TestRootNode3(false);
         Object marker = new Object();
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            rootNode.getCallTarget().call(marker);
             Assert.fail();
         } catch (TestException e) {
             List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
@@ -138,7 +132,7 @@ public class RootNodeTest {
         TestRootNode3 rootNode = new TestRootNode3(true);
         Object marker = new Object();
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            rootNode.getCallTarget().call(marker);
             Assert.fail();
         } catch (TestException e) {
             asserCapturedFrames(rootNode, marker, e, e.frame);
@@ -150,7 +144,7 @@ public class RootNodeTest {
         TestRootNode4 rootNode = new TestRootNode4(true);
         Object marker = new Object();
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            rootNode.getCallTarget().call(marker);
             Assert.fail();
         } catch (LegacyTestException e) {
             asserCapturedFrames(rootNode, marker, e, e.frame);
@@ -161,7 +155,7 @@ public class RootNodeTest {
     public void testTranslateStackTraceElementNotEntered() {
         RootNode rootNode = new TestRootNode3(true);
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call();
+            rootNode.getCallTarget().call();
             Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
@@ -176,7 +170,7 @@ public class RootNodeTest {
             ctx.enter();
             RootNode rootNode = new TestRootNode3(true);
             try {
-                Truffle.getRuntime().createCallTarget(rootNode).call();
+                rootNode.getCallTarget().call();
                 Assert.fail();
             } catch (TestException e) {
                 TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
@@ -202,7 +196,7 @@ public class RootNodeTest {
                     boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) throws UnsupportedMessageException {
         RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call();
+            rootNode.getCallTarget().call();
             Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
@@ -225,7 +219,7 @@ public class RootNodeTest {
                     boolean hasDeclaringMetaObject, boolean isString, boolean isMetaObject) {
         RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
-            Truffle.getRuntime().createCallTarget(rootNode).call();
+            rootNode.getCallTarget().call();
             Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);

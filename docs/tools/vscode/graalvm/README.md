@@ -16,7 +16,7 @@ The extension is Technology Preview.
 - [Installation and Setup](#installation-and-setup)
 - [Java Development and Debugging](#java-development-and-debugging)
 - [Native Image Agent](#native-image-agent)
-- [Native Image Debugger](#native-image-debugger)
+- [Native Image Debugging](#native-image-debugging)
 - [Integration with VisualVM](#integration-with-visualvm)
 - [JavaScript and Node.js Debugging](#javascript-and-nodejs-debugging)
 - [Python Debugging](#python-debugging)
@@ -125,7 +125,7 @@ The "Download & Install GraalVM" action is a preferable way, as it eliminates th
 
 ## Java Development and Debugging
 
-To start developing or debugging Java applications, ensure GraalVM is used as your Java runtime in VS Code.
+To start developing Java applications, ensure GraalVM is used as your Java runtime in VS Code.
 If the current path is not pointing to the GraalVM folder, go to the User Settings window and use the `netbeans.jdkhome` value in the _settings.json_ file.
 This configuration is then used to launch the Java Language Server.
 
@@ -194,20 +194,37 @@ Once all possible execution paths have been executed, terminate the process. At 
 
 Once the configuration for Native Image has been generated, follow the documentation on how to [generate a native image for a project](https://www.graalvm.org/reference-manual/native-image/#build-a-native-image) from the command line, or how to [build native images right from VS Code](../micronaut/README.md#generate-native-images-of-micronaut-projects).
 
-## Native Image Debugger
+## Native Image Debugging
 
 GraalVM Extension Pack for Java provides Java like debugging of platform native executables produced by [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
 It is provided using the GNU Debugger (GDB) and via a new Run configuration named __Launch Native Image__.
 GraalVM Enterprise Edition is required as it produces full debug information for a native image.
 
-> Note: This feature is experimental. It currently works only on Linux with GDB 7.11 or GDB 10.1+ due to known issue [#26139](https://sourceware.org/bugzilla/show_bug.cgi?id=26139) in GDB 8 and 9.
+![Native Image debugging](images/ni_debugging.png)
+
+> Note: Native Image debugging requires `gdb` debugger (GDB 7.11 or GDB 10.1+), it currently works only on Linux. The feature is experimental.
 
 In order to debug native images of Java applications, it is necessary to build such images with debug information available.
 It can be done by providing following switches for the `native-image` builder:
 - `-g -O0` or
 - `-H:Debug=2 -H:Optimize=0`.
 
-The resulting images will contain debug records in a format GDB understands.
+
+The resulting images will contain debug records in a format `gdb` debugger understands.
+
+### Debug Native Image “Real” Code
+
+Since recently you can attach the debugger to a Native Image process and step over the image “real” code.
+
+Attaching of debugger to a Native Image process is done via adding a configuration into the _launch.json_ file.
+
+1. Select **Native Image: Attach to Process** from the configurations autocompletion in _launch.json_. It generates the **Attach to Native Image** configuration. When that configuration is selected and executed, a list of running processes opens.
+2. Select the running process that corresponds to the Native Image you intend to debug.
+3. when the source file opens, start debugging:
+   ![Native Image debugging source code](images/NativeImageExecutableLocations.png)
+
+The step over the image “real” code” is mostly about UI differentiation of code which is compiled in the native image and which is not used.
+The shaded code is not a part of the Native Image.
 
 ## Integration with VisualVM
 
@@ -217,7 +234,7 @@ This brings the visual Java tooling to VS Code.
 ![VisualVM and VS Code Integration](images/vscode_visualvm.png)
 
 To get started, you need to get the latest stable GraalVM release using the **Download & Install GraalVM** action from the **Gr** activity view, as described in the [Installation and Setup](README.md#installation-and-setup) section.
-Make sure the GraalVM is set as **active**.
+Make sure the GraalVM is set as the **active** installation.
 
 Once a GraalVM installation is set as active, the Command Palette contains the following commands related to VisualVM:
 
@@ -236,7 +253,7 @@ Follow these steps to start VisualVM automatically from within the VS Code:
 
 4. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the Run and Debug activity. Use the Start Debugging or Run Without Debugging action to start the current project.
 
-While the project is starting, the Process node in VisualVM pane displays a project name with a "pid pending" label.
+While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label.
 Once the project process starts, the Process node is updated to show its process ID (PID) and the action defined in step 3 is performed.
 
 > Note: This feature was introduced with the GraalVM 21.2.0 release. Please make sure to get the latest GraalVM Tools for Java extension from the VS Code Marketplace, preferably by downloading the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack).

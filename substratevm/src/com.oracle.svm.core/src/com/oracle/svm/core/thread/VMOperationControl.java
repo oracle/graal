@@ -30,6 +30,7 @@ import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -38,6 +39,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -227,13 +229,12 @@ public final class VMOperationControl {
         assert operation != null && executingThread.isNonNull() || operation == null && queueingThread.isNull() && executingThread.isNull() && !started;
 
         if (started) {
-            history.add(VMOpStatus.Started, operation, queueingThread, executingThread);
+            history.add(VMOpStatus.Started, operation, queueingThread, executingThread, inProgress.nestingLevel);
+            inProgress.nestingLevel++;
         } else {
             if (inProgress.operation != null) {
-                history.add(VMOpStatus.Finished, inProgress.operation, inProgress.executingThread, inProgress.queueingThread);
-            }
-            if (operation != null) {
-                history.add(VMOpStatus.Continued, operation, queueingThread, executingThread);
+                inProgress.nestingLevel--;
+                history.add(VMOpStatus.Finished, inProgress.operation, inProgress.queueingThread, inProgress.executingThread, inProgress.nestingLevel);
             }
         }
 
@@ -261,6 +262,7 @@ public final class VMOperationControl {
     private void enqueue(VMOperation operation, NativeVMOperationData data) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
+            VMError.guarantee(!SafepointBehavior.ignoresSafepoints(), "could cause deadlocks otherwise");
             log().string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
@@ -540,6 +542,7 @@ public final class VMOperationControl {
             }
         }
 
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocating could result in unexpected recursive VM operations.")
         private void executeAllQueuedVMOperations() {
             assertIsLocked();
 
@@ -846,6 +849,7 @@ public final class VMOperationControl {
         VMOperation operation;
         IsolateThread queueingThread;
         IsolateThread executingThread;
+        int nestingLevel;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public VMOperation getOperation() {
@@ -876,11 +880,11 @@ public final class VMOperationControl {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpHistory() {
-            history = new RingBuffer<>(10, VMOpStatusChange::new);
+            history = new RingBuffer<>(15, VMOpStatusChange::new);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread) {
+        public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread, int nestingLevel) {
             assert Heap.getHeap().isInImageHeap(status);
             VMOpStatusChange entry = history.next();
             entry.timestamp = System.currentTimeMillis();
@@ -889,6 +893,8 @@ public final class VMOperationControl {
             entry.causesSafepoint = operation.getCausesSafepoint();
             entry.queueingThread = queueingThread;
             entry.executingThread = executingThread;
+            entry.nestingLevel = nestingLevel;
+            entry.safepointId = Safepoint.Master.singleton().getSafepointId();
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {
@@ -929,6 +935,8 @@ public final class VMOperationControl {
         boolean causesSafepoint;
         IsolateThread queueingThread;
         IsolateThread executingThread;
+        int nestingLevel;
+        UnsignedWord safepointId;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpStatusChange() {
@@ -937,12 +945,15 @@ public final class VMOperationControl {
         void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                log.unsigned(timestamp).string(" - ").string(localStatus.name());
+                log.unsigned(timestamp).string(" - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(operation);
                 }
-                log.string(" (safepoint: ").bool(causesSafepoint).string(", queueingThread: ")
-                                .zhex(queueingThread.rawValue()).string(", executingThread: ").zhex(executingThread.rawValue()).string(")").newline();
+                log.string(" (safepoint: ").bool(causesSafepoint)
+                                .string(", queueingThread: ").zhex(queueingThread.rawValue())
+                                .string(", executingThread: ").zhex(executingThread.rawValue())
+                                .string(", safepointId: ").unsigned(safepointId)
+                                .string(")").newline();
             }
         }
     }

@@ -60,6 +60,7 @@ public class JfrNativeEventSetting {
         this.cutoffTicks = cutoffTicks;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasStackTrace() {
         return stackTrace;
     }

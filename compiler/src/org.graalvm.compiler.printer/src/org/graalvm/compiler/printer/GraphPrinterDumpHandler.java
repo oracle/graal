@@ -25,6 +25,7 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugConfig.asJavaMethod;
+import static org.graalvm.compiler.debug.DebugOptions.PrintUnmodifiedGraphs;
 
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
@@ -68,6 +69,8 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
     protected GraphPrinter printer;
     private List<String> previousInlineContext;
     private CompilationIdentifier previousCompilationID = CompilationIdentifier.INVALID_COMPILATION_ID;
+    private Graph lastGraph;
+    private int lastModCount;
     private int[] dumpIds = {};
     private int failuresCount;
     private Map<Graph, List<String>> inlineContextMap;
@@ -197,7 +200,11 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     }
                     properties.put("StageFlags", ((StructuredGraph) graph).getStageFlags());
                 }
-                printer.print(debug, graph, properties, nextDumpId(), format, arguments);
+                if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getModificationCount()) {
+                    printer.print(debug, graph, properties, nextDumpId(), format, arguments);
+                    lastGraph = graph;
+                    lastModCount = graph.getModificationCount();
+                }
             } catch (IOException e) {
                 handleException(debug, e);
             } catch (Throwable e) {

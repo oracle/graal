@@ -164,7 +164,7 @@ public class ScopedViewLegacyTest extends AbstractParametrizedLibraryTest {
 
     static TestRootNode createRoot(TruffleLanguage<?> lang) {
         TestRootNode root = new TestRootNode(lang);
-        Truffle.getRuntime().createCallTarget(new TestRootNode(lang));
+        root.getCallTarget();
         return root;
     }
 

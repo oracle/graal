@@ -7,7 +7,7 @@ permalink: /reference-manual/java-on-truffle/interoperability/
 
 # Interoperability with Truffle Languages
 
-Java on Truffle allows you to interface other "Truffle" languages (languages which interpreters are implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/)) to create polyglot programs -- programs written in more than one language.
+Java on Truffle allows you to interface other "Truffle" languages (languages which interpreters are implemented with the [Truffle framework](../../../truffle/docs/README.md)) to create polyglot programs -- programs written in more than one language.
 
 This guide describes how to load code written in foreign languages, how to export and import objects between languages, how to use Java on Truffle objects from a foreign language, how to use foreign objects from Java on Truffle, and how to embed in host Java.
 
@@ -21,7 +21,7 @@ How this type is attached to foreign objects is an implementation detail.
 
 ## Polyglot
 
-Java on Truffle provides a guest Java Polyglot API, described in [`polyglot.jar`](#).
+Java on Truffle provides a guest Java Polyglot API, described in `polyglot.jar`.
 This JAR is automatically injected on guest Java contexts but can be excluded with `--java.Polyglot=false`.
 
 You can import the `Polyglot` class to interact with other guest languages:

@@ -49,6 +49,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -74,6 +75,13 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         DefaultRuntimeSupport(Object permission) {
             super(permission);
+        }
+
+        @Override
+        public RootCallTarget newCallTarget(RootNode rootNode) {
+            DefaultCallTarget target = new DefaultCallTarget(rootNode);
+            DefaultRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
+            return target;
         }
 
         @Override
@@ -232,7 +240,7 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @SuppressWarnings("unused")
         @Override
-        public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
             throw new UnsupportedOperationException();
         }
 

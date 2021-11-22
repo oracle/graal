@@ -70,13 +70,6 @@ def run_netbeans_app(app_name, env=None, args=None):
         launch.append('-J-Dnetbeans.logger.console=false')
     mx.run(launch+args, env=env)
 
-def netbeans_jdk(appName):
-    v8u20 = mx.VersionSpec("1.8.0_20")
-    v8u40 = mx.VersionSpec("1.8.0_40")
-    def _igvJdkVersionCheck(version):
-        return version < v8u20 or version >= v8u40
-    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='(< 1.8.0u20 or >= 1.8.0u40)', purpose="running " + appName).home
-
 def igv(args):
     """(obsolete) informs about IGV"""
     mx.warn(
@@ -89,9 +82,12 @@ from the GraalVM EE installation.
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
+    v8u40 = mx.VersionSpec("1.8.0_40")
+    def _c1vJdkVersionCheck(version):
+        return version >= v8u40 and str(version).startswith('1.8.0')
     env = dict(os.environ)
-    env['jdkhome'] = netbeans_jdk("C1 Visualizer")
-    run_netbeans_app('C1Visualizer', env, args)
+    env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(1.8 JDK that is >= 1.8.0u40 )', purpose="running C1 Visualizer").home
+    run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library
@@ -165,7 +161,7 @@ def hsdis(args, copyToDir=None):
             except IOError as e:
                 mx.warn('Could not copy {} to {}: {}'.format(path, dest, str(e)))
 
-def hcfdis(args):
+def hcfdis(args, cp=None):
     """disassemble HexCodeFiles embedded in text files
 
     Run a tool over the input files to convert all embedded HexCodeFiles
@@ -177,7 +173,7 @@ def hcfdis(args):
 
     args = parser.parse_args(args)
 
-    path = mx.library('HCFDIS').get_path(resolve=True)
+    path = cp or mx.library('HCFDIS').get_path(resolve=True)
     mx.run_java(['-cp', path, 'com.oracle.max.hcfdis.HexCodeFileDis'] + args.files)
 
     if args.map is not None:

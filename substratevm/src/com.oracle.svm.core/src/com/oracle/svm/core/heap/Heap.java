@@ -69,6 +69,7 @@ public abstract class Heap {
      * heap-specific resources, e.g., the TLAB. This method is called for every thread except the
      * main thread (i.e., the one that maps the image heap).
      */
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public abstract void detachThread(IsolateThread isolateThread);
 
     public abstract void suspendAllocation();
@@ -217,4 +218,10 @@ public abstract class Heap {
      * value and returns true. Otherwise, the method returns false.
      */
     public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
+
+    /**
+     * (Re)computes minimum/maximum/initial sizes of space based on the available
+     * {@linkplain PhysicalMemory physical memory} and current runtime option values.
+     */
+    public abstract void updateSizeParameters();
 }

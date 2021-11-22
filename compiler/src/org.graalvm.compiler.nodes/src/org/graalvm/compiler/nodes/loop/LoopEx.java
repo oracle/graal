@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -88,6 +89,14 @@ public class LoopEx {
     protected LoopEx(Loop<Block> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
+    }
+
+    public double localLoopFrequency() {
+        return data.getCFG().localLoopFrequency(loopBegin());
+    }
+
+    public ProfileSource localFrequencySource() {
+        return data.getCFG().localLoopFrequencySource(loopBegin());
     }
 
     public Loop<Block> loop() {

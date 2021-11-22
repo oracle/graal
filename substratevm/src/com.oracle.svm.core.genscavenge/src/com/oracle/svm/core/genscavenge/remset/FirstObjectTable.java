@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -177,6 +178,7 @@ final class FirstObjectTable {
         return true;
     }
 
+    @AlwaysInline("GC performance")
     public static void setTableForObject(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         assert startOffset.belowThan(endOffset);
         UnsignedWord startIndex = memoryOffsetToIndex(startOffset);
@@ -229,6 +231,7 @@ final class FirstObjectTable {
      * not at the address of the reference). So, we must skip over the first object if it starts
      * outside the current card.
      */
+    @AlwaysInline("GC performance")
     public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
         Pointer result;
         Pointer firstObject = getFirstObject(tableStart, objectsStart, objectsLimit, index);
@@ -246,6 +249,7 @@ final class FirstObjectTable {
         return result;
     }
 
+    @AlwaysInline("GC performance")
     private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
         UnsignedWord currentIndex = index;
         int currentEntry = getEntryAtIndex(tableStart, currentIndex);

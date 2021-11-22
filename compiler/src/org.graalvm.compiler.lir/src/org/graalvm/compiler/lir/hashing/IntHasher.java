@@ -45,7 +45,7 @@ public final class IntHasher {
         this.shift = shift;
     }
 
-    // 1 + the first 9999 prime numbers
+    // 1 + the first 999 prime numbers
     private static final Short[] factors = new Short[1000];
 
     static {

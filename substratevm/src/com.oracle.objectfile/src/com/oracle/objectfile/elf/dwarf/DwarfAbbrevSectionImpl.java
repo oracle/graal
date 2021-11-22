@@ -277,8 +277,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_use_UTF8 : ... DW_FORM_flag</code>
          *
-         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code ==
-         * class_unit1</code>
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_sec_offset</code> n.b only for <code>abbrev-code
+         * == class_unit1</code>
          *
          * </ul>
          *
@@ -886,7 +886,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_stmt_list, buffer, pos);
-            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
         }
         /*
          * Now terminate.

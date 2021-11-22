@@ -47,7 +47,7 @@ public abstract class InvokeEspressoNode extends Node {
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
         Method resolutionSeed = method;
         if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(), (StaticObject) receiver);
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass());
         }
         Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
         /*

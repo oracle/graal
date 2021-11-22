@@ -60,8 +60,8 @@ class PosixSubstrateSegfaultHandlerFeature implements Feature {
 }
 
 class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {

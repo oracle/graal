@@ -55,7 +55,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -90,14 +90,21 @@ public abstract class LoopTransformations {
         // does not need to be instantiated
     }
 
-    public static void peel(LoopEx loop) {
+    public static LoopFragmentInside peel(LoopEx loop) {
         loop.detectCounted();
-        loop.inside().duplicate().insertBefore(loop);
+        double frequencyBefore = -1D;
+        AbstractBeginNode countedExit = null;
         if (loop.isCounted()) {
-            // For counted loops we assume that we have an effect on the loop frequency.
-            loop.loopBegin().setLoopFrequency(loop.loopBegin().profileData().decrementFrequency(1.0));
+            frequencyBefore = loop.localLoopFrequency();
+            countedExit = loop.counted().getCountedExit();
         }
+        LoopFragmentInside inside = loop.inside().duplicate();
+        inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
+        if (countedExit != null) {
+            adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
+        }
+        return inside;
     }
 
     @SuppressWarnings("try")
@@ -208,20 +215,9 @@ public abstract class LoopTransformations {
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
         loop.loopBegin().graph().getDebug().log("LoopPartialUnroll %s", loop);
-
+        adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
-
-        // Try to update the corresponding post loop's frequency.
-        for (LoopExitNode exit : loop.loopBegin().loopExits()) {
-            if (exit.next().hasExactlyOneUsage() && exit.next().usages().first() instanceof LoopBeginNode) {
-                LoopBeginNode possiblePostLoopBegin = (LoopBeginNode) exit.next().usages().first();
-                if (possiblePostLoopBegin.isPostLoop()) {
-                    possiblePostLoopBegin.setLoopFrequency(loop.loopBegin().profileData().copy(loop.loopBegin().getUnrollFactor() - 1));
-                    break;
-                }
-            }
-        }
     }
 
     /**
@@ -416,13 +412,17 @@ public abstract class LoopTransformations {
         } else {
             updatePreLoopLimit(preCounted);
         }
-        double originalFrequency = loop.loopBegin().loopFrequency();
-        preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
-        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().decrementFrequency(2.0));
-        postLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
+        double originalFrequency = loop.localLoopFrequency();
         preLoopBegin.setLoopOrigFrequency(originalFrequency);
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);
+
+        assert preLoopExitNode.predecessor() instanceof IfNode;
+        assert mainLoopExitNode.predecessor() instanceof IfNode;
+        assert postLoopExitNode.predecessor() instanceof IfNode;
+
+        setSingleVisitedLoopFrequencySplitProbability(preLoopExitNode);
+        setSingleVisitedLoopFrequencySplitProbability(postLoopExitNode);
 
         if (graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             // The pre and post loops don't require safepoints at all
@@ -436,6 +436,27 @@ public abstract class LoopTransformations {
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
 
         return new PreMainPostResult(preLoopBegin, mainLoopBegin, postLoopBegin, preLoop, mainLoop, postLoop);
+    }
+
+    /**
+     * Inject a split probability for the (counted) loop check that will result in a loop frequency
+     * of 1 (in case this is the only loop exit).
+     */
+    private static void setSingleVisitedLoopFrequencySplitProbability(AbstractBeginNode lex) {
+        IfNode ifNode = ((IfNode) lex.predecessor());
+        boolean trueSucc = ifNode.trueSuccessor() == lex;
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(0.01, trueSucc));
+    }
+
+    public static void adaptCountedLoopExitProbability(AbstractBeginNode lex, double newFrequency) {
+        double d = Math.abs(1D - newFrequency);
+        if (d <= 1D) {
+            setSingleVisitedLoopFrequencySplitProbability(lex);
+            return;
+        }
+        IfNode ifNode = ((IfNode) lex.predecessor());
+        boolean trueSucc = ifNode.trueSuccessor() == lex;
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected((newFrequency - 1) / newFrequency, trueSucc));
     }
 
     public static class PreMainPostResult {

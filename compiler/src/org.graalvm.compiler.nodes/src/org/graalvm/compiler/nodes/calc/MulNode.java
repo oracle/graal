@@ -32,13 +32,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -90,6 +90,12 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
             // if this fails we only swap
             return new MulNode(forY, forX);
         }
+
+        // convert "(-a)*(-b)" into "a*b"
+        if (forX instanceof NegateNode && forY instanceof NegateNode) {
+            return new MulNode(((NegateNode) forX).getValue(), ((NegateNode) forY).getValue()).maybeCommuteInputs();
+        }
+
         BinaryOp<Mul> op = getOp(forX, forY);
         NodeView view = NodeView.from(tool);
         return canonical(this, op, stamp(view), forX, forY, view);

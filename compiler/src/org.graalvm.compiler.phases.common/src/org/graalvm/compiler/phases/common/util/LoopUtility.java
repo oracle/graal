@@ -41,27 +41,34 @@ public class LoopUtility {
     /**
      * Remove loop proxies that became obsolete over time, i.e., they proxy a value that already
      * flowed out of a loop and dominates the loop now.
+     *
+     * @param canonicalizer must not be {@code null}, will be applied incrementally to nodes whose
+     *            inputs changed
      */
+    @SuppressWarnings("try")
     public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
         LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
-        for (LoopEx loop : loopsData.loops()) {
-            removeObsoleteProxiesForLoop(loop, context, canonicalizer);
-        }
-    }
-
-    @SuppressWarnings("try")
-    public static void removeObsoleteProxiesForLoop(LoopEx loop, CoreProviders context, CanonicalizerPhase canonicalizer) {
-        StructuredGraph graph = loop.loopBegin().graph();
         final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
-            for (LoopExitNode lex : loop.loopBegin().loopExits()) {
-                for (ProxyNode proxy : lex.proxies().snapshot()) {
-                    if (loop.isOutsideLoop(proxy.value())) {
-                        proxy.replaceAtUsagesAndDelete(proxy.getOriginalNode());
-                    }
-                }
+            for (LoopEx loop : loopsData.loops()) {
+                removeObsoleteProxiesForLoop(loop);
             }
         }
         canonicalizer.applyIncremental(graph, context, inputChanges.getNodes());
+    }
+
+    /**
+     * Remove obsolete proxies from one loop only. Unlike
+     * {@link #removeObsoleteProxies(StructuredGraph, CoreProviders, CanonicalizerPhase)}, this does
+     * not apply canonicalization.
+     */
+    public static void removeObsoleteProxiesForLoop(LoopEx loop) {
+        for (LoopExitNode lex : loop.loopBegin().loopExits()) {
+            for (ProxyNode proxy : lex.proxies().snapshot()) {
+                if (loop.isOutsideLoop(proxy.value())) {
+                    proxy.replaceAtUsagesAndDelete(proxy.getOriginalNode());
+                }
+            }
+        }
     }
 }

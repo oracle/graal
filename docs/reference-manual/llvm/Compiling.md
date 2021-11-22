@@ -11,8 +11,7 @@ As the first step, you have to compile a program to LLVM bitcode using some LLVM
 
 ## File Format
 
-While the GraalVM LLVM runtime can execute [plain bitcode files](https://llvm.org/docs/BitCodeFormat.html),
-the preferred format is a _native executable_ with _embedded bitcode_.
+While the GraalVM LLVM runtime can execute [plain bitcode files](https://llvm.org/docs/BitCodeFormat.html), the preferred format is a _native executable_ with _embedded bitcode_.
 The executable file formats differ on Linux and macOS.
 Linux by default uses ELF files.
 The bitcode is stored in a section called `.llvmbc`.
@@ -31,17 +30,17 @@ To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes 
 The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
 for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
 
-The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater) tool:
+The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](../graalvm-updater.md) tool:
 ```shell
 $GRAALVM_HOME/bin/gu install llvm-toolchain
 ```
 
 The above command will install the LLVM toolchain from the GitHub catalog for GraalVM Community users.
-For GraalVM Enterprise users, the [manual installation](https://www.graalvm.org/reference-manual/graalvm-updater/#manual-installation) is required.
+For GraalVM Enterprise users, the [manual installation](../graalvm-updater.md#manual-installation) is required.
 
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell
-export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
+export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
 ```
 
 See the content of the toolchain path for a list of available tools:
@@ -66,13 +65,13 @@ $LLVM_TOOLCHAIN/clang hello.c -o hello
 
 The resulting executable, `hello`, can be executed on GraalVM using `lli`:
 ```shell
-$GRAALVM_HOME/bin/lli hello
+$JAVA_HOME/bin/lli hello
 ```
 
 ## External Library Dependencies
 
-If the bitcode file depends on external libraries, GraalVM will automatically
-pick up the dependencies from the binary headers. For example:
+If the bitcode file depends on external libraries, GraalVM will automatically pick up the dependencies from the binary headers.
+For example:
 ```c
 #include <unistd.h>
 #include <ncurses.h>
@@ -95,9 +94,9 @@ lli hello-curses
 
 ## Running C++
 
-For running C++ code, the GraalVM LLVM runtime requires the
-[`libc++`](https://libcxx.llvm.org) standard library from the LLVM project. The
-LLVM toolchain shipped with GraalVM automatically links against `libc++`. For example, save this code as a _hello-c++.cpp_ file:
+For running C++ code, the GraalVM LLVM runtime requires the [`libc++`](https://libcxx.llvm.org) standard library from the LLVM project.
+The LLVM toolchain shipped with GraalVM automatically links against `libc++`.
+For example, save this code as a _hello-c++.cpp_ file:
 ```c++
 #include <iostream>
 
@@ -115,9 +114,8 @@ Hello, C++ World!
 
 ## Running Rust
 
-The LLVM toolchain, bundled with GraalVM, does not come with the Rust
-compiler. To install Rust, run the following in your command prompt, then follow the
-onscreen instructions:
+The LLVM toolchain, bundled with GraalVM, does not come with the Rust compiler.
+To install Rust, run the following in your command prompt, then follow the onscreen instructions:
 ```shell
 curl https://sh.rustup.rs -sSf | sh
 ```
@@ -134,32 +132,26 @@ This can be then compiled to bitcode with the `--emit=llvm-bc` flag:
 rustc --emit=llvm-bc hello-rust.rs
 ```
 
-To run the Rust program, we have to tell GraalVM where to find the Rust
-standard libraries:
+To run the Rust program, we have to tell GraalVM where to find the Rust standard libraries:
 ```shell
 lli --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
 Hello Rust!
 ```
 
-Since the Rust compiler is not using the LLVM toolchain shipped with GraalVM, depending on the
-local Rust installation, an error similar to one of the following might happen:
+Since the Rust compiler is not using the LLVM toolchain shipped with GraalVM, depending on the local Rust installation, an error similar to one of the following might happen:
 ```
 Mismatching target triple (expected x86_64-unknown-linux-gnu, got x86_64-pc-linux-gnu)
 Mismatching target triple (expected x86_64-apple-macosx10.11.0, got x86_64-apple-darwin)
 ```
 
-This indicates that the Rust compiler used a different target triple than the LLVM toolchain
-shipped with GraalVM. In this particular case, the differences are just different naming
-conventions across Linux distributions or MacOS versions, there is no real difference.
+This indicates that the Rust compiler used a different target triple than the LLVM toolchain shipped with GraalVM.
+In this particular case, the differences are just different naming conventions across Linux distributions or MacOS versions, there is no real difference.
 In that case, the error can be safely ignored:
 
 ```shell
 lli --experimental-options --llvm.verifyBitcode=false --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
 ```
 
-This option should only be used after manually verifying that the target triples are
-really compatible, i.e., the architecture, operating system, and C library all match.
-For example, `x86_64-unknown-linux-musl` and `x86_64-unknown-linux-gnu` are really different,
-the bitcode is compiled for a different C library. The `--llvm.verifyBitcode=false` option
-disables all checks, GraalVM will then try to run the bitcode regardless, which might randomly
-fail in unexpected ways.
+This option should only be used after manually verifying that the target triples are really compatible, i.e., the architecture, operating system, and C library all match.
+For example, `x86_64-unknown-linux-musl` and `x86_64-unknown-linux-gnu` are really different, the bitcode is compiled for a different C library.
+The `--llvm.verifyBitcode=false` option disables all checks, GraalVM will then try to run the bitcode regardless, which might randomly fail in unexpected ways.

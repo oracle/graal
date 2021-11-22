@@ -48,17 +48,17 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public PhaseSuite<HighTierContext> createHighTier(OptionValues options) {
-        return new EconomyHighTier(options);
+        return new EconomyHighTier();
     }
 
     @Override
     public PhaseSuite<MidTierContext> createMidTier(OptionValues options) {
-        return new EconomyMidTier(options);
+        return new EconomyMidTier();
     }
 
     @Override
     public PhaseSuite<LowTierContext> createLowTier(OptionValues options) {
-        return new EconomyLowTier(options);
+        return new EconomyLowTier();
     }
 
     @Override

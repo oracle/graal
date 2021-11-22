@@ -100,7 +100,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * This is only used for preempting a continuation in the experimental Loom JDK support. There's
      * performance impact in this solution.
      */
-    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt();
+    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
 
     protected static void onMonitorLocked() {
         if (JavaContinuations.useLoom()) {
@@ -256,7 +256,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, overridesCallers = true, access = Access.UNRESTRICTED)
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
@@ -295,7 +295,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, overridesCallers = true, access = Access.UNRESTRICTED)
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorExit(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);

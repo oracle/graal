@@ -52,8 +52,8 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
-import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
@@ -65,10 +65,8 @@ import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.reflect.target.RuntimeReflectionConstructorsImpl;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -154,7 +152,7 @@ public class ReflectionFeature implements GraalFeature {
     private CFunctionPointer register(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         analysisAccess.registerAsCompiled(aMethod);
-        return MethodPointer.factory(aMethod);
+        return new MethodPointer(aMethod);
     }
 
     protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {
@@ -174,7 +172,6 @@ public class ReflectionFeature implements GraalFeature {
 
         reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
-        ImageSingletons.add(RuntimeReflectionConstructors.class, new RuntimeReflectionConstructorsImpl());
     }
 
     @Override

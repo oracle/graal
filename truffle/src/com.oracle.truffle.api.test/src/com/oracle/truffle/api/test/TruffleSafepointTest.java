@@ -92,7 +92,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -285,6 +284,7 @@ public class TruffleSafepointTest {
     @Test
     public void testNullArgs() {
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            sleepNanosBoundary(50000);
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -300,6 +300,7 @@ public class TruffleSafepointTest {
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            sleepNanosBoundary(50000);
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -336,6 +337,7 @@ public class TruffleSafepointTest {
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
             TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             });
@@ -384,6 +386,7 @@ public class TruffleSafepointTest {
     public void testAsynchronous() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -527,6 +530,7 @@ public class TruffleSafepointTest {
     public void testStackTrace() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -564,6 +568,14 @@ public class TruffleSafepointTest {
         });
     }
 
+    @TruffleBoundary
+    private static void sleepNanosBoundary(int nanos) {
+        try {
+            Thread.sleep(0, nanos);
+        } catch (InterruptedException ie) {
+        }
+    }
+
     @Test
     public void testException() {
         forEachConfig((threads, events) -> {
@@ -571,6 +583,7 @@ public class TruffleSafepointTest {
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             }, (e) -> {
@@ -1019,6 +1032,7 @@ public class TruffleSafepointTest {
         forEachConfig((threads, events) -> {
             List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             }, new Consumer<Throwable>() {
@@ -1071,6 +1085,7 @@ public class TruffleSafepointTest {
     public void testEventCancellation() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -1140,6 +1155,7 @@ public class TruffleSafepointTest {
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
+            sleepNanosBoundary(50000);
             TruffleSafepoint.poll(node);
             return false;
         })) {
@@ -1280,7 +1296,7 @@ public class TruffleSafepointTest {
 
         @TruffleBoundary
         private void initialize() {
-            target = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            target = RootNode.createConstantNode(42).getCallTarget();
             try {
                 awaitSubmit.acquire();
             } catch (InterruptedException e) {
@@ -1320,6 +1336,7 @@ public class TruffleSafepointTest {
     public void testSubmitAsInstrument() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -1338,6 +1355,7 @@ public class TruffleSafepointTest {
     public void testSubmitRecurringWaitWithCancel() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -1362,6 +1380,7 @@ public class TruffleSafepointTest {
     public void testSubmitRecurringWait() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -1386,6 +1405,7 @@ public class TruffleSafepointTest {
     public void testSubmitRecurringCancel() {
         forEachConfig((threads, events) -> {
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
             })) {
@@ -1659,7 +1679,7 @@ public class TruffleSafepointTest {
 
             TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped);
             setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
-            setup.target = Truffle.getRuntime().createCallTarget(setup.root);
+            setup.target = setup.root.getCallTarget();
             env.getContext().leave(null, targetEnter);
             setup.futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {

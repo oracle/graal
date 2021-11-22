@@ -46,7 +46,11 @@ public final class LibGraalUtil {
 
     public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
         Objects.requireNonNull(id, "Id must be non null.");
-        return new JNIMethodScope(entryPointClass.getSimpleName() + "::" + id, env);
+        return LibGraalJNIMethodScope.open(entryPointClass.getSimpleName() + "::" + id, env);
+    }
+
+    public static JNIMethodScope openScope(String scopeName, JNIEnv env) {
+        return LibGraalJNIMethodScope.open(scopeName, env);
     }
 
     /*----------------- CHECKING ------------------*/

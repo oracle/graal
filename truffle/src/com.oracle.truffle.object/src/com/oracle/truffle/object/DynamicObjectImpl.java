@@ -126,30 +126,12 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
      * Simpler version of {@link #resizeStore} when the object is only increasing in size.
      */
     private void growStore(Shape oldShape, Shape newShape) {
-        growObjectStore(oldShape, newShape);
-        if (((ShapeImpl) newShape).hasPrimitiveArray) {
-            growPrimitiveStore(oldShape, newShape);
-        }
+        DynamicObjectSupport.grow(this, oldShape, newShape);
     }
-
-    /** @since 0.17 or earlier */
-    protected abstract void growObjectStore(Shape oldShape, Shape newShape);
-
-    /** @since 0.17 or earlier */
-    protected abstract void growPrimitiveStore(Shape oldShape, Shape newShape);
 
     protected void resizeStore(Shape oldShape, Shape newShape) {
-        resizeObjectStore(oldShape, newShape);
-        if (((ShapeImpl) newShape).hasPrimitiveArray) {
-            resizePrimitiveStore(oldShape, newShape);
-        }
+        DynamicObjectSupport.resize(this, oldShape, newShape);
     }
-
-    /** @since 0.17 or earlier */
-    protected abstract void resizePrimitiveStore(Shape oldShape, Shape newShape);
-
-    /** @since 0.17 or earlier */
-    protected abstract void resizeObjectStore(Shape oldShape, Shape newShape);
 
     /**
      * Check whether fast transition is valid.

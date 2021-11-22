@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -54,12 +55,13 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
             System.out.println("Exhaustive heap scanning is disabled. The analysis heap histogram will not contain all instances of types: " + types);
             System.out.println("Exhaustive heap scanning can be turned on using -H:+ExhaustiveHeapScan.");
         }
-        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb);
+        Map<AnalysisType, Integer> histogram = new HashMap<>();
+        AnalysisHeapHistogramPrinter printer = new AnalysisHeapHistogramPrinter(bb, histogram);
         printer.scanBootImageHeapRoots(fieldComparator, positionComparator);
-        printer.printHistogram(out);
+        printHistogram(out, histogram);
     }
 
-    private void printHistogram(PrintWriter out) {
+    private static void printHistogram(PrintWriter out, Map<AnalysisType, Integer> histogram) {
         out.println("Heap histogram");
         out.format("%8s %s %n", "Count", "Class");
 
@@ -67,36 +69,45 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
                         .forEach(entry -> out.format("%8d %8s %n", entry.getValue(), entry.getKey().toJavaName()));
     }
 
-    private final Map<AnalysisType, Integer> histogram = new HashMap<>();
-
-    private AnalysisHeapHistogramPrinter(BigBang bb) {
-        super(bb, null, new ReusableSet());
+    private AnalysisHeapHistogramPrinter(BigBang bb, Map<AnalysisType, Integer> histogram) {
+        super(bb, null, new ReusableSet(), new ScanningObserver(bb, histogram));
     }
 
-    @Override
-    protected void forScannedConstant(JavaConstant scannedValue, ScanReason reason) {
-        AnalysisType type = constantType(bb, scannedValue);
-        int count = histogram.getOrDefault(type, 0);
-        histogram.put(type, count + 1);
-    }
+    private static final class ScanningObserver implements ObjectScanningObserver {
 
-    @Override
-    public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
-    }
+        private final BigBang bb;
+        private final Map<AnalysisType, Integer> histogram;
 
-    @Override
-    public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
-    }
+        private ScanningObserver(BigBang bb, Map<AnalysisType, Integer> histogram) {
+            this.bb = bb;
+            this.histogram = histogram;
+        }
 
-    @Override
-    public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
-    }
+        @Override
+        public void forScannedConstant(JavaConstant scannedValue, ScanReason reason) {
+            AnalysisType type = constantType(bb, scannedValue);
+            int count = histogram.getOrDefault(type, 0);
+            histogram.put(type, count + 1);
+        }
 
-    @Override
-    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
-    }
+        @Override
+        public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        }
 
-    @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        @Override
+        public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+        }
+
+        @Override
+        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        }
+
+        @Override
+        public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
+        }
+
+        @Override
+        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        }
     }
 }

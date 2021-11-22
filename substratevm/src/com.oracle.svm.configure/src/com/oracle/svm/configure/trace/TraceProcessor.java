@@ -63,8 +63,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getJniConfiguration() {
         TypeConfiguration result = jniProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new TypeConfiguration(result);
-            result.removeAll(omittedConfigProcessor.jniProcessor.getConfiguration());
+            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.jniProcessor.getConfiguration());
         }
         return result;
     }
@@ -72,8 +71,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getReflectionConfiguration() {
         TypeConfiguration result = reflectionProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new TypeConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getConfiguration());
+            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.reflectionProcessor.getConfiguration());
         }
         return result;
     }

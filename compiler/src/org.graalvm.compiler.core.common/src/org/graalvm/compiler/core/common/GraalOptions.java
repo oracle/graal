@@ -199,16 +199,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
-    // Ahead of time compilation
-    @Option(help = "Try to avoid emitting code where patching is required", type = OptionType.Expert)
-    public static final OptionKey<Boolean> ImmutableCode = new OptionKey<>(false);
-
-    @Option(help = "Generate position independent code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
-
-    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
-
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);

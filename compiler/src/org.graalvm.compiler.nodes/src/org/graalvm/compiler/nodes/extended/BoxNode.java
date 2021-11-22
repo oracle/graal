@@ -36,8 +36,6 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -48,6 +46,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -65,7 +65,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_16, allowedUsageTypes = {InputType.Memory, InputType.Value})
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_16, allowedUsageTypes = {InputType.Value})
 public abstract class BoxNode extends AbstractBoxingNode implements IterableNodeType, VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode>, IndirectCanonicalization {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
@@ -154,7 +154,7 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
         tool.replaceWithVirtual(newVirtual);
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Value})
     private static class PureBoxNode extends BoxNode {
         public static final NodeClass<PureBoxNode> TYPE = NodeClass.create(PureBoxNode.class);
 
@@ -211,7 +211,7 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
         @Override
         public void lower(LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
-                replaceAtAllUsages(value, this);
+                replaceAtAllUsages(value, true);
             }
         }
 

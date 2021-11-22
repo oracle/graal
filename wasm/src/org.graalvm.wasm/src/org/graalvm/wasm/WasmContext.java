@@ -67,6 +67,7 @@ public final class WasmContext {
     private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
     private final FdManager filesManager;
+    private final WasmContextOptions contextOptions;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -80,6 +81,7 @@ public final class WasmContext {
         this.linker = new Linker();
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
+        this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
         instantiateBuiltinInstances();
     }
 
@@ -167,9 +169,9 @@ public final class WasmContext {
         return readModule(moduleName, data, moduleLimits, source);
     }
 
-    public static WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
+    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
         final WasmModule module = WasmModule.create(moduleName, data, moduleLimits, source);
-        final BinaryParser reader = new BinaryParser(module);
+        final BinaryParser reader = new BinaryParser(module, this);
         reader.readModule();
         return module;
     }
@@ -188,7 +190,7 @@ public final class WasmContext {
         // Note: this is not a complete and correct instantiation as defined in
         // https://webassembly.github.io/spec/core/exec/modules.html#instantiation
         // For testing only.
-        final BinaryParser reader = new BinaryParser(instance.module());
+        final BinaryParser reader = new BinaryParser(instance.module(), this);
         reader.resetGlobalState(this, instance);
         if (reinitMemory) {
             reader.resetMemoryState(this, instance);
@@ -198,6 +200,10 @@ public final class WasmContext {
                 instance.target(startFunction.index()).call();
             }
         }
+    }
+
+    public WasmContextOptions getContextOptions() {
+        return this.contextOptions;
     }
 
     private static final ContextReference<WasmContext> REFERENCE = ContextReference.create(WasmLanguage.class);

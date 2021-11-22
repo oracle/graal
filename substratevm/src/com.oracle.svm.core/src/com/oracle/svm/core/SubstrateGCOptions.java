@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -59,6 +60,7 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMinHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
@@ -69,6 +71,7 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
@@ -79,7 +82,11 @@ public class SubstrateGCOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxNewSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
+                Heap.getHeap().updateSizeParameters();
             }
         }
     };
+
+    @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy).", type = OptionType.User)//
+    public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L);
 }

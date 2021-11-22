@@ -78,8 +78,8 @@ public final class IsolatedGraalUtils {
         return installedCode;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> compileInNewIsolateAndInstall0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate,
                     ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef, ClientHandle<byte[]> encodedOptions, int encodedOptionsLength) {
 
@@ -115,8 +115,8 @@ public final class IsolatedGraalUtils {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void compileInNewIsolate0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate,
                     ImageHeapRef<SubstrateMethod> methodRef, ClientHandle<byte[]> encodedOptions, int encodedOptionsLength) {
 
@@ -158,8 +158,8 @@ public final class IsolatedGraalUtils {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void copyOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
         byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
         CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);

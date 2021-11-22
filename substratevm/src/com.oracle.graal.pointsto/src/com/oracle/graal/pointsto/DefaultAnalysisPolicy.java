@@ -189,7 +189,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                 receiverState = filterReceiverState(bb, receiverState);
             }
 
-            for (AnalysisType type : receiverState.types()) {
+            for (AnalysisType type : receiverState.types(bb)) {
                 if (isSaturated()) {
                     /*-
                      * The receiver can become saturated during the callees linking, which saturates

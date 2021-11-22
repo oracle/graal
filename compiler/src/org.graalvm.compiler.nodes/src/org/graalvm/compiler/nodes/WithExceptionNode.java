@@ -30,24 +30,12 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 /**
  * Base class for fixed nodes that have exactly two successors: A "next" successor for normal
  * execution, and an "exception edge" successor for exceptional control flow.
  *
- * In case a subclass of {@link WithExceptionNode} is also a {@link MemoryKill}, we need to be
- * careful to keep the graph schedulable. A node cannot be placed after a {@link ControlSplitNode}
- * (which is the base class of {@link WithExceptionNode}) as it denotes the end of a block. Thus,
- * instead of connecting memory edges to the {@link WithExceptionNode} directly, we rather point to
- * the {@link KillingBeginNode} in the {@link WithExceptionNode#next() non-exceptional case}, or
- * {@link ExceptionObjectNode} in the {@link WithExceptionNode#exceptionEdge() exception case}.
- *
- * @see KillingBeginNode
- * @see MultiKillingBeginNode
  * @see ExceptionObjectNode
  */
 @NodeInfo
@@ -90,8 +78,10 @@ public abstract class WithExceptionNode extends ControlSplitNode {
 
     public void killExceptionEdge() {
         AbstractBeginNode edge = exceptionEdge();
-        setExceptionEdge(null);
-        GraphUtil.killCFG(edge);
+        if (edge != null) {
+            setExceptionEdge(null);
+            GraphUtil.killCFG(edge);
+        }
     }
 
     @Override
@@ -127,20 +117,5 @@ public abstract class WithExceptionNode extends ControlSplitNode {
         newExceptionEdge.setNext(graph().add(new UnreachableControlSinkNode()));
         setExceptionEdge(newExceptionEdge);
         return this;
-    }
-
-    /**
-     * Create a begin node appropriate as this node's next successor. In particular, if this node is
-     * a memory kill, this should create a {@link KillingBeginNode} or {@link MultiKillingBeginNode}
-     * with the appropriate location identities.
-     */
-    public AbstractBeginNode createNextBegin() {
-        if (this instanceof SingleMemoryKill) {
-            return KillingBeginNode.create(((SingleMemoryKill) this).getKilledLocationIdentity());
-        } else if (this instanceof MultiMemoryKill) {
-            return MultiKillingBeginNode.create(((MultiMemoryKill) this).getKilledLocationIdentities());
-        } else {
-            return new BeginNode();
-        }
     }
 }

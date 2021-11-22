@@ -91,6 +91,8 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -214,31 +216,37 @@ public abstract class NativeImageCodeCache {
 
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
-        FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
+        HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
+        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
         }
 
-        for (HostedType type : imageHeap.getUniverse().getTypes()) {
-            if (type.getWrapped().isReachable()) {
-                codeInfoEncoder.prepareMetadataForClass(type.getJavaClass());
-            }
-        }
-
+        MethodMetadataEncoder methodMetadataEncoder = ImageSingletons.lookup(MethodMetadataEncoderFactory.class).create(encoders);
         if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
             for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
-                HostedMethod method = imageHeap.getMetaAccess().optionalLookupJavaMethod(queriedMethod);
-                if (method != null) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, queriedMethod);
-                }
+                HostedMethod method = imageHeap.getMetaAccess().lookupJavaMethod(queriedMethod);
+                methodMetadataEncoder.addReflectionMethodMetadata(imageHeap.getMetaAccess(), method, queriedMethod);
             }
-        } else {
+            for (Object method : ImageSingletons.lookup(RuntimeReflectionSupport.class).getHidingMethods()) {
+                AnalysisMethod hidingMethod = (AnalysisMethod) method;
+                HostedType declaringType = imageHeap.getUniverse().lookup(hidingMethod.getDeclaringClass());
+                String name = hidingMethod.getName();
+                JavaType[] analysisParameterTypes = hidingMethod.getSignature().toParameterTypes(null);
+                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
+                for (int i = 0; i < analysisParameterTypes.length; ++i) {
+                    parameterTypes[i] = imageHeap.getUniverse().lookup(analysisParameterTypes[i]);
+                }
+                methodMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes);
+            }
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
-                if (method.getWrapped().isReachable() && method.hasJavaMethod()) {
-                    codeInfoEncoder.prepareMetadataForMethod(method, method.getJavaMethod());
+                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod()) {
+                    methodMetadataEncoder.addReachableMethodMetadata(method);
                 }
             }
         }
@@ -250,6 +258,7 @@ public abstract class NativeImageCodeCache {
 
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        methodMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
@@ -435,7 +444,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private static class FrameInfoCustomization extends FrameInfoEncoder.NamesFromMethod {
+    private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
         int numDeoptEntryPoints;
         int numDuringCallEntryPoints;
 
@@ -447,13 +456,13 @@ public abstract class NativeImageCodeCache {
         }
 
         @Override
-        protected boolean shouldStoreMethod() {
+        protected boolean storeDeoptTargetMethod() {
             return false;
         }
 
-        @Override
-        protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
-            return true;
+        // @Override
+        // protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
+        //     return true;
             // CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
             // BytecodeFrame topFrame = infopoint.debugInfo.frame();
             //
@@ -516,6 +525,68 @@ public abstract class NativeImageCodeCache {
             // }
             //
             // return false;
+        // }
+
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+            return true;
+            // CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
+            // BytecodeFrame topFrame = infopoint.debugInfo.frame();
+            //
+            // if (isDeoptEntry(method, infopoint)) {
+            //     /* Collect number of entry points for later printing of statistics. */
+            //     if (infopoint instanceof DeoptEntryInfopoint) {
+            //         numDeoptEntryPoints++;
+            //     } else if (infopoint instanceof Call) {
+            //         numDuringCallEntryPoints++;
+            //     } else {
+            //         throw shouldNotReachHere();
+            //     }
+            //
+            //     return true;
+            // }
+            // BytecodeFrame rootFrame = topFrame;
+            // while (rootFrame.caller() != null) {
+            //     rootFrame = rootFrame.caller();
+            // }
+            // assert rootFrame.getMethod().equals(method);
+            //
+            // boolean isDeoptEntry = compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
+            // if (infopoint instanceof DeoptEntryInfopoint) {
+            //     assert isDeoptEntry;
+            //     assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
+            //
+            //     numDeoptEntryPoints++;
+            //     return true;
+            //
+            // }
+            //
+            // if (isDeoptEntry && topFrame.duringCall) {
+            //     assert infopoint instanceof Call;
+            //     assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
+            //
+            //     numDuringCallEntryPoints++;
+            //     return true;
+            // }
+            //
+            // for (BytecodeFrame frame = topFrame; frame != null; frame = frame.caller()) {
+            //     if (CompilationInfoSupport.singleton().isFrameInformationRequired(frame.getMethod())) {
+            //         /*
+            //          * Somewhere in the inlining hierarchy is a method for which frame information
+            //          * was explicitly requested. For simplicity, we output frame information for all
+            //          * methods in the inlining chain.
+            //          *
+            //          * We require frame information, for example, for frames that must be visible to
+            //          * SubstrateStackIntrospection.
+            //          */
+            //         return true;
+            //     }
+            // }
+            //
+            // if (compilationInfo.canDeoptForTesting()) {
+            //     return true;
+            // }
+            //
+            // return false;
         }
 
         @Override
@@ -542,5 +613,19 @@ public abstract class NativeImageCodeCache {
             }
             return false;
         }
+    }
+
+    public interface MethodMetadataEncoder {
+        void addReflectionMethodMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod);
+
+        void addHidingMethodMetadata(HostedType declType, String name, HostedType[] paramTypes);
+
+        void addReachableMethodMetadata(HostedMethod method);
+
+        void encodeAllAndInstall();
+    }
+
+    public interface MethodMetadataEncoderFactory {
+        MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
     }
 }

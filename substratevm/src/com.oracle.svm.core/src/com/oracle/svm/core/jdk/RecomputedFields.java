@@ -418,9 +418,9 @@ class CompletableFutureAsyncPoolAccessor {
     }
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK16OrEarlier.class)
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, onlyWith = JDK11OrEarlier.class)
 @SuppressWarnings("static-method")
-final class Target_java_util_concurrent_ForkJoinTask_JDK16OrEarlier {
+final class Target_java_util_concurrent_ForkJoinTask_JDK11OrEarlier {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
@@ -439,7 +439,7 @@ final class Target_java_util_concurrent_ForkJoinTask_JDK16OrEarlier {
     }
 }
 
-@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode", onlyWith = JDK16OrEarlier.class)
+@TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode", onlyWith = JDK11OrEarlier.class)
 final class Target_java_util_concurrent_ForkJoinTask_ExceptionNode {
 }
 

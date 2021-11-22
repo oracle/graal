@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.BOOLEAN;
-import static com.oracle.truffle.espresso.jdwp.api.TagConstants.VOID;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +40,7 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.jdwp.api.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -462,6 +460,21 @@ public final class JDWP {
 
             static CommandResult createReply(Packet packet) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id).errorCode(ErrorCodes.NOT_IMPLEMENTED);
+                return new CommandResult(reply);
+            }
+        }
+
+        static class ALL_MODULES {
+            public static final int ID = 22;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                ModuleRef[] moduleRefs = context.getAllModulesRefs();
+                reply.writeInt(moduleRefs.length);
+                for (ModuleRef moduleRef : moduleRefs) {
+                    reply.writeLong(context.getIds().getIdAsLong(moduleRef));
+                }
                 return new CommandResult(reply);
             }
         }
@@ -976,6 +989,35 @@ public final class JDWP {
                 return new CommandResult(reply);
             }
         }
+
+        static class MODULE {
+
+            public static final int ID = 19;
+
+            static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long typeId = input.readLong();
+                KlassRef klass = verifyRefType(typeId, reply, context);
+
+                if (klass == null) {
+                    // input could be a classObjectId
+                    Object object = context.getIds().fromId((int) typeId);
+                    klass = context.getReflectedType(object);
+                }
+
+                if (klass == null) {
+                    return new CommandResult(reply);
+                }
+
+                ModuleRef module = klass.getModule();
+                long moduleID = context.getIds().getIdAsLong(module);
+                reply.writeLong(moduleID);
+
+                return new CommandResult(reply);
+            }
+        }
     }
 
     static class ClassType {
@@ -1075,6 +1117,22 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                // check that method is member of the class type or a super class
+                KlassRef declaringKlass = method.getDeclaringKlass();
+                KlassRef checkedKlass = klass;
+                boolean isMember = false;
+                while (checkedKlass != null) {
+                    if (checkedKlass == declaringKlass) {
+                        isMember = true;
+                        break;
+                    }
+                    checkedKlass = checkedKlass.getSuperClass();
+                }
+                if (!isMember) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
+                    return new CommandResult(reply);
+                }
+
                 LOGGER.fine(() -> "trying to invoke static method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
@@ -1105,10 +1163,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -1239,6 +1315,11 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                if (method.getDeclaringKlass() != itf) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
+                    return new CommandResult(reply);
+                }
+
                 LOGGER.fine(() -> "trying to invoke interface method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
@@ -1269,10 +1350,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -1728,6 +1827,11 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
+                if (!context.isMemberOf(callee, method.getDeclaringKlass())) {
+                    reply.errorCode(ErrorCodes.INVALID_METHODID);
+                    return new CommandResult(reply);
+                }
+
                 LOGGER.fine("trying to invoke method: " + method.getNameAsString());
 
                 int invocationOptions = input.readInt();
@@ -1749,10 +1853,28 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            ThreadJob<?>.JobResult<?> result = job.getResult();
-                            writeMethodResult(reply, context, result);
+                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
-                            connection.handleReply(packet, commandResult);
+                            try {
+                                ThreadJob<?>.JobResult<?> result = job.getResult();
+                                writeMethodResult(reply, context, result);
+                            } catch (Throwable t) {
+                                entered = controller.enterTruffleContext();
+                                reply.errorCode(ErrorCodes.INTERNAL);
+                                // Checkstyle: stop allow error output
+                                if (entered) {
+                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
+                                } else {
+                                    System.err.println("Internal Espresso error: " + t.getMessage());
+                                }
+                                t.printStackTrace();
+                                // Checkstyle: resume allow error output
+                            } finally {
+                                connection.handleReply(packet, commandResult);
+                                if (entered) {
+                                    controller.leaveTruffleContext();
+                                }
+                            }
                         }
                     }).start();
                 } catch (Throwable t) {
@@ -2516,7 +2638,7 @@ public final class JDWP {
             private static void setArrayValues(JDWPContext context, PacketStream input, int index, int values, Object array, byte tag) {
                 for (int i = index; i < index + values; i++) {
                     switch (tag) {
-                        case BOOLEAN:
+                        case TagConstants.BOOLEAN:
                             boolean bool = input.readBoolean();
                             byte[] boolArray = context.getUnboxedArray(array);
                             boolArray[i] = bool ? (byte) 1 : (byte) 0;
@@ -2651,6 +2773,9 @@ public final class JDWP {
                         }
 
                         byte sigbyte = input.readByte();
+                        if (sigbyte == TagConstants.OBJECT) {
+                            sigbyte = context.getTag(value);
+                        }
 
                         writeValue(sigbyte, value, reply, true, context);
                     }
@@ -2786,6 +2911,55 @@ public final class JDWP {
         }
     }
 
+    static class ModuleReference {
+        public static final int ID = 18;
+
+        static class NAME {
+
+            public static final int ID = 1;
+
+            public static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long moduleId = input.readLong();
+                ModuleRef module = verifyModule(moduleId, reply, context);
+
+                if (module == null) {
+                    return new CommandResult(reply);
+                }
+
+                reply.writeString(module.jdwpName());
+                return new CommandResult(reply);
+            }
+        }
+
+        static class CLASSLOADER {
+
+            public static final int ID = 2;
+
+            public static CommandResult createReply(Packet packet, JDWPContext context) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long moduleId = input.readLong();
+                ModuleRef module = verifyModule(moduleId, reply, context);
+
+                if (module == null) {
+                    return new CommandResult(reply);
+                }
+
+                Object loader = module.classLoader();
+                if (loader == null || loader == context.getNullObject()) { // system class loader
+                    reply.writeLong(0);
+                } else {
+                    reply.writeLong(context.getIds().getIdAsLong(loader));
+                }
+                return new CommandResult(reply);
+            }
+        }
+    }
+
     static class Event {
         public static final int ID = 64;
 
@@ -2860,9 +3034,9 @@ public final class JDWP {
     private static Object readValue(PacketStream input, JDWPContext context) {
         byte valueKind = input.readByte();
         switch (valueKind) {
-            case VOID:
+            case TagConstants.VOID:
                 return Void.TYPE;
-            case BOOLEAN:
+            case TagConstants.BOOLEAN:
                 return input.readBoolean();
             case TagConstants.BYTE:
                 return input.readByte();
@@ -2896,7 +3070,7 @@ public final class JDWP {
             reply.writeByte(tag);
         }
         switch (tag) {
-            case BOOLEAN:
+            case TagConstants.BOOLEAN:
                 if (value.getClass() == Long.class) {
                     long unboxed = (long) value;
                     reply.writeBoolean(unboxed > 0 ? true : false);
@@ -2974,31 +3148,24 @@ public final class JDWP {
     }
 
     private static void writeMethodResult(PacketStream reply, JDWPContext context, ThreadJob<?>.JobResult<?> result) {
-        try {
-            if (result.getException() != null) {
-                LOGGER.fine(() -> "method threw exception");
-                reply.writeByte(TagConstants.OBJECT);
-                reply.writeLong(0);
-                reply.writeByte(TagConstants.OBJECT);
-                Object guestException = context.getGuestException(result.getException());
-                reply.writeLong(context.getIds().getIdAsLong(guestException));
-            } else {
-                Object value = context.toGuest(result.getResult());
-                if (value != null) {
-                    byte tag = context.getTag(value);
-                    writeValue(tag, value, reply, true, context);
-                } else { // return value is null
-                    reply.writeByte(TagConstants.OBJECT);
-                    reply.writeLong(0);
-                }
-                // no exception, so zero object ID
+        if (result.getException() != null) {
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
+            reply.writeByte(TagConstants.OBJECT);
+            Object guestException = context.getGuestException(result.getException());
+            reply.writeLong(context.getIds().getIdAsLong(guestException));
+        } else {
+            Object value = context.toGuest(result.getResult());
+            if (value != null) {
+                byte tag = context.getTag(value);
+                writeValue(tag, value, reply, true, context);
+            } else { // return value is null
                 reply.writeByte(TagConstants.OBJECT);
                 reply.writeLong(0);
             }
-        } catch (Throwable t) {
-            LOGGER.warning(() -> "Internal Espresso error: " + t);
-            LOGGER.throwing(JDWP.class.getName(), "writeMethodResult", t);
-            reply.errorCode(ErrorCodes.INTERNAL);
+            // no exception, so zero object ID
+            reply.writeByte(TagConstants.OBJECT);
+            reply.writeLong(0);
         }
     }
 
@@ -3025,6 +3192,17 @@ public final class JDWP {
             return null;
         }
         return klass;
+    }
+
+    private static ModuleRef verifyModule(long moduleId, PacketStream reply, JDWPContext context) {
+        ModuleRef module;
+        try {
+            module = (ModuleRef) context.getIds().fromId((int) moduleId);
+        } catch (ClassCastException ex) {
+            reply.errorCode(ErrorCodes.INVALID_MODULE);
+            return null;
+        }
+        return module;
     }
 
     private static FieldRef verifyFieldRef(long fieldId, PacketStream reply, JDWPContext context) {

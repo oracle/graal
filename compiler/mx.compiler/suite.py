@@ -163,6 +163,10 @@ suite = {
             "sha1": "5026b67af00cc876db1ed194b91d7cc2ba06710d",
             "urls": ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
+          "aarch64": {
+            # GR-34811
+            "optional": True,
+          },
         },
         "windows": {
           "amd64": {
@@ -434,6 +438,7 @@ suite = {
       ],
       "annotationProcessors" : [
       ],
+      "spotbugs" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",
       "workingSets" : "API,Graal",
@@ -447,6 +452,7 @@ suite = {
         "org.graalvm.nativebridge.jni",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
+        "JVMCI_HOTSPOT",
       ],
       "annotationProcessors" : [
         "GRAAL_LIBGRAAL_PROCESSOR",
@@ -1567,6 +1573,11 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+        "java.base" : [
+          "jdk.internal.misc",
+          "jdk.internal.vm.annotation",
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -2168,12 +2179,12 @@ suite = {
           "jdk.unsupported" # sun.misc.Unsafe
         ],
         "exports" : [
-          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
+          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,org.graalvm.nativeimage.base",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.nodes.graphbuilderconf to org.graalvm.nativeimage.driver",
-          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
+          "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.junitsupport",
           "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",

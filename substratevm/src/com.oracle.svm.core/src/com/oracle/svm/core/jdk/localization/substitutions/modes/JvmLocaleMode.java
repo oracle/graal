@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk.localization.substitutions.modes;
 
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -35,6 +36,6 @@ import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 public class JvmLocaleMode implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return LocalizationSupport.jvmMode();
+        return ImageSingletons.lookup(LocalizationSupport.class).jvmMode();
     }
 }

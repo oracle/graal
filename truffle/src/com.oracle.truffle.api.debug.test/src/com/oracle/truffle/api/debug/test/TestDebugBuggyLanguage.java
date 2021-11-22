@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -59,7 +60,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -70,7 +70,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.util.Objects;
 
 /**
  * A buggy language for debugger tests. Use {@link ProxyLanguage#setDelegate(ProxyLanguage)} to
@@ -116,7 +115,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
     @Override
     protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, request.getSource(), scopeProvider()));
+        return new TestRootNode(languageInstance, request.getSource(), scopeProvider()).getCallTarget();
     }
 
     @SuppressWarnings("static-method")

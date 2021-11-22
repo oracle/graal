@@ -91,9 +91,10 @@ import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
@@ -177,7 +178,17 @@ public class MethodTypeFlowBuilder {
                  */
                 registerUsedElements(false);
             }
-            CanonicalizerPhase.create().apply(graph, bb.getProviders());
+            CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+            canonicalizerPhase.apply(graph, bb.getProviders());
+            if (bb.strengthenGraalGraphs()) {
+                /*
+                 * Removing unnecessary conditions before the static analysis runs reduces the size
+                 * of the type flow graph. For example, this removes redundant null checks: the
+                 * bytecode parser emits explicit null checks before e.g., all method calls, field
+                 * access, array accesses; many of those dominate each other.
+                 */
+                new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+            }
 
             // Do it again after canonicalization changed type checks and field accesses.
             registerUsedElements(true);
@@ -779,10 +790,7 @@ public class MethodTypeFlowBuilder {
                 } else {
                     /*
                      * Without precise type information the dynamic new instance node has to
-                     * generate a heap object for each instantiated type. This means that the source
-                     * flow for dynamic new instance is 'close to all instantiated' and will be
-                     * reduced to abstract objects, unless
-                     * BootImageAnalysisOptions.ReduceCloseToAllInstantiatedFlows is disabled.
+                     * generate a heap object for each instantiated type.
                      */
                     instanceType = bb.getObjectType();
                     instanceTypeBuilder = TypeFlowBuilder.create(bb, instanceType, AllInstantiatedTypeFlow.class, () -> {
@@ -1121,8 +1129,8 @@ public class MethodTypeFlowBuilder {
                 AtomicReadAndWriteNode node = (AtomicReadAndWriteNode) n;
                 modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
 
-            } else if (n instanceof ArrayCopy) {
-                ArrayCopy node = (ArrayCopy) n;
+            } else if (n instanceof BasicArrayCopyNode) {
+                BasicArrayCopyNode node = (BasicArrayCopyNode) n;
 
                 TypeFlowBuilder<?> srcBuilder = state.lookup(node.getSource());
                 TypeFlowBuilder<?> dstBuilder = state.lookup(node.getDestination());
@@ -1192,7 +1200,7 @@ public class MethodTypeFlowBuilder {
                     return cloneFlow;
                 });
                 cloneBuilder.addObserverDependency(inputBuilder);
-                state.add(node.asNode(), cloneBuilder);
+                state.add(node.asFixedNode(), cloneBuilder);
             } else if (n instanceof MonitorEnterNode) {
                 MonitorEnterNode node = (MonitorEnterNode) n;
                 BytecodeLocation monitorLocation = BytecodeLocation.create(uniqueKey(node), methodFlow.getMethod());

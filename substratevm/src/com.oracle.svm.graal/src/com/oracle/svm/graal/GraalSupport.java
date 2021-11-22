@@ -293,7 +293,7 @@ public class GraalSupport {
         if (startOffset == -1) {
             return null;
         }
-        return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, null, false, trackNodeSourcePosition);
+        return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, false, trackNodeSourcePosition);
     }
 
     public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {

@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/substratevm,/tools,/graal-js
-EXCLUDE_COMPONENTS=nju,nic,ni,nil,svml,llp,dis,pbm,pmh,llmulrl
-FORCE_BASH_LAUNCHERS=polyglot
-SKIP_LIBRARIES=polyglot
+DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/tools,/truffle
+COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,js,lg,lsp,nfi,poly,polynative,pro,rgx,sdk,svm,svmnfi,tfl,tflm,vvm
+NATIVE_IMAGES=gu,js,lib:jvmcicompiler
+DISABLE_INSTALLABLES=False

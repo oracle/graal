@@ -190,13 +190,13 @@ public class InliningLog {
             }
             MapCursor<Invokable, Callsite> entries = calleeLog.leaves.getEntries();
             while (entries.advance()) {
-                Invokable invokeFromCallee = entries.getKey();
+                FixedNode invokeFromCallee = entries.getKey().asFixedNodeOrNull();
                 Callsite callsiteFromCallee = entries.getValue();
-                if (invokeFromCallee.asFixedNode().isDeleted()) {
+                if (invokeFromCallee == null || invokeFromCallee.isDeleted()) {
                     // Some invoke nodes could have been removed by optimizations.
                     continue;
                 }
-                Invokable inlinedInvokeFromCallee = (Invokable) replacements.get(invokeFromCallee.asFixedNode());
+                Invokable inlinedInvokeFromCallee = (Invokable) replacements.get(invokeFromCallee);
                 Callsite descendant = mapping.get(callsiteFromCallee);
                 leaves.put(inlinedInvokeFromCallee, descendant);
             }
@@ -219,13 +219,13 @@ public class InliningLog {
         }
         MapCursor<Invokable, Callsite> entries = replacementLog.leaves.getEntries();
         while (entries.advance()) {
-            Invokable replacementInvoke = entries.getKey();
+            FixedNode replacementInvoke = entries.getKey().asFixedNodeOrNull();
             Callsite replacementCallsite = entries.getValue();
-            if (replacementInvoke.asFixedNode().isDeleted()) {
+            if (replacementInvoke == null || replacementInvoke.isDeleted()) {
                 // Some invoke nodes could have been removed by optimizations.
                 continue;
             }
-            Invokable invoke = (Invokable) replacements.get(replacementInvoke.asFixedNode());
+            Invokable invoke = (Invokable) replacements.get(replacementInvoke);
             Callsite callsite = mapping.get(replacementCallsite);
             leaves.put(invoke, callsite);
         }
@@ -247,10 +247,10 @@ public class InliningLog {
         copyTree(root, replacementLog.root, replacements, mapping);
         MapCursor<Invokable, Callsite> replacementEntries = replacementLog.leaves.getEntries();
         while (replacementEntries.advance()) {
-            Invokable replacementInvoke = replacementEntries.getKey();
+            FixedNode replacementInvoke = replacementEntries.getKey().asFixedNodeOrNull();
             Callsite replacementSite = replacementEntries.getValue();
-            if (replacementInvoke.isAlive()) {
-                Invokable invoke = (Invokable) replacements.get((Node) replacementInvoke);
+            if (replacementInvoke != null && replacementInvoke.isAlive()) {
+                Invokable invoke = (Invokable) replacements.get(replacementInvoke);
                 Callsite site = mapping.get(replacementSite);
                 leaves.put(invoke, site);
             }
@@ -261,7 +261,8 @@ public class InliningLog {
         mapping.put(replacementSite, site);
         site.target = replacementSite.target;
         site.decisions.addAll(replacementSite.decisions);
-        site.invoke = replacementSite.invoke != null && replacementSite.invoke.isAlive() ? (Invokable) replacements.get(replacementSite.invoke.asFixedNode()) : null;
+        FixedNode replacementSiteInvoke = replacementSite.invoke != null ? replacementSite.invoke.asFixedNodeOrNull() : null;
+        site.invoke = replacementSiteInvoke != null && replacementSiteInvoke.isAlive() ? (Invokable) replacements.get(replacementSiteInvoke) : null;
         for (Callsite replacementChild : replacementSite.children) {
             Callsite child = new Callsite(site, null);
             site.children.add(child);
@@ -435,13 +436,8 @@ public class InliningLog {
         }
 
         @Override
-        public boolean isAlive() {
-            return false;
-        }
-
-        @Override
-        public FixedNode asFixedNode() {
-            throw new UnsupportedOperationException("Parsed invokable is a placeholder, not a concrete node.");
+        public FixedNode asFixedNodeOrNull() {
+            return null;
         }
 
         @Override

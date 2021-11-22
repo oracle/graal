@@ -96,7 +96,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     public void set(Node node, T value) {
         assert check(node);
         if (!node.isAlive()) {
-            throw new VerificationError("this node is not alive: " + node);
+            throw new GraalGraphError("this node is not alive: " + node);
         }
         values[getNodeId(node)] = value;
     }

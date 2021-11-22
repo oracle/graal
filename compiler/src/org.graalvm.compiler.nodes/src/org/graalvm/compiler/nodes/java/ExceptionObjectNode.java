@@ -24,39 +24,41 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
-import org.graalvm.compiler.nodes.MultiKillingBeginNode;
+import org.graalvm.compiler.nodes.DeoptimizingNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * The entry to an exception handler with the exception coming from a call (as opposed to a local
  * throw instruction or implicit exception).
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_8, size = SIZE_8)
-public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, SingleMemoryKill {
+public final class ExceptionObjectNode extends BeginStateSplitNode implements Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptAfter {
     public static final NodeClass<ExceptionObjectNode> TYPE = NodeClass.create(ExceptionObjectNode.class);
 
     public ExceptionObjectNode(MetaAccessProvider metaAccess) {
@@ -79,32 +81,59 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (isMarkerAndCanBeRemoved()) {
+            graph().removeFixed(this);
+            return;
+        }
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
             /*
              * Now the lowering to BeginNode+LoadExceptionNode can be performed, since no more
              * deopts can float in between the begin node and the load exception node.
              */
-            Node predecessor = predecessor();
-            AbstractBeginNode entry;
-            if (predecessor instanceof SingleMemoryKill) {
-                LocationIdentity locationsKilledByPredecessor = ((SingleMemoryKill) predecessor).getKilledLocationIdentity();
-                entry = graph().add(KillingBeginNode.create(locationsKilledByPredecessor));
-            } else if (predecessor instanceof MultiMemoryKill) {
-                LocationIdentity[] locationsKilledByPredecessor = ((MultiMemoryKill) predecessor).getKilledLocationIdentities();
-                entry = graph().add(MultiKillingBeginNode.create(locationsKilledByPredecessor));
-            } else {
-                entry = graph().add(new BeginNode());
-            }
-
             LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp(NodeView.DEFAULT)));
 
+            GraalError.guarantee(graph().getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", this);
+            GraalError.guarantee(stateAfter() != null, "StateAfter must not be null for %s", this);
             loadException.setStateAfter(stateAfter());
+            BeginNode begin = graph().add(new BeginNode());
+            FixedWithNextNode insertAfter = begin;
+            graph().addAfterFixed(this, begin);
             replaceAtUsages(loadException, InputType.Value);
-            graph().replaceFixedWithFixed(this, entry);
-            entry.graph().addAfterFixed(entry, loadException);
-
+            if (hasUsages()) {
+                MemoryAnchorNode anchor = graph().add(new MemoryAnchorNode(LocationIdentity.any()));
+                graph().addAfterFixed(begin, anchor);
+                replaceAtUsages(anchor, InputType.Memory);
+                insertAfter = anchor;
+            }
+            graph().addAfterFixed(insertAfter, loadException);
+            graph().removeFixed(this);
             loadException.lower(tool);
         }
+    }
+
+    /**
+     * Tests whether this is a placeholder node that can be removed.
+     *
+     * See {@code org.graalvm.compiler.replacements.SnippetTemplate.replaceExceptionObjectNode}
+     */
+    private boolean isMarkerAndCanBeRemoved() {
+        if (predecessor() instanceof WithExceptionNode) {
+            return false;
+        }
+        GraalError.guarantee(predecessor() instanceof ExceptionObjectNode || predecessor() instanceof MergeNode, "Unexpected predecessor of %s: %s", this, predecessor());
+        GraalError.guarantee(getExceptionValueFromState(this) == getExceptionValueFromState((StateSplit) predecessor()), "predecessor of %s with unexpected state: %s", this, predecessor());
+        GraalError.guarantee(hasNoUsages(), "Unexpected usages of %s", this);
+        return true;
+    }
+
+    private static ValueNode getExceptionValueFromState(StateSplit exceptionObjectNode) {
+        if (exceptionObjectNode.asNode().graph().getFrameStateVerification() == FrameStateVerification.NONE) {
+            return null;
+        }
+        GraalError.guarantee(exceptionObjectNode.stateAfter() != null, "an exception handler needs a frame state");
+        GraalError.guarantee(exceptionObjectNode.stateAfter().stackSize() == 1 && exceptionObjectNode.stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
+                        "an exception handler's frame state must have only the exception on the stack");
+        return exceptionObjectNode.stateAfter().stackAt(0);
     }
 
     @Override
@@ -114,5 +143,10 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
                         stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
                         "an exception handler's frame state must have only the exception on the stack");
         return super.verify();
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 }

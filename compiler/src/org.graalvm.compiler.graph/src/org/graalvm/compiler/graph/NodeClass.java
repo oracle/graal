@@ -222,6 +222,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         try (DebugCloseable t1 = Init_AllowedUsages.start(debug)) {
             allowedUsageTypes = superNodeClass == null ? EnumSet.noneOf(InputType.class) : superNodeClass.allowedUsageTypes.clone();
             allowedUsageTypes.addAll(Arrays.asList(info.allowedUsageTypes()));
+            GraalError.guarantee(!allowedUsageTypes.contains(InputType.Memory) || MemoryKillMarker.class.isAssignableFrom(clazz),
+                            "Node of type %s with allowedUsageType of memory must inherit from MemoryKill", clazz);
         }
 
         if (presetIterableIds != null) {
@@ -503,6 +505,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     } else {
                         inputType = optionalInputAnnotation.value();
                     }
+                    GraalError.guarantee(inputType != InputType.Memory || MemoryKillMarker.class.isAssignableFrom(type) || NodeInputList.class.isAssignableFrom(type),
+                                    "field type of input annotated with Memory must inherit from MemoryKill: %s", field);
                     inputs.add(new InputInfo(offset, field.getName(), type, field.getDeclaringClass(), inputType, field.isAnnotationPresent(Node.OptionalInput.class)));
                 } else if (successorAnnotation != null) {
                     if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
@@ -1250,14 +1254,15 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void applySuccessors(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.successorIteration);
+        applyEdges(node, consumer, this.successorIteration, successors);
     }
 
     public void applyInputs(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.inputsIteration);
+        applyEdges(node, consumer, this.inputsIteration, inputs);
     }
 
-    private static void applyEdges(Node node, EdgeVisitor consumer, long mask) {
+    private static void applyEdges(Node node, EdgeVisitor consumer, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
@@ -1266,13 +1271,14 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 if (curNode != null) {
                     Node newNode = consumer.apply(node, curNode);
                     if (newNode != curNode) {
-                        Edges.putNodeUnsafe(node, offset, newNode);
+                        edges.putNodeUnsafeChecked(node, offset, newNode, index);
                     }
                 }
             } else {
                 applyHelper(node, consumer, offset);
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
     }
 
@@ -1351,22 +1357,41 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         }
     }
 
+    /**
+     * Finds the first {@link Input} or {@link OptionalInput} in {@code node} whose value
+     * {@code == key} and replaces it with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.inputsIteration);
+        assert node.getNodeClass() == this;
+        return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
     }
 
+    /**
+     * Finds the first {@link Successor} in {@code node} whose value is {@code key} and replaces it
+     * with {@code replacement}.
+     *
+     * Pre-requisite: {@code node.getNodeClass() == this}
+     *
+     * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
+     */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
-        return replaceFirstEdge(node, key, replacement, this.successorIteration);
+        assert node.getNodeClass() == this;
+        return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
     }
 
-    public static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask) {
+    private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
+        int index = 0;
         long myMask = mask;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
                 Object curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode == key) {
-                    Edges.putNodeUnsafe(node, offset, replacement);
+                    edges.putNodeUnsafeChecked(node, offset, replacement, index);
                     return true;
                 }
             } else {
@@ -1376,11 +1401,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                 }
             }
             myMask >>>= NEXT_EDGE;
+            index++;
         }
         return false;
     }
 
-    public void registerAtInputsAsUsage(Node node) {
+    void registerAtInputsAsUsage(Node node) {
         long myMask = this.inputsIteration;
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);

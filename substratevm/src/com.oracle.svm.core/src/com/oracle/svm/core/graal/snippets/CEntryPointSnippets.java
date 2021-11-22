@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.snippets;
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -36,10 +37,8 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -100,6 +99,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: stop
@@ -426,7 +426,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Thread state going away.")
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
             VMThreads.singleton().detachThread(currentThread);
@@ -564,15 +563,18 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Avoid StackOverflowError and safepoints until they are disabled permanently", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static int reportException(Throwable exception) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         logException(exception);
+
         ImageSingletons.lookup(LogHandler.class).fatalError();
         return CEntryPointErrors.UNSPECIFIED; // unreachable
     }
 
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static void logException(Throwable exception) {
         try {
             Log.log().exception(exception);
@@ -620,16 +622,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
+    public static void registerLowerings(OptionValues options, Providers providers, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        new CEntryPointSnippets(options, factories, providers, snippetReflection, vmThreadSize, lowerings);
+        new CEntryPointSnippets(options, providers, vmThreadSize, lowerings);
     }
 
-    private CEntryPointSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, int vmThreadSize,
+    private CEntryPointSnippets(OptionValues options, Providers providers, int vmThreadSize,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        super(options, factories, providers, snippetReflection);
+        super(options, providers);
         lowerings.put(CEntryPointEnterNode.class, new EnterLowering(vmThreadSize));
         lowerings.put(CEntryPointLeaveNode.class, new LeaveLowering());
         lowerings.put(CEntryPointUtilityNode.class, new UtilityLowering());

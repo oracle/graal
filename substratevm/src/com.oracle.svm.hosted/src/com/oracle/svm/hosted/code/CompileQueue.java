@@ -353,7 +353,7 @@ public class CompileQueue {
     }
 
     protected void callForReplacements(DebugContext debug, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig) {
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), snippetReflection, true, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true);
     }
 
     @SuppressWarnings("try")
@@ -687,7 +687,7 @@ public class CompileQueue {
          * more inlining restrictions and this code can be removed.
          */
         RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
-        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION && !annotation.mayBeInlined();
+        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {

@@ -7,7 +7,7 @@ permalink: /tools/dap/
 
 # Debug Adapter Protocol
 
-GraalVM supports debugging of guest language applications, written in any of the supported languages, i.e., JavaScript/TypeScript, Python R, Ruby, and provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/).
+GraalVM supports debugging of guest language applications, written in any of the supported languages, i.e., JavaScript/TypeScript, Python, R, Ruby, and provides a built-in implementation of the [Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/).
 By definition, Debug Adapter Protocol is to standardize the "communication" between the debugging component and a concrete debugger or runtime.
 This allows you to attach compatible debuggers such as Visual Studio Code (VS Code) to GraalVM.
 
@@ -41,12 +41,12 @@ app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 2&#46; Install the `express` module dependency in the directory where you saved the file:
 ```shell
-npm install express
+$JAVA_HOME/bin/npm install express
 ```
 
 3&#46; Run the application with DAP enabled:
 ```shell
-node --dap App.js
+$JAVA_HOME/bin/node --dap App.js
 [Graal DAP] Starting server and listening on localhost/127.0.0.1:4711
 ```
 
@@ -77,10 +77,10 @@ code .
 8&#46; Start debugging (F5).
 
 The other approach is to use VS Code with the GraalVM extension installed.
-Follow the steps described in
-[Node.js and JavaScript Debugging](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm#javascript-and-node.js-debugging), and launch the application being debugged directly from VS Code.
+Follow the steps described in [Node.js and JavaScript Debugging](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm#javascript-and-node.js-debugging), and launch the application being debugged directly from VS Code.
 When debugging a guest language application from VS Code, a user can choose a protocol to use by setting the protocol attribute in the corresponding debug configuration to either `chromeDevTools` or `debugAdapter`.
 To connect to the open DAP port in this scenario, the content of the _launch.json_ should be:
+
 ```json
 {
     "version": "0.2.0",

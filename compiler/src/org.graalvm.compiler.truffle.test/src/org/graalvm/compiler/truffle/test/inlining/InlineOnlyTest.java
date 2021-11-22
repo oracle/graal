@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -80,8 +79,7 @@ public class InlineOnlyTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            final TruffleRuntime runtime = Truffle.getRuntime();
-            final RootCallTarget rootCallTarget = runtime.createCallTarget(new RootNode(this) {
+            final RootCallTarget rootCallTarget = new RootNode(this) {
 
                 @Override
                 public String toString() {
@@ -98,10 +96,10 @@ public class InlineOnlyTest {
                 public String getName() {
                     return METHOD_EXCLUDED_FROM_INLINING;
                 }
-            });
-            return runtime.createCallTarget(new RootNode(this) {
+            }.getCallTarget();
+            return new RootNode(this) {
 
-                @Child DirectCallNode callNode = runtime.createDirectCallNode(rootCallTarget);
+                @Child DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(rootCallTarget);
 
                 @Override
                 public String toString() {
@@ -117,7 +115,7 @@ public class InlineOnlyTest {
                 public Object execute(VirtualFrame frame) {
                     return callNode.call();
                 }
-            });
+            }.getCallTarget();
         }
     }
 
@@ -128,8 +126,7 @@ public class InlineOnlyTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            final TruffleRuntime runtime = Truffle.getRuntime();
-            final RootCallTarget rootCallTarget = runtime.createCallTarget(new RootNode(this) {
+            final RootCallTarget rootCallTarget = new RootNode(this) {
 
                 @Override
                 public String toString() {
@@ -153,10 +150,10 @@ public class InlineOnlyTest {
                 public String getName() {
                     return METHOD_INLINED;
                 }
-            });
-            return runtime.createCallTarget(new RootNode(this) {
+            }.getCallTarget();
+            return new RootNode(this) {
 
-                @Child DirectCallNode callNode = runtime.createDirectCallNode(rootCallTarget);
+                @Child DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(rootCallTarget);
 
                 @Override
                 public String toString() {
@@ -172,7 +169,7 @@ public class InlineOnlyTest {
                 public Object execute(VirtualFrame frame) {
                     return callNode.call();
                 }
-            });
+            }.getCallTarget();
         }
     }
 }

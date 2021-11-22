@@ -122,7 +122,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             for (Node node : graph.getNodes()) {
                 if (node instanceof Invoke) {
                     Invoke invoke = (Invoke) node;
-                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asNode());
+                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asFixedNode());
 
                 }
             }

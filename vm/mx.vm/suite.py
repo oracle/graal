@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5d6e27792ff4814ce47ff49f7b9845231e2048ec",
+                "version": "036b9458dbb233a1d1ef4694df7358658f9498f0",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5d6e27792ff4814ce47ff49f7b9845231e2048ec",
+                "version": "036b9458dbb233a1d1ef4694df7358658f9498f0",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "7dcb07a57591f45c032f463bf4ceec7a49495348",
+                "version": "9bcfd4f0e628354e3a489a290cd223569c05db1c",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "c761a6e10ca86dc81cccc9840a3927b5dcda2ae1",
+                "version": "7addd7c0cf9961f8c05a1bac8d1ec915164a6e46",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "4130a1090c486309114e8f773c39ed31a21c887b",
+                "version": "f57597943a3e3577652a2e8fc556e27d66920cb1",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -119,6 +119,19 @@ suite = {
             ],
         },
         "org.graalvm.polybench.micro" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8+",
+            "license" : "GPLv2-CPE",
+            "checkstyle": "org.graalvm.component.installer",
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": [
+                "truffle:TRUFFLE_DSL_PROCESSOR",
+            ],
+        },
+        "org.graalvm.polybench.instruments" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "1.8+",
@@ -211,6 +224,23 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "maven" : False,
+        },
+        "POLYBENCH_INSTRUMENTS": {
+            "subDir": "src",
+            "dependencies": [
+                "org.graalvm.polybench.instruments",
+            ],
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : False,
+        },
+        "POLYBENCH_INSTRUMENTS_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.vm/polybench-instruments.properties",
+            },
         },
         "PMH": {
             "subDir": "src",

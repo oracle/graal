@@ -43,7 +43,6 @@ package com.oracle.truffle.regex.tregex.nodes;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.RegexBodyNode;
@@ -408,7 +407,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 } else {
                     bodyNode = new TRegexLazyFindStartRootNode(language, source, backwardNode, captureGroupNode == null);
                 }
-                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, bodyNode));
+                backwardCallTarget = new RegexRootNode(language, bodyNode).getCallTarget();
             }
             this.captureGroupEntryNode = insert(captureGroupNode);
             if (captureGroupNode == null) {
@@ -420,8 +419,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 } else {
                     findStartCallTarget = backwardCallTarget;
                 }
-                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(
-                                new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupNode, rootNode, findStartCallTarget)));
+                captureGroupCallTarget = new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupNode, rootNode, findStartCallTarget)).getCallTarget();
             }
         }
 

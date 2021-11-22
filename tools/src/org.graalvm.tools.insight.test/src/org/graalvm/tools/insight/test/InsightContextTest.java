@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,26 @@
  */
 package org.graalvm.tools.insight.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.tools.insight.Insight;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -34,23 +54,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.tools.insight.Insight;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-import org.junit.Before;
-import org.junit.Test;
 
 public class InsightContextTest {
     public static final class InsightTestLanguage extends ProxyLanguage {
@@ -77,7 +80,7 @@ public class InsightContextTest {
             int idx = request.getArgumentNames().indexOf("insight");
             assertNotEquals("insight is an argument", -1, idx);
 
-            return Truffle.getRuntime().createCallTarget(new ParsingNode(idx));
+            return new ParsingNode(idx).getCallTarget();
         }
 
         class ParsingNode extends RootNode {

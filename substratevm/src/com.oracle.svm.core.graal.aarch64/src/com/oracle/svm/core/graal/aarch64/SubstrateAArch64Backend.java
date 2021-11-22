@@ -387,7 +387,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
 
             LIRKind wordKind = getLIRKindTool().getWordKind();
-            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forInt(targetMethod.getCodeOffsetInImage()));
+            Value codeOffsetInImage = emitConstant(wordKind, JavaConstant.forLong(targetMethod.getCodeOffsetInImage()));
             Value codeInfo = emitJavaConstant(SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache()));
             int size = wordKind.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int codeStartFieldOffset = getRuntimeConfiguration().getImageCodeInfoCodeStartOffset();
@@ -444,7 +444,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public void emitPrefetchAllocate(Value address) {
-            append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
+            append(new AArch64PrefetchOp(asAddressValue(address, AArch64Address.ANY_SIZE), PrefetchMode.PSTL1KEEP));
         }
 
         @Override
@@ -821,10 +821,22 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             return super.allowConstantToStackMove(constant);
         }
 
+        private static JavaConstant getZeroConstant(AllocatableValue dst) {
+            int size = dst.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (size) {
+                case 32:
+                    return JavaConstant.INT_0;
+                case 64:
+                    return JavaConstant.LONG_0;
+                default:
+                    throw VMError.shouldNotReachHere();
+            }
+        }
+
         @Override
         public AArch64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createLoad(dst, JavaConstant.INT_0);
+                return super.createLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
@@ -834,7 +846,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createStackLoad(dst, JavaConstant.INT_0);
+                return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
@@ -901,7 +913,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 masm.adrpLdr(srcSize, resultReg, resultReg);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
-                Register baseReg = getBaseRegister(crb);
+                Register baseReg = getBaseRegister();
                 assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
                 masm.add(64, resultReg, baseReg, resultReg, ShiftType.LSL, getShift());
             }
@@ -943,10 +955,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
-        CompilationResultBuilder tasm = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister);
-        tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
-        return tasm;
+        crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
+        return crb;
     }
 
     protected FrameContext createFrameContext(SharedMethod method) {

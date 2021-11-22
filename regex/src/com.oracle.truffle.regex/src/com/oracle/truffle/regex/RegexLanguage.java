@@ -43,7 +43,6 @@ package com.oracle.truffle.regex;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -147,7 +146,7 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(createRegexObject(createRegexSource(parsingRequest.getSource()))));
+        return RootNode.createConstantNode(createRegexObject(createRegexSource(parsingRequest.getSource()))).getCallTarget();
     }
 
     private static RegexSource createRegexSource(Source source) {

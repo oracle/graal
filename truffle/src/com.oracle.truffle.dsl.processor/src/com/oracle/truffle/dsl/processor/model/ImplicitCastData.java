@@ -62,7 +62,24 @@ public class ImplicitCastData extends TemplateMethod {
     }
 
     @Override
-    public int compareTo(TemplateMethod o) {
-        return super.compareTo(o);
+    public int compareTo(TemplateMethod other) {
+        if (this == other) {
+            return 0;
+        } else if (!(other instanceof ImplicitCastData)) {
+            return super.compareTo(other);
+        }
+        ImplicitCastData m2 = (ImplicitCastData) other;
+
+        int compare = 0;
+        int order1 = getNaturalOrder();
+        int order2 = m2.getNaturalOrder();
+        if (order1 != NO_NATURAL_ORDER && order2 != NO_NATURAL_ORDER) {
+            compare = Integer.compare(order1, order2);
+            if (compare != 0) {
+                return compare;
+            }
+        }
+
+        return super.compareTo(other);
     }
 }

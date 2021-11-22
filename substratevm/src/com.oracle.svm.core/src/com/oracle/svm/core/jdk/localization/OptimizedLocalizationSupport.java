@@ -24,9 +24,13 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
-import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.collections.Pair;
 
+//Checkstyle: allow reflection
+import java.lang.reflect.Field;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -48,10 +52,13 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     final Map<Pair<String, Locale>, ResourceBundle> resourceBundles = new HashMap<>();
 
-    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(LocalizationFeature.Options.IncludeResourceBundles, "");
+    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
+        super(defaultLocale, locales, defaultCharset);
+    }
 
-    public OptimizedLocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
-        super(defaultLocale, locales);
+    @Override
+    public boolean optimizedMode() {
+        return true;
     }
 
     /**
@@ -68,9 +75,35 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             }
         }
         String errorMessage = "Resource bundle not found " + baseName + ", locale " + locale + ". " +
-                        "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+                        "Register the resource bundle using the option -H:IncludeResourceBundles=" + baseName + ".";
         throw new MissingResourceException(errorMessage, this.getClass().getName(), baseName);
 
+    }
+
+    private final Field bundleNameField = ReflectionUtil.lookupField(ResourceBundle.class, "name");
+    private final Field bundleLocaleField = ReflectionUtil.lookupField(ResourceBundle.class, "locale");
+
+    @Override
+    public void prepareClassResourceBundle(String basename, Class<?> bundleClass) {
+        try {
+            ResourceBundle bundle = ((ResourceBundle) ReflectionUtil.newInstance(bundleClass));
+            Locale locale = extractLocale(bundleClass);
+            /*- Set the basename and locale to be consistent with JVM lookup process */
+            bundleNameField.set(bundle, basename);
+            bundleLocaleField.set(bundle, locale);
+            prepareBundle(basename, bundle, locale);
+        } catch (ReflectionUtil.ReflectionUtilError | ReflectiveOperationException e) {
+            throw UserError.abort(e, "Failed to instantiated bundle from class %s, reason %s", bundleClass, e.getCause().getMessage());
+        }
+    }
+
+    private static Locale extractLocale(Class<?> bundleClass) {
+        String name = bundleClass.getName();
+        int split = name.lastIndexOf('_');
+        if (split == -1) {
+            return Locale.ROOT;
+        }
+        return parseLocaleFromTag(name.substring(split + 1));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

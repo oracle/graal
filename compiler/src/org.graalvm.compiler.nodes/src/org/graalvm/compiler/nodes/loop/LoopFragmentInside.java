@@ -233,7 +233,6 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().scaleFrequency(1 / 2.0));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
@@ -578,6 +577,12 @@ public class LoopFragmentInside extends LoopFragment {
         // Nothing to do
     }
 
+    private EconomicMap<PhiNode, PhiNode> old2NewPhi;
+
+    public EconomicMap<PhiNode, PhiNode> getOld2NewPhi() {
+        return old2NewPhi;
+    }
+
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
         List<PhiNode> newPhis = new LinkedList<>();
@@ -592,8 +597,14 @@ public class LoopFragmentInside extends LoopFragment {
         markStateNodes(loopBegin, usagesToPatch);
 
         List<PhiNode> oldPhis = loopBegin.phis().snapshot();
+
+        if (peel.old2NewPhi == null) {
+            peel.old2NewPhi = EconomicMap.create();
+        }
+
         for (PhiNode phi : oldPhis) {
             if (phi.hasNoUsages()) {
+                peel.old2NewPhi.put(phi, null);
                 continue;
             }
             ValueNode first;
@@ -606,6 +617,7 @@ public class LoopFragmentInside extends LoopFragment {
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
             PhiNode newPhi = phi.duplicateOn(loopBegin);
+            peel.old2NewPhi.put(phi, newPhi);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));

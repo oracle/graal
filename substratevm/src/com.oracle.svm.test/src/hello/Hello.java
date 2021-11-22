@@ -47,6 +47,12 @@ public class Hello {
     }
 
     public static class DefaultGreeter extends Greeter {
+
+        @Override
+        public int hashCode() {
+            return 42;
+        }
+
         @Override
         public void greet() {
             System.out.println("Hello, world!");

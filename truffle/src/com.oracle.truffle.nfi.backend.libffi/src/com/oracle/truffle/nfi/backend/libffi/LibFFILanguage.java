@@ -136,14 +136,14 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
-        });
+        }.getCallTarget();
     }
 
     protected static LibFFIContext getCurrentContext() {

@@ -28,12 +28,13 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -67,6 +68,15 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         return canonical(this, forX, forY, getZeroCheck(), view);
     }
 
+    /**
+     * This is used as a hook to allow "safe" SignedDivNodes to be created during canonicalization.
+     */
+    protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
+        SignedDivNode sd = new SignedDivNode(forX, forY, forZeroCheck);
+        sd.stateBefore = forStateBefore;
+        return sd;
+    }
+
     public static ValueNode canonical(SignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, NodeView view) {
         Stamp predictedStamp = IntegerStamp.OPS.getDiv().foldStamp(forX.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
         Stamp stamp = self != null ? self.stamp(view) : predictedStamp;
@@ -92,9 +102,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
                 SignedRemNode integerRemNode = (SignedRemNode) integerSubNode.getY();
                 if (integerSubNode.stamp(view).isCompatible(stamp) && integerRemNode.stamp(view).isCompatible(stamp) && integerSubNode.getX() == integerRemNode.getX() &&
                                 forY == integerRemNode.getY()) {
-                    SignedDivNode sd = new SignedDivNode(integerSubNode.getX(), forY, zeroCheck);
-                    sd.stateBefore = self != null ? self.stateBefore : null;
-                    return sd;
+                    if (self != null) {
+                        return self.createWithInputs(integerSubNode.getX(), forY, zeroCheck, self.stateBefore);
+                    }
+                    return new SignedDivNode(integerSubNode.getX(), forY, zeroCheck);
                 }
             }
         }

@@ -58,9 +58,9 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
     @Test
     public void testCachedLibWithValue() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(LibrarySplittingStrategyTestFactory.CachesLibOnValueNodeGen.create(
-                                        new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        LibrarySplittingStrategyTestFactory.CachesLibOnValueNodeGen.create(
+                                        new ReturnsFirstArgumentNode())).getCallTarget();
         Object[] first = new Object[]{1};
         Object[] second = new Object[]{"2"};
         testSplitsDirectCallsHelper(callTarget, first, second);
@@ -68,10 +68,9 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
     @Test
     public void testCachedLibWithValueExclude() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(
-                                        LibrarySplittingStrategyTestFactory.CachesLibOnValueNodeExcludeNodeGen.create(
-                                                        new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        LibrarySplittingStrategyTestFactory.CachesLibOnValueNodeExcludeNodeGen.create(
+                                        new ReturnsFirstArgumentNode())).getCallTarget();
         Object[] first = new Object[]{1};
         Object[] second = new Object[]{"2"};
         testDoesNotSplitDirectCallHelper(callTarget, first, second);
@@ -79,10 +78,9 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
     @Test
     public void testExportedMessage() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(
-                                        LibrarySplittingStrategyTestFactory.SplitReadPropertyNodeGen.create(
-                                                        new ReturnsFirstArgumentNode(), new ReturnsSecondArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        LibrarySplittingStrategyTestFactory.SplitReadPropertyNodeGen.create(
+                                        new ReturnsFirstArgumentNode(), new ReturnsSecondArgumentNode())).getCallTarget();
         Object[] first = new Object[]{newInstance(), "a"};
         Object[] second = new Object[]{newInstance(), "b"};
         testSplitsDirectCallsHelper(callTarget, first, second);
@@ -90,10 +88,9 @@ public class LibrarySplittingStrategyTest extends AbstractSplittingStrategyTest 
 
     @Test
     public void testExportedMessageWithExcludedSpecialisation() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(
-                                        LibrarySplittingStrategyTestFactory.SplitReadPropertyNodeGen.create(
-                                                        new ReturnsFirstArgumentNode(), new ReturnsSecondArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        LibrarySplittingStrategyTestFactory.SplitReadPropertyNodeGen.create(
+                                        new ReturnsFirstArgumentNode(), new ReturnsSecondArgumentNode())).getCallTarget();
         Object[] first = new Object[]{newInstance(), SplittingObjectType.ReadMember.CACHED_NAME};
         Object[] second = new Object[]{newInstance(), "b"};
         testDoesNotSplitDirectCallHelper(callTarget, first, second);

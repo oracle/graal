@@ -168,8 +168,8 @@ public final class RequestedJDWPEvents {
             case VM_START: // no debuggers should ask for this event
                 eventListener.addVMStartRequest(packet.id);
                 break;
-            case VM_DEATH: // no debuggers should request this event
-                eventListener.addVMDeathRequest(packet.id);
+            case VM_DEATH:
+                eventListener.addVMDeathRequest(packet.id, suspendPolicy);
                 break;
             case MONITOR_CONTENDED_ENTER:
                 eventListener.addMonitorContendedEnterRequest(packet.id, filter);

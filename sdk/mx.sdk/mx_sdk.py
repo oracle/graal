@@ -143,6 +143,7 @@ AbstractNativeImageConfig = mx_sdk_vm.AbstractNativeImageConfig
 LauncherConfig = mx_sdk_vm.LauncherConfig
 LanguageLauncherConfig = mx_sdk_vm.LanguageLauncherConfig
 LibraryConfig = mx_sdk_vm.LibraryConfig
+LanguageLibraryConfig = mx_sdk_vm.LanguageLibraryConfig
 GraalVmComponent = mx_sdk_vm.GraalVmComponent
 GraalVmTruffleComponent = mx_sdk_vm.GraalVmTruffleComponent
 GraalVmLanguage = mx_sdk_vm.GraalVmLanguage
@@ -157,8 +158,8 @@ def register_graalvm_component(component):
     return mx_sdk_vm.register_graalvm_component(component)
 
 
-def graalvm_component_by_name(name):
-    return mx_sdk_vm.graalvm_component_by_name(name)
+def graalvm_component_by_name(name, fatalIfMissing=True):
+    return mx_sdk_vm.graalvm_component_by_name(name, fatalIfMissing=fatalIfMissing)
 
 
 def graalvm_components(opt_limit_to_suite=False):

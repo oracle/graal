@@ -56,7 +56,7 @@ public final class Fdstat {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 24;
+    public static final int BYTES = 24;
 
     /** Reads file type. */
     public static Filetype readFsFiletype(Node node, WasmMemory memory, int address) {

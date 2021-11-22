@@ -34,8 +34,10 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -57,11 +59,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * used as a replacement.</li>
  * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
  * a replacement.</li>
- * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}. Note that this is only
- * possible if the macro node is a {@link MacroStateSplitNode}.</li>
+ * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}.</li>
  * </ul>
  */
-public interface MacroInvokable extends Invokable, Lowerable {
+public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
 
     CallTargetNode.InvokeKind getInvokeKind();
 

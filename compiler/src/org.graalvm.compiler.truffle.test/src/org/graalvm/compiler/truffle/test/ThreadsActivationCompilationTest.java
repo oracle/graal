@@ -83,7 +83,7 @@ public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
         compiledEnter.set(Boolean.FALSE);
         compiledLeave.set(Boolean.FALSE);
 
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 TruffleContext tc = (TruffleContext) frame.getArguments()[0];
@@ -104,7 +104,7 @@ public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
                 }
                 return null;
             }
-        });
+        }.getCallTarget();
         TruffleContext tc = LanguageContext.get(null).getEnv().getContext();
         singleContext.invalidate();
         target.call(tc);

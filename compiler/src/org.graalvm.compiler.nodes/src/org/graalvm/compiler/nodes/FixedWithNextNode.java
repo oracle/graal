@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
  * successor.
  */
 @NodeInfo
-public abstract class FixedWithNextNode extends FixedNode {
+public abstract class FixedWithNextNode extends FixedNode implements FixedWithNextNodeInterface {
     public static final NodeClass<FixedWithNextNode> TYPE = NodeClass.create(FixedWithNextNode.class);
 
     @Successor protected FixedNode next;
@@ -51,8 +51,9 @@ public abstract class FixedWithNextNode extends FixedNode {
         super(c, stamp);
     }
 
+    /* This method is final to ensure that it can be de-virtualized and inlined. */
     @Override
-    public FixedWithNextNode asNode() {
+    public final FixedWithNextNode asFixedWithNextNode() {
         return this;
     }
 }

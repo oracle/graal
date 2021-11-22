@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.OptimizedTypeCheckViolated;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
@@ -47,7 +46,6 @@ import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
 import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
@@ -76,7 +74,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -261,8 +258,8 @@ public class InstanceOfSnippets implements Snippets {
 
         private final Counters counters;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers) {
+            super(options, providers);
             this.counters = new Counters(factory);
         }
 
@@ -275,11 +272,6 @@ public class InstanceOfSnippets implements Snippets {
 
                 OptionValues localOptions = instanceOf.getOptions();
                 JavaTypeProfile profile = instanceOf.profile();
-                if (GeneratePIC.getValue(localOptions)) {
-                    // FIXME: We can't embed constants in hints. We can't really load them from GOT
-                    // either. Hard problem.
-                    profile = null;
-                }
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), profile, assumptions, TypeCheckMinProfileHitProbability.getValue(localOptions),
                                 TypeCheckMaxHints.getValue(localOptions));
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type().getType();

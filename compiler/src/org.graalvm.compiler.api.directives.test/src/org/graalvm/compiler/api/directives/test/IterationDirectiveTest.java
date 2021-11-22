@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.api.directives.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class IterationDirectiveTest extends GraalCompilerTest {
 
@@ -59,6 +59,6 @@ public class IterationDirectiveTest extends GraalCompilerTest {
         Assert.assertEquals("LoopBeginNode count", 1, loopBeginNodes.count());
 
         LoopBeginNode loopBeginNode = loopBeginNodes.first();
-        Assert.assertEquals("loop frequency of " + loopBeginNode, 128, loopBeginNode.loopFrequency(), 0);
+        Assert.assertEquals("loop frequency of " + loopBeginNode, 128, ControlFlowGraph.compute(graph, false, false, false, false).localLoopFrequency(loopBeginNode), 0);
     }
 }

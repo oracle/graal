@@ -63,7 +63,6 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
@@ -83,7 +82,7 @@ public class PolyglotCachingTest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 parseCalled.incrementAndGet();
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+                return RootNode.createConstantNode("").getCallTarget();
             }
         });
         Context c = Context.create();
@@ -115,7 +114,7 @@ public class PolyglotCachingTest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 innerSource.set(request.getSource());
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+                return RootNode.createConstantNode("").getCallTarget();
             }
         });
         Context c = Context.create();
@@ -246,7 +245,7 @@ public class PolyglotCachingTest {
         int index = Integer.parseInt(request.getSource().getCharacters().toString());
         parseCount++;
         lastLanguage = languageInstance;
-        lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+        lastParsedTarget = new RootNode(languageInstance) {
             /*
              * Typical root nodes have a strong reference to source. We need to ensure that we can
              * still collect the cache if that happens.
@@ -259,7 +258,7 @@ public class PolyglotCachingTest {
             public Object execute(VirtualFrame frame) {
                 return "foobar";
             }
-        });
+        }.getCallTarget();
         return lastParsedTarget;
     }
 

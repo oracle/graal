@@ -55,7 +55,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
@@ -203,14 +202,14 @@ public class DeadlockTest {
             final CharSequence codeCharacters = code.getCharacters();
             if (CODE_LATCH.equals(codeCharacters)) {
                 ((InstrumentationThread) Thread.currentThread()).setExecutionLatch(executionLatch);
-                return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+                return new RootNode(this) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return Boolean.TRUE;
                     }
-                });
+                }.getCallTarget();
             }
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -240,13 +239,13 @@ public class DeadlockTest {
                             } catch (InterruptedException ex) {
                             }
                         }
-                        codeExec = Truffle.getRuntime().createCallTarget(codeExecRoot);
+                        codeExec = codeExecRoot.getCallTarget();
                     }
                     targets.add(codeExec);
                     return codeExec.call();
                 }
 
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper
@@ -320,7 +319,7 @@ public class DeadlockTest {
 
                     };
                     synchronized (language.lock) {
-                        this.statementCall = Truffle.getRuntime().createCallTarget(codeExecRoot);
+                        this.statementCall = codeExecRoot.getCallTarget();
                     }
                 }
                 return this;

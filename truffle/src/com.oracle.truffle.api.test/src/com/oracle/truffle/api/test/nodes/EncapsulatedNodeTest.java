@@ -53,17 +53,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -75,7 +74,7 @@ public class EncapsulatedNodeTest {
         CallTarget getStackTrace = createGetStackTraceNode();
         Node callLocation = adopt(new Node() {
         });
-        CallTarget root = create(new RootNode(null) {
+        CallTarget root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
@@ -84,7 +83,7 @@ public class EncapsulatedNodeTest {
                     return TruffleStackTrace.getStackTrace(e);
                 }
             }
-        });
+        }.getCallTarget();
 
         Supplier<Object> eager = EncapsulatedNodeTest::captureStackEagerly;
         List<TruffleStackTraceElement> framesEager = (List<TruffleStackTraceElement>) root.call(eager);
@@ -101,7 +100,7 @@ public class EncapsulatedNodeTest {
         CallTarget getStackTrace = createGetStackTraceNode();
         Node callLocation = adopt(new Node() {
         });
-        CallTarget root = create(new RootNode(null) {
+        CallTarget root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
@@ -110,7 +109,7 @@ public class EncapsulatedNodeTest {
                     return TruffleStackTrace.getStackTrace(e);
                 }
             }
-        });
+        }.getCallTarget();
 
         Supplier<Object> eager = EncapsulatedNodeTest::captureStackEagerly;
         List<TruffleStackTraceElement> framesEager = (List<TruffleStackTraceElement>) root.call(eager);
@@ -136,13 +135,13 @@ public class EncapsulatedNodeTest {
     }
 
     private static CallTarget createGetStackTraceNode() {
-        return create(new RootNode(null) {
+        return new RootNode(null) {
             @SuppressWarnings("unchecked")
             @Override
             public Object execute(VirtualFrame frame) {
                 return ((Supplier<Object>) frame.getArguments()[0]).get();
             }
-        });
+        }.getCallTarget();
     }
 
     @Test
@@ -162,12 +161,12 @@ public class EncapsulatedNodeTest {
     public void testCallNodePickedWithoutCallTarget() {
         Node callLocation = adopt(new Node() {
         });
-        CallTarget root = create(new RootNode(null) {
+        CallTarget root = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return boundary(callLocation, () -> captureStackEagerly());
             }
-        });
+        }.getCallTarget();
 
         List<TruffleStackTraceElement> frames = (List<TruffleStackTraceElement>) root.call();
         assertEquals(1, frames.size());
@@ -271,10 +270,6 @@ public class EncapsulatedNodeTest {
             return;
         }
         fail();
-    }
-
-    static CallTarget create(RootNode root) {
-        return Truffle.getRuntime().createCallTarget(root);
     }
 
     @TruffleBoundary

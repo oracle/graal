@@ -174,21 +174,20 @@ public class CoverageInstrument extends TruffleInstrument {
             SourceCoverage[] coverage = tracker.getCoverage();
             final OptionValues options = env.getOptions();
             final boolean strictLines = StrictLines.getValue(options);
-            try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
-                switch (OUTPUT.getValue(options)) {
-                    case HISTOGRAM:
-                        new CoverageCLI(out, coverage, strictLines).printHistogramOutput();
-                        break;
-                    case DETAILED:
-                        new CoverageCLI(out, coverage, strictLines).printLinesOutput();
-                        break;
-                    case JSON:
-                        new JSONPrinter(out, coverage).print();
-                        break;
-                    case LCOV:
-                        new LCOVPrinter(out, coverage, strictLines).print();
-                        break;
-                }
+            PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+            switch (OUTPUT.getValue(options)) {
+                case HISTOGRAM:
+                    new CoverageCLI(out, coverage, strictLines).printHistogramOutput();
+                    break;
+                case DETAILED:
+                    new CoverageCLI(out, coverage, strictLines).printLinesOutput();
+                    break;
+                case JSON:
+                    new JSONPrinter(out, coverage).print();
+                    break;
+                case LCOV:
+                    new LCOVPrinter(out, coverage, strictLines).print();
+                    break;
             }
             tracker.close();
         }

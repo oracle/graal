@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -223,7 +222,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 }
 
                 if (isConstantConversionSupported(convert, view, smallestCompareWidth)) {
-                    ConstantNode newConstant = canonicalConvertConstant(constantReflection, metaAccess, options, condition, convert, constant, view);
+                    ConstantNode newConstant = canonicalConvertConstant(constantReflection, metaAccess, condition, convert, constant, view);
                     if (newConstant != null) {
                         if (mirrored) {
                             return duplicateModified(newConstant, convert.getValue(), unorderedIsTrue, view);
@@ -253,15 +252,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return supported;
         }
 
-        private static ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, CanonicalCondition condition,
-                        ConvertNode convert, Constant constant, NodeView view) {
+        private static ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, CanonicalCondition condition, ConvertNode convert,
+                        Constant constant, NodeView view) {
             if (convert.preservesOrder(condition, constant, constantReflection)) {
                 Constant reverseConverted = convert.reverse(constant, constantReflection);
                 if (reverseConverted != null && convert.convert(reverseConverted, constantReflection).equals(constant)) {
-                    if (GeneratePIC.getValue(options)) {
-                        // We always want uncompressed constants
-                        return null;
-                    }
                     return ConstantNode.forConstant(convert.getValue().stamp(view), reverseConverted, metaAccess);
                 }
             }
@@ -407,6 +402,14 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             if (otherCondition == CanonicalCondition.EQ && (condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT)) {
                 if (thisNegated && !otherNegated) {
                     // a < b => a != b
+                    return true;
+                }
+            }
+        }
+        if (condition() == otherCondition && sameValue(getX(), otherY) && sameValue(getY(), otherX)) {
+            if ((condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT) && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                if (!thisNegated && otherNegated) {
+                    // a < b => !(b < a)
                     return true;
                 }
             }

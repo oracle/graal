@@ -72,6 +72,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
+    private JNIMethodId javaUtilLocaleToLanguageTag;
+    private JNIFieldId javaUtilResourceBundleParentField;
+    private JNIMethodId javaUtilResourceBundleGetLocale;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -178,5 +182,29 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaLangReflectConstructorDeclaringClassName = getMethodId(env, customSerializationConstructorClass, "getName", "()Ljava/lang/String;", false);
         }
         return javaLangReflectConstructorDeclaringClassName;
+    }
+
+    public JNIMethodId getJavaUtilLocaleToLanguageTag(JNIEnvironment env) {
+        if (javaUtilLocaleToLanguageTag.isNull()) {
+            JNIObjectHandle javaUtilLocale = findClass(env, "java/util/Locale");
+            javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
+        }
+        return javaUtilLocaleToLanguageTag;
+    }
+
+    public JNIFieldId getJavaUtilResourceBundleParentField(JNIEnvironment env) {
+        if (javaUtilResourceBundleParentField.isNull()) {
+            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+            javaUtilResourceBundleParentField = getFieldId(env, javaUtilResourceBundle, "parent", "Ljava/util/ResourceBundle;", false);
+        }
+        return javaUtilResourceBundleParentField;
+    }
+
+    public JNIMethodId getJavaUtilResourceBundleGetLocale(JNIEnvironment env) {
+        if (javaUtilResourceBundleGetLocale.isNull()) {
+            JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+            javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
+        }
+        return javaUtilResourceBundleGetLocale;
     }
 }

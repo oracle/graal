@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,10 @@ package com.oracle.svm.configure.test.config;
 import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
@@ -98,6 +100,16 @@ public class ResourceConfigurationTest {
 
                 @Override
                 public void addResourceBundles(ConfigurationCondition condition, String name) {
+                }
+
+                @Override
+                public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+
+                }
+
+                @Override
+                public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+
                 }
             };
 

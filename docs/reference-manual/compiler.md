@@ -27,7 +27,7 @@ The GraalVM compiler assures performance advantages for highly-abstracted progra
 Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.
 Low-level code or code that converges to things like I/O, memory allocation, or garbage collection will see less improvement.
 Consequently, an application running on GraalVM needs to spend less time doing memory management and garbage collection.
-For more information on performance tuning, refer to [Compiler Configuration on JVM](/reference-manual/java/options/).
+For more information on performance tuning, refer to [Compiler Configuration on JVM](java/Options.md).
 
 ## Graph Compilation
 
@@ -37,22 +37,20 @@ A *graph* was selected for this role.
 The graph can represent similar statements of different languages in the same way, like "if" statements or loops, which makes it possible to mix languages in the same program.
 The GraalVM compiler can then perform language-independent optimization and generate machine code on this graph.
 
-GraalVM also includes the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) -- a library, written in Java -- to build interpreters for programming languages, which then run on GraalVM.
+GraalVM also includes the [Truffle language implementation framework](../../truffle/docs/README.md) -- a library, written in Java -- to build interpreters for programming languages, which then run on GraalVM.
 These languages can consequently benefit from the optimization possibilities of the GraalVM compiler.
 The pipeline for such compilation is:
 
-* The Truffle framework code and data (Abstract Syntax Trees) is partially evaluated to
-produce a compilation graph. When such an Abstract Syntax Tree (AST) is
-hot (i.e., called many times), it is scheduled for compilation by the compiler.
+* The Truffle framework code and data (Abstract Syntax Trees) is partially evaluated to produce a compilation graph. When such an Abstract Syntax Tree (AST) is hot (i.e., called many times), it is scheduled for compilation by the compiler.
 * The compilation graph is optimized by the GraalVM compiler to produce machine code.
 * JVMCI installs this machine code in the VM's code cache.
 * The AST will automatically redirect execution to the installed machine code once it is available.
 
 ## Ahead-of-time Compilation
 
-Besides the Truffle framework, GraalVM incorporates its optimizing compiler into an advanced ahead-of-time (AOT) compilation technology -- [Native Image](/reference-manual/native-image/) -- which translates Java and JVM-based code into a native platform executable.
+Besides the Truffle framework, GraalVM incorporates its optimizing compiler into an advanced ahead-of-time (AOT) compilation technology -- [Native Image](native-image/README.md) -- which translates Java and JVM-based code into a native platform executable.
 These native executables start nearly instantaneously, are smaller, and consume less resources of the same Java application, making them ideal for cloud deployments and microservices.
-For more information about AOT compilation, go to [Native Image](/reference-manual/native-image/).
+For more information about AOT compilation, go to [Native Image](native-image/README.md).
 
 ## Compiler Operating Modes
 
@@ -80,7 +78,7 @@ This will produce diagnostic data for every method compiled by the compiler.
 To refine the set of methods for which diagnostic data is produced, use the `-Dgraal.MethodFilter=<class>.<method>` option.
 For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.
 
-Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](/tools/igv/).
+Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](../tools/ideal-graph-visualizer.md).
 This requires the `-Dgraal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
 This network endpoint can be configured with the `-Dgraal.PrintGraphHost` and `-Dgraal.PrintGraphPort` options.
 

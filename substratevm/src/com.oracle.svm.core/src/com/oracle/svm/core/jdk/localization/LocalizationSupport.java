@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.IllformedLocaleException;
 import java.util.Locale;
 import java.util.Map;
 import java.util.PropertyResourceBundle;
@@ -34,7 +35,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -49,7 +49,7 @@ import com.oracle.svm.core.util.VMError;
  * Holder for localization information that is computed during image generation and used at run
  * time.
  *
- * @see LocalizationFeature
+ * For more details, see LocalizationFeature
  */
 public class LocalizationSupport {
 
@@ -63,20 +63,25 @@ public class LocalizationSupport {
 
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales) {
+    public final Charset defaultCharset;
+
+    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
         this.allLocales = locales.toArray(new Locale[0]);
+        this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
     }
 
-    @Fold
-    public static boolean optimizedMode() {
-        return LocalizationFeature.Options.LocalizationOptimizedMode.getValue();
+    public boolean optimizedMode() {
+        return false;
     }
 
-    @Fold
-    public static boolean jvmMode() {
+    public boolean jvmMode() {
         return !optimizedMode();
+    }
+
+    public boolean substituteLoadLookup() {
+        return false;
     }
 
     public OptimizedLocalizationSupport asOptimizedSupport() {
@@ -108,6 +113,12 @@ public class LocalizationSupport {
 
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("unused")
+    protected void onClassBundlePrepared(Class<?> bundleClass) {
+
+    }
+
     @SuppressWarnings("unused")
     public boolean shouldSubstituteLoadLookup(String className) {
         /*- By default, keep the original code */
@@ -117,5 +128,33 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public void prepareNonCompliant(Class<?> clazz) {
         /*- By default, there is nothing to do */
+    }
+
+    /**
+     * @return locale for given tag or null for invalid ones
+     */
+    public static Locale parseLocaleFromTag(String tag) {
+        try {
+            return new Locale.Builder().setLanguageTag(tag).build();
+        } catch (IllformedLocaleException ex) {
+            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
+            String[] parts = tag.split("-");
+            switch (parts.length) {
+                case 1:
+                    return new Locale(parts[0]);
+                case 2:
+                    return new Locale(parts[0], parts[1]);
+                case 3:
+                    return new Locale(parts[0], parts[1], parts[2]);
+                default:
+                    return null;
+            }
+        }
+    }
+
+    public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
+        RuntimeReflection.register(bundleClass);
+        RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
+        onClassBundlePrepared(bundleClass);
     }
 }

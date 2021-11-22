@@ -50,18 +50,16 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 /**
@@ -242,14 +240,8 @@ public final class NativeImageHeapWriter {
         mustBeReferenceAligned(index);
         assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
         assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
-
-        ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
-        HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : heap.getUniverse().lookup(method);
-        if (hMethod.isCompiled()) {
-            // Only compiled methods inserted in vtables require relocation.
-            int pointerSize = ConfigurationValues.getTarget().wordSize;
-            addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
-        }
+        int pointerSize = ConfigurationValues.getTarget().wordSize;
+        addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
     }
 
     private static void writePrimitive(RelocatableBuffer buffer, int index, JavaConstant con) {

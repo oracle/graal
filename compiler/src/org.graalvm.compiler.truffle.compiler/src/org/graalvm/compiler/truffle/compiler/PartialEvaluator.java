@@ -49,7 +49,6 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
@@ -351,8 +350,6 @@ public abstract class PartialEvaluator {
                 inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
                 truffleTier(request);
-                // recompute loop frequencies now that BranchProbabilities have been canonicalized
-                ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.task.isCancelled()) {

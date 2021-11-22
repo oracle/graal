@@ -84,6 +84,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class DebugContext implements AutoCloseable {
 
+    /**
+     * The format of the message printed on the console by {@link #getDumpPath} when
+     * {@link DebugOptions#ShowDumpFiles} is true. The {@code %s} placeholder is replaced with the
+     * absolute path of the dump file (i.e. the value returned by the method).
+     */
+    public static final String DUMP_FILE_MESSAGE_FORMAT = "Dumping debug output to '%s'";
+
+    /**
+     * The regular expression for matching the message derived from
+     * {@link #DUMP_FILE_MESSAGE_FORMAT}.
+     *
+     * Keep in sync with the {@code catch_files} array in {@code common.json}.
+     */
+    public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
+
     public static final Description NO_DESCRIPTION = new Description(null, "NO_DESCRIPTION");
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
     public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
@@ -613,7 +628,7 @@ public final class DebugContext implements AutoCloseable {
             String label = description == null ? null : description.getLabel();
             String result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
             if (ShowDumpFiles.getValue(immutable.options)) {
-                TTY.println("Dumping debug output to %s", result);
+                TTY.println(DUMP_FILE_MESSAGE_FORMAT, result);
             }
             return result;
         } catch (IOException ex) {
@@ -1372,6 +1387,30 @@ public final class DebugContext implements AutoCloseable {
     public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3) {
         if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
             currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
         }
     }
 

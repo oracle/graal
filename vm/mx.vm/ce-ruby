@@ -1,3 +1,5 @@
-DYNAMIC_IMPORTS=/substratevm,/tools,truffleruby
-COMPONENTS=gvm,TruffleRuby,SubstrateVM,LibGraal,suite:tools
-DISABLE_INSTALLABLES=false
+DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,truffleruby
+COMPONENTS=cmp,cov,dap,gvm,ins,insight,insightheap,lg,llp,llrc,llrn,lsp,nfi,pro,rby,rbyl,rgx,sdk,svm,svmnfi,tfl,tflm,vvm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,lib:jvmcicompiler,truffleruby
+DISABLE_INSTALLABLES=False

@@ -40,6 +40,28 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
+
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -65,28 +87,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
 
-import java.nio.ByteOrder;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.zone.ZoneRules;
-
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validScope;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
-
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
  * languages, tools and embedders. Every method represents one message specified by the protocol. In
@@ -105,9 +105,9 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * The interop protocol only allows <i>interop values</i> to be used as receivers, return values or
  * parameters of messages. Allowed Java types of interop values are:
  * <ul>
- * <li>{@link TruffleObject}: Any subclass of {@link TruffleObject} is interpreted depending on the
- * interop messages it {@link ExportLibrary exports}. Truffle objects are expected but not required
- * to export interop library messages.
+ * <li>{@link TruffleObject}: Any object that implements the {@link TruffleObject} interface is
+ * interpreted according to the interop messages it {@link ExportLibrary exports}. Truffle objects
+ * are expected but not required to export interop library messages.
  * <li>{@link String} and {@link Character} are interpreted as {@link #isString(Object) string}
  * value.
  * <li>{@link Boolean} is interpreted as {@link #isBoolean(Object) boolean} value.
@@ -658,19 +658,24 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
-     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
-     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
-     * method must have not observable side-effects unless
+     * Reads the value of a given member.
+     * <p>
+     * In case of a method-like member, we recommend that languages return a bound method (or an
+     * artificial receiver-method binding) to improve cross-language portability. In this case, the
+     * member should be {@link #isMemberReadable(Object, String) readable} and
+     * {@link #isMemberInvocable(Object, String) invocable} and the result of reading the member
+     * should be {@link #isExecutable(Object) executable} and bound to the receiver.
+     * <p>
+     * This message must have not observable side-effects unless
      * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
      *
      * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
      *             empty receiver with no readable members supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
      *             for all arguments instead.
-     * @throws UnknownIdentifierException if the given member is not
-     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
-     *             given name does not exist.
+     * @throws UnknownIdentifierException if the given member cannot be read, e.g. because it is not
+     *             (or no longer) {@link #isMemberReadable(Object, String) readable} such as when
+     *             the member with the given name does not exist or has been removed.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
      */
@@ -1852,7 +1857,6 @@ public abstract class InteropLibrary extends Library {
      * @since 19.3
      */
     @Abstract(ifExported = {"throwException"})
-    @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
         // A workaround for missing inheritance feature for default exports.
         return InteropAccessor.EXCEPTION.isException(receiver) ||
@@ -1936,9 +1940,11 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
      * when the receiver is not an {@link #isException(Object) exception} of the
-     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
-     * application was successful, a non-zero value that it failed. The individual interpretation of
-     * non-zero values depends on the application.
+     * {@link ExceptionType#EXIT exit type}. See
+     * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context Exit</a>
+     * for further information. A return value zero indicates that the execution of the application
+     * was successful, a non-zero value that it failed. The individual interpretation of non-zero
+     * values depends on the application.
      *
      * @see #isException(Object)
      * @see #getExceptionType(Object)

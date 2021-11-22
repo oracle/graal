@@ -42,9 +42,10 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
@@ -80,6 +81,10 @@ public class SnippetFrameStateAssignment {
          * The frame state after the snippet replacee.
          */
         AFTER_BCI,
+        /**
+         * The frame state at the exception edge of the snippet replacee.
+         */
+        AFTER_EXCEPTION_BCI,
         /**
          * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
          * side-effecting node inside a snippet.
@@ -147,7 +152,9 @@ public class SnippetFrameStateAssignment {
                 stateMapping.put(node, stateAssignment);
             }
             if (node instanceof StateSplit && ((StateSplit) node).hasSideEffect() && !(node instanceof StartNode || node instanceof AbstractMergeNode)) {
-                if (stateAssignment == NodeStateAssignment.BEFORE_BCI) {
+                if (node instanceof ExceptionObjectNode) {
+                    nextStateAssignment = NodeStateAssignment.AFTER_EXCEPTION_BCI;
+                } else if (stateAssignment == NodeStateAssignment.BEFORE_BCI) {
                     nextStateAssignment = NodeStateAssignment.AFTER_BCI;
                 } else {
                     if (logOnInvalid) {
@@ -155,6 +162,7 @@ public class SnippetFrameStateAssignment {
                     }
                     nextStateAssignment = NodeStateAssignment.INVALID;
                 }
+                stateMapping.put(node, nextStateAssignment);
             }
             return nextStateAssignment;
         }
@@ -167,36 +175,37 @@ public class SnippetFrameStateAssignment {
              * in its return values. If such a snippet is encountered the subsequent logic will
              * assign an invalid state to the merge.
              */
-            int beforeCount = 0;
-            int afterCount = 0;
-            int invalidCount = 0;
-
-            for (int i = 0; i < states.size(); i++) {
-                if (states.get(i) == NodeStateAssignment.BEFORE_BCI) {
-                    beforeCount++;
-                } else if (states.get(i) == NodeStateAssignment.AFTER_BCI) {
-                    afterCount++;
-                } else {
-                    invalidCount++;
+            NodeStateAssignment bci = null;
+            forAllStates: for (int i = 0; i < states.size(); i++) {
+                switch (states.get(i)) {
+                    case BEFORE_BCI:
+                        /* If we only see BEFORE_BCI, the result will be BEFORE_BCI. */
+                        if (bci == null) {
+                            bci = NodeStateAssignment.BEFORE_BCI;
+                        }
+                        break;
+                    case AFTER_BCI:
+                        /* If we see at least one AFTER_BCI, the result will be AFTER_BCI. */
+                        bci = NodeStateAssignment.AFTER_BCI;
+                        break;
+                    case AFTER_EXCEPTION_BCI:
+                        /* AFTER_EXCEPTION_BCI can only be merged with itself. */
+                        if (bci == null || bci == NodeStateAssignment.AFTER_EXCEPTION_BCI) {
+                            bci = NodeStateAssignment.AFTER_EXCEPTION_BCI;
+                            break;
+                        }
+                        /* Cannot merge AFTER_EXCEPTION_BCI with anything else. */
+                        bci = NodeStateAssignment.INVALID;
+                        break forAllStates;
+                    default:
+                        /* If we see something else, it is INVALID. */
+                        bci = NodeStateAssignment.INVALID;
+                        break forAllStates;
                 }
             }
-            if (invalidCount > 0) {
-                stateMapping.put(merge, NodeStateAssignment.INVALID);
-                return NodeStateAssignment.INVALID;
-            } else {
-                if (afterCount == 0) {
-                    // only before states
-                    assert beforeCount == states.size();
-                    stateMapping.put(merge, NodeStateAssignment.BEFORE_BCI);
-                    return NodeStateAssignment.BEFORE_BCI;
-                } else {
-                    // some before, and at least one after
-                    assert afterCount > 0;
-                    stateMapping.put(merge, NodeStateAssignment.AFTER_BCI);
-                    return NodeStateAssignment.AFTER_BCI;
-                }
-            }
-
+            assert bci != null;
+            stateMapping.put(merge, bci);
+            return bci;
         }
 
         @Override

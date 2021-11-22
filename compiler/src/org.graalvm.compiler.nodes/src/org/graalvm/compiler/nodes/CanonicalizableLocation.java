@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 public interface CanonicalizableLocation {
-    ValueNode canonicalizeRead(ValueNode read, AddressNode location, ValueNode object, CanonicalizerTool tool);
+    ValueNode canonicalizeRead(ValueNode read, AddressNode address, ValueNode object, CoreProviders tool);
 }

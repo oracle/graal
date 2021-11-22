@@ -54,6 +54,8 @@ final class PolyglotThread extends Thread {
 
     private final CallTarget callTarget;
 
+    volatile boolean hardExitNotificationThread;
+
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
@@ -75,6 +77,20 @@ final class PolyglotThread extends Thread {
 
     boolean isOwner(PolyglotContextImpl testContext) {
         return languageContext.context == testContext;
+    }
+
+    @Override
+    public synchronized void start() {
+        PolyglotContextImpl polyglotContext = languageContext.context;
+        Thread hardExitTriggeringThread = polyglotContext.closeExitedTriggerThread;
+        if (hardExitTriggeringThread != null) {
+            Thread currentThread = currentThread();
+            if (hardExitTriggeringThread == currentThread ||
+                            (currentThread instanceof PolyglotThread && ((PolyglotThread) currentThread).isOwner(polyglotContext) && ((PolyglotThread) currentThread).hardExitNotificationThread)) {
+                hardExitNotificationThread = true;
+            }
+        }
+        super.start();
     }
 
     @Override

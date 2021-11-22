@@ -206,7 +206,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the text segment.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, false, Long.valueOf(l));
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, l);
         pos = putLong(0, buffer, pos);
         return pos;
     }
@@ -216,7 +216,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /*
          * Mark address so it is relocated relative to the start of the heap.
          */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, false, Long.valueOf(l));
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, l);
         pos = putLong(0, buffer, pos);
         return pos;
     }
@@ -338,6 +338,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         } else {
             return putInt(value, buffer, pos);
         }
+    }
+
+    protected int writeAttrSecOffset(int value, byte[] buffer, int pos) {
+        return writeAttrData4(value, buffer, pos);
     }
 
     protected int writeAttrData2(short value, byte[] buffer, int pos) {

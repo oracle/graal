@@ -89,8 +89,9 @@ public abstract class ExecutableNode extends Node {
     }
 
     final TruffleLanguage<?> getLanguage() {
-        if (engineRef instanceof TruffleLanguage<?>) {
-            return (TruffleLanguage<?>) engineRef;
+        Object ref = engineRef;
+        if (ref instanceof TruffleLanguage<?>) {
+            return (TruffleLanguage<?>) ref;
         } else {
             return null;
         }

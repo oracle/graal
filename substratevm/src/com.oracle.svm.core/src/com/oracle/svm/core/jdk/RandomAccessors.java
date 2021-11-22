@@ -39,6 +39,7 @@ public abstract class RandomAccessors {
      * the SecureRandom code is only reachable and included in the image when requested by the
      * application.
      */
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17 at least with ECJ
     private static final boolean SECURE_SEED = java.security.AccessController.doPrivileged(
                     new java.security.PrivilegedAction<Boolean>() {
                         @Override

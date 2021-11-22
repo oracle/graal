@@ -63,12 +63,12 @@ jobs:
     - name: Get JDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
         cd substratevm
-        ${MX_PATH}/mx --native=native-image --components="Native Image" build
-        mv $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
+        ${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" build
+        mv $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
         ${GRAALVM_HOME}/bin/native-image --version
     - name: Tar GraalVM
       shell: bash

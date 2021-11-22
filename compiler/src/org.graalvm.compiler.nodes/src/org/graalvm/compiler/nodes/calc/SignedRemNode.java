@@ -28,12 +28,12 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -68,6 +68,13 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
         return canonical(this, forX, forY, getZeroCheck(), stamp(view), view, tool);
+    }
+
+    /**
+     * This is used as a hook to allow "safe" SignedRemNodes to be created during canonicalization.
+     */
+    protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
+        return new SignedRemNode(forX, forY, forZeroCheck);
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool) {
@@ -114,6 +121,9 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         if (self != null && self.x == forX && self.y == forY) {
             return self;
         } else {
+            if (self != null) {
+                return self.createWithInputs(forX, forY, zeroCheck);
+            }
             return new SignedRemNode(forX, forY, zeroCheck);
         }
     }

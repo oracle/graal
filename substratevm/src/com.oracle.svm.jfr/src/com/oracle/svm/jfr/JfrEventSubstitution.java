@@ -37,37 +37,108 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 import sun.misc.Unsafe;
 
+/**
+ * This class triggers the class redefinition (see {@link JVM#retransformClasses}) for all
+ * {@link Event} classes that are visited during static analysis.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private final ResolvedJavaType jdkJfrEvent;
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
+    private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
+    private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         jdkJfrEvent = metaAccess.lookupJavaType(Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
         changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
+        methodSubstitutions = new ConcurrentHashMap<>();
+        fieldSubstitutions = new ConcurrentHashMap<>();
+    }
+
+    @Override
+    public ResolvedJavaField lookup(ResolvedJavaField field) {
+        ResolvedJavaType type = field.getDeclaringClass();
+        if (needsClassRedefinition(type)) {
+            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
+            return fieldSubstitutions.computeIfAbsent(field, JfrEventSubstitution::initEventField);
+        }
+        return field;
+    }
+
+    @Override
+    public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
+        ResolvedJavaType type = method.getDeclaringClass();
+        if (needsClassRedefinition(type)) {
+            typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
+            return methodSubstitutions.computeIfAbsent(method, JfrEventSubstitution::initEventMethod);
+        }
+        return method;
     }
 
     @Override
     public ResolvedJavaType lookup(ResolvedJavaType type) {
-        if (!jdkJfrEvent.equals(type) && jdkJfrEvent.isAssignableFrom(type) && !type.isAbstract()) {
+        if (needsClassRedefinition(type)) {
             typeSubstitution.computeIfAbsent(type, JfrEventSubstitution::initEventClass);
         }
         return type;
+    }
+
+    private static ResolvedJavaField initEventField(ResolvedJavaField oldField) throws RuntimeException {
+        ResolvedJavaType type = oldField.getDeclaringClass();
+        if (oldField.isStatic()) {
+            for (ResolvedJavaField field : type.getStaticFields()) {
+                if (field.getName().equals(oldField.getName())) {
+                    return field;
+                }
+            }
+        } else {
+            for (ResolvedJavaField field : type.getInstanceFields(false)) {
+                if (field.getName().equals(oldField.getName())) {
+                    return field;
+                }
+            }
+        }
+        throw VMError.shouldNotReachHere("Could not re-resolve field: " + oldField);
+    }
+
+    private static ResolvedJavaMethod initEventMethod(ResolvedJavaMethod oldMethod) throws RuntimeException {
+        ResolvedJavaType type = oldMethod.getDeclaringClass();
+        String name = oldMethod.getName();
+        Signature signature = oldMethod.getSignature();
+
+        if (name.equals("<clinit>")) {
+            return type.getClassInitializer();
+        } else if (name.equals("<init>")) {
+            for (ResolvedJavaMethod m : type.getDeclaredConstructors()) {
+                if (m.getName().equals(name) && m.getSignature().equals(signature)) {
+                    return m;
+                }
+            }
+        }
+
+        ResolvedJavaMethod newMethod = type.findMethod(name, signature);
+        if (newMethod != null) {
+            return newMethod;
+        }
+
+        throw VMError.shouldNotReachHere("Could not re-resolve method: " + oldMethod);
     }
 
     private static Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
@@ -83,6 +154,10 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
+
+    private boolean needsClassRedefinition(ResolvedJavaType type) {
+        return !type.isAbstract() && jdkJfrEvent.isAssignableFrom(type) && !jdkJfrEvent.equals(type);
     }
 
     /**

@@ -197,6 +197,7 @@ final class InterfaceTables {
      * @return the final itable
      */
     public static Method[][] fixTables(Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
+        assert tables.length == iklassTable.length;
         ArrayList<Method[]> tmpTables = new ArrayList<>();
 
         // Second step
@@ -205,10 +206,52 @@ final class InterfaceTables {
             fixVTable(tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
         }
         // Third step
-        for (Entry[] entries : tables) {
-            tmpTables.add(getITable(entries, vtable, mirandas, declaredMethods));
+        for (int tableIndex = 0; tableIndex < tables.length; tableIndex++) {
+            Entry[] entries = tables[tableIndex];
+            Method[] itable = getITable(entries, vtable, mirandas, declaredMethods);
+            tmpTables.add(itable);
+
+            // Update leaf assumptions for super interfaces
+            ObjectKlass currInterface = iklassTable[tableIndex];
+            updateLeafAssumptions(itable, currInterface);
+
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
+    }
+
+    /**
+     * Note: Leaf assumptions are not invalidated on creation of an interface. This means that in
+     * the following example:
+     * 
+     * <pre>
+     * interface A {
+     *     default void m() {
+     *     }
+     * }
+     * 
+     * interface B extends A {
+     *     default void m() {
+     *     }
+     * }
+     * </pre>
+     * 
+     * Unless a concrete class that implements B is loaded, the leaf assumption for A.m() will not
+     * be invalidated.
+     */
+    private static void updateLeafAssumptions(Method[] itable, ObjectKlass currInterface) {
+        for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
+            Method m = itable[methodIndex];
+            // This class' itable entry for this method is not the interface's declared method.
+            if (m.getDeclaringKlass() != currInterface) {
+                Method intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
+                // sanity checks
+                assert intfMethod.getDeclaringKlass() == currInterface;
+                assert m.canOverride(intfMethod) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
+                if (intfMethod.leafAssumption()) {
+                    intfMethod.invalidateLeaf();
+                }
+            }
+        }
     }
 
     // Actual implementations

@@ -26,8 +26,10 @@ package com.oracle.svm.graal.meta;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -192,10 +194,12 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
         for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
-                patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                NativeImagePatcher priorValue = patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
             }
         }
-        patchData(patches, objectConstants);
+        int numPatchesHandled = patchData(patches, objectConstants);
+        VMError.guarantee(numPatchesHandled == patches.size(), "Not all patches applied.");
 
         // Store the compiled code
         for (int index = 0; index < codeSize; index++) {
@@ -241,7 +245,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
         codeInfoEncoder.addMethod(method, compilation, 0);
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
@@ -252,18 +256,43 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo, adjuster);
     }
 
-    private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {
+    private int patchData(Map<Integer, NativeImagePatcher> patcher, ObjectConstantsHolder objectConstants) {
+        int patchesHandled = 0;
+        HashSet<Integer> patchedOffsets = new HashSet<>();
         for (DataPatch dataPatch : compilation.getDataPatches()) {
             NativeImagePatcher patch = patcher.get(dataPatch.pcOffset);
+            boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
+            VMError.guarantee(noPriorMatch, "Patching same offset twice.");
+            patchesHandled++;
             if (dataPatch.reference instanceof DataSectionReference) {
                 DataSectionReference ref = (DataSectionReference) dataPatch.reference;
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
-                patch.patchCode(pcDisplacement, compiledBytes);
+                patch.patchCode(code.rawValue(), pcDisplacement, compiledBytes);
             } else if (dataPatch.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
+            } else {
+                throw VMError.shouldNotReachHere("Unhandled data patch.");
             }
+        }
+        return patchesHandled;
+    }
+
+    private static class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
+        @Override
+        protected boolean storeDeoptTargetMethod() {
+            return true;
+        }
+
+        @Override
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
+            return true;
+        }
+
+        @Override
+        protected boolean isDeoptEntry(ResolvedJavaMethod method, Infopoint infopoint) {
+            return false;
         }
     }
 }

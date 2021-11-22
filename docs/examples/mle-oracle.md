@@ -46,9 +46,9 @@ END;
 /
 ```
 
-Please also note the EXCEPTION clause which makes sure that the context gets dropped either way. This is important to avoid resource leakage.
+Note: There is the `EXCEPTION` clause which makes sure that the context gets dropped either way. This is important to avoid resource leakage.
 
-2&#46; Now here's an example that shows how values can be passed between PL/SQL and MLE. As expected, the output is `49`:
+2&#46; Now here is an example that shows how values can be passed between PL/SQL and MLE. As expected, the output is `49`:
 ```sql
 SET SERVEROUTPUT ON;
 DECLARE
@@ -139,6 +139,7 @@ END;
 ```
 
 ## Type Conversions
+
 Let us now have a closer look at conversions from Oracle types (as retrieved by SQL queries) to JavaScript types.
 
 By default, Oracle data types get automatically converted to regular, native JavaScript types, which can lead to a loss of precision.
@@ -249,6 +250,7 @@ END;
 ```
 
 ## Further Reading
+
 Here is a set of resources that we recommend for further reading about MLE:
 - [Multilingual Engine: Executing JavaScript in Oracle Database](https://medium.com/graalvm/mle-executing-javascript-in-oracle-database-c545feb1a010) provides further insight into the MLE architecture based on GraalVM.
 - [MLE and the Future of Server-Side Programming in Oracle APEX](https://blogs.oracle.com/apex/mle-and-the-future-of-server-side-programming-in-oracle-apex) shows step-by-step how to set up a free Oracle Cloud account, provision a database instance and run some JavaScript code in Oracle APEX (powered by MLE).

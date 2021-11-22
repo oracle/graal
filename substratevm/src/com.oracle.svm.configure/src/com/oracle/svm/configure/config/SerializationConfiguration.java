@@ -46,7 +46,7 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     public SerializationConfiguration(SerializationConfiguration other) {
-        this.serializations.addAll(other.serializations);
+        serializations.addAll(other.serializations);
     }
 
     public void removeAll(SerializationConfiguration other) {

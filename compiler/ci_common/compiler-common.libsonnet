@@ -16,6 +16,7 @@
     ]
   },
 
+  bench_jdks:: [common.labsjdk11, common.labsjdk17],
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
@@ -86,5 +87,12 @@
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
     }
-  }
+  },
+
+  economy_mode:: {
+    platform+:: "-economy",
+    environment+: {
+      "JVM_CONFIG"+: "-economy",
+    }
+  },
 }

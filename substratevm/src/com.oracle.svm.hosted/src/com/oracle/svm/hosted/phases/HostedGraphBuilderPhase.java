@@ -58,6 +58,7 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
@@ -108,7 +109,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     }
 
     @Override
-    public boolean disallowDeoptInPlugins() {
+    public boolean allowDeoptInPlugins() {
         return false;
     }
 
@@ -212,7 +213,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
         deoptNode.setStateAfter(stateAfter);
         if (lastInstr != null) {
-            lastInstr.setNext(deoptNode.asNode());
+            lastInstr.setNext(deoptNode.asFixedNode());
         }
 
         if (deopt.isProxy()) {
@@ -220,7 +221,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
         } else {
             assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
             DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
-            deoptEntryNode.setNext(graph.add(deoptEntryNode.createNextBegin()));
+            deoptEntryNode.setNext(graph.add(new DeoptEntryBeginNode()));
 
             /*
              * DeoptEntries for positions not during an exception dispatch (rethrowException) also
@@ -261,7 +262,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             lastInstr = deoptEntryNode.next();
         }
 
-        insertProxies(deoptNode.asNode(), frameState);
+        insertProxies(deoptNode.asFixedNode(), frameState);
     }
 
     private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {

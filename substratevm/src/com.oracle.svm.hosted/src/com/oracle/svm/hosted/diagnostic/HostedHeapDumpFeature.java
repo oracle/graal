@@ -74,22 +74,18 @@ public class HostedHeapDumpFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (Options.DumpHeap.getValue() != null) {
-            List<String> validPhases = Stream.of(Phases.values()).map(Phases::getName).collect(Collectors.toList());
-            List<String> values = OptionUtils.flatten(",", Options.DumpHeap.getValue());
-            phases = new ArrayList<>();
-            for (String value : values) {
-                if (validPhases.contains(value)) {
-                    phases.add(value);
-                } else {
-                    throw UserError.abort("Invalid value %s given for %s. Valid values are: %s.", value,
-                                    SubstrateOptionsParser.commandArgument(Options.DumpHeap, ""), String.join(", ", validPhases));
-                }
+        List<String> validPhases = Stream.of(Phases.values()).map(Phases::getName).collect(Collectors.toList());
+        List<String> values = OptionUtils.flatten(",", Options.DumpHeap.getValue());
+        phases = new ArrayList<>();
+        for (String value : values) {
+            if (validPhases.contains(value)) {
+                phases.add(value);
+            } else {
+                throw UserError.abort("Invalid value %s given for %s. Valid values are: %s.", value,
+                                SubstrateOptionsParser.commandArgument(Options.DumpHeap, ""), String.join(", ", validPhases));
             }
-            return !phases.isEmpty();
         }
-
-        return false;
+        return !phases.isEmpty();
     }
 
     private List<String> phases;
