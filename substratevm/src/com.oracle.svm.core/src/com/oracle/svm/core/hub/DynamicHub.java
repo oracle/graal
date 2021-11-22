@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 //Checkstyle: allow reflection
 
-import java.io.File;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
@@ -43,11 +42,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.security.CodeSource;
 import java.security.ProtectionDomain;
-import java.security.cert.Certificate;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -58,7 +54,6 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
@@ -89,7 +84,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.meta.JavaKind;
-import sun.security.util.SecurityConstants;
 
 @Hybrid(canHybridFieldsBeDuplicated = false)
 @Substitute
@@ -317,28 +311,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public void setModule(Object module) {
         this.module = module;
     }
-
-    /**
-     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
-     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
-     * class, i.e., allPermDomain.
-     */
-    static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
-        java.security.Permissions perms = new java.security.Permissions();
-        perms.add(SecurityConstants.ALL_PERMISSION);
-        CodeSource cs;
-        try {
-            // Try to use executable image's name as code source for the class.
-            // The file location can be used by Java code to determine its location on disk, similar
-            // to argv[0].
-            cs = new CodeSource(new File(ProcessProperties.getExecutableName()).toURI().toURL(), (Certificate[]) null);
-        } catch (MalformedURLException ex) {
-            // This should not really happen; the file is cannonicalized, absolute, so it should
-            // always have file:// URL.
-            cs = null;
-        }
-        return new java.security.ProtectionDomain(cs, perms);
-    });
 
     private final LazyFinalReference<DynamicHubCompanion> companion = new LazyFinalReference<>(() -> new DynamicHubCompanion(this));
 
