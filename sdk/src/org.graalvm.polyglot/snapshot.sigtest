@@ -301,6 +301,7 @@ meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
 meth public java.lang.String getId()
 meth public java.lang.String getName()
 meth public java.lang.String getVersion()
+meth public java.lang.String getWebsite()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
 hfds dispatch,receiver
