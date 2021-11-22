@@ -150,7 +150,7 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
         assertSame(ProxyLanguage.class, viewLib.getLanguage(view));
         assertFalse(viewLib.hasMetaObject(view));
         assertFalse(viewLib.hasSourceLocation(view));
-        assertEquals(o.toString(), viewLib.toDisplayString(view));
+        assertEquals("other", viewLib.toDisplayString(view));
     }
 
     Function<Object, Object> getLanguageView;
