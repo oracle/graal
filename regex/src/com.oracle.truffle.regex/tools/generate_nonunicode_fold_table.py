@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 #
 # Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -38,43 +38,42 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-#
 
-set -e
 
-if [[ $(pwd) != *graal/regex/src/com.oracle.truffle.regex/tools ]]
-then
-    echo "This script should be run in graal/regex/src/com.oracle.truffle.regex/tools!"
-    exit 1
-fi
+# This reads dat/UnicodeData.txt and dat/SpecialCasing.txt and produces a file
+# that gives all the non-trivial pairs of inputs-outputs of the ECMAScript
+# Canonicalize when Unicode is false and IgnoreCase is true.
 
-UNICODE_VERSION=14.0.0
+upper_map = {}
+for line in open("dat/UnicodeData.txt"):
+    tokens = line.split(";")
+    # Drop entries without toUppercase mapping
+    if tokens[12].strip() == "":
+        continue
+    char = int(tokens[0].strip(), 16)
+    upper = int(tokens[12].strip(), 16)
+    upper_map[char] = [upper]
 
-mkdir -p ./dat
+for line in open("dat/SpecialCasing.txt"):
+    # Drop comments and empty lines
+    if line.startswith("#") or line.strip() == "":
+        continue
+    tokens = line.split(";")
+    # Drop entries with conditions
+    if len(tokens) > 5:
+        continue
+    char = int(tokens[0].strip(), 16)
+    upper = [int(c, 16) for c in tokens[3].split()]
+    upper_map[char] = upper
 
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/UnicodeData.txt -O dat/UnicodeData.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/CaseFolding.txt -O dat/CaseFolding.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/SpecialCasing.txt -O dat/SpecialCasing.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyAliases.txt -O dat/PropertyAliases.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/PropertyValueAliases.txt -O dat/PropertyValueAliases.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucd/emoji/emoji-data.txt -O dat/emoji-data.txt
-wget https://www.unicode.org/Public/${UNICODE_VERSION}/ucdxml/ucd.nounihan.flat.zip -O dat/ucd.nounihan.flat.zip
-
-unzip -d dat dat/ucd.nounihan.flat.zip
-
-./generate_unicode_properties.py > ../src/com/oracle/truffle/regex/charset/UnicodePropertyData.java
-
-./unicode-script.sh
-
-clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fold-table.txt
-
-./update_case_fold_table.py
-
-./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
-
-rm -r ./dat
-
-mx build
-mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:GRAAL_SDK` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
-
-mx eclipseformat --primary || true
+for (char, upper) in upper_map.items():
+    # Only follow rules which give map to a single code unit
+    if len(upper) > 1 or upper[0] >= 0x10000:
+        continue
+    # Do not allow non-ASCII characters to cross into ASCII.
+    if char >= 128 and upper[0] < 128:
+        continue
+    # Drop trivial mappings
+    if (char == upper[0]):
+        continue
+    print("%X;%X" % (char, upper[0]))
