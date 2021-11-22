@@ -66,6 +66,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -102,6 +103,11 @@ import com.oracle.truffle.tck.DebuggerTester;
 public class SLInstrumentLegacyTest {
 
     static final InteropLibrary INTEROP = LibraryFactory.resolve(InteropLibrary.class).getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testLexicalScopes() throws Exception {

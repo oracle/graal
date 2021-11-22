@@ -168,6 +168,11 @@ public class ScopedViewLegacyTest extends AbstractParametrizedLibraryTest {
         return root;
     }
 
+    public ScopedViewLegacyTest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testValidRequest() throws UnsupportedMessageException {
         AtomicInteger count = new AtomicInteger();

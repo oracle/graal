@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 
 /**
@@ -77,8 +78,9 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
 public final class PolyglotAccess {
 
     private static final UnmodifiableEconomicSet<String> EMPTY = EconomicSet.create();
+    private static final UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> EMPTY_EVAL_ACCESS = EconomicMap.create();
 
-    private final EconomicMap<String, EconomicSet<String>> evalAccess;
+    private final EconomicMap<String, UnmodifiableEconomicSet<String>> evalAccess;
     private final EconomicSet<String> bindingsAccess;
     private final boolean allAccess;
 
@@ -88,12 +90,12 @@ public final class PolyglotAccess {
         this.bindingsAccess = bindingsAccess;
     }
 
-    private static EconomicMap<String, EconomicSet<String>> copyMap(EconomicMap<String, EconomicSet<String>> values) {
+    private static EconomicMap<String, UnmodifiableEconomicSet<String>> copyMap(EconomicMap<String, EconomicSet<String>> values) {
         if (values == null) {
             return null;
         }
-        EconomicMap<String, EconomicSet<String>> newMap = EconomicMap.create(Equivalence.DEFAULT, values);
-        MapCursor<String, EconomicSet<String>> cursor = newMap.getEntries();
+        EconomicMap<String, UnmodifiableEconomicSet<String>> newMap = EconomicMap.create(values.size());
+        MapCursor<String, EconomicSet<String>> cursor = values.getEntries();
         while (cursor.advance()) {
             newMap.put(cursor.getKey(), EconomicSet.create(Equivalence.DEFAULT, cursor.getValue()));
         }
@@ -102,7 +104,7 @@ public final class PolyglotAccess {
 
     String validate(UnmodifiableEconomicSet<String> availableLanguages) {
         if (evalAccess != null) {
-            MapCursor<String, EconomicSet<String>> entries = evalAccess.getEntries();
+            MapCursor<String, UnmodifiableEconomicSet<String>> entries = evalAccess.getEntries();
             while (entries.advance()) {
                 String invalidKey = null;
                 if (!availableLanguages.contains(entries.getKey())) {
@@ -135,7 +137,7 @@ public final class PolyglotAccess {
 
     }
 
-    static String toStringSet(EconomicSet<String> set) {
+    static String toStringSet(UnmodifiableEconomicSet<String> set) {
         StringBuilder b = new StringBuilder();
         String sep = "";
         for (String entry : set) {
@@ -153,11 +155,23 @@ public final class PolyglotAccess {
             if (evalAccess == null) {
                 return EMPTY;
             } else {
-                EconomicSet<String> a = evalAccess.get(language);
+                UnmodifiableEconomicSet<String> a = evalAccess.get(language);
                 if (a == null) {
                     return EMPTY;
                 }
                 return a;
+            }
+        }
+    }
+
+    UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> getEvalAccess() {
+        if (allAccess) {
+            return null;
+        } else {
+            if (evalAccess == null) {
+                return EMPTY_EVAL_ACCESS;
+            } else {
+                return evalAccess;
             }
         }
     }

@@ -70,6 +70,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -169,6 +170,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getReceiver(Instrument instrument);
 
+        public abstract Object getReceiver(Language language);
+
         public abstract Object getReceiver(Engine engine);
 
         public abstract Object getReceiver(Context context);
@@ -233,6 +236,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language);
 
+        public abstract UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> getEvalAccess(PolyglotAccess access);
+
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
         public abstract String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
@@ -241,14 +246,19 @@ public abstract class AbstractPolyglotImpl {
 
     // shared SPI
 
-    APIAccess api;
-    ManagementAccess management;
-    IOAccess io;
+    private APIAccess api;
+    private ManagementAccess management;
+    private IOAccess io;
 
-    AbstractPolyglotImpl next;
+    private AbstractPolyglotImpl next;
+    private AbstractPolyglotImpl prev;
 
     public final void setMonitoring(ManagementAccess monitoring) {
         this.management = monitoring;
+        AbstractPolyglotImpl nextImpl = next;
+        if (nextImpl != null) {
+            nextImpl.setMonitoring(monitoring);
+        }
     }
 
     public final void setConstructors(APIAccess constructors) {
@@ -258,22 +268,32 @@ public abstract class AbstractPolyglotImpl {
 
     public final void setNext(AbstractPolyglotImpl next) {
         this.next = next;
+        if (next != null) {
+            next.prev = this;
+        }
     }
 
     public final AbstractPolyglotImpl getNext() {
+        if (next == null) {
+            throw new AbstractMethodError("No implementation available.");
+        }
         return next;
     }
 
     public final void setIO(IOAccess ioAccess) {
         Objects.requireNonNull(ioAccess, "IOAccess must be non null.");
         this.io = ioAccess;
+        AbstractPolyglotImpl nextImpl = this.next;
+        if (nextImpl != null) {
+            nextImpl.setIO(ioAccess);
+        }
     }
 
-    public APIAccess getAPIAccess() {
+    public final APIAccess getAPIAccess() {
         return api;
     }
 
-    public ManagementAccess getManagement() {
+    public final ManagementAccess getManagement() {
         return management;
     }
 
@@ -291,46 +311,67 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly);
+    public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
+                    boolean allowExperimentalOptions,
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
+                        hostLanguageOnly);
+    }
 
     public abstract int getPriority();
 
-    public abstract void preInitializeEngine();
+    public void preInitializeEngine(Object hostLanguage) {
+        getNext().preInitializeEngine(hostLanguage);
+    }
 
-    public abstract Object createHostLanguage(AbstractHostAccess access);
+    public Object createHostLanguage(AbstractHostAccess access) {
+        return getNext().createHostLanguage(access);
+    }
 
-    public abstract void resetPreInitializedEngine();
+    public void resetPreInitializedEngine() {
+        getNext().resetPreInitializedEngine();
+    }
 
-    public abstract Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                    throws IOException;
+    public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                    throws IOException {
+        return getNext().build(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding);
+    }
 
-    public abstract String findLanguage(File file) throws IOException;
+    public String findLanguage(File file) throws IOException {
+        return getNext().findLanguage(file);
+    }
 
-    public abstract String findLanguage(URL url) throws IOException;
+    public String findLanguage(URL url) throws IOException {
+        return getNext().findLanguage(url);
+    }
 
-    public abstract String findLanguage(String mimeType);
+    public String findLanguage(String mimeType) {
+        return getNext().findLanguage(mimeType);
+    }
 
-    public abstract String findMimeType(File file) throws IOException;
+    public String findMimeType(File file) throws IOException {
+        return getNext().findMimeType(file);
+    }
 
-    public abstract String findMimeType(URL url) throws IOException;
+    public String findMimeType(URL url) throws IOException {
+        return getNext().findMimeType(url);
+    }
+
+    public AbstractHostAccess createHostAccess() {
+        return getNext().createHostAccess();
+    }
 
     /**
-     * Returns the default host dispatch of this polyglot abstraction.
+     * Marker base class for native-image.
      */
-    public abstract AbstractHostAccess createHostAccess();
+    public abstract static class AbstractDispatchClass {
 
-    public abstract static class AbstractManagementDispatch {
+    }
 
-        AbstractPolyglotImpl polyglotImpl;
+    public abstract static class AbstractManagementDispatch extends AbstractDispatchClass {
 
         protected AbstractManagementDispatch(AbstractPolyglotImpl polyglotImpl) {
             Objects.requireNonNull(polyglotImpl);
-            this.polyglotImpl = polyglotImpl;
-        }
-
-        public final AbstractPolyglotImpl getPolyglotImpl() {
-            return polyglotImpl;
         }
 
         public abstract List<Value> getExecutionEventInputValues(Object impl);
@@ -353,18 +394,17 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractSourceDispatch {
-
-        protected final AbstractPolyglotImpl engineImpl;
+    public abstract static class AbstractSourceDispatch extends AbstractDispatchClass {
 
         protected AbstractSourceDispatch(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
-            this.engineImpl = engineImpl;
         }
 
         public abstract String getName(Object impl);
 
         public abstract String getPath(Object impl);
+
+        public abstract boolean isCached(Object impl);
 
         public abstract boolean isInteractive(Object impl);
 
@@ -412,7 +452,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractSourceSectionDispatch {
+    public abstract static class AbstractSourceSectionDispatch extends AbstractDispatchClass {
 
         protected AbstractSourceSectionDispatch(AbstractPolyglotImpl polyglotImpl) {
             Objects.requireNonNull(polyglotImpl);
@@ -450,7 +490,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractContextDispatch {
+    public abstract static class AbstractContextDispatch extends AbstractDispatchClass {
 
         protected AbstractContextDispatch(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
@@ -484,7 +524,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractEngineDispatch {
+    public abstract static class AbstractEngineDispatch extends AbstractDispatchClass {
 
         protected AbstractEngineDispatch(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
@@ -529,7 +569,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractExceptionDispatch {
+    public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {
 
         protected AbstractExceptionDispatch(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
@@ -573,7 +613,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractStackFrameImpl {
+    public abstract static class AbstractStackFrameImpl extends AbstractDispatchClass {
 
         protected AbstractStackFrameImpl(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
@@ -593,7 +633,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractInstrumentDispatch {
+    public abstract static class AbstractInstrumentDispatch extends AbstractDispatchClass {
 
         protected AbstractInstrumentDispatch(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
@@ -611,7 +651,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractLanguageDispatch {
+    public abstract static class AbstractLanguageDispatch extends AbstractDispatchClass {
 
         protected AbstractLanguageDispatch(AbstractPolyglotImpl engineImpl) {
             Objects.requireNonNull(engineImpl);
@@ -634,7 +674,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getDefaultMimeType(Object receiver);
     }
 
-    public abstract static class AbstractHostAccess {
+    public abstract static class AbstractHostAccess extends AbstractDispatchClass {
 
         protected AbstractHostAccess(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
@@ -678,7 +718,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract RuntimeException unboxEngineException(RuntimeException e);
     }
 
-    public abstract static class AbstractHostService {
+    public abstract static class AbstractHostService extends AbstractDispatchClass {
 
         protected AbstractHostService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
@@ -715,7 +755,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
 
-        public abstract boolean isHostException(Throwable exception);
+        public abstract boolean isHostException(Object exception);
 
         public abstract boolean isHostFunction(Object obj);
 
@@ -737,7 +777,7 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractValueDispatch {
+    public abstract static class AbstractValueDispatch extends AbstractDispatchClass {
 
         protected AbstractValueDispatch(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
@@ -1010,22 +1050,57 @@ public abstract class AbstractPolyglotImpl {
         public abstract void pin(Object languageContext, Object receiver);
     }
 
-    public abstract Class<?> loadLanguageClass(String className);
+    public Class<?> loadLanguageClass(String className) {
+        return getNext().loadLanguageClass(className);
+    }
 
-    public abstract Context getCurrentContext();
+    public Context getCurrentContext() {
+        return getNext().getCurrentContext();
+    }
 
-    public abstract Collection<? extends Object> findActiveEngines();
+    public Collection<? extends Object> findActiveEngines() {
+        return getNext().findActiveEngines();
+    }
 
-    public abstract Value asValue(Object o);
+    public Value asValue(Object o) {
+        return getNext().asValue(o);
+    }
 
-    public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
+    public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
+        return getNext().newTargetTypeMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
+    }
 
-    public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
+    public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit) {
+        return getNext().buildLimits(statementLimit, statementLimitSourceFilter, onLimit);
+    }
 
-    public abstract FileSystem newDefaultFileSystem();
+    public FileSystem newDefaultFileSystem() {
+        return getNext().newDefaultFileSystem();
+    }
 
-    public AbstractValueDispatch createValueDispatch(Object context, Object o) {
-        throw new UnsupportedOperationException();
+    /**
+     * Creates a union of all available option descriptors including prev implementations. This
+     * allows to validate the full set of options.
+     */
+    protected final OptionDescriptors createAllEngineOptionDescriptors() {
+        AbstractPolyglotImpl current = this;
+        while (current.prev != null) {
+            current = current.prev;
+        }
+        OptionDescriptors union = OptionDescriptors.EMPTY;
+        while (current != null) {
+            union = OptionDescriptors.createUnion(current.createEngineOptionDescriptors(), union);
+            current = current.next;
+        }
+        return union;
+    }
+
+    /**
+     * Returns all additional option descriptors of the current polyglot impl or <code>null</code>.
+     * Do not delegate to {@link #getNext()} in this method.
+     */
+    protected OptionDescriptors createEngineOptionDescriptors() {
+        return OptionDescriptors.EMPTY;
     }
 
 }

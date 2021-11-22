@@ -22,37 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.jni;
+package org.graalvm.nativebridge;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * Services used by the {@code org.graalvm.nativebridge.jni} module. To enable the
- * {@code org.graalvm.nativebridge.jni} module a {@code NativeBridgeSupport} instance must be
- * registered in the {@link ImageSingletons}.
- */
-public interface NativeBridgeSupport {
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.PARAMETER)
+public @interface Out {
 
-    /**
-     * Returns the name of a feature using {@code org.graalvm.nativebridge.jni} module. The feature
-     * name is used in the logging output.
-     */
-    String getFeatureName();
+    String arrayOffsetParameter() default "";
 
-    /**
-     * Checks if logging at given level is enabled.
-     */
-    boolean isTracingEnabled(int level);
+    String arrayLengthParameter() default "";
 
-    /**
-     * Logs the message.
-     */
-    void trace(String message);
-
-    /**
-     * Returns a {@code NativeBridgeSupport} instance registered in the {@link ImageSingletons}.
-     */
-    static NativeBridgeSupport getInstance() {
-        return ImageSingletons.lookup(NativeBridgeSupport.class);
-    }
+    boolean trimToResult() default false;
 }

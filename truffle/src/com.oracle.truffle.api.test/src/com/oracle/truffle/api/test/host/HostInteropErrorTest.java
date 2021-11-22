@@ -56,6 +56,7 @@ import java.util.Set;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
@@ -72,6 +73,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostInteropErrorTest extends ProxyLanguageEnvTest {
 
@@ -98,6 +100,11 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
         public String toString() {
             return "MyHostObj";
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

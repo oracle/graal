@@ -48,7 +48,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.io.ByteSequence;
+import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ByteSequenceTest {
 
@@ -68,6 +71,11 @@ public class ByteSequenceTest {
             return (byte) (index + 1);
         }
 
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

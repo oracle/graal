@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,14 +55,29 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class ProcessBuilderTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public ProcessBuilderTest() {
+        needsLanguageEnv = true;
+    }
 
     @Test
     public void testProcessCreationDenied() throws Exception {

@@ -75,6 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -85,6 +86,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+    static final int JAVA_SPEC = getJavaSpecificationVersion();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
 
@@ -671,6 +673,27 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
 
         return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
+    }
+
+    private static int getJavaSpecificationVersion() {
+        String value = Services.getSavedProperties().get("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    @Override
+    public long getStackOverflowLimit() {
+        try {
+            int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
+                            Integer.class, "address");
+            long threadEETopOffset = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
+            return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

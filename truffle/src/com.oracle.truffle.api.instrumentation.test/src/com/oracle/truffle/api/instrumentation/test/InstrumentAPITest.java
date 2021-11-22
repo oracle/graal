@@ -54,6 +54,11 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InstrumentAPITest extends AbstractPolyglotTest {
 
+    public InstrumentAPITest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testGetLanguageInfo() throws UnsupportedMessageException {
         setupEnv();

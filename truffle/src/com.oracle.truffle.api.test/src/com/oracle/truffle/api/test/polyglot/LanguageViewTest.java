@@ -114,6 +114,10 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
 
     }
 
+    public LanguageViewTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testDefaultLanguageView() throws UnsupportedMessageException {
         setupEnv(Context.create(), new ProxyLanguage() {

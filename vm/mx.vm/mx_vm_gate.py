@@ -33,7 +33,6 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 
 import functools
-import re
 import glob
 from mx_gate import Task
 
@@ -202,12 +201,14 @@ def graalvm_svm():
     """
     Gives access to image building withing the GraalVM release. Requires dynamic import of substratevm.
     """
-    native_image_cmd = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'native-image')
+    native_image_cmd = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'native-image') + ('.cmd' if mx.get_os() == 'windows' else '')
     svm = mx.suite('substratevm')
     if not exists(native_image_cmd) or not svm:
         mx.abort("Image building not accessible in GraalVM {}. Build GraalVM with native-image support".format(mx_sdk_vm_impl.graalvm_dist_name()))
+    # useful to speed up image creation during development
+    hosted_assertions = mx.get_env("DISABLE_SVM_IMAGE_HOSTED_ASSERTIONS", "false") != "true"
     @contextmanager
-    def native_image_context(common_args=None, hosted_assertions=True):
+    def native_image_context(common_args=None, hosted_assertions=hosted_assertions):
         with svm.extensions.native_image_context(common_args, hosted_assertions, native_image_cmd=native_image_cmd) as native_image:
             yield native_image
     return native_image_context, svm.extensions
@@ -303,34 +304,71 @@ def gate_svm_truffle_tck_js(tasks):
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
 
+def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
+    native_image_context, svm = graalvm_svm()
+    with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+        import mx_compiler
+        build_options = [] + options
+        if shared_lib:
+            build_options = build_options + ['--shared']
+        build_deps = []
+        unittests_file = None
+        if unit_tests:
+            build_options = build_options + ['-ea']
+            unittest_deps = []
+            unittests_file = join(image_dir, 'unittest.tests')
+            mx_unittest._run_tests(unit_tests,
+                                   lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps),
+                                   mx_unittest._VMLauncher('dummy_launcher', None, mx_compiler.jdk),
+                                   ['@Test', '@Parameters'],
+                                   unittests_file,
+                                   None,
+                                   None,
+                                   None,
+                                   None)
+            if not exists(unittests_file):
+                mx.abort('No unit tests found matching the criteria {}'.format(",".join(unit_tests)))
+            build_deps = build_deps + unittest_deps
+
+        if additional_deps:
+            build_deps = build_deps + additional_deps
+        extra_image_args = mx.get_runtime_jvm_args(build_deps, jdk=mx_compiler.jdk)
+        tests_image = native_image(build_options + extra_image_args)
+        import configparser
+        artifacts = configparser.RawConfigParser(allow_no_value=True)
+        artifacts_file_path = tests_image + '.build_artifacts.txt'
+        if not exists(artifacts_file_path):
+            mx.abort('Tests image build artifacts not found.')
+        artifacts.read(artifacts_file_path)
+        if shared_lib:
+            if not any(s == 'SHARED_LIB' for s in artifacts.sections()):
+                mx.abort('Shared lib not found in image build artifacts.')
+            tests_image_path = join(image_dir, str(artifacts.items('SHARED_LIB')[0][0]))
+        else:
+            if not any(s == 'EXECUTABLE' for s in artifacts.sections()):
+                mx.abort('Executable not found in image build artifacts.')
+            tests_image_path = join(image_dir, str(artifacts.items('EXECUTABLE')[0][0]))
+        mx.logv('Test image path: {}'.format(tests_image_path))
+        return tests_image_path, unittests_file
+
 def gate_svm_sl_tck(tasks):
     with Task('SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_sl_tck]) as t:
         if t:
             tools_suite = mx.suite('tools')
             if not tools_suite:
                 mx.abort("Cannot resolve tools suite.")
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svmbuild = mkdtemp()
-                try:
-                    import mx_compiler
-                    unittest_deps = []
-                    unittest_file = join(svmbuild, 'truffletck.tests')
-                    mx_unittest._run_tests([], lambda deps, vm_launcher, vm_args: unittest_deps.extend(deps), mx_unittest._VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, [], [re.compile('com.oracle.truffle.tck.tests')], None, mx.suite('truffle'))
-                    if not exists(unittest_file):
-                        mx.abort('TCK tests not found.')
-                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
-                    unittest_deps.append(mx.dependency('truffle:TRUFFLE_TCK_INSTRUMENTATION'))
-                    vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-                    options = [
-                        '--macro:truffle',
-                        '--tool:all',
-                        '-H:Path={}'.format(svmbuild),
-                        '-H:Class=org.junit.runner.JUnitCore',
-                    ]
-                    tests_image = native_image(vm_image_args + options)
-                    with open(unittest_file) as f:
-                        test_classes = [l.rstrip() for l in f.readlines()]
-                    mx.run([tests_image] + test_classes)
-                finally:
+            svmbuild = mkdtemp()
+            try:
+                options = [
+                    '--macro:truffle',
+                    '--tool:all',
+                    '-H:Path={}'.format(svmbuild),
+                    '-H:Class=org.junit.runner.JUnitCore',
+                ]
+                tests_image_path, tests_file = build_tests_image(svmbuild, options, ['com.oracle.truffle.tck.tests'], ['truffle:TRUFFLE_SL_TCK', 'truffle:TRUFFLE_TCK_INSTRUMENTATION'])
+                with open(tests_file) as f:
+                    test_classes = [l.rstrip() for l in f.readlines()]
+                mx.run([tests_image_path] + test_classes)
+            finally:
+                if not mx._opts.verbose:
                     mx.rmtree(svmbuild)

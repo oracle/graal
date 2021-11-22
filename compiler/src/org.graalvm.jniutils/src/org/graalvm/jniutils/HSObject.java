@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.jni;
+package org.graalvm.jniutils;
 
-import static org.graalvm.nativebridge.jni.JNIUtil.DeleteGlobalRef;
-import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.jniutils.JNIUtil.DeleteGlobalRef;
+import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -33,8 +33,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.word.WordFactory;
 
 /**
@@ -42,7 +42,7 @@ import org.graalvm.word.WordFactory;
  * used, the handle is either local to a {@link JNIMethodScope} and thus invalid once the scope
  * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
-public abstract class HSObject {
+public class HSObject {
 
     /**
      * JNI handle to the HotSpot object.
@@ -66,20 +66,31 @@ public abstract class HSObject {
 
     /**
      * Creates an object encapsulating a {@code handle} whose lifetime is determined by this object.
+     * The created {@link HSObject} does not allow duplicate JNI global handles. Use
+     * {@link #HSObject(JNIEnv, JObject, boolean)} to create {@link HSObject} allowing duplicate JNI
+     * global handles.
      */
-    protected HSObject(JNIEnv env, JObject handle) {
+    public HSObject(JNIEnv env, JObject handle) {
+        this(env, handle, false);
+    }
+
+    /**
+     * Creates an object encapsulating a {@code handle} whose lifetime is determined by this object.
+     * The created {@link HSObject} possibly allows duplicate JNI global handles.
+     */
+    public HSObject(JNIEnv env, JObject handle, boolean allowGlobalDuplicates) {
         cleanHandles(env);
-        if (checkingGlobalDuplicates()) {
+        if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
             checkNonExistingGlobalReference(env, handle);
         }
         this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
-        cleaner = new Cleaner(this, this.handle);
+        cleaner = new Cleaner(this, this.handle, allowGlobalDuplicates);
         CLEANERS.add(cleaner);
         next = null;
     }
 
-    private static boolean checkingGlobalDuplicates() {
-        return assertionsEnabled() || JNIUtil.tracingAt(1);
+    private static boolean checkingGlobalDuplicates(boolean allowGlobalDuplicates) {
+        return !allowGlobalDuplicates && (assertionsEnabled() || JNIUtil.tracingAt(1));
     }
 
     /**
@@ -87,7 +98,7 @@ public abstract class HSObject {
      * Once {@code scope.close()} is called, any attempt to {@linkplain #getHandle() use} the handle
      * will result in an {@link IllegalArgumentException}.
      */
-    protected HSObject(JNIMethodScope scope, JObject handle) {
+    public HSObject(JNIMethodScope scope, JObject handle) {
         this.handle = handle;
         next = scope.locals;
         scope.locals = this;
@@ -113,7 +124,7 @@ public abstract class HSObject {
         return count;
     }
 
-    public JObject getHandle() {
+    public final JObject getHandle() {
         if (next == this) {
             throw new IllegalArgumentException("Reclaimed JNI reference: " + this);
         }
@@ -125,7 +136,7 @@ public abstract class HSObject {
         return String.format("%s[0x%x]", getClass().getSimpleName(), handle.rawValue());
     }
 
-    public void release(JNIEnv env) {
+    public final void release(JNIEnv env) {
         if (cleaner != null) {
             assert next == null || next == this;
             this.next = this;
@@ -171,16 +182,19 @@ public abstract class HSObject {
     private static final ReferenceQueue<HSObject> CLEANERS_QUEUE = new ReferenceQueue<>();
 
     private static final class Cleaner extends PhantomReference<HSObject> {
-        private JObject handle;
 
-        Cleaner(HSObject referent, JObject handle) {
+        private JObject handle;
+        private final boolean allowGlobalDuplicates;
+
+        Cleaner(HSObject referent, JObject handle, boolean allowGlobalDuplicates) {
             super(referent, CLEANERS_QUEUE);
             this.handle = handle;
+            this.allowGlobalDuplicates = allowGlobalDuplicates;
         }
 
         void clean(JNIEnv env) {
             if (CLEANERS.remove(this)) {
-                if (checkingGlobalDuplicates()) {
+                if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
                     synchronized (this) {
                         DeleteGlobalRef(env, handle);
                         handle = WordFactory.nullPointer();

@@ -69,6 +69,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -91,6 +92,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
@@ -117,6 +119,11 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 throw UnsupportedMessageException.create();
             }
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test
@@ -532,6 +539,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         enterContext = false;
         CountDownLatch waitingStarted = new CountDownLatch(1);
         setupEnv(Context.create(), new ProxyLanguage() {

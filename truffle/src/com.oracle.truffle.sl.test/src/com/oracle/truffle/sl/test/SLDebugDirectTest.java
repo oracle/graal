@@ -57,6 +57,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -75,6 +76,11 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public class SLDebugDirectTest {
     private static final Object UNASSIGNED = new Object();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private Debugger debugger;
     private final LinkedList<Runnable> run = new LinkedList<>();

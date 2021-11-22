@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.api.test;
 
-import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
 import static com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.mask;
+import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
 
 import java.util.ArrayList;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.ArrayUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class ArrayUtilsRegionEqualsWithMaskTest {
@@ -109,6 +111,11 @@ public class ArrayUtilsRegionEqualsWithMaskTest {
 
     private static Object[] dataRow(String a1, int fromIndex1, String a2, int fromIndex2, int maskLength, boolean expected, boolean withMask) {
         return new Object[]{a1, fromIndex1, a2, fromIndex2, withMask ? mask(maskLength) : null, maskLength, expected};
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     private final String a1;
