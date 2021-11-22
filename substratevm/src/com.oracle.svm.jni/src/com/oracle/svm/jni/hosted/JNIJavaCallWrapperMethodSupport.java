@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -38,6 +40,9 @@ import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -48,21 +53,20 @@ public class JNIJavaCallWrapperMethodSupport {
      * the created object or for {@code null} when an exception occurred (in which case the
      * exception becomes a JNI pending exception).
      */
-    public ValueNode createNewObjectCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, FrameStateBuilder state, ValueNode... args) {
-        assert invokeMethod.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + invokeMethod;
+    public ValueNode createNewObjectCall(UniverseMetaAccess metaAccess, JNIGraphKit kit, ResolvedJavaMethod constructor, FrameStateBuilder state, ValueNode... argsWithReceiver) {
+        assert constructor.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + constructor;
 
-        ResolvedJavaType receiverClass = invokeMethod.getDeclaringClass();
-        AbstractNewObjectNode createdReceiver = createNewInstance(kit, receiverClass, true);
+        ResolvedJavaMethod factoryMethod = FactoryMethodSupport.singleton().lookup(metaAccess, constructor);
 
         int bci = kit.bci();
-        args[0] = createdReceiver;
-        startInvokeWithRetainedException(kit, invokeMethod, InvokeKind.Special, state, bci, args);
+        ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(argsWithReceiver, 1, argsWithReceiver.length);
+        ValueNode createdObject = startInvokeWithRetainedException(kit, factoryMethod, InvokeKind.Static, state, bci, argsWithoutReceiver);
         AbstractMergeNode merge = kit.endInvokeWithException();
         merge.setStateAfter(state.create(bci, merge));
 
-        Stamp objectStamp = StampFactory.forDeclaredType(null, receiverClass, true).getTrustedStamp();
+        Stamp objectStamp = StampFactory.forDeclaredType(null, constructor.getDeclaringClass(), true).getTrustedStamp();
         ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
-        return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdReceiver, exceptionValue}));
+        return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdObject, exceptionValue}));
     }
 
     protected AbstractNewObjectNode createNewInstance(JNIGraphKit kit, ResolvedJavaType type, boolean fillContents) {
