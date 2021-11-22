@@ -1377,7 +1377,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public int getModifiers() {
+    public int getModifiers() { // Note: making this method non-final may cause heavy performance issues
         return modifiers;
     }
 
