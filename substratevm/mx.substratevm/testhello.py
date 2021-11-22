@@ -424,46 +424,17 @@ def test():
     checker.check(exec_string, skip_fails=False)
     execute("delete breakpoints")
 
-    # set a break point at standard library PrintStream.println(String)
-    # expect "Breakpoint 3 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
-    exec_string = execute("break java.io.PrintStream::println(java.lang.String *)")
-    rexp = r"Breakpoint %s at %s: file .*java/io/PrintStream\.java, line %s\."%(digits_pattern, address_pattern, digits_pattern)
+    # set a break point at standard library PrintStream.println. Ideally we would like to break only at println(String)
+    # however in Java 17 and GraalVM >21.3.0 this method ends up getting inlined and we can't (yet?!) set a breakpoint
+    # only to a specific override of a method by specifying the parameter types when that method gets inlined.
+    # As a result the breakpoint will be set at all println overrides.
+    # expect "Breakpoint 1 at 0x[0-9a-f]+: java.io.PrintStream::println. ([0-9]+ locations)""
+    exec_string = execute("break java.io.PrintStream::println")
+    rexp = r"Breakpoint %s at %s: java\.io\.PrintStream::println\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
     checker = Checker('break println', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("continue")
-
-    # run backtrace to check we are in java.io.PrintStream::println(java.lang.String)
-    # expect "#0  java.io.PrintStream::println(java.lang.String).* at java.base/java/io/PrintStream.java:[0-9]+"
-    exec_string = execute("backtrace 6")
-    rexp = [r"#0%sjava\.io\.PrintStream::println\(java\.lang\.String \*\)%s at %sjava/io/PrintStream.java:%s"%(spaces_pattern, wildcard_pattern, wildcard_pattern, digits_pattern),
-            r"#1%s%s in hello\.SubstituteHelperClass::nestedGreet\(void\) \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:68"%(spaces_pattern, address_pattern),
-            r"#2%s%s in hello\.SubstituteHelperClass::staticInlineGreet \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:62"%(spaces_pattern, address_pattern),
-            r"#3%s hello\.SubstituteHelperClass::inlineGreet \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:57"%(spaces_pattern),
-            r"#4%s hello\.Hello\$DefaultGreeter::greet\(void\) \(\) at hello/Target_hello_Hello_DefaultGreeter\.java:49"%(spaces_pattern),
-            r"#5%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) \(\) at hello/Hello\.java:77"%(spaces_pattern, address_pattern)]
-    checker = Checker("backtrace PrintStream::println", rexp)
-    checker.check(exec_string)
-
-    # list current line
-    # expect "[0-9]+        synchronized (this) {" in Java 11
-    # or "[0-9]+        if (getClass() == PrintStream.class) {" in Java 17
-    exec_string = execute("list")
-    rexp = r"(%s)%s(synchronized \(this\) {|if \(getClass\(\) == PrintStream.class\))"%(digits_pattern, spaces_pattern)
-    checker = Checker('list println 1', rexp)
-    matches = checker.check(exec_string, skip_fails=False)
-
-    # n.b. can only get back here with one match
-    match = matches[0]
-    prev_line_num = int(match.group(1)) - 1
-
-    # check the previous line is the declaration for println(String)
-    # list {prev_line_num}
-    # expect "{prev_line_num}        public void println(String [a-zA-Z0-9_]+) {"
-    exec_string = execute("list %d"%prev_line_num)
-    rexp = r"%d%spublic void println\(String %s\) {"%(prev_line_num, spaces_pattern, varname_pattern)
-    checker = Checker('list println 2', rexp)
-    checker.check(exec_string, skip_fails=False)
 
     if can_print_data:
         # print the java.io.PrintStream instance and check its type
