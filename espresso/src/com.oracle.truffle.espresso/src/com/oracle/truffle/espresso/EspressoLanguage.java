@@ -64,7 +64,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                dependentLanguages = {"nfi", "llvm"})
+                dependentLanguages = "nfi")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
