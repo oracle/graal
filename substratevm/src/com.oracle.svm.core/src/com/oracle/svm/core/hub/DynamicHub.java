@@ -686,7 +686,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
-        return Resources.createInputStream(resolveName(resourceName));
+        String moduleName = SubstrateUtil.cast(module, Target_java_lang_Module.class).name;
+        String resolvedName = resolveName(resourceName);
+        return Resources.createInputStream(moduleName, resolvedName);
     }
 
     @KeepOriginal

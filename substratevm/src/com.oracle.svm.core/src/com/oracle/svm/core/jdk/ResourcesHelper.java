@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -35,6 +32,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.util.VMError;
 
 @SuppressWarnings("unchecked")
 public class ResourcesHelper {
@@ -70,6 +71,10 @@ public class ResourcesHelper {
 
     public static URL nameToResourceURL(String resourceName) {
         return Resources.createURL(resourceName);
+    }
+
+    public static URL nameToResourceURL(String moduleName, String resourceName) {
+        return Resources.createURL(moduleName, resourceName);
     }
 
     public static InputStream nameToResourceInputStream(String resourceName) throws IOException {

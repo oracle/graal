@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk11;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.module.ModuleReference;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
@@ -57,7 +58,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
+        return ResourcesHelper.nameToResourceURL(mn, name);
     }
 
     @Substitute
@@ -81,8 +82,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
     }
 
     @Substitute
-    private URL findResource(Target_java_lang_module_ModuleReference mref, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
+    private URL findResource(ModuleReference mref, String name) {
+        return ResourcesHelper.nameToResourceURL(mref.descriptor().name(), name);
     }
 
     @Substitute

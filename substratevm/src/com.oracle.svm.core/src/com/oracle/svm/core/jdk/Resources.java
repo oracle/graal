@@ -175,21 +175,29 @@ public final class Resources {
     }
 
     public static URL createURL(String resourceName) {
+        return createURL(null, resourceName);
+    }
+
+    public static URL createURL(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
-        Enumeration<URL> urls = createURLs(toCanonicalForm(resourceName));
+        Enumeration<URL> urls = createURLs(moduleName, toCanonicalForm(resourceName));
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
-    /* Avoid pulling in the URL class when only an InputStream is needed. */
     public static InputStream createInputStream(String resourceName) {
+        return createInputStream(null, resourceName);
+    }
+
+    /* Avoid pulling in the URL class when only an InputStream is needed. */
+    public static InputStream createInputStream(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
-        ResourceStorageEntry entry = Resources.get(toCanonicalForm(resourceName));
+        ResourceStorageEntry entry = Resources.get(moduleName, toCanonicalForm(resourceName));
         if (entry == null) {
             return null;
         }
@@ -198,12 +206,16 @@ public final class Resources {
     }
 
     public static Enumeration<URL> createURLs(String resourceName) {
+        return createURLs(null, resourceName);
+    }
+
+    public static Enumeration<URL> createURLs(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
         String canonicalResourceName = toCanonicalForm(resourceName);
-        ResourceStorageEntry entry = Resources.get(canonicalResourceName);
+        ResourceStorageEntry entry = Resources.get(moduleName, canonicalResourceName);
         if (entry == null) {
             return Collections.emptyEnumeration();
         }

@@ -321,7 +321,8 @@ public final class ResourcesFeature implements Feature {
     @SuppressWarnings("try")
     private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
+            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
             Resources.registerResource(moduleName, resourceName, resourceStream);
         }
     }
@@ -329,7 +330,8 @@ public final class ResourcesFeature implements Feature {
     @SuppressWarnings("try")
     private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + dir);
+            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
             Resources.registerDirectoryResource(moduleName, dir, content);
         }
     }
