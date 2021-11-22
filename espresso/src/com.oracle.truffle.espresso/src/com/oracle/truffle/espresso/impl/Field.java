@@ -1054,7 +1054,6 @@ public class Field extends Member<Type> implements FieldRef {
                 synchronized (instance) {
                     object = extensionField.getHiddenObject(instance);
                     if (object == null) {
-                        CompilerDirectives.transferToInterpreter();
                         extensionFieldObject = new ExtensionFieldObject();
                         extensionField.setHiddenObject(instance, extensionFieldObject);
                     } else {

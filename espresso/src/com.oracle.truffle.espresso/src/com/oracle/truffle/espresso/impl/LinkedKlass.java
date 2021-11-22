@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
@@ -100,8 +99,8 @@ public final class LinkedKlass {
         this.methods = linkedMethods;
     }
 
-    public static LinkedKlass create(EspressoContext context, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(context, parserKlass, superKlass);
+    public static LinkedKlass create(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(description, parserKlass, superKlass);
         return new LinkedKlass(
                         parserKlass,
                         superKlass,

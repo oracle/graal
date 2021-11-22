@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
-import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -41,27 +40,28 @@ final class LinkedField extends StaticProperty {
         REGULAR,
         WITH_TYPE,
         OBFUSCATED,
-        REDEFINE_ADDED,
     }
 
     private final ParserField parserField;
     private final int slot;
 
     LinkedField(ParserField parserField, int slot, IdMode mode) {
-        this.parserField = maybeCorrectParserField(parserField, mode);
+        this(parserField, slot, mode, 0);
+    }
+
+    LinkedField(ParserField parserField, int slot, IdMode mode, int flagCorrection) {
+        this.parserField = maybeCorrectParserField(parserField, mode, flagCorrection);
         this.slot = slot;
     }
 
-    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode) {
+    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode, int flagCorrection) {
         switch (mode) {
             case REGULAR:
-                return parserField;
+                return flagCorrection != 0 ? parserField.withFlags(flagCorrection) : parserField;
             case WITH_TYPE:
-                return parserField.withFlags(FIELD_ID_TYPE);
+                return parserField.withFlags(FIELD_ID_TYPE | flagCorrection);
             case OBFUSCATED:
-                return parserField.withFlags(FIELD_ID_OBFUSCATE);
-            case REDEFINE_ADDED:
-                return parserField.withFlags(FIELD_REDEFINE_ADDED);
+                return parserField.withFlags(FIELD_ID_OBFUSCATE | flagCorrection);
         }
         throw EspressoError.shouldNotReachHere();
     }

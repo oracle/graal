@@ -691,6 +691,10 @@ public final class EspressoContext {
         return vm.getJavaVersion();
     }
 
+    public boolean usesExtensionField() {
+        return JDWPOptions != null;
+    }
+
     public Types getTypes() {
         return getLanguage().getTypes();
     }

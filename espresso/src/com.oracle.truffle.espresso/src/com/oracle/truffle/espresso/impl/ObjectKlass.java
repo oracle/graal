@@ -1405,7 +1405,6 @@ public final class ObjectKlass extends Klass {
             synchronized (extensionField) {
                 object = extensionField.getHiddenObject(getStatics());
                 if (object == StaticObject.NULL) {
-                    CompilerDirectives.transferToInterpreter();
                     object = new ExtensionFieldObject();
                     extensionField.setHiddenObject(getStatics(), object);
                 }
