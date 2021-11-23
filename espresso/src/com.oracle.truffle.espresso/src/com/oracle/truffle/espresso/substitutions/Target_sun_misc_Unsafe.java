@@ -194,11 +194,15 @@ public final class Target_sun_misc_Unsafe {
         if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        if (holder.isStaticStorage()) {
-            // Lookup static field in current class.
-            return holder.getKlass().lookupStaticFieldTable(slot);
-        } else {
-            return holder.getKlass().lookupFieldTable(slot);
+        try {
+            if (holder.isStaticStorage()) {
+                // Lookup static field in current class.
+                return holder.getKlass().lookupStaticFieldTable(slot);
+            } else {
+                return holder.getKlass().lookupFieldTable(slot);
+            }
+        } catch (IndexOutOfBoundsException ex) {
+            throw EspressoError.shouldNotReachHere("invalid field offset");
         }
     }
 
