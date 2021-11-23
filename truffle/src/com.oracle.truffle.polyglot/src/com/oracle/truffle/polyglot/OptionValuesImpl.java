@@ -207,6 +207,12 @@ final class OptionValuesImpl implements OptionValues {
         return (T) value;
     }
 
+    @SuppressWarnings("deprecation")
+    @Override
+    public <T> void set(OptionKey<T> optionKey, T value) {
+        throw new UnsupportedOperationException("OptionValues#set() is no longer supported");
+    }
+
     @Override
     public boolean hasSetOptions() {
         return !values.isEmpty();
