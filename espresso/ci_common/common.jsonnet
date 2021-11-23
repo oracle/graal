@@ -1,4 +1,5 @@
 local base = import '../ci.jsonnet';
+local graal_common = import '../../graal-common.json';
 
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
@@ -18,7 +19,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       '01:pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
       'pip:ninja_syntax': '==1.7.2',
-      'mx': 'HEAD',
+      'mx': graal_common.mx_version,
     },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
