@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.nfi;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import com.oracle.truffle.nfi.Lexer.Token;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
@@ -58,9 +62,6 @@ import com.oracle.truffle.nfi.SignatureRootNodeFactory.SetRetTypeNodeGen;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.types.TypeFactory;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Helper for implementors of the Truffle NFI.
@@ -154,9 +155,8 @@ final class Parser extends TypeFactory {
                         }
                         String ident = lexer.currentValue();
 
-                        lexer.mark();
-                        parseSignature();
-                        ret.register(ident, lexer.markedValue());
+                        BuildSignatureNode signature = parseSignature();
+                        ret.register(ident, signature);
 
                         if (lexer.next() != Token.SEMICOLON) {
                             throw lexer.fail("Expecting semicolon");
