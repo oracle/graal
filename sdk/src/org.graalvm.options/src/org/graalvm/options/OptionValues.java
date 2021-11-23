@@ -66,7 +66,10 @@ public interface OptionValues {
      *             language's context or instrument fields and read from there.
      */
     @Deprecated
-    <T> void set(OptionKey<T> optionKey, T value);
+    @SuppressWarnings("unused")
+    default <T> void set(OptionKey<T> optionKey, T value) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Returns the value of a given option. {@link #hasBeenSet(OptionKey)} can be used to know
