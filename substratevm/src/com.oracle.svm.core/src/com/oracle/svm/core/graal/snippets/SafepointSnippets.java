@@ -46,7 +46,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -90,7 +89,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         public void lower(SafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
-                if (GuardedAnnotationAccess.isAnnotationPresent(node.graph().method(), Uninterruptible.class)) {
+                if (Uninterruptible.Utils.isUninterruptible(node.graph().method())) {
                     /* Basic sanity check to catch errors during safepoint insertion. */
                     throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger));
                 }

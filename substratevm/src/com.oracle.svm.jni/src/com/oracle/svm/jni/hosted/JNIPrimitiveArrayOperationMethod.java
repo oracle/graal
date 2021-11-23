@@ -104,7 +104,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public final class JNIPrimitiveArrayOperationMethod extends NonBytecodeStaticMethod {
+public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMethod {
 
     public enum Operation {
         GET_ELEMENTS,

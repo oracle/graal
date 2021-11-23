@@ -34,7 +34,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -49,8 +48,9 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -94,7 +94,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
+public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
     static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess metaAccess) {
         ResolvedJavaMethod unwrappedMethod = targetMethod.getWrapped();
@@ -181,7 +181,7 @@ public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
         generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        ValueNode returnValue = adaptReturnValue(method, providers, purpose, metaAccess, nativeLibraries, kit, invoke);
+        ValueNode returnValue = adaptReturnValue(method, providers, purpose, nativeLibraries, kit, invoke);
 
         InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
 
@@ -322,7 +322,7 @@ public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
     private InvokeNode generatePrologue(HostedProviders providers, SubstrateGraphKit kit, JavaType[] parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
         Class<?> prologueClass = entryPointData.getPrologue();
         if (prologueClass == NoPrologue.class) {
-            UserError.guarantee(targetMethod.getAnnotation(Uninterruptible.class) != null,
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(targetMethod),
                             "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(),
                             NoPrologue.class.getSimpleName(),
@@ -499,8 +499,7 @@ public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
         }
     }
 
-    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose,
-                    UniverseMetaAccess metaAccess, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode invokeValue) {
+    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode invokeValue) {
 
         ValueNode returnValue = invokeValue;
         if (returnValue.getStackKind().isPrimitive()) {
@@ -512,14 +511,7 @@ public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
             kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
             kit.thenPart();
-            ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
-            NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));
-            Iterator<ResolvedJavaMethod> enumExceptionCtor = Arrays.stream(enumExceptionType.getDeclaredConstructors()).filter(
-                            c -> c.getSignature().getParameterCount(false) == 1 && c.getSignature().getParameterType(0, null).equals(metaAccess.lookupJavaType(String.class))).iterator();
-            ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
-            kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
-            assert !enumExceptionCtor.hasNext();
-            kit.appendStateSplitProxy(kit.getFrameState());
+            BytecodeExceptionNode enumException = kit.append(kit.createBytecodeExceptionObjectNode(BytecodeExceptionKind.NULL_POINTER, false));
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
             kit.append(leave);
             kit.append(new LoweredDeadEndNode());
@@ -543,7 +535,7 @@ public final class CEntryPointCallStubMethod extends NonBytecodeStaticMethod {
     private InvokeNode generateEpilogue(HostedProviders providers, SubstrateGraphKit kit) {
         Class<?> epilogueClass = entryPointData.getEpilogue();
         if (epilogueClass == NoEpilogue.class) {
-            UserError.guarantee(targetMethod.getAnnotation(Uninterruptible.class) != null,
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(targetMethod),
                             "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(),
                             NoEpilogue.class.getSimpleName(),
