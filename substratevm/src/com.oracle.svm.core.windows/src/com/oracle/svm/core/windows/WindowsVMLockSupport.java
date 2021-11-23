@@ -325,12 +325,12 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public void signal() {
-        Process.WakeConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeConditionVariable(getStructPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void broadcast() {
-        Process.WakeAllConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeAllConditionVariable(getStructPointer());
     }
 }
