@@ -163,8 +163,8 @@ suite = {
         # Note: small warmup benchmarks can be placed directly under `graal/vm/benchmarks/warmup`
         # and uncomment the corresponding line for the `layout` of `POLYBENCH_BENCHMARKS` in current suite.
         "WARMUP_BENCHMARKS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.1.tar.gz"],
-            "sha1" : "4e4a81c096ecc4ba7c4de9ab8ca5180e93c85e60"
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.2.tar.gz"],
+            "sha1" : "29908a8b877f9aeb963577bef516341f2eb0a082"
         }
     },
 
