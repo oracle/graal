@@ -137,7 +137,9 @@ public class Hello {
 
     @AlwaysInline("For testing purposes")
     private static void inlineFrom() {
-        noInlineHere(5);
+        //@formatter:off
+        noInlineHere(5); inlineTailRecursion(1); // These two calls are purposely placed on the same line!!!
+        //@formatter:on
         inlineHere(5);
         inlineTailRecursion(5);
     }
