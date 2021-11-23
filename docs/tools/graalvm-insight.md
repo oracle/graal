@@ -48,13 +48,13 @@ The _source-tracing.js_ script used the provided `insight` object to attach a so
 Whenever the script was loaded, the listener got notified of it and could take an action -- printing the length and name of the processed script.
 
 The Insight information can be collected to a print statement or a histogram.
-The following _function-histogram-tracing.js_ script counts all method invocations and dumps the most frequent ones when the execution of a program is over:
+The following _function-hotness-tracing.js_ script counts all method invocations and dumps the most frequent ones when the execution of a program is over:
 
 ```javascript
 var map = new Map();
 
-function dumpHistogram() {
-    print("==== Histogram ====");
+function dumpHotness() {
+    print("==== Hotness Top 10 ====");
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -65,7 +65,7 @@ function dumpHistogram() {
         }
         if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
-    print("===================");
+    print("========================");
 }
 
 insight.on('enter', function(ev) {
@@ -80,29 +80,37 @@ insight.on('enter', function(ev) {
     roots: true
 });
 
-insight.on('close', dumpHistogram);
+insight.on('close', dumpHotness);
 ```
 
-The `map` is a global variable shared inside of the Insight script that allows the code to share data between the `insight.on('enter')` function and the `dumpHistogram`
+The `map` is a global variable shared inside of the Insight script that allows the code to share data between the `insight.on('enter')` function and the `dumpHotness`
 function.
-The latter is executed when the node process execution is over (registered via `insight.on('close', dumpHistogram`).
+The latter is executed when the node process execution is over (registered via `insight.on('close', dumpHotness`).
+A table with names and counts of function invocations is printed out when the `node` process exits.
+
 Invoke it as:
 ```shell
-$JAVA_HOME/bin/node --experimental-options --insight=function-histogram-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
+$JAVA_HOME/bin/node --experimental-options --insight=function-hotness-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
 The result: 42
-==== Histogram ====
-328 calls to isPosixPathSeparator
-236 calls to E
-235 calls to makeNodeErrorWithCode
-137 calls to :=>
- 64 calls to :program
- 64 calls to :anonymous
- 45 calls to getOptionValue
- 45 calls to getOptionsFromBinding
- 26 calls to hideStackFrames
+==== Hotness Top 10 ====
+543 calls to isPosixPathSeparator
+211 calls to E
+211 calls to makeNodeErrorWithCode
+205 calls to NativeModule
+198 calls to uncurryThis
+154 calls to :=>
+147 calls to nativeModuleRequire
+145 calls to NativeModule.compile
+ 55 calls to internalBinding
+ 53 calls to :anonymous
+ 49 calls to :program
+ 37 calls to getOptionValue
+ 24 calls to copyProps
  18 calls to validateString
- 12 calls to defineColorAlias
-===================
+ 13 calls to copyPrototype
+ 13 calls to hideStackFrames
+ 13 calls to addReadOnlyProcessAlias
+========================
 ```
 
 ## Polyglot Tracing
@@ -199,4 +207,4 @@ Two is the result 2
 
 To learn more about GraalVM Insight, go to [Insight Manual](https://github.com/oracle/graal/blob/master/tools/docs/Insight-Manual.md).
 
-Documentation on the `insight` object properties and functions is available as part of the [Javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html).
+Documentation on the `insight` object properties and functions is available as part of the [Javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html).
