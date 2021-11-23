@@ -10,3 +10,5 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-29957) Removed the option -H:SubstitutionFiles= to register substitutions via a JSON file. This was an early experiment and is no longer necessary.
 * (GR-32403) Use more compressed encoding for stack frame metadata.
 * (GR-35152) Add -H:DisableURLProtocols to allow specifying URL protocols that must never be included in the image.
+* (GR-35085) Custom prologue/epilogue/handleException customizations of @CEntryPoint must be annotated with @Uninterruptible. The entry points synthetic methods are now implicilty annotated with @Uninterruptible too.
+
