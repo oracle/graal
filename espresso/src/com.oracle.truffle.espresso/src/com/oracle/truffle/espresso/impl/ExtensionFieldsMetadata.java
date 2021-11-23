@@ -112,7 +112,7 @@ public final class ExtensionFieldsMetadata {
         return addedInstanceFields;
     }
 
-    public Field getStaticFieldAtSlot(int slot) throws IndexOutOfBoundsException {
+    public Field getStaticFieldAtSlot(int slot) {
         Field field = binarySearch(addedStaticFields, slot);
         if (field != null) {
             return field;
