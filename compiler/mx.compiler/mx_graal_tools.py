@@ -89,24 +89,23 @@ def c1visualizer(args):
     run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
-    """download the hsdis library
+    """download the hsdis library and copy it to a specific dir or to the current JDK
 
     This is needed to support HotSpot's assembly dumping features.
-    By default it downloads the Intel syntax version, use the 'att' argument to install AT&T syntax."""
-    flavor = ''
-    if mx.get_arch() == 'amd64':
-        flavor = mx.get_env('HSDIS_SYNTAX')
-        if flavor is None:
-            flavor = '_INTEL'
-        if 'att' in args:
-            flavor = '_ATT'
+    On amd64 platforms, it downloads the Intel syntax version"""
 
-    hsdis_lib_name = 'HSDIS' + flavor
+    parser = ArgumentParser(prog='hsdis')
+    args = parser.parse_args(args)
+
+    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
+    if hsdis_syntax:
+        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
+
+    hsdis_lib_name = 'HSDIS'
     hsdis_lib = mx.library(hsdis_lib_name)
 
     if hsdis_lib.optional:
-        mx.warn("hsdis with flavor '{}' not supported on this platform or architecture".format(flavor))
-        return
+        mx.abort('hsdis is not supported on this platform or architecture')
 
     hsdis_lib_path = hsdis_lib.get_path(resolve=True)
     hsdis_lib_files = os.listdir(hsdis_lib_path)
@@ -216,7 +215,7 @@ def jol(args):
 
 mx.update_commands(_suite, {
     'c1visualizer' : [c1visualizer, ''],
-    'hsdis': [hsdis, '[att]'],
+    'hsdis': [hsdis, ''],
     'hcfdis': [hcfdis, ''],
     'igv' : [igv, ''],
     'jol' : [jol, ''],

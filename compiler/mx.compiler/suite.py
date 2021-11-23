@@ -150,85 +150,31 @@ suite = {
       "packedResource" : True,
       "os_arch" : {
         "linux" : {
+          "amd64" : {
+            "sha1" : "124fdfe42933ec6f529af5df4062d83e9d0570dc",
+            "urls" : ["{urlbase}/intel/hsdis-amd64-linux-0d031013db9a80d6c88330c42c983fbfa7053193.tar.gz"],
+          },
           "aarch64" : {
             "sha1" : "fb71a14c57a6e6f494aaaa5a84773a3e35344b9b",
             "urls" : ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
           },
-          "<others>" : {
-            "optional" : True,
-          }
-        },
-        "<others>" : {
-          "<others>" : {
-            # GR-34811
-            "optional" : True,
-          }
-        }
-      },
-    },
-
-    "HSDIS_INTEL" : {
-      "urlbase" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel",
-      "packedResource" : True,
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "sha1" : "124fdfe42933ec6f529af5df4062d83e9d0570dc",
-            "urls" : ["{urlbase}/hsdis-amd64-linux-0d031013db9a80d6c88330c42c983fbfa7053193.tar.gz"],
-          },
-          "<others>" : {
-            "optional" : True,
-          }
         },
         "darwin" : {
           "amd64" : {
             "sha1" : "5026b67af00cc876db1ed194b91d7cc2ba06710d",
-            "urls" : ["{urlbase}/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
+            "urls" : ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
-          "<others>" : {
+          # GR-34811
+          "aarch64" : {
             "optional" : True,
           }
         },
         "windows" : {
           "amd64" : {
             "sha1" : "b603814c8136e0086f33355d38a5f67d115101da",
-            "urls" : ["{urlbase}/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30-2.zip"],
+            "urls" : ["{urlbase}/intel/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30-2.zip"],
           },
-          "<others>" : {
-            "optional" : True,
-          }
-        },
-      },
-    },
-
-    "HSDIS_ATT" : {
-      "urlbase" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/att",
-      "packedResource" : True,
-      "os_arch" : {
-        "linux" : {
-          "amd64" : {
-            "sha1" : "17be1c6c9de7314898508591be1d52d31fc509ec",
-            "urls" : ["{urlbase}/hsdis-amd64-linux-36a0b8e30fc370727920cc089f104bfb9cd508a0.tar.gz"],
-          },
-          "<others>" : {
-            "optional" : True,
-          }
-        },
-        "darwin" : {
-          "amd64" : {
-            "sha1" : "dd4c2c2206b76435ec715ad7ffcdfaa7c0840208",
-            "urls" : ["{urlbase}/hsdis-amd64-darwin-c1865e9a58ca773fdc1c5eea0a4dfda213420ffb.tar.gz"],
-          },
-          "<others>" : {
-            "optional" : True,
-          }
-        },
-        "windows" : {
-          "amd64" : {
-            "sha1" : "ee5f76a8f708914fc5b75e3268dfdb0127538ebd",
-            "urls" : ["{urlbase}/hsdis-amd64-windows-bcbd535a9568b5075ab41e96205e26a2bac64f72.tar.gz"],
-          },
-          "<others>" : {
+          "aarch64" : {
             "optional" : True,
           }
         },
@@ -2393,21 +2339,16 @@ suite = {
       "description" : "Disassembler support distribution for the GraalVM",
       "os_arch" : {
         "linux" : {
-          "amd64" : {
+          "<others>" : {
             "layout" : {
-              "<libsuffix:hsdis-amd64>" : "file:<path:HSDIS_INTEL>/*",
-            },
-          },
-          "aarch64" : {
-            "layout" : {
-              "<libsuffix:hsdis-aarch64>" : "file:<path:HSDIS>/*",
+              "hsdis-<arch>.so" : "file:<path:HSDIS>/*",
             },
           },
         },
         "<others>" : {
           "amd64" : {
             "layout" : {
-              "<libsuffix:hsdis-amd64>" : "file:<path:HSDIS_INTEL>/*",
+              "<libsuffix:hsdis-amd64>" : "file:<path:HSDIS>/*",
             },
           },
           "aarch64" : {
