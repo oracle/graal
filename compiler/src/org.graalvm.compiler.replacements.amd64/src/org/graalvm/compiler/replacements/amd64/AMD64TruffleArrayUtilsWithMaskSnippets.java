@@ -31,8 +31,6 @@ import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchPr
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -52,7 +50,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.TypePunnedArrayReadIntrinsic;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
 public class AMD64TruffleArrayUtilsWithMaskSnippets implements Snippets {
@@ -249,8 +246,8 @@ public class AMD64TruffleArrayUtilsWithMaskSnippets implements Snippets {
         private final SnippetInfo[] indexOfWithMaskSnippets;
         private final SnippetInfo[] regionEqualsSnippets;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers runtime, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, factories, runtime, snippetReflection, target);
+        public Templates(OptionValues options, Providers providers) {
+            super(options, providers);
 
             indexOfWithMaskSnippets = new SnippetInfo[6];
             indexOfWithMaskSnippets[0] = snippet(AMD64TruffleArrayUtilsWithMaskSnippets.class, "indexOfByte1WithMask");
@@ -302,10 +299,10 @@ public class AMD64TruffleArrayUtilsWithMaskSnippets implements Snippets {
             StructuredGraph graph = arrayOperation.graph();
             SnippetTemplate template = template(arrayOperation, args);
             FrameState beforeState = SnippetTemplate.findLastFrameState(arrayOperation);
-            UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arrayOperation, SnippetTemplate.DEFAULT_REPLACER, args, false);
-            for (Node originalNode : replacements.getKeys()) {
+            UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(providers.getMetaAccess(), arrayOperation, SnippetTemplate.DEFAULT_REPLACER, args, false);
+            for (Node originalNode : duplicates.getKeys()) {
                 if (originalNode instanceof AbstractMergeNode || originalNode instanceof LoopExitNode) {
-                    StateSplit s = (StateSplit) replacements.get(originalNode);
+                    StateSplit s = (StateSplit) duplicates.get(originalNode);
                     assert s.asNode().graph() == graph;
                     if (s.stateAfter() == null) {
                         s.setStateAfter(beforeState.duplicateWithVirtualState());

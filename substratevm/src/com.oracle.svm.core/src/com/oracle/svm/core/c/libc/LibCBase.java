@@ -53,6 +53,15 @@ public interface LibCBase {
         return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean isPlatformEquivalent(Class<? extends Platform> platformClass) {
+        Platform platform = ImageSingletons.lookup(Platform.class);
+        // Checkstyle: allow Class.getSimpleName
+        String simpleName = platformClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
+        return simpleName.toLowerCase().equals(platform.getOS()) || Platform.includedIn(platformClass);
+    }
+
     @Fold
     static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
         LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);

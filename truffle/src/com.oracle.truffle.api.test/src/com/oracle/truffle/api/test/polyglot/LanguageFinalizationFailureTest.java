@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
     private static final Node DUMMY_NODE = new Node() {
@@ -73,6 +75,11 @@ public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
         ExceptionType getExceptionType() {
             return ExceptionType.RUNTIME_ERROR;
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

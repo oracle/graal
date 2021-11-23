@@ -2010,10 +2010,6 @@ def _get_graalvm_archive_path(jdk_path, graal_vm=None):
 
 # Those libraries are optional runtime dependencies of SVM
 _known_missing_jars = {
-    'HAMCREST',
-    'JUNIT',
-    'JUNIT_TOOL',
-    'JLINE',
     'TRUFFLE_DEBUG',
     'NANO_HTTPD',
     'NANO_HTTPD_WEBSERVER',

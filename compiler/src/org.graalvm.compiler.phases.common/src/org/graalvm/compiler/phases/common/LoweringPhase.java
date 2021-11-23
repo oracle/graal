@@ -232,8 +232,20 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
-        if (loweringStage == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            graph.setAfterStage(StageFlag.HIGH_TIER);
+        if (loweringStage instanceof LoweringTool.StandardLoweringStage) {
+            switch ((LoweringTool.StandardLoweringStage) loweringStage) {
+                case HIGH_TIER:
+                    graph.setAfterStage(StageFlag.HIGH_TIER_LOWERING);
+                    break;
+                case MID_TIER:
+                    graph.setAfterStage(StageFlag.MID_TIER_LOWERING);
+                    break;
+                case LOW_TIER:
+                    graph.setAfterStage(StageFlag.LOW_TIER_LOWERING);
+                    break;
+                default:
+                    GraalError.shouldNotReachHere("unexpected lowering stage");
+            }
         }
     }
 

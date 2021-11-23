@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements;
 import static java.util.FormattableFlags.ALTERNATE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
-import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
@@ -70,9 +69,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -149,6 +146,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.MemoryEdgeProxy;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -185,7 +183,6 @@ import org.graalvm.util.CollectionsUtil;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -834,20 +831,16 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
+        protected final Replacements replacements;
         protected final Providers providers;
         protected final MetaAccessProvider metaAccess;
-        protected final SnippetReflectionProvider snippetReflection;
-        protected final Iterable<DebugHandlersFactory> factories;
-        protected final TargetDescription target;
         private final Map<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
+        protected AbstractTemplates(OptionValues options, Providers providers) {
             this.options = options;
             this.providers = providers;
             this.metaAccess = providers.getMetaAccess();
-            this.snippetReflection = snippetReflection;
-            this.target = target;
-            this.factories = factories;
+            this.replacements = providers.getReplacements();
             if (Options.UseSnippetTemplateCache.getValue(options)) {
                 int size = Options.MaxTemplatesPerSnippet.getValue(options);
                 this.templates = Collections.synchronizedMap(new LRUCache<>(size, size));
@@ -914,12 +907,9 @@ public class SnippetTemplate {
 
         static final AtomicInteger nextSnippetTemplateId = new AtomicInteger();
 
-        private DebugContext openDebugContext(DebugContext outer, Arguments args) {
-            if (DebugStubsAndSnippets.getValue(options)) {
-                Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
-                return new Builder(options, factories).globalMetrics(outer.getGlobalMetrics()).description(description).build();
-            }
-            return DebugContext.disabled(options);
+        private DebugContext openSnippetDebugContext(DebugContext outer, Arguments args) {
+            Description description = new Description(args.cacheKey.method, "SnippetTemplate_" + nextSnippetTemplateId.incrementAndGet());
+            return replacements.openSnippetDebugContext(description, outer, options);
         }
 
         /**
@@ -931,11 +921,11 @@ public class SnippetTemplate {
             DebugContext outer = graph.getDebug();
             SnippetTemplate template = Options.UseSnippetTemplateCache.getValue(options) && args.cacheable ? templates.get(args.cacheKey) : null;
             if (template == null || (graph.trackNodeSourcePosition() && !template.snippet.trackNodeSourcePosition())) {
-                try (DebugContext debug = openDebugContext(outer, args)) {
+                try (DebugContext debug = openSnippetDebugContext(outer, args)) {
                     try (DebugCloseable a = SnippetTemplateCreationTime.start(debug); DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
                         SnippetTemplates.increment(debug);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
-                        template = new SnippetTemplate(snippetOptions, debug, providers, snippetReflection, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
+                        template = new SnippetTemplate(snippetOptions, debug, providers, args, graph.trackNodeSourcePosition(), replacee, createMidTierPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
                         }
@@ -982,9 +972,9 @@ public class SnippetTemplate {
      * Creates a snippet template.
      */
     @SuppressWarnings("try")
-    protected SnippetTemplate(OptionValues options, DebugContext debug, final Providers providers, SnippetReflectionProvider snippetReflection, Arguments args, boolean trackNodeSourcePosition,
+    protected SnippetTemplate(OptionValues options, DebugContext debug, final Providers providers, Arguments args, boolean trackNodeSourcePosition,
                     Node replacee, PhaseSuite<Providers> midTierPhases) {
-        this.snippetReflection = snippetReflection;
+        this.snippetReflection = providers.getSnippetReflection();
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
@@ -1032,7 +1022,7 @@ public class SnippetTemplate {
                                 constantNode = ConstantNode.forConstant(stamp, (Constant) arg, metaAccess, snippetCopy);
                             }
                         } else {
-                            constantNode = ConstantNode.forConstant(snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
+                            constantNode = ConstantNode.forConstant(this.snippetReflection.forBoxed(kind, arg), metaAccess, snippetCopy);
                         }
                         nodeReplacements.put(parameter, constantNode);
                     } else if (args.info.isVarargsParameter(i)) {

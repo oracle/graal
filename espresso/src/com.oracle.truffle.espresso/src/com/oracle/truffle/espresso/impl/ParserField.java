@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.lang.reflect.Modifier;
 
@@ -121,6 +122,6 @@ public final class ParserField {
                     throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
             }
         }
-        return Object.class;
+        return isHidden() ? Object.class : StaticObject.class;
     }
 }

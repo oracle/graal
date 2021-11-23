@@ -52,7 +52,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -315,12 +314,6 @@ public abstract class PointsToAnalysis implements BigBang {
      * without tracking concrete objects even when the analysis is context sensitive.
      */
     public boolean trackConcreteAnalysisObjects(@SuppressWarnings("unused") AnalysisType type) {
-        return true;
-    }
-
-    /** You can blacklist certain callees here. */
-    @SuppressWarnings("unused")
-    public boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {
         return true;
     }
 

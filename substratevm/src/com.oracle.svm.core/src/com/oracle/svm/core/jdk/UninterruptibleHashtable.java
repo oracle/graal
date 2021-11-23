@@ -27,13 +27,11 @@ package com.oracle.svm.core.jdk;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * Common interface for all uninterruptible hashtable implementations.
+ * Common interface for all uninterruptible hashtable implementations. Please note that we don't use
+ * generics as this sometimes breaks the {@link Uninterruptible} annotation when ECJ is used for
+ * compiling the Java sources.
  */
-public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
-    static <T extends UninterruptibleEntry<T>> SynchronizedUninterruptibleHashtable<T> synchronizedHashtable(String name, UninterruptibleHashtable<T> table) {
-        return new SynchronizedUninterruptibleHashtable<>(name, table);
-    }
-
+public interface UninterruptibleHashtable {
     /**
      * Gets the number of entries that are in the hashtable.
      */
@@ -44,14 +42,14 @@ public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
      * Returns the internal array of the hashtable.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    T[] getTable();
+    UninterruptibleEntry[] getTable();
 
     /**
      * Returns the matching value for {@code valueOnStack} from the hashtable. If there is no
      * matching value in the hashtable, a null pointer is returned.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    T get(T valueOnStack);
+    UninterruptibleEntry get(UninterruptibleEntry valueOnStack);
 
     /**
      * Tries to insert {@code valueOnStack} into the hashtable. Returns false if there was already a
@@ -59,7 +57,7 @@ public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
      * if the entry was inserted successfully.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean putIfAbsent(T valueOnStack);
+    boolean putIfAbsent(UninterruptibleEntry valueOnStack);
 
     /**
      * If the hashtable contains an existing entry that matches {@code valueOnStack}, then this
@@ -70,7 +68,7 @@ public interface UninterruptibleHashtable<T extends UninterruptibleEntry<T>> {
      * instead.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    T getOrPut(T valueOnStack);
+    UninterruptibleEntry getOrPut(UninterruptibleEntry valueOnStack);
 
     /**
      * Clear all entries from map.

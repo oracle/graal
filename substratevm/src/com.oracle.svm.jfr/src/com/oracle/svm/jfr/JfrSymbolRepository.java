@@ -26,23 +26,20 @@ package com.oracle.svm.jfr;
 
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.svm.core.locks.VMMutex;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.UninterruptibleHashtable;
-import com.oracle.svm.core.jdk.UninterruptibleEntry;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
+import com.oracle.svm.core.jdk.UninterruptibleEntry;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 
 /**
@@ -50,8 +47,8 @@ import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
  */
 public class JfrSymbolRepository implements JfrConstantPool {
     private final VMMutex mutex;
-    private final UninterruptibleHashtable<JfrSymbol> table0;
-    private final UninterruptibleHashtable<JfrSymbol> table1;
+    private final JfrSymbolHashtable table0;
+    private final JfrSymbolHashtable table1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrSymbolRepository() {
@@ -66,7 +63,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Called by uninterruptible code.")
-    private UninterruptibleHashtable<JfrSymbol> getTable(boolean previousEpoch) {
+    private JfrSymbolHashtable getTable(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         if (epoch) {
             return table0;
@@ -116,7 +113,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     @Override
     public int write(JfrChunkWriter writer) {
-        UninterruptibleHashtable<JfrSymbol> table = getTable(true);
+        JfrSymbolHashtable table = getTable(true);
         if (table.getSize() == 0) {
             return EMPTY;
         }
@@ -157,7 +154,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @RawStructure
-    private interface JfrSymbol extends UninterruptibleEntry<JfrSymbol> {
+    private interface JfrSymbol extends UninterruptibleEntry {
         @RawField
         long getId();
 
@@ -179,31 +176,39 @@ public class JfrSymbolRepository implements JfrConstantPool {
         void setReplaceDotWithSlash(boolean value);
     }
 
-    private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable<JfrSymbol> {
+    private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable {
         private long nextId;
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected JfrSymbol[] createTable(int size) {
             return new JfrSymbol[size];
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
-        protected void free(JfrSymbol t) {
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(t);
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public JfrSymbol[] getTable() {
+            return (JfrSymbol[]) super.getTable();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
-        protected boolean isEqual(JfrSymbol a, JfrSymbol b) {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public JfrSymbol getOrPut(UninterruptibleEntry valueOnStack) {
+            return (JfrSymbol) super.getOrPut(valueOnStack);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
+            JfrSymbol a = (JfrSymbol) v0;
+            JfrSymbol b = (JfrSymbol) v1;
             return a.getValue() == b.getValue() && a.getReplaceDotWithSlash() == b.getReplaceDotWithSlash();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
-        protected JfrSymbol copyToHeap(JfrSymbol symbolOnStack) {
-            JfrSymbol result = copyToHeap(symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry symbolOnStack) {
+            JfrSymbol result = (JfrSymbol) copyToHeap(symbolOnStack, SizeOf.unsigned(JfrSymbol.class));
             result.setId(++nextId);
             return result;
         }

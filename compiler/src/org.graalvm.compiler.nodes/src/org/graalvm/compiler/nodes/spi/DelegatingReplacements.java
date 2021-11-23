@@ -80,6 +80,11 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options) {
+        return delegate.openSnippetDebugContext(description, outer, options);
+    }
+
+    @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
                     OptionValues options) {
         return delegate.getSnippet(method, recursiveEntry, args, trackNodeSourcePosition, replaceePosition, options);

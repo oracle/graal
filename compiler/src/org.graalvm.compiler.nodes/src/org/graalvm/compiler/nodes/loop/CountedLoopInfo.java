@@ -454,7 +454,7 @@ public class CountedLoopInfo {
     }
 
     public Direction getDirection() {
-        return getBodyIV().direction();
+        return getLimitCheckedIV().direction();
     }
 
     public GuardingNode getOverFlowGuard() {

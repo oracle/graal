@@ -67,6 +67,10 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
  */
 public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest {
 
+    public InstrumentationNoExceptionsTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Before
     @Override
     public void setup() {

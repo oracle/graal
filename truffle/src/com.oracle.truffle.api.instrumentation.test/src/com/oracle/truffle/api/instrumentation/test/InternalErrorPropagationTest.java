@@ -79,6 +79,11 @@ public class InternalErrorPropagationTest extends AbstractPolyglotTest {
         }
     }
 
+    public InternalErrorPropagationTest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testInstrumentCreateException() {
         TestContextListener listener = new TestContextListener();

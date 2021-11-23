@@ -2011,9 +2011,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         BaseQuickNode invoke = null;
         synchronized (this) {
             assert bs.currentBC(curBCI) == QUICK;
-            char cpi = readCPI(curBCI);
-            invoke = dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, false);
-            nodes[cpi] = nodes[cpi].replace(invoke);
+            char nodeIndex = readCPI(curBCI);
+            invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
+            nodes[nodeIndex] = nodes[nodeIndex].replace(invoke);
         }
         // Perform the call outside of the lock.
         return invoke.execute(frame, primitives, refs);

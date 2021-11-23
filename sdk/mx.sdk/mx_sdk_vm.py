@@ -49,6 +49,7 @@ import os
 import shutil
 import tempfile
 import textwrap
+import types
 
 from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -116,7 +117,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
-        assert isinstance(self.build_args, list)
+        assert isinstance(self.build_args, (list, types.GeneratorType))
 
     def __str__(self):
         return self.destination

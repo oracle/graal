@@ -76,6 +76,7 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -416,6 +417,8 @@ public abstract class Accessor {
 
         public abstract Object getCurrentHostContext();
 
+        public abstract PolyglotException wrapGuestException(Object polyglotObject, Throwable e);
+
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
         public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine);
@@ -431,6 +434,8 @@ public abstract class Accessor {
         public abstract boolean hasAllAccess(FileSystem fs);
 
         public abstract boolean hasNoAccess(FileSystem fs);
+
+        public abstract boolean isInternal(TruffleFile file);
 
         public abstract String getLanguageHome(Object engineObject);
 
@@ -454,7 +459,7 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
-        public abstract Object getCurrentOuterContext();
+        public abstract Object getOuterContext(Object polyglotContext);
 
         public abstract boolean isCharacterBasedSource(Object fsEngineObject, String language, String mimeType);
 
@@ -623,6 +628,47 @@ public abstract class Accessor {
 
         public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
 
+        public abstract Throwable getPolyglotExceptionCause(Object polyglotExceptionImpl);
+
+        public abstract Object getPolyglotExceptionContext(Object polyglotExceptionImpl);
+
+        public abstract Object getPolyglotExceptionEngine(Object polyglotExceptionImpl);
+
+        public abstract boolean isCancelExecution(Throwable throwable);
+
+        public abstract boolean isExitException(Throwable throwable);
+
+        public abstract boolean isInterruptExecution(Throwable throwable);
+
+        public abstract boolean isResourceLimitCancelExecution(Throwable cancelExecution);
+
+        public abstract int getExitExceptionExitCode(Throwable cancelExecution);
+
+        public abstract SourceSection getCancelExecutionSourceLocation(Throwable cancelExecution);
+
+        public abstract ThreadDeath createCancelExecution(SourceSection sourceSection, String message, boolean resourceLimit);
+
+        public abstract SourceSection getExitExceptionSourceLocation(Throwable cancelExecution);
+
+        public abstract ThreadDeath createExitException(SourceSection sourceSection, String message, int exitCode);
+
+        public abstract Throwable createInterruptExecution(SourceSection sourceSection);
+
+        public abstract Map<String, String> readOptionsFromSystemProperties(Map<String, String> options);
+
+        public abstract AbstractHostService getHostService(Object polyglotEngineImpl);
+
+        public abstract Handler getEngineLogHandler(Object polyglotEngineImpl);
+
+        public abstract Handler getContextLogHandler(Object polyglotContextImpl);
+
+        public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind);
+
+        public abstract String getFormatKind(LogRecord logRecord);
+
+        public abstract boolean isPolyglotThread(Thread thread);
+
+        public abstract Object getHostNull();
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1079,7 +1125,7 @@ public abstract class Accessor {
 
         public abstract int getBaseInstanceSize(Class<?> type);
 
-        public abstract Object[] getNonPrimitiveResolvedFields(Class<?> type);
+        public abstract Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
 
@@ -1219,6 +1265,8 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {

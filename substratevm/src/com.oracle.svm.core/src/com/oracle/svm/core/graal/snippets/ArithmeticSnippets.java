@@ -30,9 +30,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
@@ -190,9 +188,9 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     private final SnippetInfo uirem;
     private final SnippetInfo ulrem;
 
-    protected ArithmeticSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    protected ArithmeticSnippets(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean divRemNeedsSignedBoundsCheck) {
-        super(options, factories, providers, snippetReflection);
+        super(options, providers);
         this.layout = ConfigurationValues.getObjectLayout();
 
         idiv = snippet(ArithmeticSnippets.class, "idivSnippet");

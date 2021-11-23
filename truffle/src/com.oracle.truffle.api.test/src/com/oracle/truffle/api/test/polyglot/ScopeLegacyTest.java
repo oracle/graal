@@ -40,6 +40,19 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.ScopedViewLegacyTest.createRoot;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
+import org.junit.runners.Parameterized;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropException;
@@ -52,16 +65,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
-import static com.oracle.truffle.api.test.polyglot.ScopedViewLegacyTest.createRoot;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.graalvm.polyglot.Context;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runners.Parameterized;
 
 @SuppressWarnings("deprecation")
 public class ScopeLegacyTest extends AbstractParametrizedLibraryTest {
@@ -69,6 +72,10 @@ public class ScopeLegacyTest extends AbstractParametrizedLibraryTest {
     @Parameterized.Parameters(name = "{0}")
     public static List<TestRun> data() {
         return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
+    }
+
+    public ScopeLegacyTest() {
+        needsLanguageEnv = true;
     }
 
     @Test

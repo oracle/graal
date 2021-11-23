@@ -48,7 +48,7 @@ vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_ja
     ${vm_polybench_linux_commands.interpreter_bench_cmd} ["--polybench-vm-config=native-interpreter"]
     ${vm_bench_common.upload}
   ]
-  timelimit: "2:30:00"
+  timelimit: "2:00:00"
 }
 
 vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_17} {
@@ -81,6 +81,20 @@ vm_bench_polybench_linux_warmup: ${vm_bench_polybench_linux_common} ${vm_java_17
     ${vm_bench_common.upload}
   ]
 }
+
+
+vm_bench_polybench_linux_allocated_bytes: ${vm_bench_polybench_linux_common} ${vm_java_17} {
+  run: [
+    # The polybench allocated bytes metric does not run on native.
+    # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
+    ${vm_polybench_linux_commands.interpreter_bench_cmd} ["-w", "40", "-i", "10", "--polybench-vm-config=jvm-interpreter", "--metric=allocated-bytes"]
+    ${vm_bench_common.upload}
+    ${vm_polybench_linux_commands.interpreter_bench_cmd} ["-w", "40", "-i", "10", "--polybench-vm-config=jvm-standard", "--metric=allocated-bytes"]
+    ${vm_bench_common.upload}
+  ]
+  timelimit: "2:00:00"
+}
+
 
 vm_gate_polybench_linux: ${vm_bench_polybench_linux_common} ${vm_java_17} {
   interpreter_bench_cmd: ${vm_polybench_linux_commands.interpreter_bench_cmd} ["-w", "1", "-i", "1"]
@@ -132,6 +146,7 @@ builds += [
   ${common_vm_linux} ${vm_bench_polybench_linux_compiler} {name: bench-vm-${vm_setup.short_name}-polybench-compiler-linux}
   ${common_vm_linux} ${vm_bench_polybench_linux_context_init} {name: bench-vm-${vm_setup.short_name}-polybench-context-init-linux}
   ${common_vm_linux} ${vm_bench_polybench_linux_warmup} {name: bench-vm-${vm_setup.short_name}-polybench-warmup-linux}
+  ${common_vm_linux} ${vm_bench_polybench_linux_allocated_bytes} {name: bench-vm-${vm_setup.short_name}-polybench-allocated-bytes-linux}
 
   ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_8} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java8 }
   ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_11} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java11 }

@@ -75,6 +75,10 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
+    public SourceSectionListenerTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testLoadSourceSection1() throws IOException {
         testLoadSourceSectionImpl(1);

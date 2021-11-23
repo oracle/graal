@@ -205,6 +205,10 @@ public class FindSourcesVisitorNestingTest extends AbstractPolyglotTest {
         }
     }
 
+    public FindSourcesVisitorNestingTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Before
     public void setup() {
         setupEnv(Context.create(), new ProxyLanguage() {

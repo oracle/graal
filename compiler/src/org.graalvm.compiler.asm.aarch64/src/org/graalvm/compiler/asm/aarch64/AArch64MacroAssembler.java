@@ -749,7 +749,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Loads a srcSize value from address into rt zero-extending it if necessary.
+     * Loads a srcSize value from address into rt.
      *
      * @param srcSize size of memory read in bits. Must be 8, 16 or 32 and smaller or equal to
      *            targetSize.
@@ -762,11 +762,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Loads a srcSize value from address into rt zero-extending it if necessary.
+     * Loads a srcSize value from address into rt.
      *
      * In addition, if requested, tries to merge two adjacent loads into one ldp.
      */
-    private void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
+    public void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
         if (!tryMerge) {
             /* Need to reset state information normally generated during tryMergeLoadStore. */
             isImmLoadStoreMerged = false;
@@ -786,8 +786,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void str(int destSize, Register rt, AArch64Address address) {
-        // Try to merge two adjacent stores into one stp.
-        if (!tryMergeLoadStore(destSize, rt, address, true, false)) {
+        str(destSize, rt, address, true);
+    }
+
+    /**
+     * Stores register rt into memory pointed by address.
+     *
+     * In addition, if requested, tries to merge two adjacent stores into one stp.
+     */
+    public void str(int destSize, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.str(destSize, rt, address);
+        } else if (!tryMergeLoadStore(destSize, rt, address, true, false)) {
             super.str(destSize, rt, address);
         }
     }
@@ -802,8 +815,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fldr(int size, Register rt, AArch64Address address) {
-        // Try to merge two adjacent loads into one fldp.
-        if (!(tryMergeLoadStore(size, rt, address, false, true))) {
+        fldr(size, rt, address, true);
+    }
+
+    /**
+     * Floating point load.
+     *
+     * In addition, if requested, tries to merge two adjacent loads into one fldp.
+     */
+    public void fldr(int size, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.fldr(size, rt, address);
+        } else if (!(tryMergeLoadStore(size, rt, address, false, true))) {
             super.fldr(size, rt, address);
         }
     }
@@ -817,8 +843,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fstr(int size, Register rt, AArch64Address address) {
-        // Try to merge two adjacent stores into one fstp.
-        if (!(tryMergeLoadStore(size, rt, address, true, true))) {
+        fstr(size, rt, address, true);
+    }
+
+    /**
+     * Floating point store.
+     *
+     * In addition, if requested, tries to merge two adjacent stores into one stp.
+     */
+    public void fstr(int size, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.fstr(size, rt, address);
+        } else if (!(tryMergeLoadStore(size, rt, address, true, true))) {
             super.fstr(size, rt, address);
         }
     }

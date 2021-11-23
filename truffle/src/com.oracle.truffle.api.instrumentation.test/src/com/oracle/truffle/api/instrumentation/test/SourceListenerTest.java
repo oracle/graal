@@ -120,6 +120,10 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
     }
 
+    public SourceListenerTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testLoadSource1() throws IOException {
         testLoadExecuteSourceImpl(true, 1);

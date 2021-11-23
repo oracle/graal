@@ -338,6 +338,10 @@ final class Target_javax_crypto_JceSecurity {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
     private static Map<Object, Object> verificationResults;
 
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Map<Provider, Object> verifyingProviders;
+
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     static void verifyProviderJar(URL var0) {

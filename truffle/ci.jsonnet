@@ -9,13 +9,6 @@
   local amd64_jdks = [common.oraclejdk8, common.oraclejdk11, common.oraclejdk17],
 
   local truffle_common = {
-    packages+: {
-      'pip:ninja_syntax': '==1.7.2',
-      'pip:pylint': '==1.9.3',
-      "pip:isort": "==4.3.19",
-      "pip:logilab-common": "==1.4.4",
-      'mx': 'HEAD',
-    },
     setup+: [
       ["cd", "./truffle"],
     ],

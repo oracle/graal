@@ -26,8 +26,6 @@ package com.oracle.svm.core.graal.jdk;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
@@ -58,9 +56,8 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
         foreignCalls.register(FOREIGN_CALLS);
     }
 
-    protected SubstrateArraycopySnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    protected SubstrateArraycopySnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
         lowerings.put(ArrayCopyNode.class, new SubstrateArrayCopyLowering());
     }
 

@@ -26,14 +26,14 @@ package org.graalvm.libgraal.jni;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import static org.graalvm.nativebridge.jni.JNIUtil.PopLocalFrame;
-import static org.graalvm.nativebridge.jni.JNIUtil.PushLocalFrame;
+import static org.graalvm.jniutils.JNIUtil.PopLocalFrame;
+import static org.graalvm.jniutils.JNIUtil.PushLocalFrame;
 
 /**
  * A {@link JNIMethodScope} subclass which pushes a JNI locals frame when there is no Java frame

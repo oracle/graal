@@ -67,6 +67,10 @@ import com.oracle.truffle.api.test.AbstractLibraryTest;
 @SuppressWarnings({"unused", "deprecation"})
 public class CachedLanguageTest extends AbstractLibraryTest {
 
+    public CachedLanguageTest() {
+        needsLanguageEnv = true;
+    }
+
     @Test
     public void testCachedLanguage() {
         setupEnv();

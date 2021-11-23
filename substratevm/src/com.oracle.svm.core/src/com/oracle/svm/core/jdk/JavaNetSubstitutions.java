@@ -33,8 +33,10 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -141,12 +143,20 @@ class JavaNetFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        Set<String> disabledURLProtocols = new HashSet<>(OptionUtils.flatten(",", SubstrateOptions.DisableURLProtocols.getValue()));
+
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
-            boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
-            VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
+            if (!disabledURLProtocols.contains(protocol)) {
+                boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
+                VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
+            }
         });
 
         for (String protocol : OptionUtils.flatten(",", SubstrateOptions.EnableURLProtocols.getValue())) {
+            if (disabledURLProtocols.contains(protocol)) {
+                continue;
+            }
+
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
                 printWarning("The URL protocol " + protocol + " is enabled by default. " +
                                 "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");

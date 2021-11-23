@@ -36,7 +36,6 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -305,6 +304,41 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         }
         return true;
     }
+
+    public static long computeDeoptFrameSize(StructuredGraph graph) {
+        long deoptFrameSize = 0;
+        if (ImageInfo.inImageRuntimeCode()) {
+            /*
+             * Deoptimization must not lead to stack overflow errors, i.e., the deoptimization
+             * source must check for a stack frame size large enough to cover all possible
+             * deoptimization points (with all the methods inlined at that point). We do not know
+             * which frame states are used for deoptimization, so we simply look at all frame states
+             * and use the largest.
+             *
+             * Many frame states can share the same outer frame states. To avoid recomputing the
+             * same information multiple times, we cache all values that we already computed.
+             */
+            NodeMap<Long> deoptFrameSizeCache = new NodeMap<>(graph);
+            for (FrameState state : graph.getNodes(FrameState.TYPE)) {
+                deoptFrameSize = Math.max(deoptFrameSize, computeDeoptFrameSize(state, deoptFrameSizeCache));
+            }
+        }
+        return deoptFrameSize;
+    }
+
+    private static long computeDeoptFrameSize(FrameState state, NodeMap<Long> deoptFrameSizeCache) {
+        Long existing = deoptFrameSizeCache.get(state);
+        if (existing != null) {
+            return existing;
+        }
+
+        long outerFrameSize = state.outerFrameState() == null ? 0 : computeDeoptFrameSize(state.outerFrameState(), deoptFrameSizeCache);
+        long myFrameSize = CodeInfoAccess.lookupTotalFrameSize(CodeInfoTable.getImageCodeInfo(), ((SharedMethod) state.getMethod()).getDeoptOffsetInImage());
+
+        long result = outerFrameSize + myFrameSize;
+        deoptFrameSizeCache.put(state, result);
+        return result;
+    }
 }
 
 @NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_8)
@@ -391,9 +425,9 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
 
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
-    StackOverflowCheckSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate) {
-        super(options, factories, providers, snippetReflection);
+    StackOverflowCheckSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings,
+                    Predicate<ResolvedJavaMethod> mustNotAllocatePredicate) {
+        super(options, providers);
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(StackOverflowCheckNode.class, new StackOverflowCheckLowering());
@@ -406,23 +440,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
         public void lower(StackOverflowCheckNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
 
-            long deoptFrameSize = 0;
-            if (ImageInfo.inImageRuntimeCode()) {
-                /*
-                 * Deoptimization must not lead to stack overflow errors, i.e., the deoptimization
-                 * source must check for a stack frame size large enough to cover all possible
-                 * deoptimization point (with all the methods inlined at that point). We do not know
-                 * which frame states are used for deoptimization, so we simply look at all frame
-                 * states and use the largest.
-                 *
-                 * Many frame states can share the same outer frame states. To avoid recomputing the
-                 * same information multiple times, we cache all values that we already computed.
-                 */
-                NodeMap<Long> deoptFrameSizeCache = new NodeMap<>(graph);
-                for (FrameState state : graph.getNodes(FrameState.TYPE)) {
-                    deoptFrameSize = Math.max(deoptFrameSize, computeDeoptFrameSize(state, deoptFrameSizeCache));
-                }
-            }
+            long deoptFrameSize = StackOverflowCheckImpl.computeDeoptFrameSize(graph);
 
             Arguments args = new Arguments(stackOverflowCheck, graph.getGuardsStage(), tool.getLoweringStage());
             args.addConst("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
@@ -430,20 +448,6 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
             args.add("deoptFrameSize", deoptFrameSize);
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
-    }
-
-    static long computeDeoptFrameSize(FrameState state, NodeMap<Long> deoptFrameSizeCache) {
-        Long existing = deoptFrameSizeCache.get(state);
-        if (existing != null) {
-            return existing;
-        }
-
-        long outerFrameSize = state.outerFrameState() == null ? 0 : computeDeoptFrameSize(state.outerFrameState(), deoptFrameSizeCache);
-        long myFrameSize = CodeInfoAccess.lookupTotalFrameSize(CodeInfoTable.getImageCodeInfo(), ((SharedMethod) state.getMethod()).getDeoptOffsetInImage());
-
-        long result = outerFrameSize + myFrameSize;
-        deoptFrameSizeCache.put(state, result);
-        return result;
     }
 }
 
@@ -476,13 +480,13 @@ final class StackOverflowCheckFeature implements GraalFeature {
 
     @Override
     @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
         if (hosted) {
             mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
         }
 
-        new StackOverflowCheckSnippets(options, factories, providers, snippetReflection, lowerings, mustNotAllocatePredicate);
+        new StackOverflowCheckSnippets(options, providers, lowerings, mustNotAllocatePredicate);
     }
 }

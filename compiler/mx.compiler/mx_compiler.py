@@ -362,11 +362,13 @@ class GraalTags:
     bootstrap = ['bootstrap', 'fulltest']
     bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
     bootstrapfullverify = ['bootstrapfullverify', 'fulltest']
+    bootstrapeconomy = ['bootstrapeconomy', 'economy', 'fulltest']
     test = ['test', 'fulltest']
     unittest = ['unittest', 'test', 'fulltest']
     coverage = ['coverage']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
+    ctweconomy = ['ctweconomy', 'economy', 'fulltest']
     doc = ['javadoc']
 
 def _remove_empty_entries(a):
@@ -515,14 +517,19 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     UnitTestRun('XcompUnitTests', [], tags=GraalTags.test).run(['compiler'], tasks, ['-Xcomp', '-XX:-UseJVMCICompiler'] + _remove_empty_entries(extraVMarguments) + xcompTests)
 
     # Run ctw against rt.jar on hosted
+    ctw_flags = [
+        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+        '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
+        '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
+    ]
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
         if t:
-            ctw([
-                    '-DCompileTheWorld.Config=Inline=false CompilationBailoutAsFailure=false ' + ' '.join(_compiler_error_options(prefix='')),
-                    '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
-                    '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
-                ], _remove_empty_entries(extraVMarguments))
+            ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
+
+    # Also run ctw with economy mode as a separate task, to be able to filter it with tags
+    with Task('CTWEconomy:hosted', tasks, tags=GraalTags.ctweconomy) as t:
+        if t:
+            ctw(ctw_flags + _graalEconomyFlags, _remove_empty_entries(extraVMarguments))
 
     # bootstrap tests
     for b in bootstrap_tests:
@@ -661,7 +668,7 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsNoCoop', _defaultFlags + _assertionFlags + _coopFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithGCVerification', _defaultFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
     BootstrapTest('BootstrapWithG1GCVerification', _defaultFlags + _g1VerificationFlags + _gcVerificationFlags + _graalErrorFlags, tags=GraalTags.bootstrap, suppress=['VerifyAfterGC:', 'VerifyBeforeGC:']),
-    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
+    BootstrapTest('BootstrapWithSystemAssertionsEconomy', _defaultFlags + _assertionFlags + _graalEconomyFlags + _graalErrorFlags, tags=GraalTags.bootstrapeconomy),
     BootstrapTest('BootstrapWithSystemAssertionsExceptionEdges', _defaultFlags + _assertionFlags + _exceptionFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
     BootstrapTest('BootstrapWithSystemAssertionsRegisterPressure', _defaultFlags + _assertionFlags + _registerPressureFlags + _graalErrorFlags, tags=GraalTags.bootstrap),
 ]

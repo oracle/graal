@@ -60,6 +60,11 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         return (LoopBeginNode) loopBegin;
     }
 
+    public void setLoopBegin(AbstractBeginNode loopBegin) {
+        updateUsages(this.loopBegin, loopBegin);
+        this.loopBegin = loopBegin;
+    }
+
     @Override
     public NodeIterable<Node> anchored() {
         return super.anchored().filter(n -> {

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.thread.VMOperation;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,16 +31,15 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.jdk.UninterruptibleEntry;
-import com.oracle.svm.core.jdk.UninterruptibleHashtable;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.JavaLangThreadGroupSubstitutions;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
@@ -223,7 +220,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
     }
 
     @RawStructure
-    interface JfrVisited extends UninterruptibleEntry<JfrVisited> {
+    interface JfrVisited extends UninterruptibleEntry {
         @RawField
         long getId();
 
@@ -231,7 +228,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
         void setId(long value);
     }
 
-    private static class JfrVisitedTable extends AbstractUninterruptibleHashtable<JfrVisited> {
+    private static class JfrVisitedTable extends AbstractUninterruptibleHashtable {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -241,19 +238,21 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected void free(JfrVisited t) {
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(t);
+        public JfrVisited[] getTable() {
+            return (JfrVisited[]) super.getTable();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected boolean isEqual(JfrVisited a, JfrVisited b) {
+        protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
+            JfrVisited a = (JfrVisited) v0;
+            JfrVisited b = (JfrVisited) v1;
             return a.getId() == b.getId();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected JfrVisited copyToHeap(JfrVisited visitedOnStack) {
+        protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
             return copyToHeap(visitedOnStack, SizeOf.unsigned(JfrVisited.class));
         }
     }
@@ -264,8 +263,8 @@ public final class JfrThreadRepository implements JfrConstantPool {
          * only invoked once per thread (there can be races when re-registering already running
          * threads).
          */
-        private final UninterruptibleHashtable<JfrVisited> visitedThreads;
-        private final UninterruptibleHashtable<JfrVisited> visitedThreadGroups;
+        private final JfrVisitedTable visitedThreads;
+        private final JfrVisitedTable visitedThreadGroups;
 
         private JfrBuffer threadBuffer;
         private JfrBuffer threadGroupBuffer;

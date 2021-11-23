@@ -293,8 +293,9 @@ public final class NativeLibraries {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Path staticLibPath = baseSearchPath.resolve("static");
-            Path platformDependentPath = staticLibPath.resolve((ImageSingletons.lookup(Platform.class).getOS() + "-" + ImageSingletons.lookup(Platform.class).getArchitecture()).toLowerCase());
-            if (ImageSingletons.lookup(Platform.class) instanceof Platform.LINUX) {
+            Platform platform = ImageSingletons.lookup(Platform.class);
+            Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
+            if (LibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
                 platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
                 if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                     return platformDependentPath;

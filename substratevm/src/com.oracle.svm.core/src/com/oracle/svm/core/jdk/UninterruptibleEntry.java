@@ -33,18 +33,18 @@ import org.graalvm.word.PointerBase;
  * {@link AbstractUninterruptibleHashtable}.
  */
 @RawStructure
-public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
+public interface UninterruptibleEntry extends PointerBase {
     /**
      * Gets the next entry.
      */
     @RawField
-    T getNext();
+    <T extends UninterruptibleEntry> T getNext();
 
     /**
      * Sets the next entry.
      */
     @RawField
-    void setNext(T value);
+    void setNext(UninterruptibleEntry value);
 
     /**
      * Get the hashcode for the entry.
