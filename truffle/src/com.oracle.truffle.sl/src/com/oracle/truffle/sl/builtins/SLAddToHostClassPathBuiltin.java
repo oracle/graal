@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.polyglot;
+package com.oracle.truffle.sl.builtins;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * This class is used in {@link HostClassLoadingTest}. Renaming this class might be requiring
- * changes.
+ * Builtin function that performs context exit.
  */
-public final class HostClassLoadingTestClass1 {
+@NodeInfo(shortName = "addToHostClassPath")
+public abstract class SLAddToHostClassPathBuiltin extends SLBuiltinNode {
 
-    public int testField = 42;
-
-    @SuppressWarnings("static-method")
-    public int testMethod() {
-        return 42;
+    @Specialization
+    protected Object execute(String classPath) {
+        addToHostClassPath(classPath);
+        return SLNull.SINGLETON;
     }
 
-    public static int staticField = 42;
-
-    public static HostClassLoadingTestClass1 getInstance() {
-        return new HostClassLoadingTestClass1();
+    @CompilerDirectives.TruffleBoundary
+    private void addToHostClassPath(String classPath) {
+        TruffleLanguage.Env env = SLContext.get(this).getEnv();
+        TruffleFile file = env.getPublicTruffleFile(classPath);
+        env.addToHostClassPath(file);
     }
 }
