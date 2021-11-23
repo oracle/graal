@@ -90,6 +90,15 @@ public interface TruffleThreads {
     <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException;
 
     /**
+     * Same as {@link #enterInterruptible(Interruptible, Node, Object)}, but allows providing
+     * something to execute before and/or after the thread is interrupted and safepoints are
+     * processed.
+     *
+     * @throws GuestInterruptedException if the current thread was guest-interrupted.
+     */
+    <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Runnable afterSafepoint) throws GuestInterruptedException;
+
+    /**
      * Similar to {@link Thread#sleep(long)}, but with the semantics of
      * {@link #enterInterruptible(Interruptible, Node, Object)}, meaning that the current thread
      * will still handle {@linkplain TruffleSafepoint safepoints}.
@@ -124,6 +133,19 @@ final class TruffleThreadsImpl implements TruffleThreads {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Thread current = Thread.currentThread();
         safepoint.setBlocked(location, guestInterrupter, interruptible, object, null, () -> guestInterrupter.afterInterrupt(current));
+    }
+
+    @Override
+    @TruffleBoundary
+    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Runnable afterSafepoint) throws GuestInterruptedException {
+        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+        Thread current = Thread.currentThread();
+        safepoint.setBlocked(location, guestInterrupter, interruptible, object, beforeSafepoint, () -> {
+            if (afterSafepoint != null) {
+                afterSafepoint.run();
+            }
+            guestInterrupter.afterInterrupt(current);
+        });
     }
 
     private static Interruptible<Long> sleepInterruptible() {

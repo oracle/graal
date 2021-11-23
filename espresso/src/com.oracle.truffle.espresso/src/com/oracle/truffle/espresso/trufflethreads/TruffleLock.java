@@ -50,7 +50,6 @@ public interface TruffleLock {
      * <p>
      * Acquires the lock if it is not held by another thread and returns immediately, setting the
      * lock hold count to one.
-     *
      * <p>
      * If the current thread already holds the lock then the hold count is incremented by one and
      * the method returns immediately.
@@ -132,14 +131,15 @@ public interface TruffleLock {
      * Causes the current thread to wait until either another thread invokes the
      * {@link TruffleLock#signal()} method or the {@link TruffleLock#signalAll()} method for this
      * object, or a specified amount of time has elapsed.
-     *
      * <p>
      * The current thread must own this object's monitor.
      * <p>
      * Analogous to the {@link Object#wait(long)} method for built-in monitor locks.
      *
-     * @param timeout the maximum time to wait in milliseconds. {@code false} if the waiting time
-     *            detectably elapsed before return from the method, else {@code true}
+     * @param timeout the maximum time to wait in milliseconds. The value {@code 0} means to wait
+     *            indefinitely.
+     * @return {@code false} if the waiting time detectably elapsed before return from the method,
+     *         else {@code true}
      * @throws IllegalArgumentException if the value of timeout is negative.
      * @throws IllegalMonitorStateException if the current thread is not the owner of the lock.
      * @throws GuestInterruptedException if any thread guest-interrupted the current thread before
@@ -207,6 +207,8 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     private final TruffleThreads truffleThreads;
     private volatile Condition waitCondition;
+    private int waiters = 0;
+    private int signals = 0;
 
     @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Truffle runtime method.")
     private Condition getWaitCondition() {
@@ -239,25 +241,55 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     @Override
     public boolean await(long timeout) throws GuestInterruptedException {
-        if (timeout == 0) {
-            truffleThreads.enterInterruptible(awaitInterruptible, /* TODO */null, this);
-        } else if (timeout > 0) {
-            TimedWaitInterruptible interruptible = new TimedWaitInterruptible(timeout);
-            truffleThreads.enterInterruptible(interruptible, /* TODO */null, this);
-            return interruptible.result;
+        WaitInterruptible interruptible = new WaitInterruptible(timeout);
+        if (timeout >= 0) {
+            waiters++;
+            try {
+                truffleThreads.enterInterruptible(interruptible, /* TODO */null, this,
+                                /*
+                                 * Upon being notified to safepoint, control is returned after lock
+                                 * has been acquired. We must unlock it, allowing other thread to
+                                 * process safepoints while we process ours.
+                                 */
+                                this::unlock,
+                                /*
+                                 * Since we unlocked to allow other threads to process safepoints,
+                                 * we must re-lock ourselves. If this lock was woken up by a signal,
+                                 * then we must NOT go back in waiting.
+                                 */
+                                this::afterSafepoint);
+            } catch (Signaled e) {
+                /* do nothing */
+            } catch (Throwable e) {
+                /*
+                 * Either GuestInterruptedException or an exception thrown by a safepoint. Since at
+                 * that point, we are still considered in waiting, we may have missed a signal.
+                 */
+                consumeSignal();
+                throw e;
+            } finally {
+                waiters--;
+            }
         } else {
             throw new IllegalArgumentException();
         }
-        return false;
+        return interruptible.result;
     }
 
     @Override
     public void signal() {
+        if (isHeldByCurrentThread()) {
+            signals = Math.min(signals + 1, waiters);
+        }
+        // Will throw if not held;
         getWaitCondition().signal();
     }
 
     @Override
     public void signalAll() {
+        if (isHeldByCurrentThread()) {
+            signals = waiters;
+        }
         getWaitCondition().signalAll();
     }
 
@@ -283,25 +315,54 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         super.lockInterruptibly();
     }
 
-    private static final TruffleSafepoint.Interruptible<TruffleLockImpl> awaitInterruptible = new TruffleSafepoint.Interruptible<TruffleLockImpl>() {
-        @Override
-        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Truffle runtime method.")
-        public void apply(TruffleLockImpl lock) throws InterruptedException {
-            lock.getWaitCondition().await();
+    private boolean consumeSignal() {
+        assert isHeldByCurrentThread();
+        if (signals > 0) {
+            signals--;
+            return true;
         }
-    };
+        return false;
+    }
 
-    private static final class TimedWaitInterruptible implements TruffleSafepoint.Interruptible<TruffleLockImpl> {
-        TimedWaitInterruptible(long timeout) {
+    private void afterSafepoint() {
+        lock();
+        if (consumeSignal()) {
+            /* Another thread might have signaled while processing safepoints. */
+            throw new Signaled();
+        }
+    }
+
+    private static final class Signaled extends RuntimeException {
+        private static final long serialVersionUID = 8504030520147416891L;
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    private static final class WaitInterruptible implements TruffleSafepoint.Interruptible<TruffleLockImpl> {
+        WaitInterruptible(long timeout) {
             this.timeout = timeout;
+            this.start = System.currentTimeMillis();
         }
 
         private final long timeout;
-        boolean result;
+        private final long start;
+        boolean result = true;
 
         @Override
         public void apply(TruffleLockImpl lock) throws InterruptedException {
-            result = lock.getWaitCondition().await(timeout, TimeUnit.MILLISECONDS);
+            if (timeout == 0L) {
+                lock.getWaitCondition().await();
+            } else {
+                long millis = timeout - (System.currentTimeMillis() - start);
+                if (millis <= 0) {
+                    return; // fully waited.
+                }
+                result = lock.getWaitCondition().await(millis, TimeUnit.MILLISECONDS);
+            }
         }
     }
 }
