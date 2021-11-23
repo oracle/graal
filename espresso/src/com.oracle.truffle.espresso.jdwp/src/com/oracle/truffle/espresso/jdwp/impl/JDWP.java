@@ -400,12 +400,12 @@ public final class JDWP {
                         if (klass == null) {
                             // check if klass was removed by a previous redefinition
                             if (!context.getIds().checkRemoved(refTypeId)) {
-                                reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                                reply.errorCode(ErrorCodes.INVALID_CLASS);
                                 return new CommandResult(reply);
                             }
                         }
-                        if (klass == context.getNullObject()) {
-                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        if (klass == context.getNullObject() || klass == null) {
+                            reply.errorCode(ErrorCodes.INVALID_CLASS);
                             return new CommandResult(reply);
                         }
                     }
