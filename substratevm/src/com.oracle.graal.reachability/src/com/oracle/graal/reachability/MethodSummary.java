@@ -63,6 +63,19 @@ public class MethodSummary {
         this.foreignCallSignatures = foreignCallSignatures;
     }
 
+    public MethodSummary(AnalysisMethod[] invokedMethods, AnalysisMethod[] implementationInvokedMethods, AnalysisType[] accessedTypes, AnalysisType[] instantiatedTypes, AnalysisField[] readFields,
+                    AnalysisField[] writtenFields) {
+        this.invokedMethods = invokedMethods;
+        this.implementationInvokedMethods = implementationInvokedMethods;
+        this.accessedTypes = accessedTypes;
+        this.instantiatedTypes = instantiatedTypes;
+        this.readFields = readFields;
+        this.writtenFields = writtenFields;
+        this.embeddedConstants = new JavaConstant[0];
+        this.foreignCallDescriptors = new ForeignCallDescriptor[0];
+        this.foreignCallSignatures = new ForeignCallSignature[0];
+    }
+
     @Override
     public String toString() {
         return "MethodSummary{" +

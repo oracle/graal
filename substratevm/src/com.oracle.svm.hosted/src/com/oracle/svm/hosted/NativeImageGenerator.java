@@ -64,6 +64,8 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.reachability.MethodSummary;
+import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.graal.reachability.summaries.MethodSummaryStorage;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysis;
 import org.graalvm.collections.EconomicSet;
@@ -325,6 +327,8 @@ public class NativeImageGenerator {
     private Pair<Method, CEntryPointData> mainEntryPoint;
 
     private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
+
+    private MethodSummaryStorage methodSummaryStorage;
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
         this.loader = loader;
@@ -704,6 +708,10 @@ public class NativeImageGenerator {
                             codeCache.getCompilations().size(), image.getDebugInfoSize());
             if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
                 ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+            }
+
+            if (methodSummaryStorage != null) {
+                methodSummaryStorage.persistData();
             }
         }
     }
@@ -1193,7 +1201,7 @@ public class NativeImageGenerator {
         }
     }
 
-    public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, ForkJoinPool analysisExecutor,
+    public Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback, AnalysisMetaAccess aMetaAccess, AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes,
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
                     ClassInitializationSupport classInitializationSupport, Providers originalProviders) {
@@ -1218,8 +1226,12 @@ public class NativeImageGenerator {
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         if (NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
+            SimpleInMemoryMethodSummaryProvider simpleInMemoryMethodSummaryProvider = ((SimpleInMemoryMethodSummaryProvider) HostedConfiguration.instance().createMethodSummaryProvider(aUniverse,
+                            aMetaAccess));
+            methodSummaryStorage = new MethodSummaryStorage(new ResolutionStrategyImpl(loader, aMetaAccess), simpleInMemoryMethodSummaryProvider, options);
+            methodSummaryStorage.loadData();
             return new NativeImageReachabilityAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback,
-                            HostedConfiguration.instance().createMethodSummaryProvider(aUniverse, aMetaAccess));
+                            methodSummaryStorage);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures());
     }
