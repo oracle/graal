@@ -306,6 +306,13 @@ public class Range {
             /* cannot merge callers with different line numbers, move on. */
             return sibling;
         }
+        if (isLeaf() != sibling.isLeaf()) {
+            /*
+             * cannot merge leafs with non-leafs as that results in them becoming non-leafs and not
+             * getting proper line info
+             */
+            return sibling;
+        }
         /* splice out the sibling from the chain and update this one to include it. */
         unlink(debugContext, sibling);
         /* relocate the siblings children to this node. */
