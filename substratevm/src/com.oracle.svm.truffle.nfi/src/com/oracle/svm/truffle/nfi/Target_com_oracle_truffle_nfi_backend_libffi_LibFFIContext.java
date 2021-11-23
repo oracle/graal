@@ -54,8 +54,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.LibFFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
 
-    @Alias private Target_com_oracle_truffle_nfi_backend_libffi_LibFFILanguage language;
-
     // clear these fields, they will be re-filled by patchContext
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] simpleTypeMap;
@@ -214,7 +212,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(language, library, name,
+            Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(library, name,
                             lookup(nativeContext, library.handle, name));
             return ret;
         }
