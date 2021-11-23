@@ -40,39 +40,37 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.test.LateBindNFITestFactory.DoBindAndExecuteNodeGen;
-import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
-import com.oracle.truffle.tck.TruffleRunner;
-import com.oracle.truffle.tck.TruffleRunner.Inject;
-import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith(TruffleRunner.class)
-public class LateBindNFITest extends NFITest {
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
+import com.oracle.truffle.nfi.test.SignatureExecuteNFITestFactory.DoDirectExecuteNodeGen;
+import com.oracle.truffle.tck.TruffleRunner;
+import com.oracle.truffle.tck.TruffleRunner.Inject;
 
-    abstract static class DoBindAndExecute extends Node {
+@RunWith(TruffleRunner.class)
+public class SignatureExecuteNFITest extends NFITest {
+
+    abstract static class DoDirectExecute extends Node {
 
         abstract Object execute(Object symbol, Object signature, Object arg);
 
         @Specialization(limit = "3")
         Object doBindAndExecute(Object symbol, Object signature, Object arg,
-                        @CachedLibrary("symbol") InteropLibrary symbolInterop,
-                        @CachedLibrary(limit = "1") InteropLibrary boundInterop) {
+                        @CachedLibrary("signature") SignatureLibrary signatures) {
             try {
-                Object bound = symbolInterop.invokeMember(symbol, "bind", signature);
-                return boundInterop.execute(bound, arg);
+                return signatures.call(signature, symbol, arg);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(ex);
@@ -80,46 +78,32 @@ public class LateBindNFITest extends NFITest {
         }
     }
 
-    public static class BindAndExecuteNode extends NFITestRootNode {
+    public static class DirectExecuteNode extends NFITestRootNode {
 
-        @Child DoBindAndExecute bindAndExecute = DoBindAndExecuteNodeGen.create();
+        @Child DoDirectExecute directExecute = DoDirectExecuteNodeGen.create();
 
         @Override
         public final Object executeTest(VirtualFrame frame) throws InteropException {
-            return bindAndExecute.execute(frame.getArguments()[0], frame.getArguments()[1], frame.getArguments()[2]);
+            return directExecute.execute(frame.getArguments()[0], frame.getArguments()[1], frame.getArguments()[2]);
         }
     }
 
-    private static void testLateBind(CallTarget callTarget, String symbol, Object signature) {
+    @Test
+    public void testDirectExecute(@Inject(DirectExecuteNode.class) CallTarget callTarget) {
         Object increment;
         try {
-            increment = UNCACHED_INTEROP.readMember(testLibrary, symbol);
+            increment = UNCACHED_INTEROP.readMember(testLibrary, "increment_SINT32");
         } catch (InteropException e) {
             throw new AssertionError(e);
         }
+
+        Source sigSource = Source.newBuilder("nfi", "(sint32):sint32", "signature").internal(true).build();
+        CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
+        Object signature = sigTarget.call();
 
         Object ret = callTarget.call(increment, signature, 41);
 
         Assert.assertThat("return value", ret, is(instanceOf(Integer.class)));
         Assert.assertEquals("return value", 42, (int) (Integer) ret);
-    }
-
-    @Test
-    public void testLateBind(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
-        testLateBind(callTarget, "increment_SINT32", "(sint32):sint32");
-    }
-
-    // make sure the signature can be cached
-    private static final BoxedPrimitive BOXED_SIGNATURE = new BoxedPrimitive("(sint32):sint32");
-
-    @Test
-    public void testLateBindBoxed(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
-        testLateBind(callTarget, "increment_SINT32", BOXED_SIGNATURE);
-    }
-
-    @Test
-    @Warmup(15) // to make sure the cache overflows before compiling, avoiding a deopt
-    public void testLateBindUncached(@Inject(BindAndExecuteNode.class) CallTarget callTarget) {
-        testLateBind(callTarget, "increment_SINT32", new BoxedPrimitive("(sint32):sint32"));
     }
 }
