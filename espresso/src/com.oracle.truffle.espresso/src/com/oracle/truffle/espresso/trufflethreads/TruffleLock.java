@@ -29,6 +29,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
@@ -57,7 +58,7 @@ public interface TruffleLock {
      * If the lock is held by another thread then the current thread becomes disabled for thread
      * scheduling purposes and lies dormant until the lock has been acquired, at which time the lock
      * hold count is set to one. During this, the thread will still handle {@link TruffleSafepoint
-     * safepoints}
+     * safepoints}.
      */
     void lock();
 
@@ -105,11 +106,9 @@ public interface TruffleLock {
      * <li>is {@linkplain TruffleThreads#guestInterrupt(Thread) guest-interrupted}} while acquiring
      * the lock,
      * </ul>
-     * then {@link InterruptedException} is thrown and the current thread's interrupted status is
-     * cleared.
-     * <p>
-     * In this implementation, as this method is an explicit interruption point, preference is given
-     * to responding to the interrupt over normal or reentrant acquisition of the lock.
+     * then {@link GuestInterruptedException} is thrown. There is no particular handling of the
+     * thread interrupted status. It is up to the implementor to determine whether to clear the
+     * guest interrupt status if it observes the {@link GuestInterruptedException}.
      *
      * @throws GuestInterruptedException if the current thread is guest-interrupted
      */
@@ -117,7 +116,6 @@ public interface TruffleLock {
 
     /**
      * Attempts to release this lock.
-     *
      * <p>
      * If the current thread is the holder of this lock then the hold count is decremented. If the
      * hold count is now zero then the lock is released. If the current thread is not the holder of
@@ -149,11 +147,9 @@ public interface TruffleLock {
 
     /**
      * Wakes up one waiting thread.
-     *
      * <p>
      * If any threads are waiting on this condition then one is selected for waking up. That thread
      * must then re-acquire the lock before returning from {@code await}.
-     *
      * <p>
      * Analogous to the {@link Object#notify()} method for built-in monitor locks.
      */
@@ -161,11 +157,9 @@ public interface TruffleLock {
 
     /**
      * Wakes up all waiting threads.
-     *
      * <p>
      * If any threads are waiting on this condition then they are all woken up. Each thread must
      * re-acquire the lock before it can return from {@code await}.
-     *
      * <p>
      * Analogous to the {@link Object#notifyAll()} method for built-in monitor locks.
      */
@@ -173,7 +167,6 @@ public interface TruffleLock {
 
     /**
      * Queries if this lock is held by the current thread.
-     *
      * <p>
      * Analogous to the {@link Thread#holdsLock(Object)} method for built-in monitor locks.
      */
@@ -199,6 +192,8 @@ public interface TruffleLock {
 
 final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
+    private static final Node dummy = new Node() {
+    };
     private static final long serialVersionUID = -2776792497346642438L;
 
     TruffleLockImpl(TruffleThreads truffleThreads) {
@@ -226,12 +221,12 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     @Override
     public void lock() {
-        TruffleSafepoint.setBlockedThreadInterruptible(/* TODO */null, TruffleLockImpl::superLockInterruptibly, this);
+        TruffleSafepoint.setBlockedThreadInterruptible(dummy, TruffleLockImpl::superLockInterruptibly, this);
     }
 
     @Override
     public void lockInterruptible() throws GuestInterruptedException {
-        truffleThreads.enterInterruptible(TruffleLockImpl::superLockInterruptibly, /* TODO */null, this);
+        truffleThreads.enterInterruptible(TruffleLockImpl::superLockInterruptibly, dummy, this);
     }
 
     @Override
@@ -245,7 +240,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         if (timeout >= 0) {
             waiters++;
             try {
-                truffleThreads.enterInterruptible(interruptible, /* TODO */null, this,
+                truffleThreads.enterInterruptible(interruptible, dummy, this,
                                 /*
                                  * Upon being notified to safepoint, control is returned after lock
                                  * has been acquired. We must unlock it, allowing other thread to
@@ -255,7 +250,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
                                 /*
                                  * Since we unlocked to allow other threads to process safepoints,
                                  * we must re-lock ourselves. If this lock was woken up by a signal,
-                                 * then we must NOT go back in waiting.
+                                 * then a Signaled exception is thrown.
                                  */
                                 this::afterSafepoint);
             } catch (Signaled e) {
