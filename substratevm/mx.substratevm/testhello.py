@@ -549,9 +549,24 @@ def test():
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:149")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 149\."%(digits_pattern, address_pattern)
-    checker = Checker('break Hello.java:149', rexp)
+    # Set breakpoint at method with inline and not-inlined invocation in same line
+    exec_string = execute("break hello.Hello::inlineFrom")
+    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineFrom\. \(4 locations\)"%(digits_pattern, address_pattern)
+    checker = Checker('break inlineFrom', rexp)
+    checker.check(exec_string, skip_fails=False)
+
+    exec_string = execute("info break 6")
+    rexp = [r"6.1%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:140"%(spaces_pattern, spaces_pattern, address_pattern),
+            r"6.2%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:177"%(spaces_pattern, spaces_pattern, address_pattern),
+            r"6.3%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:160"%(spaces_pattern, spaces_pattern, address_pattern),
+            r"6.4%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:177"%(spaces_pattern, spaces_pattern, address_pattern)]
+    checker = Checker('info break inlineFrom', rexp)
+    checker.check(exec_string)
+
+    execute("delete breakpoints")
+    exec_string = execute("break Hello.java:155")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 155\."%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:155', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
