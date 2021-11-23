@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -145,6 +146,7 @@ final class NativeAPIImpl {
     }
 
     static class GetTruffleEnvPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleContext context) {
             if (CEntryPointActions.enterIsolate(context.isolate()) != 0) {
                 CEntryPointActions.bailoutInPrologue(WordFactory.nullPointer());
@@ -165,6 +167,7 @@ final class NativeAPIImpl {
     }
 
     static class AttachCurrentThreadPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleContext context) {
             if (CEntryPointActions.enterAttachThread(context.isolate(), true) != 0) {
                 CEntryPointActions.bailoutInPrologue(WordFactory.nullPointer());
@@ -181,12 +184,14 @@ final class NativeAPIImpl {
     }
 
     static class EnterNativeTruffleContextPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleContext context) {
             CEntryPointActions.enterIsolate(context.isolate());
         }
     }
 
     static class EnterNativeTruffleEnvPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleEnv env) {
             CEntryPointActions.enter(env.isolateThread());
         }

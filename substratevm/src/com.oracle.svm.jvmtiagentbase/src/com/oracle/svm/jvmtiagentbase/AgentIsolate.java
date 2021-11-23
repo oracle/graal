@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -46,6 +47,7 @@ public final class AgentIsolate {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to enter (or attach to) the global isolate in the current thread.");
 
+        @Uninterruptible(reason = "prologue")
         static void enter() {
             int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), true);
             if (code != 0) {
@@ -55,6 +57,7 @@ public final class AgentIsolate {
     }
 
     public static final class EnterOrBailoutPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter() {
             Isolate global = GLOBAL_ISOLATE.get().read();
             if (global.isNull()) {

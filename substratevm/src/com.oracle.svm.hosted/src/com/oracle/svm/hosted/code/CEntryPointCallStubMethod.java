@@ -337,6 +337,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                             "Prologue class must declare exactly one static method: %s -> %s",
                             targetMethod,
                             prologue);
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(prologueMethods[0]),
+                            "Prologue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), prologueMethods[0]);
             ValueNode[] prologueArgs = matchPrologueParameters(providers, parameterTypes, args, prologueMethods[0]);
             return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), prologueArgs);
         }
@@ -465,6 +467,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
                             "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(handlerMethods[0]),
+                            "Exception handler method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), handlerMethods[0]);
             JavaType[] handlerParameterTypes = handlerMethods[0].toParameterTypes();
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),
@@ -547,6 +551,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         ResolvedJavaMethod[] epilogueMethods = epilogue.getDeclaredMethods();
         UserError.guarantee(epilogueMethods.length == 1 && epilogueMethods[0].isStatic() && epilogueMethods[0].getSignature().getParameterCount(false) == 0,
                         "Epilogue class must declare exactly one static method without parameters: %s -> %s", targetMethod, epilogue);
+        UserError.guarantee(Uninterruptible.Utils.isUninterruptible(epilogueMethods[0]),
+                        "Epilogue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), epilogueMethods[0]);
         return kit.createInvoke(epilogueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci());
     }
 

@@ -1047,6 +1047,7 @@ public final class JNIFunctions {
      */
     public static class Support {
         static class JNIEnvEnterReturnEDetachedOnFailurePrologue {
+            @Uninterruptible(reason = "prologue")
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != CEntryPointErrors.NO_ERROR) {
@@ -1056,6 +1057,7 @@ public final class JNIFunctions {
         }
 
         static class JNIEnvEnterReturnNullWordOnFailurePrologue {
+            @Uninterruptible(reason = "prologue")
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != CEntryPointErrors.NO_ERROR) {
@@ -1065,6 +1067,7 @@ public final class JNIFunctions {
         }
 
         static class JNIEnvEnterReturnNullHandleOnFailurePrologue {
+            @Uninterruptible(reason = "prologue")
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != CEntryPointErrors.NO_ERROR) {
@@ -1074,6 +1077,7 @@ public final class JNIFunctions {
         }
 
         static class JNIEnvEnterReturnMinusOneOnFailurePrologue {
+            @Uninterruptible(reason = "prologue")
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != CEntryPointErrors.NO_ERROR) {
@@ -1086,6 +1090,7 @@ public final class JNIFunctions {
                         "A JNI call failed to enter the isolate via its JNI environment argument. The environment might be invalid or no longer exists.");
 
         public static class JNIEnvEnterFatalOnFailurePrologue {
+            @Uninterruptible(reason = "prologue")
             public static void enter(JNIEnvironment env) {
                 int error = CEntryPointActions.enter((IsolateThread) env);
                 if (error != 0) {
@@ -1095,6 +1100,7 @@ public final class JNIFunctions {
         }
 
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue {
+            @Uninterruptible(reason = "prologue")
             static void enter(JNIJavaVM vm) {
                 if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true) != CEntryPointErrors.NO_ERROR) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
@@ -1103,6 +1109,7 @@ public final class JNIFunctions {
         }
 
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue {
+            @Uninterruptible(reason = "prologue")
             static void enter(JNIJavaVM vm) {
                 if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false) != CEntryPointErrors.NO_ERROR) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
@@ -1111,12 +1118,14 @@ public final class JNIFunctions {
         }
 
         public static class JNIExceptionHandlerVoid {
+            @Uninterruptible(reason = "exception handler")
             static void handle(Throwable t) {
                 Support.handleException(t);
             }
         }
 
         static class JNIExceptionHandlerReturnNullHandle {
+            @Uninterruptible(reason = "exception handler")
             static JNIObjectHandle handle(Throwable t) {
                 Support.handleException(t);
                 return JNIObjectHandles.nullHandle();
@@ -1124,6 +1133,7 @@ public final class JNIFunctions {
         }
 
         static class JNIExceptionHandlerReturnNullWord {
+            @Uninterruptible(reason = "exception handler")
             static WordBase handle(Throwable t) {
                 Support.handleException(t);
                 return WordFactory.nullPointer();
@@ -1131,6 +1141,7 @@ public final class JNIFunctions {
         }
 
         static class JNIExceptionHandlerReturnFalse {
+            @Uninterruptible(reason = "exception handler")
             static boolean handle(Throwable t) {
                 Support.handleException(t);
                 return false;
@@ -1138,6 +1149,7 @@ public final class JNIFunctions {
         }
 
         static class JNIExceptionHandlerReturnMinusOne {
+            @Uninterruptible(reason = "exception handler")
             static int handle(Throwable t) {
                 Support.handleException(t);
                 return -1;
@@ -1145,6 +1157,7 @@ public final class JNIFunctions {
         }
 
         static class JNIExceptionHandlerReturnZero {
+            @Uninterruptible(reason = "exception handler")
             static int handle(Throwable t) {
                 Support.handleException(t);
                 return 0;
@@ -1152,6 +1165,7 @@ public final class JNIFunctions {
         }
 
         static class JNIExceptionHandlerReturnJniErr {
+            @Uninterruptible(reason = "exception handler")
             static int handle(Throwable t) {
                 Support.handleException(t);
                 return JNIErrors.JNI_ERR();
@@ -1220,6 +1234,7 @@ public final class JNIFunctions {
             JNIThreadLocalPinnedObjects.unpinArrayByAddress(cstr);
         }
 
+        @Uninterruptible(reason = "exception handler")
         static void handleException(Throwable t) {
             /*
              * The JNI specification requires that native code may call only certain functions while
@@ -1257,6 +1272,7 @@ public final class JNIFunctions {
                     "An unimplemented JNI function was called in a way or at a time when no error reporting could be performed.");
 
     static class JNIEnvUnimplementedPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(JNIEnvironment env) {
             int error = CEntryPointActions.enter((IsolateThread) env);
             if (error != CEntryPointErrors.NO_ERROR) {
@@ -1284,6 +1300,7 @@ public final class JNIFunctions {
     }
 
     static class JNIJavaVMUnimplementedPrologue {
+        @Uninterruptible(reason = "prologue")
         static void enter(JNIJavaVM vm) {
             int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
             if (error != CEntryPointErrors.NO_ERROR) {

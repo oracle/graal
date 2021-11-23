@@ -44,6 +44,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -119,6 +120,7 @@ public final class WindowsJavaThreads extends JavaThreads {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
 
         @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
         static void enter(WindowsThreadStartData data) {
             int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
             if (code != CEntryPointErrors.NO_ERROR) {
