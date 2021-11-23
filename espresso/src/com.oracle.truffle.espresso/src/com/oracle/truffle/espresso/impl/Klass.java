@@ -920,7 +920,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * {@link Class#getInterfaces()} and as such, only returns the interfaces directly implemented
      * or extended by this type.
      */
-    public final ObjectKlass[] getInterfaces() {
+    @Override
+    public final Klass[] getImplementedInterfaces() {
         return superInterfaces;
     }
 
@@ -1164,21 +1165,21 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /*
      * 5.4.3.2. Field Resolution:
-     * 
+     *
      * When resolving a field reference, field resolution first attempts to look up the referenced
      * field in C and its superclasses:
-     * 
+     *
      * 1) If C declares a field with the name and descriptor specified by the field reference, field
      * lookup succeeds. The declared field is the result of the field lookup.
-     * 
+     *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
      * 
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
-     * 
+     *
      * 4) Otherwise, field lookup fails.
-     * 
-     * 
+     *
+     *
      */
     public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, LookupMode mode) {
         KLASS_LOOKUP_FIELD_COUNT.inc();
@@ -1377,7 +1378,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public int getModifiers() { // Note: making this method non-final may cause heavy performance issues
+    public int getModifiers() {
+        // Note: making this method non-final
+        // may cause heavy performance issues
         return modifiers;
     }
 
@@ -1473,11 +1476,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public String getGenericTypeAsString() {
         // only ObjectKlass(es) can have a generic signature
         return "";
-    }
-
-    @Override
-    public Klass[] getImplementedInterfaces() {
-        return getInterfaces();
     }
 
     @Override

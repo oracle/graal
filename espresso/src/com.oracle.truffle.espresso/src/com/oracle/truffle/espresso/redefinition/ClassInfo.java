@@ -58,7 +58,7 @@ public abstract class ClassInfo {
         if (matcher.matches()) {
             // fingerprints are only relevant for inner classes
             hierarchy.append(klass.getSuperClass().getTypeAsString()).append(";");
-            for (ObjectKlass itf : klass.getInterfaces()) {
+            for (Klass itf : klass.getImplementedInterfaces()) {
                 hierarchy.append(itf.getTypeAsString()).append(";");
             }
 
