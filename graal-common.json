@@ -3,5 +3,6 @@
 
   "ci": {
     "overlay": "35d55aa82f1ff05cc3dd2c90cede53ef1e30d158"
-  }
+  },
+  "mx_version" : "5.273.0"
 }
