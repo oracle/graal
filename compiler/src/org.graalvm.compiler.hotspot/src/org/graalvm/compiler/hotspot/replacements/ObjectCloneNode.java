@@ -94,7 +94,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     StructuredGraph snippetGraph = null;
                     DebugContext debug = getDebug();
                     try (DebugContext.Scope s = debug.scope("ArrayCloneSnippet", snippetMethod)) {
-                        snippetGraph = replacements.getSnippet(snippetMethod, null, null, graph().trackNodeSourcePosition(), this.getNodeSourcePosition(), debug.getOptions());
+                        snippetGraph = replacements.getSnippet(snippetMethod, null, null, null, graph().trackNodeSourcePosition(), this.getNodeSourcePosition(), debug.getOptions());
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }

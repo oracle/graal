@@ -30,6 +30,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 
+import java.util.BitSet;
+
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -256,8 +258,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @SuppressWarnings("try")
     @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options) {
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options) {
         if (IS_IN_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
             maybeEncodeSnippets(options);
 
@@ -273,7 +275,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         }
 
         assert registeredSnippets == null || registeredSnippets.contains(method) : "Asking for snippet method that was never registered: " + method.format("%H.%n(%p)");
-        return super.getSnippet(method, original, args, trackNodeSourcePosition, replaceePosition, options);
+        return super.getSnippet(method, original, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, options);
     }
 
     @Override

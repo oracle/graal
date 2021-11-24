@@ -369,7 +369,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
 
         StructuredGraph calleeGraph;
         if (IS_IN_NATIVE_IMAGE) {
-            calleeGraph = getReplacements().getSnippet(method, null, null, false, null, invokeNode.getOptions());
+            calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
         } else {
             calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
                             invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
