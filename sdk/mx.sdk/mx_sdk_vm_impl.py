@@ -726,7 +726,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
-                if (not stage1 or _skip_libraries(_library_config)) and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(PolyglotConfig.project_name(_library_config)), _component)
                     # add native launchers for language libraries
                     for _executable in _library_config.launchers:
@@ -1865,7 +1865,7 @@ class PolyglotConfig(_with_metaclass(ABCMeta, GraalVmProject)):
 
 class PolyglotConfigBuildTask(_with_metaclass(ABCMeta, mx.ProjectBuildTask)):
     def __init__(self, project, args):
-        super(PolyglotConfigBuildTask, self).__init__(args, 8, project)
+        super(PolyglotConfigBuildTask, self).__init__(args, 1, project)
         self._polyglot_config_contents = None
 
     def needsBuild(self, newestInput):
