@@ -175,7 +175,7 @@ final class PolyglotSharingLayer {
                 s.contextPolicy = ContextPolicy.EXCLUSIVE;
             }
 
-            if (s.contextPolicy != ContextPolicy.EXCLUSIVE) {
+            if (!isSingleContext()) {
                 this.hostLanguage.singleLanguageContext.invalidate();
             }
 
@@ -219,10 +219,10 @@ final class PolyglotSharingLayer {
         assert this.shared == null || this.shared == s;
         this.shared = s;
 
-        if (s.contextPolicy != ContextPolicy.EXCLUSIVE) {
-            s.singleContextValue.invalidate();
-        } else {
+        if (isSingleContext()) {
             s.singleContextValue.update(context);
+        } else {
+            s.singleContextValue.invalidate();
         }
 
         s.claimedCount++;
@@ -231,6 +231,11 @@ final class PolyglotSharingLayer {
             traceClaimLayer(true, s, context, firstLanguage, previousLanguageOptions);
         }
         return true;
+    }
+
+    boolean isSingleContext() {
+        Shared s = this.shared;
+        return (s == null || s.contextPolicy == ContextPolicy.EXCLUSIVE) && !engine.isStoreEngine();
     }
 
     public void freeSharingLayer(PolyglotContextImpl context) {
@@ -307,12 +312,11 @@ final class PolyglotSharingLayer {
         PolyglotLanguageInstance instance = s.instances[language.engineIndex];
         if (instance == null) {
             instance = language.createInstance(this);
+            s.instances[language.engineIndex] = instance;
 
-            if (layerPolicy != ContextPolicy.EXCLUSIVE) {
+            if (!isSingleContext()) {
                 EngineAccessor.LANGUAGE.initializeMultiContext(instance.spi);
             }
-
-            s.instances[language.engineIndex] = instance;
 
             if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
                 traceAllocateLanguageInstance(context, language);

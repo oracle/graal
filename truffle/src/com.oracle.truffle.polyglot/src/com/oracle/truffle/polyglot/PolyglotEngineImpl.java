@@ -332,6 +332,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return !disabled && (forced || !boundEngine || storeEngine);
     }
 
+    boolean isStoreEngine() {
+        return storeEngine;
+    }
+
     TruffleLanguage<?> getHostLanguageSPI() {
         assert hostLanguage.cache.loadLanguage() == hostLanguage.cache.loadLanguage() : "host language caches must always return the same instance";
         return hostLanguage.cache.loadLanguage();

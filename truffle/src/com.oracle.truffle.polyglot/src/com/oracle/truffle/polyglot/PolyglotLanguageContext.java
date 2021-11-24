@@ -69,7 +69,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
@@ -586,7 +585,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         contextConfig.getApplicationArguments(language));
                         Lazy localLazy = new Lazy(languageInstance, contextConfig);
 
-                        if (!layer.isClaimed() || layer.getContextPolicy() == ContextPolicy.EXCLUSIVE) {
+                        if (layer.isSingleContext()) {
                             languageInstance.singleLanguageContext.update(this);
                         } else {
                             languageInstance.singleLanguageContext.invalidate();
