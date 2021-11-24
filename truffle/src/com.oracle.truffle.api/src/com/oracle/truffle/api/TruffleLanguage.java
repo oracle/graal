@@ -508,10 +508,7 @@ public abstract class TruffleLanguage<C> {
      * Returns <code>true</code> if the combination of two sets of options allow to
      * {@link ContextPolicy#SHARED share} or {@link ContextPolicy#REUSE reuse} the same language
      * instance, else <code>false</code>. If options are incompatible then a new language instance
-     * will be created for a new context. The first language context {@link #createContext(Env)
-     * created} for a {@link TruffleLanguage} instance always has compatible options, therefore
-     * {@link #areOptionsCompatible(OptionValues, OptionValues)} will not be invoked for it. The
-     * default implementation returns <code>true</code>.
+     * will be created for a new context. The default implementation returns <code>true</code>.
      * <p>
      * If the context policy of a language is set to {@link ContextPolicy#EXCLUSIVE exclusive}
      * (default behavior) then {@link #areOptionsCompatible(OptionValues, OptionValues)} will never
