@@ -877,6 +877,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 ))
 
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='ICU4J',
+    short_name='icu4j',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    jar_distributions=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    installable=False,
+    stability="supported",
+))
+
+
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
     'create-dsl-parser' : [create_dsl_parser, "create the DSL expression parser using antlr"],
