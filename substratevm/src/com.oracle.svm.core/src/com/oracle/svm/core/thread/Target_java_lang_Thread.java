@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,7 +136,7 @@ public final class Target_java_lang_Thread {
      * inherit a (more or less random) access control context.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private AccessControlContext inheritedAccessControlContext;
+    public AccessControlContext inheritedAccessControlContext;
 
     @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
@@ -294,8 +294,8 @@ public final class Target_java_lang_Thread {
         this.blockerLock = new Object();
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
-        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `inheritThreadLocals`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     @Substitute
@@ -315,8 +315,8 @@ public final class Target_java_lang_Thread {
 
         checkCharacteristics(characteristics);
 
-        /* Initialize the rest of the Thread object, ignoring `acc` and `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `characteristics`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     /**

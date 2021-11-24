@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.security.AccessControlContext;
+import java.security.AccessController;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -745,16 +747,17 @@ public abstract class JavaThreads {
      * with these unsupported features removed:
      * <ul>
      * <li>No security manager: using the ContextClassLoader of the parent.</li>
-     * <li>Not implemented: inheritedAccessControlContext.</li>
      * <li>Not implemented: inheritableThreadLocals.</li>
      * </ul>
      */
+    @SuppressWarnings({"deprecation"}) // AccessController is deprecated starting JDK 17
     static void initializeNewThread(
                     Target_java_lang_Thread tjlt,
                     ThreadGroup groupArg,
                     Runnable target,
                     String name,
-                    long stackSize) {
+                    long stackSize,
+                    AccessControlContext acc) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
         }
@@ -779,6 +782,8 @@ public abstract class JavaThreads {
         }
 
         tjlt.contextClassLoader = parent.getContextClassLoader();
+
+        tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
 
         /* Set thread ID */
         tjlt.tid = Target_java_lang_Thread.nextThreadID();
