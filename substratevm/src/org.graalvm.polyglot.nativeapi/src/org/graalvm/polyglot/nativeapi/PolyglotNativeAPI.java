@@ -243,6 +243,21 @@ public final class PolyglotNativeAPI {
             }
         });
     }
+    
+     @CEntryPoint(name = "poly_engine_get_languages_size", documentation = { 
+                 "Returns size of languages, used by {@link poly_engine_get_languages}", 
+                 "", 
+                 " @param engine for which languages are returned.", 
+                 " @param size the number of languages in the engine.", 
+                 " @since 22.0", 
+     }) 
+     public static PolyglotStatus poly_engine_get_languages_size(PolyglotIsolateThread thread, PolyglotEngine engine, SizeTPointer size) { 
+         return withHandledErrors(() -> { 
+             Engine jEngine = fetchHandle(engine); 
+             UnsignedWord languagesSize = WordFactory.unsigned(jEngine.getLanguages().size()); 
+             size.write(languagesSize); 
+         }); 
+     }
 
     @CEntryPoint(name = "poly_create_context_builder", documentation = {
                     "Creates a context with a new engine polyglot engine with a list ",
