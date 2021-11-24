@@ -316,14 +316,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getCodeAttribute().getOriginalCode();
     }
 
-    public int getMaxLocals() {
-        return getCodeAttribute().getMaxLocals();
-    }
-
-    public int getMaxStackSize() {
-        return getCodeAttribute().getMaxStack();
-    }
-
     public ExceptionHandler[] getExceptionHandlers() {
         return getCodeAttribute().getExceptionHandlers();
     }
@@ -1301,6 +1293,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public CodeAttribute getCodeAttribute() {
             return codeAttribute;
+        }
+
+        public int getMaxLocals() {
+            return codeAttribute.getMaxLocals();
+        }
+
+        public int getMaxStackSize() {
+            return codeAttribute.getMaxStack();
         }
 
         public ExceptionHandler[] getExceptionHandlers() {

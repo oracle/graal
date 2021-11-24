@@ -426,7 +426,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         this.bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(method);
+        this.livenessAnalysis = LivenessAnalysis.analyze(methodVersion);
         /*
          * The "triviality" is partially computed here since isTrivial is called from a compiler
          * thread where the context is not accessible.
@@ -646,7 +646,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @Override
     void initializeBody(VirtualFrame frame) {
-        int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
+        int slotCount = getMethodVersion().getMaxLocals() + getMethodVersion().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
@@ -714,7 +714,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @ExplodeLoop
     public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target) {
         CompilerAsserts.partialEvaluationConstant(target);
-        int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
+        int slotCount = getMethodVersion().getMaxLocals() + getMethodVersion().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
@@ -745,9 +745,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @Override
     @ExplodeLoop
     public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
-        int maxStackSize = getMethod().getMaxStackSize();
+        int maxStackSize = getMethodVersion().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(maxStackSize);
-        int slotCount = getMethod().getMaxLocals() + maxStackSize;
+        int slotCount = getMethodVersion().getMaxLocals() + maxStackSize;
         CompilerAsserts.partialEvaluationConstant(slotCount);
         try {
             long[] parentPrimitives = (long[]) parentFrame.getObject(primitivesSlot);
@@ -1823,7 +1823,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @SuppressWarnings("unused")
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         CompilerAsserts.partialEvaluationConstant(bci);
-        ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
+        ExceptionHandler[] handlers = getMethodVersion().getExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
             if (bci >= toCheck.getStartBCI() && bci < toCheck.getEndBCI()) {
@@ -1864,18 +1864,18 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             putObject(refs, top, internedString);
         } else if (constant instanceof ClassConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            Klass klass = pool.resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
+            Klass klass = pool.resolvedKlassAt(getDeclaringKlass(), cpi);
             putObject(refs, top, klass.mirror());
         } else if (constant instanceof MethodHandleConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodHandle = pool.resolvedMethodHandleAt(getMethod().getDeclaringKlass(), cpi);
+            StaticObject methodHandle = pool.resolvedMethodHandleAt(getDeclaringKlass(), cpi);
             putObject(refs, top, methodHandle);
         } else if (constant instanceof MethodTypeConstant) {
             assert opcode == LDC || opcode == LDC_W;
-            StaticObject methodType = pool.resolvedMethodTypeAt(getMethod().getDeclaringKlass(), cpi);
+            StaticObject methodType = pool.resolvedMethodTypeAt(getDeclaringKlass(), cpi);
             putObject(refs, top, methodType);
         } else if (constant instanceof DynamicConstant) {
-            DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getMethod().getDeclaringKlass(), cpi);
+            DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getDeclaringKlass(), cpi);
             dynamicConstant.putResolved(primitives, refs, top, this);
         } else {
             CompilerDirectives.transferToInterpreter();
@@ -1889,7 +1889,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @TruffleBoundary
     private BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) (getMethod().getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
+        return (BootstrapMethodsAttribute) (getDeclaringKlass()).getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     // region Bytecode quickening
@@ -2192,7 +2192,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
             invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI, statementIndex);
         } else if (resolved.isPolySignatureIntrinsic()) {
-            invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
+            invoke = new InvokeHandleNode(resolved, getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             if (resolved.isPrivate()) {
                 assert getJavaVersion().java9OrLater();
@@ -2262,23 +2262,23 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     // Exposed to CheckCastNode and InstanceOfNode
     public Klass resolveType(int opcode, char cpi) {
         assert opcode == INSTANCEOF || opcode == CHECKCAST || opcode == NEW || opcode == ANEWARRAY || opcode == MULTIANEWARRAY;
-        return getConstantPool().resolvedKlassAt(getMethod().getDeclaringKlass(), cpi);
+        return getConstantPool().resolvedKlassAt(getDeclaringKlass(), cpi);
     }
 
     public Method resolveMethod(int opcode, char cpi) {
         assert Bytecodes.isInvoke(opcode);
-        return getConstantPool().resolvedMethodAt(getMethod().getDeclaringKlass(), cpi);
+        return getConstantPool().resolvedMethodAt(getDeclaringKlass(), cpi);
     }
 
     private Method resolveMethodNoCache(int opcode, char cpi) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        return getConstantPool().resolvedMethodAtNoCache(getMethod().getDeclaringKlass(), cpi);
+        return getConstantPool().resolvedMethodAtNoCache(getDeclaringKlass(), cpi);
     }
 
     private Field.FieldVersion resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
-        return getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
+        return getConstantPool().resolvedFieldAt(getDeclaringKlass(), cpi);
     }
 
     // endregion Class/Method/Field resolution
@@ -2473,7 +2473,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
          * IllegalAccessError is thrown.
          */
         if (field.isFinalFlagSet()) {
-            if (field.getDeclaringKlass() != getMethod().getDeclaringKlass()) {
+            if (field.getDeclaringKlass() != getDeclaringKlass()) {
                 CompilerDirectives.transferToInterpreter();
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError,
@@ -2481,7 +2481,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                                 (opcode == PUTSTATIC) ? "static" : "non-static",
                                                 field.getDeclaringKlass().getNameAsString(),
                                                 field.getNameAsString(),
-                                                getMethod().getDeclaringKlass().getNameAsString()));
+                                                getDeclaringKlass().getNameAsString()));
             }
 
             boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||

@@ -58,7 +58,7 @@ public final class BlockBoundaryFinder extends BlockIteratorClosure implements B
 
     private final BitSet emptyBitSet;
 
-    BlockBoundaryFinder(Method m, History[] blockHistory) {
+    BlockBoundaryFinder(Method.MethodVersion m, History[] blockHistory) {
         this.blockHistory = blockHistory;
         this.totalBlocks = blockHistory.length;
         this.maxLocals = m.getMaxLocals();
