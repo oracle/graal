@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -56,7 +55,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:interpreter";
             }
             boundary();
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
@@ -122,7 +121,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             body.iteration = 0;
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
                 this.firstTierCallCount += 1;
             }
             final Object result = loop.execute(frame);
@@ -161,7 +160,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 if (CompilerDirectives.inInterpreter()) {
                     return "break:interpreter";
                 }
-                if (GraalCompilerDirectives.hasNextTier()) {
+                if (CompilerDirectives.hasNextTier()) {
                     return "break:first-tier";
                 }
                 return "break:second-tier";
@@ -169,10 +168,11 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
             if (CompilerDirectives.inInterpreter()) {
                 return "continue:interpreter";
             }
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 return "continue:first-tier";
+            } else {
+                return "continue:last-tier";
             }
-            return "continue:last-tier";
         }
     }
 

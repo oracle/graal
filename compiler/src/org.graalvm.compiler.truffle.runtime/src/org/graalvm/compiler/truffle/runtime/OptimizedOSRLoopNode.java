@@ -115,7 +115,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             } finally {
                 baseLoopCount = 0;
             }
-        } else if (GraalCompilerDirectives.hasNextTier()) {
+        } else if (CompilerDirectives.hasNextTier()) {
             long iterationsCompleted = 0;
             Object status;
             try {

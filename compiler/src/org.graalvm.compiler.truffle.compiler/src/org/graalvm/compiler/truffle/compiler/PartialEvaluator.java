@@ -104,7 +104,6 @@ import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhas
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleDecodingPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
@@ -634,7 +633,6 @@ public abstract class PartialEvaluator {
         @SuppressWarnings("hiding")
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(parent.getInvocationPlugins());
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
-        TruffleDecodingPlugins.registerInvocationPlugins(decodingInvocationPlugins, tierProviders);
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, tierProviders, config.architecture());
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
