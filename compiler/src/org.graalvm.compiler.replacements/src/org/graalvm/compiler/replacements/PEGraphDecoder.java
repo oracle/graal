@@ -1267,7 +1267,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                                 null, unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
                 ensureExceptionStateDecoded(inlineScope);
-                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue));
+                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null));
             }
             if (invoke instanceof InvokeWithExceptionNode) {
                 /*
@@ -1576,7 +1576,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
 
             JavaKind invokeReturnKind = methodScope.invokeData.invoke.asNode().getStackKind();
-            FrameState outerState = stateAtReturn.duplicateModified(graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
+            FrameState outerState = stateAtReturn.duplicateModified(graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null, null);
 
             /*
              * When the encoded graph has methods inlining, we can already have a proper caller
