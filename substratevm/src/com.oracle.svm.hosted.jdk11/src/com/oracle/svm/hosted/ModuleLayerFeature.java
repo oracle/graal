@@ -313,11 +313,10 @@ public final class ModuleLayerFeature implements Feature {
         try {
             moduleLayerNameToModuleField.set(runtimeBootLayer, nameToModule);
             moduleLayerParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
-            moduleLayerFeatureUtils.clearJavaBaseLoaderField(runtimeBootLayer);
             for (Module m : runtimeBootLayer.modules()) {
                 Optional<Module> hostedModule = ModuleLayer.boot().findModule(m.getName());
-                if (hostedModule.isPresent()) {
-                    moduleLayerFeatureUtils.patchModuleLoaderField(m, hostedModule.get().getClassLoader());
+                if (hostedModule.isPresent() && hostedModule.get().getClassLoader() == null) {
+                    moduleLayerFeatureUtils.patchModuleLoaderField(m);
                 }
             }
         } catch (IllegalAccessException ex) {
@@ -620,13 +619,8 @@ public final class ModuleLayerFeature implements Feature {
             moduleLayerField.set(module, runtimeBootLayer);
         }
 
-        void patchModuleLoaderField(Module module, ClassLoader loader) throws IllegalAccessException {
-            moduleLoaderField.set(module, loader);
-        }
-
-        void clearJavaBaseLoaderField(ModuleLayer runtimeBootLayer) throws IllegalAccessException {
-            Module base = runtimeBootLayer.findModule("java.base").get();
-            patchModuleLoaderField(base, null);
+        void patchModuleLoaderField(Module module) throws IllegalAccessException {
+            moduleLoaderField.set(module, null);
         }
     }
 }
