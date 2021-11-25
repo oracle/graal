@@ -361,8 +361,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     executeInitialiseAllPhase(dependencies, localOrGlobal, headLocalScopeChain);
                     break;
                 case INIT_SYMBOLS:
-                    initSymbols.initializeSymbolTable(context);
-                    initSymbols.execute(context);
+                    executeInitialiseSymbolPhase(context);
                     break;
                 case INIT_EXTERNALS:
                     initExternals.execute(context, headLocalScopeChain, localOrGlobal);
@@ -399,6 +398,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         }
     }
 
+    @TruffleBoundary
     private void executeInitialiseAllPhase(ArrayList<CallTarget> dependencies, RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
         assert dependencies != null;
         for (CallTarget callTarget : dependencies) {
@@ -442,6 +442,12 @@ public final class LoadModulesNode extends LLVMRootNode {
                 callDependencies.call(callTarget, LLVMLoadingPhase.INIT_DONE);
             }
         }
+    }
+
+    @TruffleBoundary
+    private void executeInitialiseSymbolPhase(LLVMContext context) {
+        initSymbols.initializeSymbolTable(context);
+        initSymbols.execute(context);
     }
 
     @TruffleBoundary
