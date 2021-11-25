@@ -126,7 +126,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             Class<? extends GraphBuilderPlugin> intrinsifyingPlugin = getIntrinsifyingPlugin(method);
             if (intrinsifyingPlugin != null && GeneratedInvocationPlugin.class.isAssignableFrom(intrinsifyingPlugin)) {
                 builder.delayedInvocationPluginMethods.add(method);
-                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
             // Force inlining when parsing replacements
