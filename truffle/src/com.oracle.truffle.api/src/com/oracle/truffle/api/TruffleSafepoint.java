@@ -43,6 +43,7 @@ package com.oracle.truffle.api;
 import java.util.Objects;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 
@@ -70,7 +71,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * time dependent on the array size. This typically means that safepoints are best polled at the end
  * of loops and at the end of function or method calls to cover recursion. In addition, any guest
  * language code that blocks the execution, like guest language locks, need to use the
- * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable) blocking API} to
+ * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer) blocking API} to
  * allow polling of safepoints while the thread is waiting.
  * <p>
  * Truffle's {@link LoopNode loop node} and {@link RootNode root node} support safepoint polling
@@ -181,6 +182,15 @@ public abstract class TruffleSafepoint {
     }
 
     /**
+     * @see #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+     * @since 21.1
+     * @deprecated since 22.1
+     */
+    public final <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        setBlocked(location, interrupter, interruptible, object, beforeInterrupt, (t) -> afterInterrupt.run());
+    }
+
+    /**
      * Transitions the current thread into a blocked state and calls an interruptible functional
      * method. The blocked state is restored when the interruptible method returns. Setting the
      * blocked state allows safepoint notification while the current thread is blocked. This allows
@@ -213,11 +223,14 @@ public abstract class TruffleSafepoint {
      * the parameter must be a {@link CompilerDirectives#isPartialEvaluationConstant(Object) partial
      * evaluation constant}.
      * <p>
-     * The <code>beforeInterrupt</code> and <code>afterInterrupt</code> {@link Runnable runnable}
-     * optional parameter allow to run code before and after a thread got interrupted and safepoint
-     * events are processed. If <code>null</code> is provided then no action will be performed.
-     * Arbitrary code may be executed in this runnable. Note that the blocked state is temporarily
-     * reset to its previous state while the afterInterrupt is called.
+     * The <code>beforeInterrupt</code> {@link Runnable runnable} and <code>afterInterrupt</code>
+     * {@link Consumer consumer} optional parameters allow to run code before and after a thread got
+     * interrupted and safepoint events are processed. If <code>null</code> is provided then no
+     * action will be performed. Arbitrary code may be executed in this runnable. Note that the
+     * blocked state is temporarily reset to its previous state while the afterInterrupt is called.
+     * If an exception is thrown during the processing of the safepoint, <code>afterInterrupt</code>
+     * will receive the throwable as argument, or <code>null</code> if the safepoint successfully
+     * completed.
      *
      * <p>
      * Multiple recursive invocations of this method is supported. The previous blocked state will
@@ -235,9 +248,9 @@ public abstract class TruffleSafepoint {
      * </pre>
      *
      * @see TruffleSafepoint
-     * @since 21.1
+     * @since 22.1
      */
-    public abstract <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt);
+    public abstract <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt);
 
     /**
      * Short-cut method to allow setting the blocked status for methods that throw
@@ -250,7 +263,7 @@ public abstract class TruffleSafepoint {
      */
     public static <T> void setBlockedThreadInterruptible(Node location, Interruptible<T> interruptible, T object) {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        safepoint.setBlocked(location, Interrupter.THREAD_INTERRUPT, interruptible, object, null, null);
+        safepoint.setBlocked(location, Interrupter.THREAD_INTERRUPT, interruptible, object, null, (Consumer<Throwable>) null);
     }
 
     /**
@@ -328,7 +341,7 @@ public abstract class TruffleSafepoint {
     /**
      * Returns the current safepoint configuration for the current thread. This method is useful to
      * access configuration methods like
-     * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)} or
+     * {@link #setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)} or
      * {@link #setAllowSideEffects(boolean)}.
      * <p>
      * Important: The result of this method must not be stored or used on a different thread than
@@ -385,7 +398,7 @@ public abstract class TruffleSafepoint {
      * safepoint.
      *
      * @see TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable,
-     *      Runnable)
+     *      Consumer)
      * @see Interrupter#THREAD_INTERRUPT
      * @since 21.1
      */

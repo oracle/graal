@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.trufflethreads;
 
+import java.util.function.Consumer;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -98,7 +100,7 @@ public interface TruffleThreads {
      *
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      */
-    <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Runnable afterSafepoint) throws GuestInterruptedException;
+    <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException;
 
     /**
      * Similar to {@link Thread#sleep(long)}, but with the semantics of
@@ -134,19 +136,19 @@ final class TruffleThreadsImpl implements TruffleThreads {
     public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, interruptible, object, null, () -> guestInterrupter.afterInterrupt(current));
+        safepoint.setBlocked(location, guestInterrupter, interruptible, object, null, (t) -> guestInterrupter.afterInterrupt(current, t));
     }
 
     @Override
     @TruffleBoundary
-    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Runnable afterSafepoint) throws GuestInterruptedException {
+    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, interruptible, object, beforeSafepoint, () -> {
+        safepoint.setBlocked(location, guestInterrupter, interruptible, object, beforeSafepoint, (t) -> {
             if (afterSafepoint != null) {
-                afterSafepoint.run();
+                afterSafepoint.accept(t);
             }
-            guestInterrupter.afterInterrupt(current);
+            guestInterrupter.afterInterrupt(current, t);
         });
     }
 

@@ -797,7 +797,7 @@ public class TruffleSafepointTest {
                                 } finally {
                                     safepoint.setAllowSideEffects(condDisabled);
                                 }
-                            }, () -> {
+                            }, (t) -> {
                                 boolean condDisabled = safepoint.setAllowSideEffects(true);
                                 try {
                                     // All side-effecting events are forced to happen here.
@@ -840,7 +840,7 @@ public class TruffleSafepointTest {
                                             } finally {
                                                 inAwait.decrementAndGet();
                                             }
-                                        }, condition, lock::unlock, lock::lock);
+                                        }, condition, lock::unlock, (t) -> lock.lock());
                     }
                 } finally {
                     unlockBoundary(lock);

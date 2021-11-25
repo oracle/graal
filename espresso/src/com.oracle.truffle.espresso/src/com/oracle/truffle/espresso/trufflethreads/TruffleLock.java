@@ -197,6 +197,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     private static final long serialVersionUID = -2776792497346642438L;
 
     TruffleLockImpl(TruffleThreads truffleThreads) {
+        assert truffleThreads != null;
         this.truffleThreads = truffleThreads;
     }
 
@@ -221,12 +222,12 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     @Override
     public void lock() {
-        TruffleSafepoint.setBlockedThreadInterruptible(dummy, TruffleLockImpl::superLockInterruptibly, this);
+        TruffleSafepoint.setBlockedThreadInterruptible(dummy, TruffleLockImpl::doLock, this);
     }
 
     @Override
     public void lockInterruptible() throws GuestInterruptedException {
-        truffleThreads.enterInterruptible(TruffleLockImpl::superLockInterruptibly, dummy, this);
+        truffleThreads.enterInterruptible(TruffleLockImpl::doLock, dummy, this);
     }
 
     @Override
@@ -238,6 +239,9 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     public boolean await(long timeout) throws GuestInterruptedException {
         WaitInterruptible interruptible = new WaitInterruptible(timeout);
         if (timeout >= 0) {
+            if (!isHeldByCurrentThread()) {
+                throw new IllegalMonitorStateException();
+            }
             waiters++;
             try {
                 truffleThreads.enterInterruptible(interruptible, dummy, this,
@@ -252,9 +256,9 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
                                  * we must re-lock ourselves. If this lock was woken up by a signal,
                                  * then a Signaled exception is thrown.
                                  */
-                                this::afterSafepoint);
+                                this::afterSafepointForWait);
             } catch (Signaled e) {
-                /* do nothing */
+                e.maybeRethrow();
             } catch (Throwable e) {
                 /*
                  * Either GuestInterruptedException or an exception thrown by a safepoint. Since at
@@ -306,7 +310,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     }
 
     @TruffleBoundary
-    private void superLockInterruptibly() throws InterruptedException {
+    private void doLock() throws InterruptedException {
         if (!tryLock()) { // Bypass immediate interruption check done before locking
             super.lockInterruptibly();
         }
@@ -321,16 +325,32 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         return false;
     }
 
-    private void afterSafepoint() {
+    private void afterSafepointForWait(Throwable t) {
         lock();
         if (consumeSignal()) {
             /* Another thread might have signaled while processing safepoints. */
-            throw new Signaled();
+            throw new Signaled(t);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+        throw (T) ex;
     }
 
     private static final class Signaled extends RuntimeException {
         private static final long serialVersionUID = 8504030520147416891L;
+        private final Throwable safepointThrown;
+
+        public Signaled(Throwable t) {
+            this.safepointThrown = t;
+        }
+
+        void maybeRethrow() {
+            if (safepointThrown != null) {
+                throw sneakyThrow(safepointThrown);
+            }
+        }
 
         @Override
         @SuppressWarnings("sync-override")

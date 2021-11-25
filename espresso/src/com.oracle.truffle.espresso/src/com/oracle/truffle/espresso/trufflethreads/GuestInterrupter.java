@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.trufflethreads;
 
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 /**
  * Provides the {@link TruffleThreads} with the representation of guest languages interruptions.
@@ -77,20 +76,28 @@ public abstract class GuestInterrupter implements TruffleSafepoint.Interrupter {
      */
     public abstract boolean isGuestInterrupted(Thread t);
 
-    final void afterInterrupt(Thread t) {
-        if (isGuestInterrupted(t)) {
-            // Needs to be unchecked throw (Runnable does not declare as a checked exception.)
-            UnsafeAccess.get().throwException(new GuestInterruptedException());
+    final void afterInterrupt(Thread current, Throwable ex) {
+        if (ex != null) {
+            // Do not suppress safepoint throws.
+            throw sneakyThrow(ex);
+        }
+        if (isGuestInterrupted(current)) {
+            throw sneakyThrow(new GuestInterruptedException());
         }
     }
 
     @Override
     public final void interrupt(Thread thread) {
-        thread.interrupt();
+        TruffleSafepoint.Interrupter.THREAD_INTERRUPT.interrupt(thread);
     }
 
     @Override
     public final void resetInterrupted() {
-        Thread.interrupted();
+        TruffleSafepoint.Interrupter.THREAD_INTERRUPT.resetInterrupted();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+        throw (T) ex;
     }
 }
