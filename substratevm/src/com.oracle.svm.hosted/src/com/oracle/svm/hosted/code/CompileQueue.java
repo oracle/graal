@@ -122,7 +122,6 @@ import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
-import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
@@ -158,6 +157,8 @@ import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
+import com.oracle.svm.hosted.reporting.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -361,9 +362,10 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     public void finish(DebugContext debug) {
+        ProgressReporter reporter = ProgressReporter.singleton();
         try {
             String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (StopTimer t = new Timer(imageName, "(parse)").start()) {
+            try (ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -382,14 +384,16 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
+                try (ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
                     inlineTrivialMethods(debug);
                 }
+            } else {
+                reporter.printInliningSkipped();
             }
 
             assert suitesNotCreated();
             createSuites();
-            try (StopTimer t = new Timer(imageName, "(compile)").start()) {
+            try (ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -577,6 +581,7 @@ public class CompileQueue {
 
         int round = 0;
         do {
+            ProgressReporter.singleton().printStageProgress();
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {

@@ -701,6 +701,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return hidingMethods != null ? Collections.unmodifiableSet(hidingMethods) : Collections.emptySet();
     }
 
+    @Override
+    public int getReflectionClassesCount() {
+        return reflectionClasses.size();
+    }
+
     static final class ReflectionDataAccessors {
         private final Method reflectionDataMethod;
         private final Field declaredFieldsField;

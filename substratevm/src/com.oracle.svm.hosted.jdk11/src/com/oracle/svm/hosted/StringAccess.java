@@ -22,45 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
+package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
-import java.lang.reflect.Executable;
+/* TODO: Added as a temporary workaround to provide compatibility with JDK8 (GR-35238). */
+public class StringAccess {
 
-import org.graalvm.collections.Pair;
-
-import com.oracle.svm.core.hub.DynamicHub;
-
-public interface MethodMetadataDecoder {
-    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
-
-    MethodDescriptor[] getAllReachableMethods();
-
-    long getMetadataByteLength();
-
-    class MethodDescriptor {
-        private final Class<?> declaringClass;
-        private final String name;
-        private final Class<?>[] parameterTypes;
-
-        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-            this.parameterTypes = parameterTypes;
-        }
-
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
+    private static final VarHandle STRING_VALUE;
+    static {
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(String.class, MethodHandles.lookup());
+            STRING_VALUE = privateLookup.unreflectVarHandle(String.class.getDeclaredField("value"));
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
         }
     }
 
+    public static int getInternalByteArrayLength(String string) {
+        return ((byte[]) STRING_VALUE.get(string)).length;
+    }
 }

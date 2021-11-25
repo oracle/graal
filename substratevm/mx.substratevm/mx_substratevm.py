@@ -768,6 +768,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:NATIVE_IMAGE_BASE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    support_libraries_distributions=['substratevm:SVM_GRAALVM_LIBRARIES_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
 ))

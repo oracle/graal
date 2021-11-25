@@ -471,6 +471,26 @@ suite = {
             },
         },
 
+        "com.oracle.svm.native.reporterchelper": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "deliverable": "reporterchelper",
+            "platformDependent": True,
+            "use_jdk_headers": True,
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"]
+                    }
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
+                    },
+                },
+            },
+        },
+
         "com.oracle.svm.native.darwin": {
             "subDir": "src",
             "native": "static_lib",
@@ -1450,7 +1470,14 @@ suite = {
                 "com.oracle.graal.pointsto.infrastructure",
                 "com.oracle.graal.pointsto.flow.context.object",
               ],
+              "requires": [
+                "java.management",
+                "jdk.management",
+              ],
               "requiresConcealed" : {
+                "java.management": [
+                  "sun.management",
+                ],
                 "jdk.internal.vm.ci" : [
                   "jdk.vm.ci.meta",
                   "jdk.vm.ci.common",
@@ -1523,6 +1550,16 @@ suite = {
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
             },
+        },
+
+        "SVM_GRAALVM_LIBRARIES_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "SubstrateVM support libraries for the GraalVM",
+            "layout" : {
+                "svm/builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
+            },
+            "maven" : False,
         },
 
         "SVM_NFI_GRAALVM_SUPPORT" : {

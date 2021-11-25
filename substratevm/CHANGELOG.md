@@ -11,4 +11,4 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-32403) Use more compressed encoding for stack frame metadata.
 * (GR-35152) Add -H:DisableURLProtocols to allow specifying URL protocols that must never be included in the image.
 * (GR-35085) Custom prologue/epilogue/handleException customizations of @CEntryPoint must be annotated with @Uninterruptible. The entry points synthetic methods are now implicilty annotated with @Uninterruptible too.
-
+* (GR-33602) Enable new user-friendly build output mode. The old output can be restored with `-H:-BuildOutputUseNewStyle`. Run `native-image --expert-options-all | grep "BuildOutput` to see all options for the new output.
