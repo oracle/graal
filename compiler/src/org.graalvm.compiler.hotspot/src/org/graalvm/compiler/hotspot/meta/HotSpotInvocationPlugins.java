@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -39,9 +40,15 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -50,15 +57,22 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final GraalHotSpotVMConfig config;
+    private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
+
+    public static class Options {
+        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug) public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
+    }
 
     /**
      * Predicates that determine which types may be intrinsified.
      */
     private final List<Predicate<ResolvedJavaType>> intrinsificationPredicates = new ArrayList<>();
 
-    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration) {
+    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration,
+                    TargetDescription target, OptionValues options) {
         this.graalRuntime = graalRuntime;
         this.config = config;
+        this.unimplementedIntrinsics = Options.WarnMissingIntrinsic.getValue(options) ? new UnimplementedGraalIntrinsics(config, target.arch) : null;
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
@@ -109,5 +123,15 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+        if (Options.WarnMissingIntrinsic.getValue(options)) {
+            String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
+            if (unimplementedIntrinsics.isMissing(method)) {
+                TTY.println("[Warning] Missing intrinsic %s found during parsing.", method);
+            }
+        }
     }
 }
