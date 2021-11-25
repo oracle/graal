@@ -37,9 +37,11 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
@@ -217,5 +219,8 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         AMD64 architecture = (AMD64) runtimeArchitecture;
         EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
         architecture.getFeatures().addAll(features);
+
+        AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
+        JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
     }
 }

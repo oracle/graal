@@ -28,11 +28,16 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.services.Services;
 
 final class IsNotLibgraal implements BooleanSupplier {
@@ -53,6 +58,21 @@ final class Target_jdk_vm_ci_services_Services {
     }
 }
 
+/**
+ * Allow updating the value backing {@link AMD64#getLargestStorableKind}.
+ */
+@Platforms(Platform.AMD64.class)
+@TargetClass(value = AMD64.class, onlyWith = IsNotLibgraal.class)
+final class Target_jdk_vm_ci_amd64_AMD64 {
+    @Alias AMD64Kind largestKind;
+
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class JVMCISubstitutions {
+    @Platforms(Platform.AMD64.class)
+    public static void updateLargestStorableKind(AMD64 architecture, AMD64Kind largestStorableKind) {
+        Target_jdk_vm_ci_amd64_AMD64 arch = SubstrateUtil.cast(architecture, Target_jdk_vm_ci_amd64_AMD64.class);
+        arch.largestKind = largestStorableKind;
+    }
 }
