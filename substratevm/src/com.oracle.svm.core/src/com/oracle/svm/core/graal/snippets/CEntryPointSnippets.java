@@ -292,7 +292,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
             String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());
-            args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
+            args = RuntimeOptionParser.parseAndConsumeAllOptions(args, false);
             if (ImageSingletons.contains(JavaMainSupport.class)) {
                 ImageSingletons.lookup(JavaMainSupport.class).mainArgs = args;
             }

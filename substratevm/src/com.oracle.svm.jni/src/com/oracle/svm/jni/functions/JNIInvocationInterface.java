@@ -185,7 +185,7 @@ final class JNIInvocationInterface {
                     }
                 }
                 FunctionPointerLogHandler.afterParsingVMOptions();
-                RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]));
+                RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]), vmArgs.getIgnoreUnrecognized());
             }
             JNIJavaVM javavm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javavm);
