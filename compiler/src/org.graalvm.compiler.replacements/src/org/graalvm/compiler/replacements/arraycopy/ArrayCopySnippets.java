@@ -26,6 +26,8 @@ package org.graalvm.compiler.replacements.arraycopy;
 
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.EnumMap;
@@ -44,10 +46,14 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -282,14 +288,29 @@ public abstract class ArrayCopySnippets implements Snippets {
     @Snippet(allowPartialIntrinsicArgumentMismatch = true)
     public void exactArraycopyWithExpandedLoopSnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter JavaKind elementKind,
                     @ConstantParameter LocationIdentity arrayLocation, @ConstantParameter Counters counters) {
-        doExactArraycopyWithExpandedLoopSnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation, counters);
+        doExactArraycopyWithExpandedLoopSnippet(src, srcPos, dest, destPos, length, elementKind, arrayLocation);
     }
 
-    /**
-     * @see #exactArraycopyWithExpandedLoopSnippet
-     */
-    protected abstract void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind,
-                    LocationIdentity arrayLocation, Counters counters);
+    protected void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation) {
+        int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
+        int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
+        long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
+        long destOffset = arrayBaseOffset + (long) destPos * scale;
+
+        GuardingNode anchor = SnippetAnchorNode.anchor();
+        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
+            // bad aliased case so we need to copy the array from back to front
+            for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+            }
+        } else {
+            for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+            }
+        }
+    }
 
     /**
      * Performs an array copy via fast checkcast stub.
