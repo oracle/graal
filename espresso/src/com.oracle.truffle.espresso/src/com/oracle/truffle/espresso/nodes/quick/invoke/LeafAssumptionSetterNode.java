@@ -40,18 +40,17 @@ public final class LeafAssumptionSetterNode extends InlinedSetterNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
         if (inlinedMethod.leafAssumption()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                            : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
-            setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
+                            : nullCheck(BytecodeNode.popObject(frame, top - 1 - slotCount));
+            setFieldNode.setField(frame, root, receiver, top, statementIndex);
             return -slotCount + stackEffect;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return root.reQuickenInvoke(frame, primitives, refs, top, curBCI, opcode, statementIndex, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, curBCI, opcode, statementIndex, inlinedMethod);
         }
     }
-
 }

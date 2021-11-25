@@ -41,7 +41,7 @@ public abstract class QuickNode extends BaseQuickNode {
     }
 
     @Override
-    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
+    public abstract int execute(VirtualFrame frame);
 
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {

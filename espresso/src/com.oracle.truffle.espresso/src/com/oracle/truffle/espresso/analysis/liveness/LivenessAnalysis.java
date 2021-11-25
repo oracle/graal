@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -52,15 +53,15 @@ public class LivenessAnalysis {
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
-        public void performPostBCI(long[] primitives, Object[] refs, int bci) {
+        public void performPostBCI(VirtualFrame frame, int bci) {
         }
 
         @Override
-        public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
+        public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
         }
 
         @Override
-        public void onStart(long[] primitives, Object[] refs) {
+        public void onStart(VirtualFrame frame) {
         }
     };
 
@@ -75,26 +76,26 @@ public class LivenessAnalysis {
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
-    public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
+    public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
         if (CompilerDirectives.inCompiledCode()) {
             if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(primitives, refs, bci);
+                edge[nextBci].onEdge(frame, bci);
             }
         }
     }
 
-    public void onStart(long[] primitives, Object[] refs) {
+    public void onStart(VirtualFrame frame) {
         if (CompilerDirectives.inCompiledCode()) {
             if (onStart != null) {
-                onStart.execute(primitives, refs);
+                onStart.execute(frame);
             }
         }
     }
 
-    public void performPostBCI(long[] primitives, Object[] refs, int bci) {
+    public void performPostBCI(VirtualFrame frame, int bci) {
         if (CompilerDirectives.inCompiledCode()) {
             if (result != null && result[bci] != null) {
-                result[bci].execute(primitives, refs);
+                result[bci].execute(frame);
             }
         }
     }
