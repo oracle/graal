@@ -190,27 +190,26 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     private void generateJNIFieldsInit(CodeBuilder builder, DefinitionData data, CodeBuilder.Parameter jniEnv) {
-        builder.lineStart("this." + END_POINT_CLASS_FIELD).write(" = ").invokeStatic(typeCache.jNICache, "lookupClass",
+        builder.lineStart("this." + END_POINT_CLASS_FIELD).write(" = ").invokeStatic(typeCache.jNIClassCache, "lookupClass",
                         jniEnv.name, END_POINT_SIMPLE_NAME + ".class").lineEnd(";");
         for (MethodData methodData : data.toGenerate) {
             CharSequence fieldName = jMethodIdField(methodData);
             List<? extends TypeMirror> parameterTypes = methodData.type.getParameterTypes();
-            List<CharSequence> lookupParameters = new ArrayList<>(1 + parameterTypes.size());
-            lookupParameters.add(jniEnv.name);
-            lookupParameters.add(END_POINT_CLASS_FIELD);
-            lookupParameters.add('"' + methodData.element.getSimpleName().toString() + '"');
+            List<CharSequence> signature = new ArrayList<>(1 + parameterTypes.size());
             TypeMirror endPointParameterType = marshallerSnippets(data, methodData.getReturnTypeMarshaller()).getEndPointMethodParameterType(methodData.type.getReturnType());
+            signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
             if (!data.hasExplicitReceiver()) {
-                lookupParameters.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+                signature.add(new CodeBuilder(builder).classLiteral(data.serviceType).build());
             }
-            lookupParameters.add(new CodeBuilder(builder).classLiteral(data.serviceType).build());
             for (int i = 0; i < parameterTypes.size(); i++) {
                 TypeMirror parameterType = parameterTypes.get(i);
                 endPointParameterType = marshallerSnippets(data, methodData.getParameterMarshaller(i)).getEndPointMethodParameterType(parameterType);
-                lookupParameters.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
+                signature.add(new CodeBuilder(builder).classLiteral(endPointParameterType).build());
             }
-            builder.lineStart("this." + fieldName).write(" = ").invokeStatic(typeCache.jNICache, "lookupStaticMethod",
-                            lookupParameters.toArray(new CharSequence[lookupParameters.size()])).lineEnd(";");
+            builder.lineStart("this." + fieldName).write(" = ").invokeStatic(typeCache.jNIMethod, "findMethod",
+                            jniEnv.name, END_POINT_CLASS_FIELD, "true",
+                            '"' + methodData.element.getSimpleName().toString() + '"',
+                            new CodeBuilder(builder).invokeStatic(typeCache.jniUtil, " encodeMethodSignature", signature.toArray(new CharSequence[0])).build()).lineEnd(";");
         }
     }
 
@@ -322,7 +321,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         CharSequence address = new CodeBuilder(builder).invoke(jniArgs, "addressOf", "0").build();
         CharSequence receiverHSObject;
         if (data.hasExplicitReceiver()) {
-            receiverHSObject = new CodeBuilder(builder).cast(typeCache.hSObject, receiver).build();
+            receiverHSObject = new CodeBuilder(builder).cast(typeCache.hSObject, receiver, true).build();
         } else {
             receiverHSObject = receiver;
         }
@@ -480,11 +479,12 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         }
         CharSequence resolvedDispatch;
         if (data.hasExplicitReceiver()) {
+            CharSequence explicitReceiver = methodParameters.get(0).getSimpleName();
             resolvedDispatch = "resolvedDispatch";
-            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.delegateAccessor.getSimpleName(),
-                            actualParameters[0]).lineEnd(";");
-            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(),
-                            actualParameters[0]).lineEnd(";");
+            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.delegateAccessor.getSimpleName(), explicitReceiver).lineEnd(
+                            ";");
+            builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), explicitReceiver).lineEnd(
+                            ";");
         } else {
             resolvedDispatch = "receiverObject";
         }

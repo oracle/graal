@@ -693,7 +693,18 @@ abstract class AbstractBridgeGenerator {
         }
 
         CodeBuilder cast(TypeMirror type, CharSequence value) {
-            return write("(").write(type).write(")").space().write(value);
+            return cast(type, value, false);
+        }
+
+        CodeBuilder cast(TypeMirror type, CharSequence value, boolean brackets) {
+            if (brackets) {
+                write("(");
+            }
+            write("(").write(type).write(")").space().write(value);
+            if (brackets) {
+                write(")");
+            }
+            return this;
         }
 
         CodeBuilder writeAnnotationAttributeValue(Object value) {

@@ -74,7 +74,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
         final DeclaredType generateNativeToHSBridge;
         final DeclaredType hotSpotCalls;
         final DeclaredType hSObject;
-        final DeclaredType jNICache;
+        final DeclaredType jNIClassCache;
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
         final DeclaredType stackValue;
@@ -84,7 +84,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
             this.generateNativeToHSBridge = (DeclaredType) processor.getType(GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
             this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
-            this.jNICache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNICache");
+            this.jNIClassCache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIClassCache");
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.stackValue = (DeclaredType) processor.getType("org.graalvm.nativeimage.StackValue");
