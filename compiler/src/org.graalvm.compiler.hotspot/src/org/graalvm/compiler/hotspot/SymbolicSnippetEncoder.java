@@ -35,6 +35,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -388,14 +389,14 @@ public class SymbolicSnippetEncoder {
         ResolvedJavaMethod method = plugin.getSubstitute(snippetReplacements.getProviders().getMetaAccess());
         assert method.getAnnotation(MethodSubstitution.class) != null : "MethodSubstitution must be annotated with @" + MethodSubstitution.class.getSimpleName();
         String originalMethodString = plugin.originalMethodAsString();
-        StructuredGraph subst = buildGraph(method, original, originalMethodString, null, true, false, context, options);
+        StructuredGraph subst = buildGraph(method, original, originalMethodString, null, null, true, false, context, options);
         MethodSubstitutionKey key = new MethodSubstitutionKey(method, original, context, plugin);
         originalMethods.put(key.keyString(), originalMethodString);
         preparedSnippetGraphs.put(key, subst);
     }
 
-    private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, String originalMethodString, Object receiver, boolean requireInlining, boolean trackNodeSourcePosition,
-                    IntrinsicContext.CompilationContext context, OptionValues options) {
+    private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, String originalMethodString, Object receiver, BitSet nonNullParameters, boolean requireInlining,
+                    boolean trackNodeSourcePosition, IntrinsicContext.CompilationContext context, OptionValues options) {
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         Object[] args = null;
         if (receiver != null) {
@@ -413,8 +414,8 @@ public class SymbolicSnippetEncoder {
             contextToUse = IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
         }
         try (DebugContext debug = snippetReplacements.openDebugContext("LibGraalBuildGraph_", method, options)) {
-            StructuredGraph graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, original, trackNodeSourcePosition, null,
-                            contextToUse);
+            StructuredGraph graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, nonNullParameters, original,
+                            trackNodeSourcePosition, null, contextToUse);
 
             // Check if all methods which should be inlined are really inlined.
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -482,7 +483,7 @@ public class SymbolicSnippetEncoder {
             for (int i = 0; i < encodedGraph.getNumObjects(); i++) {
                 filter.filterSnippetObject(debug, encodedGraph.getObject(i));
             }
-            StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, args, original,
+            StructuredGraph snippet = filteringReplacements.makeGraph(debug, filteringReplacements.getDefaultReplacementBytecodeProvider(), method, args, null, original,
                             trackNodeSourcePosition, null);
             SymbolicEncodedGraph symbolicGraph = new SymbolicEncodedGraph(encodedGraph, method.getDeclaringClass(), originalMethodString);
             StructuredGraph decodedSnippet = EncodedSnippets.decodeSnippetGraph(symbolicGraph, original != null ? original : method, original, originalReplacements, null,
@@ -549,24 +550,24 @@ public class SymbolicSnippetEncoder {
             if (original != null) {
                 originalMethods.put(key.keyString(), methodKey(original));
             }
-            StructuredGraph snippet = buildGraph(method, original, null, receiver, true, trackNodeSourcePosition, INLINE_AFTER_PARSING, options);
+            SnippetParameterInfo info = new SnippetParameterInfo(method);
+            StructuredGraph snippet = buildGraph(method, original, null, receiver, SnippetParameterInfo.getNonNullParameters(info), true, trackNodeSourcePosition, INLINE_AFTER_PARSING, options);
             preparedSnippetGraphs.put(key, snippet);
-            SnippetParameterInfo value = new SnippetParameterInfo(method);
-            snippetParameterInfos.put(key.keyString(), value);
+            snippetParameterInfos.put(key.keyString(), info);
             int i = 0;
             int offset = 0;
             if (!method.isStatic()) {
-                assert value.isConstantParameter(0) : "receiver is always constant";
+                assert info.isConstantParameter(0) : "receiver is always constant";
                 ensureSnippetTypeAvailable(method.getDeclaringClass());
                 i++;
                 offset = 1;
             }
-            for (; i < value.getParameterCount(); i++) {
-                if (value.isConstantParameter(i) || value.isVarargsParameter(i)) {
+            for (; i < info.getParameterCount(); i++) {
+                if (info.isConstantParameter(i) || info.isVarargsParameter(i)) {
                     JavaType type = method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
                     if (type instanceof ResolvedJavaType) {
                         ResolvedJavaType resolvedJavaType = (ResolvedJavaType) type;
-                        if (value.isVarargsParameter(i)) {
+                        if (info.isVarargsParameter(i)) {
                             resolvedJavaType = resolvedJavaType.getElementalType();
                         }
                         assert resolvedJavaType.isPrimitive() || isGraalClass(resolvedJavaType) : method + ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;

@@ -36,6 +36,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -288,8 +289,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     @Override
     @SuppressWarnings("try")
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options) {
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
 
@@ -297,7 +298,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (graph == null || (trackNodeSourcePosition && !graph.trackNodeSourcePosition())) {
             try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options);
                             DebugCloseable a = SnippetPreparationTime.start(debug)) {
-                StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, recursiveEntry, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
+                StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, nonNullParameters, recursiveEntry, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
                 DebugContext.counter("SnippetNodeCount[%#s]", method).add(newGraph.getDebug(), newGraph.getNodeCount());
                 if (!UseSnippetGraphCache.getValue(options) || args != null) {
                     return newGraph;
@@ -383,7 +384,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 StructuredGraph graph = UseSnippetGraphCache.getValue(options) ? graphs.get(substitute) : null;
                 if (graph == null || graph.trackNodeSourcePosition() != trackNodeSourcePosition) {
                     try (DebugContext debug = openSnippetDebugContext("Substitution_", method, options)) {
-                        graph = makeGraph(debug, msPlugin.getBytecodeProvider(), substitute, null, method, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
+                        graph = makeGraph(debug, msPlugin.getBytecodeProvider(), substitute, null, null, method, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
                         if (!UseSnippetGraphCache.getValue(options)) {
                             return graph;
                         }
@@ -452,6 +453,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      * @param bytecodeProvider how to access the bytecode of {@code method}
      * @param method the snippet or method substitution for which a graph will be created
      * @param args
+     * @param nonNullParameters
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
      * @param trackNodeSourcePosition record source information
@@ -459,9 +461,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      *            {@link org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext
      *            compilation context} for the graph
      */
-    public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original, boolean trackNodeSourcePosition,
-                    NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
-        return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, trackNodeSourcePosition, replaceePosition, context);
+    public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
+                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+        return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
     }
 
     /**
@@ -469,17 +471,17 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      * {@link org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext#INLINE_AFTER_PARSING}
      * .
      *
-     *
      * @param bytecodeProvider how to access the bytecode of {@code method}
      * @param method the snippet or method substitution for which a graph will be created
      * @param args
+     * @param nonNullParameters
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
      * @param trackNodeSourcePosition record source information
      */
-    public final StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, ResolvedJavaMethod original,
+    public final StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
                     boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
-        return makeGraph(debug, bytecodeProvider, method, args, original, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
+        return makeGraph(debug, bytecodeProvider, method, args, nonNullParameters, original, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
     }
 
     /**
@@ -516,11 +518,11 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         }
 
         @SuppressWarnings("try")
-        public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                        IntrinsicContext.CompilationContext context) {
+        public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                        NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
             try (DebugContext.Scope s = debug.scope("BuildSnippetGraph", method)) {
                 assert method.hasBytecodes() : method;
-                StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, trackNodeSourcePosition, replaceePosition, context);
+                StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
 
                 finalizeGraph(graph);
 
@@ -598,7 +600,13 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                         return false;
                     }
                     if (method.getAnnotation(Fold.class) != null) {
-                        throw new GraalError("Fold invokes should no longer exist: " + method + " in " + stateSplit.asNode().graph());
+                        /*
+                         * In SVM, @Fold methods cannot be handled eagerly, e.g.,
+                         * because @ConstantParameter arguments are not yet constant. Thus, the
+                         * handling of these invokes is deferred (see
+                         * SubstrateReplacements.SnippetInlineInvokePlugin).
+                         */
+                        return true;
                     }
                     Node.NodeIntrinsic annotation = method.getAnnotation(Node.NodeIntrinsic.class);
                     if (annotation != null && !annotation.hasSideEffect()) {
@@ -613,8 +621,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
          * Builds the initial graph for a replacement.
          */
         @SuppressWarnings("try")
-        protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, final ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition,
-                        NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+        protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, final ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
+                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
@@ -637,6 +645,9 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                 if (args != null) {
                     plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(args, metaAccess, replacements.snippetReflection));
+                }
+                if (nonNullParameters != null && !nonNullParameters.isEmpty()) {
+                    plugins.appendParameterPlugin(new NonNullParameterPlugin(nonNullParameters));
                 }
 
                 IntrinsicContext initialIntrinsicContext = null;

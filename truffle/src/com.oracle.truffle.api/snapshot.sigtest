@@ -46,6 +46,7 @@ innr public abstract interface static !annotation CompilationFinal
 innr public abstract interface static !annotation TruffleBoundary
 innr public abstract interface static !annotation ValueType
 meth public static <%0 extends java.lang.Object> {%%0} castExact(java.lang.Object,java.lang.Class<{%%0}>)
+meth public static boolean hasNextTier()
 meth public static <%0 extends java.lang.Object> {%%0} interpreterOnly(java.util.concurrent.Callable<{%%0}>) throws java.lang.Exception
 meth public static boolean inCompilationRoot()
 meth public static boolean inCompiledCode()

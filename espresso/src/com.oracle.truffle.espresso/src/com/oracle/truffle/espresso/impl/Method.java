@@ -248,14 +248,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getCodeAttribute().getOriginalCode();
     }
 
-    public int getMaxLocals() {
-        return getCodeAttribute().getMaxLocals();
-    }
-
-    public int getMaxStackSize() {
-        return getCodeAttribute().getMaxStack();
-    }
-
     public ExceptionHandler[] getExceptionHandlers() {
         return getCodeAttribute().getExceptionHandlers();
     }
@@ -1152,7 +1144,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private ObjectKlass[] checkedExceptions;
 
         // Multiple maximally-specific interface methods. Fail on call.
-        @CompilationFinal private boolean poisonPill = false;
+        @CompilationFinal private boolean poisonPill;
 
         private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, Assumption leafAssumption, boolean poisonPill, CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
@@ -1663,6 +1655,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
             getMethod().checkLoadingConstraints(loader1, loader2);
+        }
+
+        public int getMaxLocals() {
+            return codeAttribute.getMaxLocals();
+        }
+
+        public int getMaxStackSize() {
+            return codeAttribute.getMaxStack();
         }
     }
 

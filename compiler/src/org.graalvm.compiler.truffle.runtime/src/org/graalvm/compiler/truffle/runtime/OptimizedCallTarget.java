@@ -508,7 +508,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private static CompilationState getTier() {
         if (CompilerDirectives.inCompiledCode()) {
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 if (CompilerDirectives.inCompilationRoot()) {
                     return CompilationState.FIRST_TIER_ROOT;
                 } else {
@@ -616,7 +616,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        if (GraalCompilerDirectives.hasNextTier()) {
+        if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
             firstTierCall();
         }
         if (CompilerDirectives.inCompiledCode()) {

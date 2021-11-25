@@ -6,13 +6,13 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Specializati
 ---
 # Specialization Histogram
 
-This guide explains how to use the `--engine.SpecializationHistogram` option.
+This guide explains how to use the `--engine.SpecializationStatistics` option.
 
 The specialization histogram requires Truffle DSL nodes to be generated in a special way.
 So if you use the plain specialization histogram option it will just print the following:
 
 ```shell
-js --engine.SpecializationHistogram test.js
+js --engine.SpecializationStatistics test.js
 
 [engine] Specialization histogram:
 No specialization statistics data was collected. Either no node with @Specialization annotations was executed or the interpreter was not compiled with -Atruffle.dsl.GenerateSpecializationStatistics=true e.g as parameter to the javac tool.

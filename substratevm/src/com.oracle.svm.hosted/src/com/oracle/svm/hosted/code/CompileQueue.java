@@ -90,6 +90,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedFoldInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -171,6 +172,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -189,6 +191,7 @@ public class CompileQueue {
     protected CompletionExecutor executor;
     protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
+    protected final MetaAccessProvider metaAccess;
     private Suites regularSuites = null;
     private Suites deoptTargetSuites = null;
     private LIRSuites regularLIRSuites = null;
@@ -338,6 +341,7 @@ public class CompileQueue {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
+        this.metaAccess = runtimeConfigBuilder.metaAccess;
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
@@ -518,13 +522,13 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
         universe.getMethods().stream()
                         .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureParsed(method, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
         foreignCallsProvider.getForeignCalls().values().stream()
                         .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
-                        .forEach(method -> ensureParsed(method, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
     }
 
     private void parseDeoptimizationTargetMethods() {
@@ -534,7 +538,7 @@ public class CompileQueue {
          */
         universe.getMethods().stream()
                         .filter(method -> CompilationInfoSupport.singleton().isDeoptTarget(method))
-                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), new EntryPointReason()));
+                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason()));
 
         /*
          * Deoptimization target code for deoptimization testing: all methods that are not
@@ -549,7 +553,7 @@ public class CompileQueue {
 
     private void ensureParsedForDeoptTesting(HostedMethod method) {
         method.compilationInfo.canDeoptForTesting = true;
-        ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
+        ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason());
     }
 
     protected void checkTrivial(HostedMethod method) {
@@ -727,7 +731,13 @@ public class CompileQueue {
         return false;
     }
 
-    protected void ensureParsed(HostedMethod method, CompileReason reason) {
+    protected void ensureParsed(HostedMethod method, HostedMethod callerMethod, CompileReason reason) {
+        if (!(NativeImageOptions.AllowFoldMethods.getValue() || method.getAnnotation(Fold.class) == null ||
+                        metaAccess.lookupJavaType(GeneratedFoldInvocationPlugin.class).isAssignableFrom(callerMethod.getDeclaringClass()))) {
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
+        }
         if (!method.compilationInfo.inParseQueue.getAndSet(true)) {
             executor.execute(new ParseTask(method, reason));
         }
@@ -894,8 +904,8 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
-        if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+        if (method.getAnnotation(NodeIntrinsic.class) != null) {
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
@@ -980,7 +990,7 @@ public class CompileQueue {
         if (isIndirect) {
             for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+                ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
             }
         } else {
             /*
@@ -995,7 +1005,7 @@ public class CompileQueue {
              */
             if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
+                ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
             }
         }
     }

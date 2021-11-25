@@ -100,7 +100,8 @@ public class LivenessAnalysis {
     }
 
     @SuppressWarnings("try")
-    public static LivenessAnalysis analyze(Method method) {
+    public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
+        Method method = methodVersion.getMethod();
         if (!method.getContext().livenessAnalysis) {
             return NO_ANALYSIS;
         }
@@ -122,7 +123,7 @@ public class LivenessAnalysis {
             // Computes the entry/end live sets for each variable for each block.
             BlockBoundaryFinder blockBoundaryFinder;
             try (DebugCloseable boundary = STATE_TIMER.scope(scope)) {
-                blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
+                blockBoundaryFinder = new BlockBoundaryFinder(methodVersion, loadStoreClosure.result());
                 DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
             }
 
@@ -151,7 +152,7 @@ public class LivenessAnalysis {
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
             try (DebugCloseable actionFinder = ACTION_TIMER.scope(scope)) {
-                Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
+                Builder builder = new Builder(graph, methodVersion, blockBoundaryFinder.result());
                 builder.build();
                 return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart);
             }
@@ -174,10 +175,10 @@ public class LivenessAnalysis {
         private LocalVariableAction onStart;
 
         private final Graph<? extends LinkedBlock> graph;
-        private final Method method;
+        private final Method.MethodVersion method;
         private final BlockBoundaryResult helper;
 
-        private Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
+        private Builder(Graph<? extends LinkedBlock> graph, Method.MethodVersion method, BlockBoundaryResult helper) {
             this.actions = new LocalVariableAction[method.getOriginalCode().length];
             this.edge = new EdgeAction[method.getOriginalCode().length];
             this.graph = graph;

@@ -104,10 +104,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 boolean condition = conditionalBranchNode.executeCondition(frame);
                 if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(LLVMConditionalBranchNode.TRUE_SUCCESSOR), condition)) {
                     bb.enterSuccessor(LLVMConditionalBranchNode.TRUE_SUCCESSOR);
-                    if (CompilerDirectives.inInterpreter()) {
-                        if (conditionalBranchNode.getTrueSuccessor() <= basicBlockIndex) {
-                            backEdgeCounter++;
-                        }
+                    if (CompilerDirectives.hasNextTier() && conditionalBranchNode.getTrueSuccessor() <= basicBlockIndex) {
+                        backEdgeCounter++;
                     }
                     nullDeadSlots(frame, bb.nullableAfter);
                     executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.TRUE_SUCCESSOR);
@@ -116,10 +114,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     continue outer;
                 } else {
                     bb.enterSuccessor(LLVMConditionalBranchNode.FALSE_SUCCESSOR);
-                    if (CompilerDirectives.inInterpreter()) {
-                        if (conditionalBranchNode.getFalseSuccessor() <= basicBlockIndex) {
-                            backEdgeCounter++;
-                        }
+                    if (CompilerDirectives.hasNextTier() && conditionalBranchNode.getFalseSuccessor() <= basicBlockIndex) {
+                        backEdgeCounter++;
                     }
                     nullDeadSlots(frame, bb.nullableAfter);
                     executePhis(frame, conditionalBranchNode, LLVMConditionalBranchNode.FALSE_SUCCESSOR);
@@ -134,10 +130,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 for (int i = 0; i < successors.length - 1; i++) {
                     if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.checkCase(frame, i, condition))) {
                         bb.enterSuccessor(i);
-                        if (CompilerDirectives.inInterpreter()) {
-                            if (successors[i] <= basicBlockIndex) {
-                                backEdgeCounter++;
-                            }
+                        if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                            backEdgeCounter++;
                         }
                         nullDeadSlots(frame, bb.nullableAfter);
                         executePhis(frame, switchNode, i);
@@ -149,10 +143,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
                 int i = successors.length - 1;
                 bb.enterSuccessor(i);
-                if (CompilerDirectives.inInterpreter()) {
-                    if (successors[i] <= basicBlockIndex) {
-                        backEdgeCounter++;
-                    }
+                if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                    backEdgeCounter++;
                 }
                 nullDeadSlots(frame, bb.nullableAfter);
                 executePhis(frame, switchNode, i);
@@ -167,10 +159,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 int[] successors = loop.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
                     if (successorBasicBlockIndex == successors[i]) {
-                        if (CompilerDirectives.inInterpreter()) {
-                            if (successors[i] <= basicBlockIndex) {
-                                backEdgeCounter++;
-                            }
+                        if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                            backEdgeCounter++;
                         }
                         basicBlockIndex = successors[i];
                         continue outer;
@@ -178,10 +168,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 }
                 int i = successors.length - 1;
                 assert successors[i] == successorBasicBlockIndex : "Could not find loop successor!";
-                if (CompilerDirectives.inInterpreter()) {
-                    if (successors[i] <= basicBlockIndex) {
-                        backEdgeCounter++;
-                    }
+                if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                    backEdgeCounter++;
                 }
                 basicBlockIndex = successors[i];
                 continue outer;
@@ -194,10 +182,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 for (int i = 0; i < successors.length - 1; i++) {
                     if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), successors[i] == successorBasicBlockIndex)) {
                         bb.enterSuccessor(i);
-                        if (CompilerDirectives.inInterpreter()) {
-                            if (successors[i] <= basicBlockIndex) {
-                                backEdgeCounter++;
-                            }
+                        if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                            backEdgeCounter++;
                         }
                         nullDeadSlots(frame, bb.nullableAfter);
                         executePhis(frame, indirectBranchNode, i);
@@ -210,10 +196,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 int i = successors.length - 1;
                 assert successorBasicBlockIndex == successors[i];
                 bb.enterSuccessor(i);
-                if (CompilerDirectives.inInterpreter()) {
-                    if (successors[i] <= basicBlockIndex) {
-                        backEdgeCounter++;
-                    }
+                if (CompilerDirectives.hasNextTier() && successors[i] <= basicBlockIndex) {
+                    backEdgeCounter++;
                 }
                 nullDeadSlots(frame, bb.nullableAfter);
                 executePhis(frame, indirectBranchNode, i);
@@ -222,10 +206,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 continue outer;
             } else if (controlFlowNode instanceof LLVMBrUnconditionalNode) {
                 LLVMBrUnconditionalNode unconditionalNode = (LLVMBrUnconditionalNode) controlFlowNode;
-                if (CompilerDirectives.inInterpreter()) {
-                    if (unconditionalNode.getSuccessor() <= basicBlockIndex) {
-                        backEdgeCounter++;
-                    }
+                if (CompilerDirectives.hasNextTier() && unconditionalNode.getSuccessor() <= basicBlockIndex) {
+                    backEdgeCounter++;
                 }
                 unconditionalNode.execute(frame); // required for instrumentation
                 nullDeadSlots(frame, bb.nullableAfter);
@@ -238,10 +220,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 try {
                     invokeNode.execute(frame);
                     bb.enterSuccessor(LLVMInvokeNode.NORMAL_SUCCESSOR);
-                    if (CompilerDirectives.inInterpreter()) {
-                        if (invokeNode.getNormalSuccessor() <= basicBlockIndex) {
-                            backEdgeCounter++;
-                        }
+                    if (CompilerDirectives.hasNextTier() && invokeNode.getNormalSuccessor() <= basicBlockIndex) {
+                        backEdgeCounter++;
                     }
                     nullDeadSlots(frame, bb.nullableAfter);
                     executePhis(frame, invokeNode, LLVMInvokeNode.NORMAL_SUCCESSOR);
@@ -250,10 +230,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     continue outer;
                 } catch (LLVMUserException e) {
                     bb.enterSuccessor(LLVMInvokeNode.UNWIND_SUCCESSOR);
-                    if (CompilerDirectives.inInterpreter()) {
-                        if (invokeNode.getUnwindSuccessor() <= basicBlockIndex) {
-                            backEdgeCounter++;
-                        }
+                    if (CompilerDirectives.hasNextTier() && invokeNode.getUnwindSuccessor() <= basicBlockIndex) {
+                        backEdgeCounter++;
                     }
                     frame.setObject(exceptionValueSlot, e);
                     nullDeadSlots(frame, bb.nullableAfter);
@@ -286,8 +264,9 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 throw new UnsupportedOperationException("unexpected controlFlowNode type: " + controlFlowNode);
             }
         }
-        assert backEdgeCounter >= 0;
-        LoopNode.reportLoopCount(this, backEdgeCounter);
+        if (backEdgeCounter != 0) { // only report non-zero counters to reduce interpreter overhead
+            LoopNode.reportLoopCount(this, backEdgeCounter > 0 ? backEdgeCounter : Integer.MAX_VALUE);
+        }
         assert returnValue != null;
         return returnValue;
     }

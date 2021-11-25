@@ -61,11 +61,11 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
     @Override
     public Object call(Object... arguments) {
         OptimizedCallTarget target = getCurrentCallTarget();
+        if (CompilerDirectives.hasNextTier()) {
+            incrementCallCount();
+        }
         if (CompilerDirectives.inInterpreter()) {
             target = onInterpreterCall(target);
-        }
-        if (GraalCompilerDirectives.hasNextTier()) {
-            incrementCallCount();
         }
         try {
             return target.callDirect(this, arguments);
@@ -155,7 +155,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      *         made during this interpreter call, the argument target otherwise.
      */
     private OptimizedCallTarget onInterpreterCall(OptimizedCallTarget target) {
-        incrementCallCount();
         if (target.isNeedsSplit() && !splitDecided) {
             // We intentionally avoid locking here because worst case is a double decision printed
             // and preventing that is not worth the performance impact of locking
