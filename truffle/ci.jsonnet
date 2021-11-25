@@ -6,7 +6,6 @@
   local darwin_amd64 = common["darwin-amd64"],
   local linux_amd64 = common["linux-amd64"],
   local windows_amd64 = common["windows-amd64"],
-  local amd64_jdks = [common.oraclejdk8, common.oraclejdk11, common.oraclejdk17],
 
   local truffle_common = {
     setup+: [
@@ -116,7 +115,7 @@
         linux_amd64  + jdk + simple_tool_maven_project_gate,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite,
-      ] for jdk in amd64_jdks
+      ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
     linux_amd64 + common.oraclejdk8  + truffle_gate + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdk11 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
