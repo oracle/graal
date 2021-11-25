@@ -469,11 +469,11 @@ builds += [
   #
   # Gates
   #
-  ${vm_java_8} ${eclipse} ${jdt} ${gate_vm_linux} {
+  ${vm_java_17} ${eclipse} ${jdt} ${gate_vm_linux} {
     run: [
       [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
     ]
-    name: gate-vm-style-linux-amd64
+    name: gate-vm-style-jdk17-linux-amd64
   }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
   ${libgraal_compiler} ${vm_java_17} { name: gate-vm-libgraal-compiler-17-linux-amd64 }
