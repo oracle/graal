@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.DefaultNameTransformation;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.NativeImage;
 
@@ -104,15 +103,6 @@ public final class CEntryPointData {
             prologue = options.prologue();
             prologueBailout = options.prologueBailout();
             epilogue = options.epilogue();
-            CEntryPointOptions.Publish cEntryPointOptionsPublishAs = options.publishAs();
-            if (cEntryPointOptionsPublishAs != CEntryPointOptions.Publish.SymbolAndHeader) {
-                if (publishAs != Publish.SymbolAndHeader) {
-                    throw UserError.abort(
-                            "The 'publishAs' attribute for entry point method %s is specified both in 'CEntryPoint' and 'CEntryPointOptions' annotations. Remove the deprecated 'CEntryPointOptions#publishAs' attribute.",
-                            alternativeNameSupplier.get());
-                }
-                publishAs = options.publishAs().convert();
-            }
         }
         return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, builtin, prologue, prologueBailout, epilogue, exceptionHandler, publishAs);
     }
