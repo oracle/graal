@@ -109,6 +109,9 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode condition, ValueNode negatedConstant) {
+                if (!(condition instanceof ConditionalNode)) {
+                    return false;
+                }
                 LogicNode l = ((ConditionalNode) condition).condition();
                 boolean isNullCheck = l instanceof IsNullNode;
                 boolean negated = ((PrimitiveConstant) negatedConstant.asConstant()).asInt() == 1;
