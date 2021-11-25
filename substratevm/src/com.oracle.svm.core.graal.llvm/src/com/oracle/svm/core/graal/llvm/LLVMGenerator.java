@@ -1216,7 +1216,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                  * accept this in the case of a method that doesn't do anything Java-related, and
                  * therefore doesn't need the actual value of its special registers.
                  */
-                assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
+                assert Uninterruptible.Utils.isUninterruptible(targetMethod);
                 specialRegisterArg = builder.constantNull(builder.pointerType(builder.wordType()));
             }
         } else if (isEntryPoint || canModifySpecialRegisters) {

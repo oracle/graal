@@ -27,29 +27,23 @@ package com.oracle.svm.core.graal.phases;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.util.DirectAnnotationAccess;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
 
 /**
- * Adds safepoints to loops.
+ * Adds safepoints to loops and at method ends.
  */
-public class MethodSafepointInsertionPhase extends BasePhase<MidTierContext> {
-
-    @Override
-    public boolean checkContract() {
-        // the size / cost after is highly dynamic and dependent on the graph, thus we do not verify
-        // costs for this phase
-        return false;
-    }
+public class SubstrateSafepointInsertionPhase extends LoopSafepointInsertionPhase {
 
     public static boolean needSafepointCheck(SharedMethod method) {
-        if (method.isUninterruptible()) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
             /* Uninterruptible methods must not have a safepoint inserted. */
             return false;
         }
@@ -68,13 +62,19 @@ public class MethodSafepointInsertionPhase extends BasePhase<MidTierContext> {
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
         SharedMethod method = (SharedMethod) graph.method();
-        if (((SubstrateBackend) context.getTargetProvider()).safepointCheckedInEpilogue(method) || !needSafepointCheck(method)) {
+        if (!needSafepointCheck(method)) {
             return;
         }
 
-        for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-            SafepointNode safepointNode = graph.add(new SafepointNode());
-            graph.addBeforeFixed(returnNode, safepointNode);
+        if (!((SubstrateBackend) context.getTargetProvider()).safepointCheckedInEpilogue(method)) {
+            /* Insert method-end safepoints. */
+            for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
+                SafepointNode safepointNode = graph.add(new SafepointNode());
+                graph.addBeforeFixed(returnNode, safepointNode);
+            }
         }
+
+        /* Insert loop safepoints. */
+        super.run(graph, context);
     }
 }

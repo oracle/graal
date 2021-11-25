@@ -22,28 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni;
+package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 
 /**
- * Retains one exception per thread that is pending to be handled in that thread (or none).
+ * Holder class for generated factory methods (methods that combine object allocation and invocation
+ * of a constructor).
  */
-public class JNIThreadLocalPendingException {
-    private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "JNIThreadLocalPendingException.pendingException");
-
-    public static Throwable get() {
-        return pendingException.get();
-    }
-
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
-    public static void set(Throwable t) {
-        pendingException.set(t);
-    }
-
-    public static void clear() {
-        set(null);
+@InternalVMMethod
+public final class FactoryMethodHolder {
+    private FactoryMethodHolder() {
     }
 }

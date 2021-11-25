@@ -107,6 +107,7 @@ final class JNIInvocationInterface {
 
         static class JNICreateJavaVMPrologue {
             @SuppressWarnings("unused")
+            @Uninterruptible(reason = "prologue")
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
                     int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
@@ -286,6 +287,7 @@ final class JNIInvocationInterface {
         // This inner class exists because all outer methods must match API functions
 
         static class JNIGetEnvPrologue {
+            @Uninterruptible(reason = "prologue")
             static void enter(JNIJavaVM vm, WordPointer env, int version) {
                 if (vm.isNull() || env.isNull()) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());

@@ -46,7 +46,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -108,7 +108,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public class JNIFieldAccessorMethod extends NonBytecodeStaticMethod {
+public class JNIFieldAccessorMethod extends EntryPointCallStubMethod {
 
     public static class Factory {
         public JNIFieldAccessorMethod create(JavaKind kind, boolean isSetter, boolean isStatic, ResolvedJavaType generatedMethodClass, ConstantPool constantPool,

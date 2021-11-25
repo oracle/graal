@@ -48,7 +48,6 @@ import org.graalvm.compiler.word.WordTypes;
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -113,11 +112,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private boolean checkWordTypes() {
             return getWordTypes() != null;
-        }
-
-        @Override
-        protected boolean disableLoopSafepoint() {
-            return super.disableLoopSafepoint() || method.getAnnotation(Uninterruptible.class) != null;
         }
 
         /**
