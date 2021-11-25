@@ -246,7 +246,7 @@ class EspressoShutdownHandler implements ContextAccess {
         }
 
         try {
-            referenceDrainer.joinReferenceDrain();
+            referenceDrainer.shutdownAndWaitReferenceDrain();
         } catch (InterruptedException e) {
             // ignore
         }
@@ -333,7 +333,7 @@ class EspressoShutdownHandler implements ContextAccess {
             }
             for (StaticObject guest : threadManager.activeThreads()) {
                 Thread t = getThreadAccess().getHost(guest);
-                if (t != initiatingThread) {
+                if (t != initiatingThread && t != referenceDrainer.drainHostThread() /*- drain thread gets a custom shutdown */) {
                     if (t.isAlive()) {
                         continue spinLoop;
                     }

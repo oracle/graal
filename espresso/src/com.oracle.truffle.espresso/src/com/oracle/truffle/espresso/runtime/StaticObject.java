@@ -46,6 +46,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
+import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
 
 /**
  * Implementation of the Espresso object model.
@@ -61,7 +62,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
-    private static final TruffleLock FOREIGN_MARKER = TruffleLock.create(null);
+    private static final TruffleLock FOREIGN_MARKER = TruffleLock.create(TruffleThreads.UNINTERRUPTIBLE);
 
     private final Klass klass; // != PrimitiveKlass
 

@@ -50,6 +50,8 @@ import com.oracle.truffle.api.nodes.Node;
  * </p>
  */
 public interface TruffleThreads {
+    TruffleThreads UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
+
     /**
      * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
      * parameter as how guest interruptions are made observable.

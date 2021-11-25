@@ -445,7 +445,7 @@ public final class ThreadsAccess extends GuestInterrupter implements ContextAcce
 
         synchronized void stop(StaticObject death) {
             KillStatus s = status;
-            if (s == NORMAL || s == STOP) {
+            if (s.canStop()) {
                 // Writing the throwable must be done before the kill status can be observed
                 throwable = death;
                 updateKillState(STOP);
@@ -463,14 +463,18 @@ public final class ThreadsAccess extends GuestInterrupter implements ContextAcce
         private void updateKillState(KillStatus state) {
             assert Thread.holdsLock(this);
             status = state;
-            if (state != NORMAL) {
+            if (state.asyncThrows()) {
                 Thread host = getHost(thread);
                 if (host == null) {
                     // Not yet attached thread. Will be handled by still born checks.
                     return;
                 }
-                getContext().getEnv().submitThreadLocal(new Thread[]{host}, new StopAction());
-                host.interrupt(); // best effort to wake up blocked thread.
+                if (host != Thread.currentThread()) {
+                    getContext().getEnv().submitThreadLocal(new Thread[]{host}, new StopAction());
+                    interrupt(host); // best effort to wake up blocked thread.
+                } else {
+                    handleStop();
+                }
             }
         }
 
