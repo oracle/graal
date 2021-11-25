@@ -35,20 +35,20 @@ public final class ConfigurationMemberInfo {
         }
     }
 
-    private final ConfigurationMemberDeclaration memberKind;
-    private final ConfigurationMemberAccessibility accessKind;
+    private final ConfigurationMemberDeclaration declaration;
+    private final ConfigurationMemberAccessibility accessibility;
 
-    private ConfigurationMemberInfo(ConfigurationMemberDeclaration memberKind, ConfigurationMemberAccessibility accessKind) {
-        this.memberKind = memberKind;
-        this.accessKind = accessKind;
+    private ConfigurationMemberInfo(ConfigurationMemberDeclaration declaration, ConfigurationMemberAccessibility accessibility) {
+        this.declaration = declaration;
+        this.accessibility = accessibility;
     }
 
-    public ConfigurationMemberDeclaration getMemberKind() {
-        return memberKind;
+    public ConfigurationMemberDeclaration getDeclaration() {
+        return declaration;
     }
 
-    public ConfigurationMemberAccessibility getAccessKind() {
-        return accessKind;
+    public ConfigurationMemberAccessibility getAccessibility() {
+        return accessibility;
     }
 
     public static ConfigurationMemberInfo get(ConfigurationMemberDeclaration memberKind, ConfigurationMemberAccessibility accessKind) {
@@ -103,8 +103,19 @@ public final class ConfigurationMemberInfo {
     }
 
     public enum ConfigurationMemberAccessibility {
+        /**
+         * The member is not accessed reflectively.
+         */
         NONE,
+
+        /**
+         * The member is queried reflectively but never invoked (only for methods and constructors).
+         */
         QUERIED,
+
+        /**
+         * The member is fully accessed reflectively.
+         */
         ACCESSED;
 
         public ConfigurationMemberAccessibility combine(ConfigurationMemberAccessibility other) {
@@ -121,14 +132,14 @@ public final class ConfigurationMemberInfo {
     }
 
     public ConfigurationMemberInfo intersect(ConfigurationMemberInfo other) {
-        return get(memberKind.intersect(other.memberKind), accessKind.combine(other.accessKind));
+        return get(declaration.intersect(other.declaration), accessibility.combine(other.accessibility));
     }
 
     public ConfigurationMemberInfo union(ConfigurationMemberInfo other) {
-        return get(memberKind.union(other.memberKind), accessKind.combine(other.accessKind));
+        return get(declaration.union(other.declaration), accessibility.combine(other.accessibility));
     }
 
     public boolean includes(ConfigurationMemberInfo other) {
-        return memberKind.includes(other.memberKind) && accessKind.includes(other.accessKind);
+        return declaration.includes(other.declaration) && accessibility.includes(other.accessibility);
     }
 }

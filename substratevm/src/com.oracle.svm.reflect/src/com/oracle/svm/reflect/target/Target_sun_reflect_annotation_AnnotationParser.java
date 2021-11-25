@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.reflect.target;
 
+// Checkstyle: allow reflection
+
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
 import java.lang.annotation.RetentionPolicy;
-// Checkstyle: stop
 import java.lang.reflect.Method;
-// Checkstyle: resume
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -41,20 +41,18 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.reflect.hosted.MethodMetadataEncoderImpl;
 
-// Checkstyle: stop
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.EnumConstantNotPresentExceptionProxy;
 import sun.reflect.annotation.ExceptionProxy;
-// Checkstyle: resume
 
 /**
  * Substitutions in this class are required to adapt the JDK encoding for annotations to our
- * modified version of it. See {@link com.oracle.svm.core.code.CodeInfoEncoder} for a description of
- * the changes and the rationale behind them.
+ * modified version of it. See {@link MethodMetadataEncoderImpl#encodeAnnotations(Annotation[])} for
+ * a description of the changes and the rationale behind them.
  */
 @TargetClass(AnnotationParser.class)
 @SuppressWarnings("unused")
@@ -161,10 +159,6 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
         try {
             type = AnnotationType.getInstance(annotationClass);
         } catch (IllegalArgumentException e) {
-            skipAnnotation(buf, false);
-            return null;
-        }
-        if (type == null) {
             skipAnnotation(buf, false);
             return null;
         }
