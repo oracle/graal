@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,31 +30,29 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64RegisterToLongNode extends LLVMNode {
-    public abstract long execute(VirtualFrame frame, FrameSlot slot);
+    public abstract long execute(VirtualFrame frame, int slot);
 
     @Specialization(guards = "isLong(frame, slot)")
-    protected long readLong(VirtualFrame frame, FrameSlot slot) {
-        return FrameUtil.getLongSafe(frame, slot);
+    protected long readLong(VirtualFrame frame, int slot) {
+        return frame.getLong(slot);
     }
 
     @Specialization(guards = "isAddress(frame, slot)")
-    protected long readAddress(VirtualFrame frame, FrameSlot slot) {
-        return LLVMNativePointer.cast(FrameUtil.getObjectSafe(frame, slot)).asNative();
+    protected long readAddress(VirtualFrame frame, int slot) {
+        return LLVMNativePointer.cast(frame.getObject(slot)).asNative();
     }
 
-    protected boolean isLong(VirtualFrame frame, FrameSlot slot) {
-        return frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Long;
+    protected boolean isLong(VirtualFrame frame, int slot) {
+        return frame.getFrameDescriptor().getSlotKind(slot) == FrameSlotKind.Long;
     }
 
-    protected boolean isAddress(VirtualFrame frame, FrameSlot slot) {
-        return frame.getFrameDescriptor().getFrameSlotKind(slot) == FrameSlotKind.Object;
+    protected boolean isAddress(VirtualFrame frame, int slot) {
+        return frame.getFrameDescriptor().getSlotKind(slot) == FrameSlotKind.Object;
     }
 }

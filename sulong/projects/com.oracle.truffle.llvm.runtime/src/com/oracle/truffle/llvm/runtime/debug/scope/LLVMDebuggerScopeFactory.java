@@ -29,9 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -52,11 +57,6 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 public final class LLVMDebuggerScopeFactory {
 
     private static LLVMSourceLocation findSourceLocation(Node suspendedNode) {
@@ -75,14 +75,15 @@ public final class LLVMDebuggerScopeFactory {
 
     @TruffleBoundary
     private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame, LLVMContext context, DataLayout dataLayout) {
-        if (frame == null || frame.getFrameDescriptor().getSlots().isEmpty()) {
+        FrameDescriptor desc = frame.getFrameDescriptor();
+        if (frame == null || desc.getNumberOfSlots() == 0) {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
         }
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
-        for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            if (slot.getInfo() instanceof SSAValue) {
-                SSAValue stackValue = (SSAValue) slot.getInfo();
+        for (int slot = 0; slot < desc.getNumberOfSlots(); slot++) {
+            if (desc.getSlotInfo(slot) instanceof SSAValue) {
+                SSAValue stackValue = (SSAValue) desc.getSlotInfo(slot);
                 String identifier = stackValue.getName();
                 Object slotValue = frame.getValue(slot);
                 if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller

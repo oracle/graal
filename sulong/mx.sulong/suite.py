@@ -846,7 +846,6 @@ suite = {
       ],
       "buildDependencies" : [
         "SULONG_HOME",
-        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -946,7 +945,6 @@ suite = {
       "fileExts" : [".ll"],
       "buildRef" : False,
       "buildDependencies" : [
-        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,

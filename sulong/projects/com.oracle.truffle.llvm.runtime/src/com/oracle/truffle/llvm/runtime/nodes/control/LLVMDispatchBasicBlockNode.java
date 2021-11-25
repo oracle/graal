@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -53,14 +51,14 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 
 public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
-    private final FrameSlot exceptionValueSlot;
+    private final int exceptionValueSlot;
     private final LocalVariableDebugInfo debugInfo;
 
     @Children private final LLVMBasicBlockNode[] bodyNodes;
 
-    private final FrameSlot loopSuccessorSlot;
+    private final int loopSuccessorSlot;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot loopSuccessorSlot, LocalVariableDebugInfo debugInfo) {
+    public LLVMDispatchBasicBlockNode(int exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, int loopSuccessorSlot, LocalVariableDebugInfo debugInfo) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.loopSuccessorSlot = loopSuccessorSlot;
@@ -158,7 +156,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             } else if (controlFlowNode instanceof LLVMLoopNode) {
                 LLVMLoopNode loop = (LLVMLoopNode) controlFlowNode;
                 loop.executeLoop(frame);
-                int successorBasicBlockIndex = FrameUtil.getIntSafe(frame, loopSuccessorSlot);
+                int successorBasicBlockIndex = frame.getInt(loopSuccessorSlot);
                 frame.setInt(loopSuccessorSlot, 0); // null frame
                 int[] successors = loop.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
@@ -285,7 +283,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     }
 
     @ExplodeLoop
-    public static void nullDeadSlots(VirtualFrame frame, FrameSlot[] frameSlotsToNull) {
+    public static void nullDeadSlots(VirtualFrame frame, int[] frameSlotsToNull) {
         if (frameSlotsToNull != null) {
             assert frameSlotsToNull.length > 0;
             for (int i = 0; i < frameSlotsToNull.length; i++) {

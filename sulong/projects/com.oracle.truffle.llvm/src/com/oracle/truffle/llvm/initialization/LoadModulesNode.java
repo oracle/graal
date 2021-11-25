@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.Source;
@@ -53,6 +54,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.SulongLibrary.CachedMainFunction;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLDFlags;
@@ -128,7 +130,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, boolean isInternalSulongLibrary,
                     FrameDescriptor rootFrame, boolean lazyParsing, List<Object> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
-        super(language, rootFrame, parserResult.getRuntime().getNodeFactory().createStackAccess(rootFrame));
+        super(language, rootFrame, parserResult.getRuntime().getNodeFactory().createStackAccess());
         this.mainFunctionCallTarget = null;
         this.sourceName = name;
         this.source = source;
@@ -162,7 +164,10 @@ public final class LoadModulesNode extends LLVMRootNode {
     public static LoadModulesNode create(String name, LLVMParserResult parserResult,
                     boolean lazyParsing, boolean isInternalSulongLibrary, List<Object> dependencySources, Source source, LLVMLanguage language) {
         try {
-            return new LoadModulesNode(name, parserResult, isInternalSulongLibrary, new FrameDescriptor(), lazyParsing, dependencySources, source, language);
+            FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+            int stackId = builder.addSlot(FrameSlotKind.Object, null, null);
+            assert stackId == LLVMStack.STACK_ID;
+            return new LoadModulesNode(name, parserResult, isInternalSulongLibrary, builder.build(), lazyParsing, dependencySources, source, language);
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
         }

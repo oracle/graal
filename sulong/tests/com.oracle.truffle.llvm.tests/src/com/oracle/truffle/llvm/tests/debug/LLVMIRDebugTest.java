@@ -47,6 +47,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
@@ -69,7 +70,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
     @BeforeClass
     public static void checkLinuxAMD64() {
-        Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
+        Assume.assumeTrue("Skipping amd64 only test", Platform.isAMD64());
     }
 
     @Parameters(name = "{0}")
@@ -100,6 +101,10 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
+        if (!Platform.isLinux() || !Platform.isAMD64()) {
+            // ignore target triple
+            CommonTestUtils.disableBitcodeVerification(contextBuilder);
+        }
         contextBuilder.option(OPTION_LLDEBUG, String.valueOf(true));
         contextBuilder.option(SulongEngineOption.LL_DEBUG_VERBOSE_NAME, String.valueOf(false));
         final String sourceMapping = String.format("%s=%s", loadBitcodeSource().getPath(), loadOriginalSource().getPath());

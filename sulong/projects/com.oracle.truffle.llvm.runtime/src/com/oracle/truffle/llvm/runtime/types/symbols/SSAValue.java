@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,21 @@ public interface SSAValue extends Symbol {
     int getFrameIdentifier();
 
     void setFrameIdentifier(int frameIdentifier);
+
+    static boolean isFrameSlotAllocated(SSAValue value) {
+        return value.getFrameIdentifier() < -1;
+    }
+
+    static void allocateFrameSlot(SSAValue value, int index) {
+        assert index >= 0;
+        value.setFrameIdentifier(-2 - index); // shift to "< -1" range
+    }
+
+    static int getFrameSlot(SSAValue value) {
+        int slot = -value.getFrameIdentifier() - 2;
+        assert slot >= 0;
+        return slot;
+    }
 
     String getName();
 
