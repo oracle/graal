@@ -307,7 +307,9 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     @TruffleBoundary
     private void superLockInterruptibly() throws InterruptedException {
-        super.lockInterruptibly();
+        if (!tryLock()) { // Bypass immediate interruption check done before locking
+            super.lockInterruptibly();
+        }
     }
 
     private boolean consumeSignal() {
