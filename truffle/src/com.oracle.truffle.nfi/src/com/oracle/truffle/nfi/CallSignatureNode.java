@@ -129,20 +129,20 @@ abstract class CallSignatureNode extends Node {
         private final int managedArgCount;
 
         OptimizedCallSignatureNode(TypeCachedState retType, ArgsCachedState argsState) {
-            this.convertRet = ConvertTypeNode.createOptimizedFromNative(retType);
+            this.convertRet = retType.createFromNative();
 
             this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
-                convertArgs[i] = ConvertTypeNode.createOptimizedToNative(cur.argType);
+                convertArgs[i] = cur.argType.createToNative();
                 cur = cur.prev;
             }
         }
 
         @ExplodeLoop
-        Object[] prepareArgs(NFISignature signature, Object[] args) {
+        Object[] prepareArgs(NFISignature signature, Object[] args) throws UnsupportedTypeException {
             Object[] preparedArgs = new Object[convertArgs.length];
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
@@ -178,20 +178,20 @@ abstract class CallSignatureNode extends Node {
         final int managedArgCount;
 
         OptimizedCallClosureNode(TypeCachedState retType, ArgsCachedState argsState) {
-            this.convertRet = ConvertTypeNode.createOptimizedToNative(retType);
+            this.convertRet = retType.createToNative();
 
             this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
-                convertArgs[i] = ConvertTypeNode.createOptimizedFromNative(cur.argType);
+                convertArgs[i] = cur.argType.createFromNative();
                 cur = cur.prev;
             }
         }
 
         @ExplodeLoop
-        Object[] prepareArgs(NFISignature signature, Object[] args) {
+        Object[] prepareArgs(NFISignature signature, Object[] args) throws UnsupportedTypeException {
             Object[] preparedArgs = new Object[managedArgCount];
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
