@@ -58,7 +58,7 @@ public final class BlackholeNode extends FixedWithNextNode implements LIRLowerab
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         return next();
     }
 }

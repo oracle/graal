@@ -231,13 +231,13 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         InterpreterValue fieldVal;
         if (isStatic()) {
             // TODO: default values?
             fieldVal = interpreter.loadStaticFieldValue(field());
         } else {
-            InterpreterValue objectVal = interpreter.interpretDataflowNode(object());
+            InterpreterValue objectVal = interpreter.interpretExpr(object());
             GraalError.guarantee(objectVal instanceof InterpreterValueObject, "LoadFieldNode input doesn't interpret to object");
             GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "LoadFieldNode field doesn't exist on object");
 
@@ -246,10 +246,5 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
         interpreter.setNodeLookupValue(this, fieldVal);
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 }

@@ -85,8 +85,8 @@ public abstract class UnaryArithmeticNode<OP> extends UnaryNode implements Arith
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.isPrimitive(), "value doesn't interpret to primitive");
 
         return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(val.asPrimitiveConstant()));

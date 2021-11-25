@@ -278,15 +278,9 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         InterpreterValue out = interpreter.interpretMethod(callTarget(), callTarget().arguments().snapshot());
         interpreter.setNodeLookupValue(this, out);
-
         return out.isException() ? exceptionEdge() : next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 }

@@ -580,7 +580,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     public static native Class<?> forClass(@ConstantNodeParameter ResolvedJavaType type);
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         Constant value = getValue();
         if (value instanceof PrimitiveConstant) {
             return InterpreterValuePrimitive.ofPrimitiveConstant(value);

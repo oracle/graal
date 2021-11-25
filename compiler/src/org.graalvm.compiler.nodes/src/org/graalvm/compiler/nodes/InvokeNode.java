@@ -273,18 +273,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         InterpreterValue out = interpreter.interpretMethod(callTarget(), callTarget().arguments().snapshot());
         if (out.isException()) {
             GraalError.shouldNotReachHere("Unexpected exception thrown when interpreting InvokeNode");
         }
-
         interpreter.setNodeLookupValue(this, out);
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 }

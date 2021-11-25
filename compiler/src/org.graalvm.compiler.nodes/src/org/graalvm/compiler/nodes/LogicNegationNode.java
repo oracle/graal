@@ -95,8 +95,8 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.getJavaKind() == JavaKind.Boolean, "LogicNegationNode input does not interpret to a boolean value");
         return InterpreterValuePrimitive.ofBoolean(!val.asPrimitiveConstant().asBoolean());
     }

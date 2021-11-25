@@ -313,8 +313,21 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         return true;
     }
 
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        GraalError.unimplemented("interpretDataFlow: " + this.getClass());
+    /**
+     * Graal IR Interpreter - evaluate this node as a pure side-effect-free expression.
+     *
+     * Each subclass should define this method according to the usual Java semantics of that node.
+     * However, subclasses of FixedNode (which defines the control-flow interpret method)
+     * have a default implementation that just returns the pre-calculated result of the control-flow pass.
+     *
+     * The default implementation throws a GraalError to say which node is not yet implemented.
+     *
+     * @param interpreter
+     * @return the value that this expression evaluates to.
+     */
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        String name = String.format("%s.interpretExpr", this.getClass().getName());
+        GraalError.unimplemented(name);
         return null;
     }
 }

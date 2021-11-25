@@ -219,9 +219,9 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
-        InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
 
         GraalError.guarantee(xVal.getJavaKind() == JavaKind.Object, "x doesn't interpret to object value");
         GraalError.guarantee(yVal.getJavaKind() == JavaKind.Object, "y doesn't interpret to object value");

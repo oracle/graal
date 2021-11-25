@@ -72,7 +72,7 @@ public class GraalInterpreter {
         private final Set<Class<?>> typesAlreadyStaticallyLoaded = new HashSet<>();
 
         private void checkActivationsNotEmpty() {
-            GraalError.guarantee(!activations.isEmpty(), "Activation ");
+            GraalError.guarantee(!activations.isEmpty(), "No activation records");
         }
 
         void addActivation(List<InterpreterValue> args) {
@@ -91,7 +91,7 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue getHeapValue(Node node) {
-            GraalError.guarantee(heap.containsKey(node), "No heap entry for node: " + node.toString());
+            GraalError.guarantee(heap.containsKey(node), "No heap entry for node: %s", node);
             return heap.get(node);
         }
 
@@ -136,7 +136,7 @@ public class GraalInterpreter {
             // TODO: we could check localstate map directly to see if the phi value is there.
             //       Rather than allowing interpretDataflowNode to return null, which weakens other error checking / messages.
             for (PhiNode phi : node.phis()) {
-                InterpreterValue prevVal = this.interpretDataflowNode(phi);
+                InterpreterValue prevVal = this.interpretExpr(phi);
                 //System.out.printf("prevValues[%s] :=? %s\n", phi, prevVal);
                 if (prevVal != null) {
                     // Only maps if the evaluation yielded a value
@@ -151,7 +151,7 @@ public class GraalInterpreter {
                 if (prevValues.containsKey(val)) {
                     phiVal = prevValues.get(val);
                 } else {
-                    phiVal = this.interpretDataflowNode(val);
+                    phiVal = this.interpretExpr(val);
                 }
                 //System.out.printf("set phi value[%s] := %s\n", phi, phiVal);
                 this.setNodeLookupValue(phi, phiVal);
@@ -160,7 +160,7 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue interpretMethod(CallTargetNode target, List<ValueNode> argumentNodes) {
-            List<InterpreterValue> evaluatedArgs = argumentNodes.stream().map(this::interpretDataflowNode).collect(Collectors.toList());
+            List<InterpreterValue> evaluatedArgs = argumentNodes.stream().map(this::interpretExpr).collect(Collectors.toList());
 
             StructuredGraph methodGraph = new StructuredGraph.Builder(target.getOptions(),
                             target.getDebug(), StructuredGraph.AllowAssumptions.YES).method(target.targetMethod()).build();
@@ -175,10 +175,10 @@ public class GraalInterpreter {
         }
 
         @Override
-        public InterpreterValue interpretDataflowNode(Node node) {
+        public InterpreterValue interpretExpr(Node node) {
             GraalError.guarantee(node != null, "Tried to interpret null dataflow node");
-            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode");
-            return ((ValueNode) node).interpretDataFlow(this);
+            GraalError.guarantee(node instanceof ValueNode, "Tried to interpret non ValueNode: %s", node);
+            return ((ValueNode) node).interpretExpr(this);
         }
 
         @Override
@@ -206,11 +206,11 @@ public class GraalInterpreter {
             InterpreterValue returnVal = null;
             while (next != null) {
                 if (next instanceof ReturnNode || next instanceof UnwindNode) {
-                    next.interpretControlFlow(myState);
+                    next.interpret(myState);
                     returnVal = myState.getNodeLookupValue(next);
                     break;
                 }
-                next = next.interpretControlFlow(myState);
+                next = next.interpret(myState);
             }
             popActivation();
             return returnVal;

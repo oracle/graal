@@ -136,9 +136,9 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
-        InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
 
         GraalError.guarantee(xVal.isPrimitive() && xVal.getJavaKind().isNumericInteger(), "x doesn't interpret to integer value");
         GraalError.guarantee(yVal.isPrimitive() && xVal.getJavaKind().isNumericInteger(), "y doesn't interpret to integer value");

@@ -54,7 +54,7 @@ public final class ParameterNode extends AbstractLocalNode implements IterableNo
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         return interpreter.getParameter(index());
     }
 }

@@ -247,8 +247,8 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.getJavaKind() == JavaKind.Object, "value doesn't interpret to an Object kind");
 
         if (val.isNull()) {

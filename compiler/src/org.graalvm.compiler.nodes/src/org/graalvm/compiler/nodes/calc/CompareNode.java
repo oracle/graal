@@ -495,9 +495,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
-        InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
 
         GraalError.guarantee(xVal.isPrimitive(), "x doesn't interpret to primitive value");
         GraalError.guarantee(yVal.isPrimitive(), "y doesn't interpret to primitive value");

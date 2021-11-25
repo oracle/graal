@@ -92,8 +92,8 @@ public final class StateSplitProxyNode extends FixedValueAnchorNode implements C
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue value = interpreter.interpretDataflowNode(getOriginalNode());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue value = interpreter.interpretExpr(getOriginalNode());
         interpreter.setNodeLookupValue(getOriginalNode(), value);
         return next();
     }

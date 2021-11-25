@@ -38,7 +38,7 @@ public interface InterpreterState {
 
     // Called by any node that needs to get the dataflow value of another node to use in its own
     // interpretation
-    InterpreterValue interpretDataflowNode(Node node);
+    InterpreterValue interpretExpr(Node node);
 
     // used by InvokeNode to evaluate a call target.
     InterpreterValue interpretMethod(CallTargetNode target, List<ValueNode> argumentNodes);

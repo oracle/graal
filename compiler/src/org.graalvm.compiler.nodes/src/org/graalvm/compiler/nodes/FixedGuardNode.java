@@ -218,8 +218,8 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue condValue = interpreter.interpretDataflowNode(getCondition());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue condValue = interpreter.interpretExpr(getCondition());
 
         GraalError.guarantee(condValue.getJavaKind() == JavaKind.Boolean, "FixedGuardNode condition didn't evaluate to boolean");
 

@@ -32,7 +32,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.NodeClass;
@@ -199,8 +198,8 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.isPrimitive(), "value doesn't interpret to primitive");
 
         return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(getInputBits(), getResultBits(), val.asPrimitiveConstant()));

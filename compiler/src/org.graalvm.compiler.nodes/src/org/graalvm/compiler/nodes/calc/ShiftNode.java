@@ -125,9 +125,9 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
-        InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
 
         GraalError.guarantee(xVal.isPrimitive(), "x doesn't interpret to primitive value");
         GraalError.guarantee(yVal.isPrimitive(), "Shift amount doesn't interpret to primitive value");

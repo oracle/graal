@@ -71,7 +71,7 @@ public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtuali
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         return next();
     }
 }

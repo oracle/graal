@@ -65,7 +65,7 @@ public final class ControlFlowAnchorNode extends FixedWithNextNode implements LI
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         return next();
     }
 }

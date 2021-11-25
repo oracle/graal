@@ -55,7 +55,7 @@ public class StartNode extends BeginStateSplitNode implements SingleMemoryKill {
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         // Doesn't do anything except move to next node.
         return next();
     }

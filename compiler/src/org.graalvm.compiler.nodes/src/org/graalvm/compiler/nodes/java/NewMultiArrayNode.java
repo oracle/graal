@@ -95,10 +95,10 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         int[] dimensionsEvaluated = new int[dimensions().size()];
         for (int i = 0; i < dimensions().size(); i++) {
-            InterpreterValue dimensionValue = interpreter.interpretDataflowNode(dimension(i));
+            InterpreterValue dimensionValue = interpreter.interpretExpr(dimension(i));
             GraalError.guarantee(dimensionValue.isPrimitive() && dimensionValue.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int,
                             "NewMultiArrayNode dimension does not interpret to an int");
             dimensionsEvaluated[i] = dimensionValue.asPrimitiveConstant().asInt();
@@ -112,7 +112,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         return interpreter.getHeapValue(this);
     }
 }

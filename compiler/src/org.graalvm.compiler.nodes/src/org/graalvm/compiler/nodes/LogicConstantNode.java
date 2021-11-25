@@ -109,7 +109,7 @@ public final class LogicConstantNode extends LogicNode implements LIRLowerable {
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         return InterpreterValuePrimitive.ofBoolean(value);
     }
 }

@@ -197,7 +197,7 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         LoopBeginNode loopBeginNode = loopBegin();
 
         // Since we are interpreting this LoopEndNode, we can assume that this is the node is the

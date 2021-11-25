@@ -106,7 +106,7 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.interpretDataflowNode(getOriginalNode());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.interpretExpr(getOriginalNode());
     }
 }

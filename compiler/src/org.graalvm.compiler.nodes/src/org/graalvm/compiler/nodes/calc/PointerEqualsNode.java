@@ -212,7 +212,7 @@ public class PointerEqualsNode extends CompareNode implements BinaryCommutative<
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         // TODO
         GraalError.unimplemented("PointerEqualsNode");
         return null;

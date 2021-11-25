@@ -138,15 +138,10 @@ public final class UnboxNode extends AbstractBoxingNode implements Virtualizable
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.isPrimitive() && val.getJavaKind() == JavaKind.Object, "UnboxNode input doesn't interpret to boxed primitive");
         interpreter.setNodeLookupValue(this, ((InterpreterValuePrimitive) val).asUnboxed());
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 }

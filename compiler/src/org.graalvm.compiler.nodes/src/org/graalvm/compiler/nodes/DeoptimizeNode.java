@@ -134,7 +134,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         // TODO
         GraalError.unimplemented("DeoptimizeNode");
         return null;

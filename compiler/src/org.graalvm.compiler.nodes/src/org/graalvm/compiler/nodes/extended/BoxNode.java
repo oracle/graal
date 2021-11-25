@@ -169,19 +169,14 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(getValue());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(getValue());
         GraalError.guarantee(val.getJavaKind().isPrimitive(), "BoxNode input doesn't interpret to primitive");
 
         InterpreterValue boxedVal = ((InterpreterValuePrimitive) val).asBoxed();
         interpreter.setNodeLookupValue(this, boxedVal);
 
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 
     @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})

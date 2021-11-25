@@ -58,7 +58,7 @@ public final class MergeNode extends AbstractMergeNode {
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         interpreter.visitMerge(this);
         return next();
     }

@@ -545,7 +545,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         interpreter.visitMerge(this);
         return next();
     }

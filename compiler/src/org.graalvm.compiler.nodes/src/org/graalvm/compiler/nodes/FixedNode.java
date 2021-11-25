@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 
@@ -50,8 +51,32 @@ public abstract class FixedNode extends ValueNode implements FixedNodeInterface 
         return this;
     }
 
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    /**
+     * Graal IR Interpreter - interpret this node during a control-flow pass.
+     *
+     * Each subclass should define this method according to the usual Java semantics of that node.
+     *
+     * The default implementation of this method throws a GraalError to say which
+     * class is missing a proper implementation of this <code>interpret</code> method.
+     *
+     * If this control-flow node returns a value (e.g. function calls, field loads, etc.),
+     * then the result value V should be stored in the interpreter local values map by calling:
+     * <code>
+     *  interpreter.setNodeLookupValue(this, V);
+     * </code>
+     * The <code>interpretExpr</code> method defined in this class simply looks up
+     * and returns the value that was calculated during the control-flow pass.
+     *
+     * @param interpreter
+     * @return the next control-flow node to be executed.
+     */
+    public FixedNode interpret(InterpreterState interpreter) {
         GraalError.unimplemented("interpretControlFlow: " + this.getClass());
         return null;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.getNodeLookupValue(this);
     }
 }

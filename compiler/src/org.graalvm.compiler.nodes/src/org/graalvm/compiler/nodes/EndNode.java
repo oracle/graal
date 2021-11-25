@@ -39,7 +39,7 @@ public final class EndNode extends AbstractEndNode {
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         boolean seen = false;
 
         FixedNode next = null;

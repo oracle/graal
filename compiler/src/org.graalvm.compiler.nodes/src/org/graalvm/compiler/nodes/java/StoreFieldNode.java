@@ -132,13 +132,13 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue val = interpreter.interpretDataflowNode(value());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue val = interpreter.interpretExpr(value());
 
         if (isStatic()) {
             interpreter.storeStaticFieldValue(field(), val);
         } else {
-            InterpreterValue objectVal = interpreter.interpretDataflowNode(object());
+            InterpreterValue objectVal = interpreter.interpretExpr(object());
             GraalError.guarantee(objectVal instanceof InterpreterValueObject, "StoreFieldNode input doesn't interpret to object");
             GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "StoreFieldNode field doesn't exist on object");
 

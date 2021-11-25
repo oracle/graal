@@ -68,7 +68,7 @@ public final class OpaqueNode extends FloatingNode implements LIRLowerable, Node
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.interpretDataflowNode(getValue());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return interpreter.interpretExpr(getValue());
     }
 }

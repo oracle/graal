@@ -172,7 +172,7 @@ public class ValuePhiNode extends PhiNode {
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         return interpreter.getNodeLookupValue(this);
     }
 }

@@ -1785,8 +1785,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue condValue = interpreter.interpretDataflowNode(condition());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue condValue = interpreter.interpretExpr(condition());
         GraalError.guarantee(condValue.isPrimitive() && condValue.getJavaKind() == JavaKind.Boolean, "IfNode condition doesn't interpret to boolean");
         return getSuccessor(condValue.asPrimitiveConstant().asBoolean());
     }

@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -128,14 +127,9 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
+    public FixedNode interpret(InterpreterState interpreter) {
         // TODO: is this the best way to do this?
-        interpreter.setNodeLookupValue(this, interpreter.interpretDataflowNode(predecessor()));
+        interpreter.setNodeLookupValue(this, interpreter.interpretExpr(predecessor()));
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.interpretDataflowNode(this);
     }
 }

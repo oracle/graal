@@ -572,17 +572,17 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
         // TODO: handle exact nodes - how to throw exceptions correctly out of them?
         GraalError.guarantee(!isExactMathOperation(asNode()), "Exact BinaryArithmeticNodes not implemented yet");
 
-        InterpreterValue xVal = interpreter.interpretDataflowNode(getX());
-        InterpreterValue yVal = interpreter.interpretDataflowNode(getY());
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
 
-        GraalError.guarantee(xVal != null, "null result from x: " + getX());
-        GraalError.guarantee(yVal != null, "null result from y: " + getY());
-        GraalError.guarantee(xVal.isPrimitive(), "non-primitive x: " + xVal);
-        GraalError.guarantee(yVal.isPrimitive(), "non_primitive y: " + yVal);
+        GraalError.guarantee(xVal != null, "null result from x: %s", getX());
+        GraalError.guarantee(yVal != null, "null result from y: %s", getY());
+        GraalError.guarantee(xVal.isPrimitive(), "non-primitive x: %s", xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "non_primitive y: %s", yVal);
 
         return InterpreterValuePrimitive.ofPrimitiveConstant(getArithmeticOp().foldConstant(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant()));
     }

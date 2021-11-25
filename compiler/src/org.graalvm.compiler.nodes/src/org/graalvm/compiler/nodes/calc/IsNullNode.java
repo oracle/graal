@@ -162,7 +162,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return InterpreterValuePrimitive.ofBoolean(interpreter.interpretDataflowNode(getValue()).isNull());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return InterpreterValuePrimitive.ofBoolean(interpreter.interpretExpr(getValue()).isNull());
     }
 }

@@ -154,18 +154,13 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public FixedNode interpretControlFlow(InterpreterState interpreter) {
-        InterpreterValue arrayVal = interpreter.interpretDataflowNode(array());
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue arrayVal = interpreter.interpretExpr(array());
         GraalError.guarantee(arrayVal instanceof InterpreterValueArray, "ArrayLengthNode input doesn't interpret to an array");
 
         int length = ((InterpreterValueArray) arrayVal).getLength();
         interpreter.setNodeLookupValue(this, InterpreterValuePrimitive.ofInt(length));
 
         return next();
-    }
-
-    @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        return interpreter.getNodeLookupValue(this);
     }
 }

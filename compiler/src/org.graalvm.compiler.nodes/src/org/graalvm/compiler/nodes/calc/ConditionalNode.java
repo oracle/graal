@@ -310,11 +310,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     @Override
-    public InterpreterValue interpretDataFlow(InterpreterState interpreter) {
-        InterpreterValue condValue = interpreter.interpretDataflowNode(condition());
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue condValue = interpreter.interpretExpr(condition());
         GraalError.guarantee(condValue.isPrimitive() && condValue.getJavaKind() == JavaKind.Boolean, "IfNode condition doesn't interpret to boolean");
         return condValue.asPrimitiveConstant().asBoolean()
-                        ? interpreter.interpretDataflowNode(trueValue())
-                        : interpreter.interpretDataflowNode(falseValue());
+                        ? interpreter.interpretExpr(trueValue())
+                        : interpreter.interpretExpr(falseValue());
     }
 }
