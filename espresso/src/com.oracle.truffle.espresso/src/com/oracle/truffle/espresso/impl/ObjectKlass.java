@@ -159,7 +159,7 @@ public final class ObjectKlass extends Klass {
         this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
         this.klassVersion = new KlassVersion(pool, linkedKlass);
 
-        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : new Field[0];
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
@@ -361,7 +361,9 @@ public final class ObjectKlass extends Klass {
             if (!isPrepared()) {
                 checkLoadingConstraints();
                 for (Field f : getInitialStaticFields()) {
-                    initField(f);
+                    if (!f.isRemoved()) {
+                        initField(f);
+                    }
                 }
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
@@ -1035,54 +1037,53 @@ public final class ObjectKlass extends Klass {
     }
 
     public Field[] getFieldTable() {
-        // add non-removed fields from static field table
-        ArrayList<Field> allFields = new ArrayList<>(fieldTable.length);
-        for (Field field : fieldTable) {
-            if (!field.isRemoved()) {
-                allFields.add(field);
-            }
+        if (!getContext().usesExtensionField()) {
+            return fieldTable;
         }
         ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
         if (extensionMetadata != null) {
+            ArrayList<Field> allFields = new ArrayList<>(fieldTable.length);
             Field[] addedInstanceFields = extensionMetadata.getAddedInstanceFields();
             for (Field addedInstanceField : addedInstanceFields) {
                 if (!addedInstanceField.isRemoved()) {
                     allFields.add(addedInstanceField);
                 }
             }
+            return allFields.toArray(new Field[allFields.size()]);
+        } else {
+            // Note that caller is responsible for filtering out removed fields
+            return fieldTable;
         }
-        return allFields.toArray(new Field[allFields.size()]);
+    }
+
+    public Field[] getInitialFieldTable() {
+        return fieldTable;
     }
 
     public Field[] getInitialStaticFields() {
-        // filter out removed fields
-        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
-        for (Field field : staticFieldTable) {
-            if (!field.isRemoved()) {
-                allStaticFields.add(field);
-            }
-        }
-        return allStaticFields.toArray(new Field[allStaticFields.size()]);
+        // Note that caller is responsible for filtering out removed fields
+        return staticFieldTable;
     }
 
     public Field[] getStaticFieldTable() {
-        // add non-removed fields from static field table
-        ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
-        for (Field field : staticFieldTable) {
-            if (!field.isRemoved() && !field.isHidden()) {
-                allStaticFields.add(field);
-            }
+        if (!getContext().usesExtensionField()) {
+            return staticFieldTable;
         }
+        // add non-removed fields from static field table
         ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
         if (extensionMetadata != null) {
+            ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
             Field[] addedStaticFields = extensionMetadata.getAddedStaticFields();
             for (Field addedStaticField : addedStaticFields) {
                 if (!addedStaticField.isRemoved()) {
                     allStaticFields.add(addedStaticField);
                 }
             }
+            return allStaticFields.toArray(new Field[allStaticFields.size()]);
+        } else {
+            // Note that caller is responsible for filtering out removed fields
+            return staticFieldTable;
         }
-        return allStaticFields.toArray(new Field[allStaticFields.size()]);
     }
 
     private Method lookupMirandas(Symbol<Name> methodName, Symbol<Signature> signature) {

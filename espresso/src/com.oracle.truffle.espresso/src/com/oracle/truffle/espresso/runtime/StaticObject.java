@@ -86,7 +86,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         CompilerAsserts.partialEvaluationConstant(thisKlass);
         for (Field f : thisKlass.getFieldTable()) {
             assert !f.isStatic();
-            if (!f.isHidden()) {
+            if (!f.isHidden() && !f.isRemoved()) {
                 if (f.getKind() == JavaKind.Object) {
                     f.setObject(this, StaticObject.NULL);
                 }
@@ -100,7 +100,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         CompilerAsserts.partialEvaluationConstant(thisKlass);
         for (Field f : thisKlass.getInitialStaticFields()) {
             assert f.isStatic();
-            if (f.getKind() == JavaKind.Object) {
+            if (f.getKind() == JavaKind.Object && !f.isRemoved()) {
                 if (f.isHidden()) { // extension field
                     f.setHiddenObject(this, StaticObject.NULL);
                 } else {
@@ -393,7 +393,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
             // Also prints hidden fields except for the extension field
-            if (!f.isHidden()) {
+            if (!f.isHidden() && !f.isRemoved()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
             } else {
                 if (f != getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD) {

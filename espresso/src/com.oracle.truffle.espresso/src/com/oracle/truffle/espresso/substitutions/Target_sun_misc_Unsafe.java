@@ -1552,12 +1552,12 @@ public final class Target_sun_misc_Unsafe {
         if (k instanceof ObjectKlass) {
             ObjectKlass kl = (ObjectKlass) k;
             for (Field f : kl.getFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }
             for (Field f : kl.getStaticFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }

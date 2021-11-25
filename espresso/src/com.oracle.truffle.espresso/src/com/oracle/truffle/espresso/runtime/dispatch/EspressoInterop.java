@@ -970,7 +970,7 @@ public class EspressoInterop extends BaseInterop {
         ObjectKlass k = getInteropKlass(receiver);
 
         for (Field f : k.getFieldTable()) {
-            if (f.isPublic()) {
+            if (f.isPublic() && !f.isRemoved()) {
                 members.add(f.getNameAsString());
             }
         }
