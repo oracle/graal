@@ -260,12 +260,11 @@ public class TruffleGraphBuilderPlugins {
         r.register0("hasNextTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (canDelayIntrinsification && b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
+                if (!canDelayIntrinsification && b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
                     TruffleCompilationTask task = (TruffleCompilationTask) b.getGraph().getCancellable();
                     b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(task.hasNextTier()));
                     return true;
                 }
-
                 return false;
             }
         });
