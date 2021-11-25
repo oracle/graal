@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.services.Services;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two (eagerly
@@ -58,6 +59,9 @@ import jdk.vm.ci.meta.JavaConstant;
 public final class ConditionalNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
     public static final NodeClass<ConditionalNode> TYPE = NodeClass.create(ConditionalNode.class);
+
+    private static boolean isAArch64 = false;
+
     @Input(InputType.Condition) LogicNode condition;
     @Input(InputType.Value) ValueNode trueValue;
     @Input(InputType.Value) ValueNode falseValue;
@@ -76,6 +80,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         this.condition = condition;
         this.trueValue = trueValue;
         this.falseValue = falseValue;
+        // In order to be able to generate some platform-specific nodes,
+        // this Boolean variable records whether the platform is AArch64 or not.
+        if (Services.getSavedProperties().get("os.arch").equals("aarch64")) {
+            isAArch64 = true;
+        }
     }
 
     public static ValueNode create(LogicNode condition, NodeView view) {
@@ -243,6 +252,17 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                                 ValueNode shift = new RightShiftNode(lt.getX(), ConstantNode.forIntegerBits(32, bits - 1));
                                 ValueNode and = new AndNode(shift, add.getY());
                                 return new AddNode(add.getX(), and);
+                            }
+                        } else if (isAArch64 && trueValue instanceof NegateNode) {
+                            /*
+                             * Detect (x < 0) ? -x : x (and similar variants) and replace with an
+                             * "abs" node. The "absolute" node only applies to AArch64 machines.
+                             */
+                            if (lt.getY().isJavaConstant() && (lt.getY().asJavaConstant().asLong() == 0 || lt.getY().asJavaConstant().asLong() == 1)) {
+                                NegateNode negate = (NegateNode) trueValue;
+                                if (negate.getValue() == falseValue) {
+                                    return new AbsNode(falseValue);
+                                }
                             }
                         }
                     }
