@@ -186,6 +186,7 @@ public abstract class TruffleSafepoint {
      * @since 21.1
      * @deprecated since 22.1
      */
+    @Deprecated
     public final <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
         setBlocked(location, interrupter, interruptible, object, beforeInterrupt, (t) -> afterInterrupt.run());
     }
