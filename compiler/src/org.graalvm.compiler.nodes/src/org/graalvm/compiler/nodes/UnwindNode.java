@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -63,9 +64,12 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
 
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
-        interpreter.setNodeLookupValue(this, interpreter.interpretExpr(exception()));
-
+        InterpreterValue ex = interpreter.interpretExpr(exception());
+        ex.setUnwindException();
+        System.err.println("setting unwind flag on " + ex.toString());
+        interpreter.setNodeLookupValue(this, ex);
         // the last node in this execution
-        return null;
+        // return null;
+        throw new IllegalArgumentException("BAD!");
     }
 }

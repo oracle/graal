@@ -281,6 +281,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     public FixedNode interpret(InterpreterState interpreter) {
         InterpreterValue out = interpreter.interpretMethod(callTarget(), callTarget().arguments().snapshot());
         interpreter.setNodeLookupValue(this, out);
-        return out.isException() ? exceptionEdge() : next();
+        return out.isUnwindException() ? exceptionEdge() : next();
     }
 }

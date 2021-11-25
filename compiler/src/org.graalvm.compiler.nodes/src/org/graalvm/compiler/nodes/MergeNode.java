@@ -56,10 +56,4 @@ public final class MergeNode extends AbstractMergeNode {
         assertTrue(this.forwardEndCount() > 1, "Must merge more than one end.");
         return super.verify();
     }
-
-    @Override
-    public FixedNode interpret(InterpreterState interpreter) {
-        interpreter.visitMerge(this);
-        return next();
-    }
 }

@@ -543,10 +543,4 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected boolean verifyState() {
         return !this.graph().getFrameStateVerification().implies(FrameStateVerificationFeature.LOOP_BEGINS) || super.verifyState();
     }
-
-    @Override
-    public FixedNode interpret(InterpreterState interpreter) {
-        interpreter.visitMerge(this);
-        return next();
-    }
 }

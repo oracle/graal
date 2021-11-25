@@ -11,6 +11,7 @@ import java.util.function.Function;
 public class InterpreterValueObject extends InterpreterValue {
     final ResolvedJavaType type;
     final HashMap<ResolvedJavaField, InterpreterValue> instanceFields;
+    private boolean unwindException = false;
 
     public InterpreterValueObject(ResolvedJavaType type, Function<JavaType, JavaKind> getStorageKind) {
         this.type = type;
@@ -34,13 +35,21 @@ public class InterpreterValueObject extends InterpreterValue {
     }
 
     @Override
-    public boolean isException() {
+    public boolean isUnwindException() {
+        return unwindException;
+    }
+
+    @Override
+    public void setUnwindException() {
         try {
-            return Exception.class.isAssignableFrom(Class.forName(type.toClassName()));
+            if (! Exception.class.isAssignableFrom(Class.forName(type.toClassName()))) {
+                throw new IllegalArgumentException("cannot unwind with non-Exception object");
+            }
         } catch (ClassNotFoundException e) {
             // TODO: does this ever happen for valid graphs?
             throw new IllegalArgumentException();
         }
+        this.unwindException = true;
     }
 
     @Override

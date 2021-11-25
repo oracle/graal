@@ -15,7 +15,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
@@ -35,17 +34,59 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
+/**
+ * Interpreter for Graal Intermediate Representation (IR) graphs.
+ *
+ * The main method is <code>executeGraph(g,args...)</code>, which interprets the graph <code>g</code>
+ * of a method, with the given arguments.
+ *
+ * TODO: treat Java runtime library differently?  Currently the interpreter interprets all methods
+ *   and classes, including those in java.lang...  This may not be the best strategy, since some of
+ *   those classes have special behavior and fields.  An alternative option might be to just use
+ *   the existing classes/objects within certain packages, such as java.lang.
+ *
+ * TODO: the interpreter does not currently initialise all static fields - just the private static fields
+ *   of the class containing the starting method, plus only the public or protected static fields of its
+ *   superclasses.  Static fields of other classes are not initialised at all.
+ *   Java VarHandles may be a better way of finding all static fields, rather than reflection.
+ *
+ * TODO: the interpreter heap representation needs reviewing and extending.
+ *   1. Node pointers may not be the best index, once objects are passed between methods.
+ *   2. Ideally, the interpreter heap should use weak references for its values, so that objects in that
+ *      heap can be garbage collected once they are no longer accessible via any of the activation frames.
+ *   3. The asObject() method, which converts the interpreter heap representation of an object into a
+ *      native Java object, has not been implemented yet, and requires some tricky reflection.  Alternatively,
+ *      we could try representing all objects by native Java objects and use reflection or VarHandles to
+ *      read and write the fields of those objects.
+ */
 public class GraalInterpreter {
     private final InterpreterStateImpl myState;
     private final InterpreterValueFactory valueFactory;
     private final HighTierContext context;
 
+    /**
+     * Create a new Graal IR graph interpreter.
+     *
+     * @param context
+     */
     public GraalInterpreter(HighTierContext context) {
         this.context = context;
         this.valueFactory = new InterpreterValueFactoryImpl(context);
         this.myState = new InterpreterStateImpl();
     }
 
+    /**
+     * Interprets the graph of a method, with the given arguments.
+     *
+     * It will throw a GraalError exception if the graph contains any nodes that
+     * have not yet implemented the appropriate <code>interpret()</code> and/or
+     * <code>interpretExpr()</code> methods.
+     *
+     * @param graph
+     * @param args
+     * @return
+     * @throws InvocationTargetException
+     */
     public Object executeGraph(StructuredGraph graph, Object... args) throws InvocationTargetException {
         ArrayList<InterpreterValue> evaluatedParams = new ArrayList<>();
         for (Object arg : args) {
@@ -55,9 +96,9 @@ public class GraalInterpreter {
         // TODO: static class initialisation? (<clinit>): Does loadStaticFields handle this?
         InterpreterValue returnValue = myState.interpretGraph(graph, evaluatedParams);
 
-        // TODO: this needs to be implemented in InterpreterValueObject
+        // TODO: extend this to return objects, by implementing InterpreterValueObject.asObject().
         Object returnObject = returnValue.asObject();
-        if (returnValue.isException()) {
+        if (returnValue.isUnwindException()) {
             GraalError.guarantee(returnObject instanceof Exception, "isException returned true but underlying interpreter value is not an Exception object");
             throw new InvocationTargetException((Exception) returnValue.asObject());
         } else {
@@ -102,6 +143,12 @@ public class GraalInterpreter {
         }
 
         @Override
+        public boolean hasNodeLookupValue(Node node) {
+            checkActivationsNotEmpty();
+            return activations.peek().hasNodeValue(node);
+        }
+
+        @Override
         public InterpreterValue getNodeLookupValue(Node node) {
             checkActivationsNotEmpty();
             return activations.peek().getNodeValue(node);
@@ -114,48 +161,10 @@ public class GraalInterpreter {
             activations.peek().setMergeIndex(node, index);
         }
 
-        int getMergeIndex(AbstractMergeNode node) {
+        @Override
+        public int getMergeNodeIncomingIndex(AbstractMergeNode node) {
             checkActivationsNotEmpty();
             return activations.peek().getMergeIndex(node);
-        }
-
-        @Override
-        public void visitMerge(AbstractMergeNode node) {
-            // Gets the index from which this merge node was reached.
-            int accessIndex = getMergeIndex(node);
-            // System.out.printf("visitMerge(%s) gets index %d\n", node, accessIndex);
-
-            // Get all associated phi nodes of this merge node
-            // Evaluate all associated phi nodes with merge access index as their input
-            // store all the INITIAL values (before updating) in local mapping then apply from that
-            // to avoid mapping new state when the prev state should have been used
-            // e.g. a phi node with data input from a phi node.
-            Map<Node, InterpreterValue> prevValues = new HashMap<>();
-
-            // Collecting previous values:
-            // TODO: we could check localstate map directly to see if the phi value is there.
-            //       Rather than allowing interpretDataflowNode to return null, which weakens other error checking / messages.
-            for (PhiNode phi : node.phis()) {
-                InterpreterValue prevVal = this.interpretExpr(phi);
-                //System.out.printf("prevValues[%s] :=? %s\n", phi, prevVal);
-                if (prevVal != null) {
-                    // Only maps if the evaluation yielded a value
-                    // (i.e. not the first time the phi has been evaluated)
-                    prevValues.put(phi, prevVal);
-                }
-            }
-
-            for (PhiNode phi : node.phis()) {
-                ValueNode val = phi.valueAt(accessIndex);
-                InterpreterValue phiVal;
-                if (prevValues.containsKey(val)) {
-                    phiVal = prevValues.get(val);
-                } else {
-                    phiVal = this.interpretExpr(val);
-                }
-                //System.out.printf("set phi value[%s] := %s\n", phi, phiVal);
-                this.setNodeLookupValue(phi, phiVal);
-            }
         }
 
         @Override
@@ -211,6 +220,7 @@ public class GraalInterpreter {
                     break;
                 }
                 next = next.interpret(myState);
+                GraalError.guarantee(next != null, "interpret() returned null");
             }
             popActivation();
             return returnVal;
@@ -231,10 +241,8 @@ public class GraalInterpreter {
 
                 GraalError.guarantee(actualDeclaringClass != null, "actualDeclaringClass is null");
             } catch (NoSuchFieldException | IllegalAccessException e) {
-                // TODO: improve this message
                 GraalError.shouldNotReachHere(e, "loadStaticFields");
             }
-
             if (!typesAlreadyStaticallyLoaded.add(actualDeclaringClass)) {
                 return;
             }
@@ -258,13 +266,13 @@ public class GraalInterpreter {
                     // we cannot catch java.lang.reflect.InaccessibleObjectException, so must catch its superclass
                     // we skip any fields that raise this error
                 } catch (IllegalAccessException e) {
-                    // TODO: improve this message
-                    GraalError.shouldNotReachHere(e, "loadStaticFields IllegalAccessException");
+                    GraalError.shouldNotReachHere(e, "initStaticFields IllegalAccessException");
                 }
             }
         }
     }
 
+    /** Stores all the data associated with one stack frame. */
     private static final class ActivationRecord {
         private final List<InterpreterValue> evaluatedParams;
         private final Map<Node, InterpreterValue> localState = new HashMap<>();
@@ -278,10 +286,14 @@ public class GraalInterpreter {
             localState.put(node, value);
         }
 
+        boolean hasNodeValue(Node node) {
+            return localState.containsKey(node);
+        }
+
         InterpreterValue getNodeValue(Node node) {
-//            if (!localState.containsKey(node)) {
-//                throw new IllegalArgumentException("missing localState for node: " + node.toString() + " keys=" + localState.keySet());
-//            }
+            if (!localState.containsKey(node)) {
+                throw new IllegalArgumentException("missing localState for node: " + node.toString() + " keys=" + localState.keySet());
+            }
             return localState.getOrDefault(node, null); // WAS: .get(node);
         }
 
@@ -327,13 +339,11 @@ public class GraalInterpreter {
             if (!elementalType.getElementalType().equals(elementalType)) {
                 throw new IllegalArgumentException("unimplemented elementalType: " + elementalType);
             }
-
             // Get the overall type for a multidimensional array with this many dimensions
             ResolvedJavaType overallType = elementalType;
             for (int i = 0; i < dimensions.length; i++) {
                 overallType = overallType.getArrayClass();
             }
-
             return createMultiArray(overallType.getComponentType(), dimensions, 0);
         }
 
@@ -341,7 +351,6 @@ public class GraalInterpreter {
             if (dimensionIndex >= dimensions.length || dimensions[dimensionIndex] < 0) {
                 throw new IllegalArgumentException("out-of-range dimensionIndex: " + dimensionIndex);
             }
-
             if (dimensionIndex == dimensions.length - 1) {
                 if (componentType.isArray()) {
                     throw new IllegalArgumentException("bad multiarray componentType: " + componentType);
@@ -351,10 +360,11 @@ public class GraalInterpreter {
                 }
                 return createArray(componentType, dimensions[dimensionIndex]);
             }
-
-            InterpreterValueArray array = new InterpreterValueArray(componentType, dimensions[dimensionIndex], null, false);
+            InterpreterValueArray array = new InterpreterValueArray(componentType, dimensions[dimensionIndex],
+                    null, false);
             for (int i = 0; i < dimensions[dimensionIndex]; i++) {
-                array.setAtIndex(i, createMultiArray(componentType.getComponentType(), dimensions, dimensionIndex + 1));
+                array.setAtIndex(i, createMultiArray(componentType.getComponentType(), dimensions,
+                        dimensionIndex + 1));
             }
             return array;
         }
@@ -364,30 +374,24 @@ public class GraalInterpreter {
             if (value == null) {
                 return InterpreterValue.InterpreterValueNullPointer.INSTANCE;
             }
-
             PrimitiveConstant unboxed = JavaConstant.forBoxedPrimitive(value);
             if (unboxed != null) {
                 return InterpreterValuePrimitive.ofPrimitiveConstant(unboxed);
             }
-
             if (value.getClass().isArray()) {
                 int length = Array.getLength(value);
-                InterpreterValueArray createdArray = createArray(context.getMetaAccess().lookupJavaType(value.getClass().getComponentType()), length, false);
-
+                ResolvedJavaType type = context.getMetaAccess().lookupJavaType(value.getClass().getComponentType());
+                InterpreterValueArray createdArray = createArray(type, length, false);
                 for (int i = 0; i < length; i++) {
                     createdArray.setAtIndex(i, createFromObject(Array.get(value, i)));
                 }
-
                 return createdArray;
             }
-
             ResolvedJavaType resolvedType = context.getMetaAccess().lookupJavaType(value.getClass());
             InterpreterValueObject createdObject = createObject(resolvedType);
-
             for (ResolvedJavaField field : resolvedType.getInstanceFields(true)) {
                 // TODO: how to get this field out of object and stick into createdObject
             }
-
             return createdObject;
         }
     }

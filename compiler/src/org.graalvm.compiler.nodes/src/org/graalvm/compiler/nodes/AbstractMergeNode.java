@@ -28,7 +28,9 @@ import static org.graalvm.compiler.nodeinfo.InputType.Association;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -36,6 +38,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
@@ -44,6 +47,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Denotes the merging of multiple control-flow paths.
@@ -273,5 +277,52 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
     public boolean verify() {
         assert !this.graph().getFrameStateVerification().implies(FrameStateVerificationFeature.MERGES) || verifyState() : "Merge must have a state until FSA " + this;
         return super.verify();
+    }
+
+    /**
+     * Interpret a merge node, where several control-flow paths meet.
+     *
+     * This pre-evaluates all the Phi-nodes attached to this merge node.
+     *
+     * @param interpreter
+     * @return next control-flow node to execute.
+     */
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        // Gets the index from which this merge node was reached.
+        int accessIndex = interpreter.getMergeNodeIncomingIndex(this);
+        // System.out.printf("visitMerge(%s) gets index %d\n", node, accessIndex);
+
+        // Get all associated phi nodes of this merge node
+        // Evaluate all associated phi nodes with merge access index as their input
+        // store all the INITIAL values (before updating) in local mapping then apply from that
+        // to avoid mapping new state when the prev state should have been used
+        // e.g. a phi node with data input from a phi node.
+        Map<Node, InterpreterValue> prevValues = new HashMap<>();
+
+        // Collecting previous values:
+        // TODO: we could check localstate map directly to see if the phi value is there.
+        //       Rather than allowing interpretDataflowNode to return null, which weakens other error checking / messages.
+        for (PhiNode phi : this.phis()) {
+            //System.out.printf("prevValues[%s] :=? %s\n", phi, prevVal);
+            if (interpreter.hasNodeLookupValue(phi)) {
+                // Only maps if the evaluation yielded a value
+                // (i.e. not the first time the phi has been evaluated)
+                prevValues.put(phi, phi.interpretExpr(interpreter));
+            }
+        }
+
+        for (PhiNode phi : this.phis()) {
+            ValueNode val = phi.valueAt(accessIndex);
+            InterpreterValue phiVal;
+            if (prevValues.containsKey(val)) {
+                phiVal = prevValues.get(val);
+            } else {
+                phiVal = val.interpretExpr(interpreter);
+            }
+            //System.out.printf("set phi value[%s] := %s\n", phi, phiVal);
+            interpreter.setNodeLookupValue(phi, phiVal);
+        }
+        return next();
     }
 }
