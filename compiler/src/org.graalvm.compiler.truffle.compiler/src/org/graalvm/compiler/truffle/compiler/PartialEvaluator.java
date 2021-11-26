@@ -38,7 +38,6 @@ import java.net.URI;
 import java.nio.Buffer;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -107,6 +106,8 @@ import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
+
+import com.oracle.truffle.api.TruffleOptions;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
@@ -409,6 +410,9 @@ public abstract class PartialEvaluator {
 
     private void inlineReplacements(Request request) {
         for (MethodCallTargetNode methodCallTargetNode : request.graph.getNodes(MethodCallTargetNode.TYPE)) {
+            if (!methodCallTargetNode.invokeKind().isDirect()) {
+                continue;
+            }
             StructuredGraph inlineGraph = providers.getReplacements().getInlineSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(),
                             methodCallTargetNode.invoke().getInlineControl(), request.graph.trackNodeSourcePosition(), methodCallTargetNode.asNode().getNodeSourcePosition(),
                             request.graph.allowAssumptions(), request.debug.getOptions());
