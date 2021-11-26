@@ -211,6 +211,10 @@ final class TruffleSplittingStrategy {
 
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+        if (callTarget.isOSR()) {
+            // no splitting for OSR.
+            return;
+        }
         final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
             engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());

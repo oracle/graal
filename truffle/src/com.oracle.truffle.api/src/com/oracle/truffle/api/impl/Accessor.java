@@ -155,7 +155,7 @@ public abstract class Accessor {
 
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
-        public abstract RootNode cloneUninitialized(RootNode rootNode);
+        public abstract RootNode cloneUninitialized(CallTarget sourceCallTarget, RootNode rootNode, RootNode uninitializedRootNode);
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
@@ -189,6 +189,8 @@ public abstract class Accessor {
         public abstract void setSharingLayer(RootNode rootNode, Object engine);
 
         public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
+
+        public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -983,7 +985,7 @@ public abstract class Accessor {
             }
         }
 
-        public abstract RootCallTarget newCallTarget(RootNode rootNode);
+        public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
 
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;

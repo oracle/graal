@@ -197,8 +197,7 @@ public final class BytecodeOSRMetadata {
      */
     private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor) {
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
-        return GraalTruffleRuntime.getRuntime().createOSRCallTarget(
-                        new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState));
+        return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState).getCallTarget();
 
     }
 

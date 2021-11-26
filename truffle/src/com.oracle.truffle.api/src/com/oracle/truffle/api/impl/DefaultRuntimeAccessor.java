@@ -78,7 +78,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public RootCallTarget newCallTarget(RootNode rootNode) {
+        public RootCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
             DefaultCallTarget target = new DefaultCallTarget(rootNode);
             DefaultRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
             return target;

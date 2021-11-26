@@ -333,6 +333,26 @@ public abstract class RootNode extends ExecutableNode {
         throw new UnsupportedOperationException();
     }
 
+    final RootNode cloneUninitializedImpl(CallTarget sourceCallTarget, RootNode uninitializedRootNode) {
+        RootNode clonedRoot;
+        if (isCloneUninitializedSupported()) {
+            // optimization: uninitializedRootNode should not have been created.
+            assert uninitializedRootNode == null;
+            clonedRoot = cloneUninitialized();
+        } else {
+            clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
+        }
+        clonedRoot.resetCloned();
+        clonedRoot.initializeCallTarget(sourceCallTarget);
+        return clonedRoot;
+    }
+
+    private void resetCloned() {
+        assert callTarget != null : "resetCloned can only be called once";
+        callTarget = null;
+        instrumentationBits = 0;
+    }
+
     /**
      * Executes this function using the specified frame and returns the result value.
      *
@@ -348,18 +368,28 @@ public abstract class RootNode extends ExecutableNode {
         RootCallTarget target = this.callTarget;
         if (target == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ReentrantLock l = getLazyLock();
-            l.lock();
-            try {
-                target = this.callTarget;
-                if (target == null) {
-                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(this);
-                }
-            } finally {
-                l.unlock();
-            }
+            target = initializeCallTarget(null);
         }
         return target;
+    }
+
+    private RootCallTarget initializeCallTarget(CallTarget source) {
+        RootCallTarget target;
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            target = this.callTarget;
+            if (target == null) {
+                this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(source, this);
+            }
+        } finally {
+            l.unlock();
+        }
+        return target;
+    }
+
+    final RootCallTarget getCallTargetWithoutInitialization() {
+        return callTarget;
     }
 
     /** @since 0.8 or earlier */
