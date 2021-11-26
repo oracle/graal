@@ -33,6 +33,8 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -98,6 +100,16 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
             }
         }
         return locations;
+    }
+
+    @Override
+    public Collection<InvokeInfo> getInvokes() {
+        return Collections.unmodifiableCollection(getTypeFlow().getInvokes());
+    }
+
+    @Override
+    public StackTraceElement[] getParsingContext() {
+        return getTypeFlow().getParsingContext();
     }
 
     /**

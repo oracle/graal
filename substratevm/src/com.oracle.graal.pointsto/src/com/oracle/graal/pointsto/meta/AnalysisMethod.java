@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -174,6 +175,17 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public abstract void startTrackInvocations();
+
+    /**
+     * @return analysis related invoke information for given method, mainly the possible callees to
+     *         traverse the call graph
+     */
+    public abstract Collection<InvokeInfo> getInvokes();
+
+    /**
+     * @return the parsing context in which given method was parsed
+     */
+    public abstract StackTraceElement[] getParsingContext();
 
     public int getId() {
         return id;
@@ -598,9 +610,5 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
-    }
-
-    public AnalysisUniverse getUniverse() {
-        return universe;
     }
 }

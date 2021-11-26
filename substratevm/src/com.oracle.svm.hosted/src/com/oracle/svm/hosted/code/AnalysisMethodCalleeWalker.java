@@ -98,7 +98,7 @@ public class AnalysisMethodCalleeWalker {
 
     /** Visit the callees of this method. */
     VisitResult walkCallees(AnalysisMethod method, CallPathVisitor visitor) {
-        for (InvokeInfo invoke : method.getUniverse().getBigbang().getInvokes(method)) {
+        for (InvokeInfo invoke : method.getInvokes()) {
             walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getPosition(), visitor);
         }
         return VisitResult.CONTINUE;

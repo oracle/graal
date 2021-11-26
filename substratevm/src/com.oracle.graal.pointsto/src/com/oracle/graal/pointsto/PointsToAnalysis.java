@@ -33,7 +33,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -46,7 +45,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -765,17 +763,6 @@ public abstract class PointsToAnalysis implements BigBang {
                 }
             }
         }
-    }
-
-    @Override
-    public Collection<InvokeInfo> getInvokes(AnalysisMethod method) {
-        assertPointsToAnalysisMethod(method);
-        return Collections.unmodifiableCollection(assertPointsToAnalysisMethod(method).getTypeFlow().getInvokes());
-    }
-
-    @Override
-    public StackTraceElement[] getParsingContext(AnalysisMethod method) {
-        return assertPointsToAnalysisMethod(method).getTypeFlow().getParsingContext();
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")

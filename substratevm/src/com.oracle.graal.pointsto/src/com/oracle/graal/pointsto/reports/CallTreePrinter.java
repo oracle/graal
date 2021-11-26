@@ -195,7 +195,7 @@ public final class CallTreePrinter {
              * Process the method: iterate the invokes, for each invoke iterate the callees, if the
              * callee was not already processed add it to the tree and to the work list.
              */
-            bb.getInvokes(node.method)
+            node.method.getInvokes()
                             .stream()
                             .sorted(invokeInfoComparator)
                             .forEach(invokeInfo -> processInvoke(invokeInfo, node, workList));

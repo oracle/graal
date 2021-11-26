@@ -560,7 +560,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             if (!isAllowedType(className)) {
                 disallowedTypes.add(className);
             }
-            for (InvokeInfo invoke : bb.getInvokes(m)) {
+            for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     if (seen.add(callee)) {
                         todo.add(callee);

@@ -71,7 +71,7 @@ public final class ShortestInvokeChainPrinter {
             Element methodElement = visited.get(method);
             assert methodElement != null;
 
-            for (InvokeInfo invoke : bb.getInvokes(method)) {
+            for (InvokeInfo invoke : method.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
 
                     if (visited.containsKey(callee)) {

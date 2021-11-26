@@ -29,11 +29,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import java.lang.reflect.Executable;
-import java.util.Collection;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -117,16 +115,4 @@ public interface ReachabilityAnalysis {
      * @return policy used when running the analysis
      */
     AnalysisPolicy analysisPolicy();
-
-    /**
-     * @return analysis related invoke information for given method, mainly the possible callees to
-     *         traverse the call graph
-     */
-    Collection<InvokeInfo> getInvokes(AnalysisMethod method);
-
-    /**
-     * @return the parsing context in which given method was parsed
-     */
-    StackTraceElement[] getParsingContext(AnalysisMethod method);
-
 }

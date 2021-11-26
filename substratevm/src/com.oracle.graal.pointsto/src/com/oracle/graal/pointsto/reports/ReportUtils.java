@@ -39,7 +39,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -205,8 +204,7 @@ public class ReportUtils {
 
     public static String parsingContext(AnalysisMethod method, int bci, String indent) {
         StringBuilder msg = new StringBuilder();
-        BigBang bb = method.getUniverse().getBigbang();
-        StackTraceElement[] parsingContext = bb.getParsingContext(method);
+        StackTraceElement[] parsingContext = method.getParsingContext();
         if (parsingContext.length > 0) {
             /* Include target method first. */
             msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));

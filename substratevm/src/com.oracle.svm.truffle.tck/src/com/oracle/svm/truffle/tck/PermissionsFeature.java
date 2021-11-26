@@ -290,7 +290,7 @@ public class PermissionsFeature implements Feature {
         try {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
-            for (InvokeInfo invoke : m.getUniverse().getBigbang().getInvokes(m)) {
+            for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     if (callee.isInvoked()) {
                         Set<AnalysisMethod> parents = visited.get(callee);

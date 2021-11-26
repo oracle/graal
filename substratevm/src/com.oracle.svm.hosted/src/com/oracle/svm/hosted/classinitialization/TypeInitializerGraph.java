@@ -162,7 +162,7 @@ public class TypeInitializerGraph {
      * types unknown to points-to analysis (which sees only the substituted version.
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
-        return bb.getInvokes(m).stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
+        return m.getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
                         hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
     }
@@ -204,7 +204,7 @@ public class TypeInitializerGraph {
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
-        if (bb.getInvokes(m).stream().anyMatch(this::isInvokeUnsafeIterative)) {
+        if (m.getInvokes().stream().anyMatch(this::isInvokeUnsafeIterative)) {
             methodSafety.put(m, Safety.UNSAFE);
             return true;
         }
