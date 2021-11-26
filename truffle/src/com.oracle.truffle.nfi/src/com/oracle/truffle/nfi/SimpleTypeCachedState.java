@@ -426,24 +426,51 @@ final class SimpleTypeCachedState {
             return arg;
         }
 
-        @Specialization(limit = "3")
+        @Specialization
+        float doPrimitive(@SuppressWarnings("unused") NFIType type, double arg) {
+            return (float) arg; // allow implicit precision losing casts
+        }
+
+        @Specialization(limit = "3", replaces = "doPrimitive", guards = "interop.fitsInFloat(arg)", rewriteOn = UnsupportedMessageException.class)
         @GenerateAOT.Exclude
-        float doGeneric(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @Cached BranchProfile exception,
-                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
+        float doFloat(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.asFloat(arg);
+        }
+
+        @Specialization(limit = "3", replaces = "doFloat", guards = "interop.isNumber(arg)")
+        @GenerateAOT.Exclude
+        float doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop,
+                        @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
-                if (interop.isNumber(arg)) {
-                    return interop.asFloat(arg);
+                if (interop.fitsInDouble(arg)) {
+                    return (float) interop.asDouble(arg);
                 }
-            } catch (UnsupportedMessageException ex) {
+            } catch (UnsupportedMessageException e) {
                 // fallthrough
             }
             exception.enter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+
+        @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
+        @GenerateAOT.Exclude
+        float doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop,
+                        @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
                 return interop.asBoolean(arg) ? 1.0f : 0.0f;
-            } catch (UnsupportedMessageException ex2) {
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
                 throw UnsupportedTypeException.create(new Object[]{arg});
             }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }
 
@@ -456,24 +483,46 @@ final class SimpleTypeCachedState {
             return arg;
         }
 
-        @Specialization(limit = "3")
+        @Specialization(limit = "3", replaces = "doPrimitive", guards = "interop.fitsInDouble(arg)", rewriteOn = UnsupportedMessageException.class)
         @GenerateAOT.Exclude
-        double doGeneric(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @Cached BranchProfile exception,
-                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedTypeException {
+        double doDouble(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.asDouble(arg);
+        }
+
+        @Specialization(limit = "3", replaces = "doDouble", guards = "interop.isNumber(arg)")
+        @GenerateAOT.Exclude
+        double doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop,
+                        @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
-                if (interop.isNumber(arg)) {
+                if (interop.fitsInDouble(arg)) {
                     return interop.asDouble(arg);
                 }
-            } catch (UnsupportedMessageException ex) {
+            } catch (UnsupportedMessageException e) {
                 // fallthrough
             }
             exception.enter();
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+
+        @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
+        @GenerateAOT.Exclude
+        double doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop,
+                        @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
                 return interop.asBoolean(arg) ? 1.0 : 0.0;
-            } catch (UnsupportedMessageException ex2) {
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
                 throw UnsupportedTypeException.create(new Object[]{arg});
             }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }
 }
