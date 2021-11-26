@@ -811,8 +811,6 @@ public class NativeImageGenerator {
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions));
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
-                /* Make sure that Object type is added to the universe before any other types. */
-                aMetaAccess.lookupJavaType(Object.class);
 
                 AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
                                 aUniverse, aMetaAccess, originalProviders.getConstantReflection(), classInitializationSupport);

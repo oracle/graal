@@ -141,14 +141,19 @@ public final class AnalysisParsedGraph {
         }
     }
 
+    @SuppressWarnings("try")
     private static AnalysisParsedGraph optimizeAndEncode(BigBang bb, AnalysisMethod method, StructuredGraph graph, boolean isIntrinsic) {
-        /*
-         * Must be called before any other thread can access the graph, i.e., before the graph is
-         * published.
-         */
-        bb.getHostVM().methodAfterParsingHook(bb, method, graph);
+        try (DebugContext.Scope s = graph.getDebug().scope("ClosedWorldAnalysis", graph, method)) {
+            /*
+             * Must be called before any other thread can access the graph, i.e., before the graph
+             * is published.
+             */
+            bb.getHostVM().methodAfterParsingHook(bb, method, graph);
 
-        EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
-        return new AnalysisParsedGraph(encodedGraph, isIntrinsic);
+            EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
+            return new AnalysisParsedGraph(encodedGraph, isIntrinsic);
+        } catch (Throwable e) {
+            throw graph.getDebug().handle(e);
+        }
     }
 }
