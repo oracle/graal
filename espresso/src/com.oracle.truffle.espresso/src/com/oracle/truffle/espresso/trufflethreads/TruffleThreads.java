@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.trufflethreads;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -33,6 +34,9 @@ import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
+ * This class is a convenience layer on top of
+ * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}.
+ * <p>
  * TruffleThreads provides custom implementations of the common blocking methods from the
  * {@link java.lang.Thread} class which behaves as their original counterpart, save for two details:
  * <ul>
@@ -41,6 +45,7 @@ import com.oracle.truffle.api.nodes.Node;
  * method, and throw a {@link GuestInterruptedException} instead of a
  * {@link java.lang.InterruptedException}.</li>
  * </ul>
+ * </p>
  * <p>
  * Additionally, this class provides the {@link #enterInterruptible(Interruptible, Node, Object)}
  * which allows implementing custom blocking operations with the behavior described above.
@@ -154,11 +159,11 @@ final class TruffleThreadsImpl implements TruffleThreads {
 
     private static Interruptible<Long> sleepInterruptible() {
         return new Interruptible<Long>() {
-            private final long start = System.currentTimeMillis();
+            private final long start = System.nanoTime();
 
             @Override
             public void apply(Long arg) throws InterruptedException {
-                long millis = arg - (System.currentTimeMillis() - start);
+                long millis = arg - (System.nanoTime() - start);
                 if (millis <= 0) {
                     return;
                 }
@@ -169,12 +174,12 @@ final class TruffleThreadsImpl implements TruffleThreads {
 
     @Override
     public void sleep(long millis, Node location) throws GuestInterruptedException {
-        enterInterruptible(sleepInterruptible(), location, millis);
+        enterInterruptible(sleepInterruptible(), location, TimeUnit.MILLISECONDS.toNanos(millis));
     }
 
     @Override
     public void guestInterrupt(Thread t) {
         guestInterrupter.guestInterrupt(t);
-        t.interrupt();
+        t.interrupt(); // Host interrupt to wake up the thread.
     }
 }

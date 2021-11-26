@@ -143,7 +143,11 @@ public interface TruffleLock {
      * @throws GuestInterruptedException if any thread guest-interrupted the current thread before
      *             or while the current thread was waiting for a notification.
      */
-    boolean await(long timeout) throws GuestInterruptedException;
+    default boolean await(long timeout) throws GuestInterruptedException {
+        return await(timeout, TimeUnit.MILLISECONDS);
+    }
+
+    boolean await(long timeout, TimeUnit unit) throws GuestInterruptedException;
 
     /**
      * Wakes up one waiting thread.
@@ -236,8 +240,8 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     }
 
     @Override
-    public boolean await(long timeout) throws GuestInterruptedException {
-        WaitInterruptible interruptible = new WaitInterruptible(timeout);
+    public boolean await(long timeout, TimeUnit unit) throws GuestInterruptedException {
+        WaitInterruptible interruptible = new WaitInterruptible(timeout, unit);
         if (timeout >= 0) {
             if (!isHeldByCurrentThread()) {
                 throw new IllegalMonitorStateException();
@@ -360,25 +364,25 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     }
 
     private static final class WaitInterruptible implements TruffleSafepoint.Interruptible<TruffleLockImpl> {
-        WaitInterruptible(long timeout) {
-            this.timeout = timeout;
-            this.start = System.currentTimeMillis();
+        WaitInterruptible(long timeout, TimeUnit unit) {
+            this.nanoTimeout = unit.toNanos(timeout);
+            this.start = System.nanoTime();
         }
 
-        private final long timeout;
+        private final long nanoTimeout;
         private final long start;
         boolean result = true;
 
         @Override
         public void apply(TruffleLockImpl lock) throws InterruptedException {
-            if (timeout == 0L) {
+            if (nanoTimeout == 0L) {
                 lock.getWaitCondition().await();
             } else {
-                long millis = timeout - (System.currentTimeMillis() - start);
-                if (millis <= 0) {
+                long left = nanoTimeout - (System.nanoTime() - start);
+                if (left <= 0) {
                     return; // fully waited.
                 }
-                result = lock.getWaitCondition().await(millis, TimeUnit.MILLISECONDS);
+                result = lock.getWaitCondition().await(left, TimeUnit.NANOSECONDS);
             }
         }
     }
