@@ -226,6 +226,7 @@ innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
 innr public final static WINDOWS_AMD64
+innr public final static WINDOWS_AARCH64
 innr public static LINUX_AMD64
 meth public java.lang.String getArchitecture()
 meth public java.lang.String getOS()
@@ -324,6 +325,13 @@ CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AMD64
+intf org.graalvm.nativeimage.Platform$WINDOWS
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AARCH64
 intf org.graalvm.nativeimage.Platform$WINDOWS
 supr java.lang.Object
 

@@ -101,7 +101,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
-    private final RegisterArray simdParameterRegs;
+    private final RegisterArray fpParameterRegs;
     private final RegisterArray allocatableRegs;
     private final RegisterArray calleeSaveRegisters;
     private final RegisterAttributes[] attributesMap;
@@ -114,9 +114,16 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         this.metaAccess = metaAccess;
         this.preserveFramePointer = preserveFramePointer;
 
-        // This is the Linux 64-bit ABI for parameters.
+        /*
+         * This is the Linux 64-bit ABI for parameters.
+         *
+         * Note the Darwin and Windows ABI are the same with the following exception:
+         *
+         * On Windows, when calling a method with variadic args, all fp parameters must be passed on
+         * the stack. Currently, this is unsupported. Adding support is tracked by GR-34188.
+         */
         generalParameterRegs = new RegisterArray(r0, r1, r2, r3, r4, r5, r6, r7);
-        simdParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
+        fpParameterRegs = new RegisterArray(v0, v1, v2, v3, v4, v5, v6, v7);
 
         nativeParamsStackOffset = 0;
 
@@ -141,10 +148,13 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
         regs.remove(ReservedRegisters.singleton().getThreadRegister());
         /*
-         * Darwin specifies that r18 is a platform-reserved register:
+         * Darwin and Windows specify that r18 is a platform-reserved register:
+         *
          * https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms
+         *
+         * https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions
          */
-        if (OS.getCurrent() == OS.DARWIN) {
+        if (OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.WINDOWS) {
             regs.remove(r18);
         }
         allocatableRegs = new RegisterArray(regs);
@@ -229,7 +239,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
 
         int currentGeneral = 0;
-        int currentSIMD = 0;
+        int currentFP = 0;
 
         /*
          * We have to reserve a slot between return address and outgoing parameters for the deopt
@@ -261,8 +271,8 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                         break;
                     case Float:
                     case Double:
-                        if (currentSIMD < simdParameterRegs.size()) {
-                            register = simdParameterRegs.get(currentSIMD++);
+                        if (currentFP < fpParameterRegs.size()) {
+                            register = fpParameterRegs.get(currentFP++);
                         }
                         break;
                     default:
