@@ -184,7 +184,7 @@ public final class StatisticsPrinter {
         for (AnalysisMethod method : pointsToAnalysis.getUniverse().getMethods()) {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
-            MethodTypeFlow methodFlow = method.getTypeFlow();
+            MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
             MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
 
             for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {

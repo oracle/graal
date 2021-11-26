@@ -109,6 +109,7 @@ public class AnalysisUniverse implements Universe {
     private final MetaAccessProvider originalMetaAccess;
     private final SnippetReflectionProvider originalSnippetReflection;
     private final SnippetReflectionProvider snippetReflection;
+    private final AnalysisFactory analysisFactory;
 
     private AnalysisType objectClass;
     private final JavaKind wordKind;
@@ -122,7 +123,7 @@ public class AnalysisUniverse implements Universe {
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection) {
+                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -130,6 +131,7 @@ public class AnalysisUniverse implements Universe {
         this.originalMetaAccess = originalMetaAccess;
         this.originalSnippetReflection = originalSnippetReflection;
         this.snippetReflection = snippetReflection;
+        this.analysisFactory = analysisFactory;
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
@@ -427,7 +429,7 @@ public class AnalysisUniverse implements Universe {
         if (sealed) {
             return null;
         }
-        AnalysisMethod newValue = new AnalysisMethod(this, method);
+        AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
         return oldValue != null ? oldValue : newValue;
     }

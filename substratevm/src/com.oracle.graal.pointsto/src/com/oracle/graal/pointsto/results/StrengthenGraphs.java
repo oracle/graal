@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -121,7 +122,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph)).apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(PointsToAnalysis.assertPointsToAnalysisMethod(method), graph)).apply(graph, bb.getProviders());
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
@@ -174,7 +175,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
         private final NodeBitMap createdPiNodes;
 
-        StrengthenSimplifier(AnalysisMethod method, StructuredGraph graph) {
+        StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
             this.methodFlow = method.getTypeFlow();
             this.originalFlows = methodFlow.getOriginalMethodFlows();
@@ -358,7 +359,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                      */
                     return;
                 }
-                ParameterNode returnedCalleeParameter = callee.getTypeFlow().getReturnedParameter();
+                ParameterNode returnedCalleeParameter = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameter();
                 if (returnedCalleeParameter == null) {
                     /* This callee does not return a parameter. */
                     return;
