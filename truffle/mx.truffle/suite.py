@@ -110,6 +110,27 @@ suite = {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.1.0.jar"],
     },
 
+    "ICU4J" : {
+      "moduleName" : "com.ibm.icu",
+      "sha1" : "ff666ac55986650893aacb9e2e0003538e9799c0",
+      "sourceSha1" : "3e19ca5465fce86a094c24df0b6c9256e53c8885",
+      "maven" : {
+        "groupId" : "com.ibm.icu",
+        "artifactId" : "icu4j",
+        "version" : "69.1",
+      },
+    },
+    "ICU4J-CHARSET" : {
+      "moduleName" : "com.ibm.icu.charset",
+      "sha1" : "c62f823ed741048490beb1660765397ad6331287",
+      "sourceSha1" : "9b366d73b5621fe534624be8276e53f2f9ee1485",
+      "maven" : {
+        "groupId" : "com.ibm.icu",
+        "artifactId" : "icu4j-charset",
+        "version" : "69.1",
+      },
+    },
+
     "TruffleJSON" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
       "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
