@@ -225,8 +225,8 @@ innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
-innr public final static WINDOWS_AMD64
 innr public final static WINDOWS_AARCH64
+innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
 meth public java.lang.String getArchitecture()
 meth public java.lang.String getOS()
@@ -321,17 +321,17 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 meth public java.lang.String getOS()
 
-CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
- outer org.graalvm.nativeimage.Platform
-cons public init()
-intf org.graalvm.nativeimage.Platform$AMD64
-intf org.graalvm.nativeimage.Platform$WINDOWS
-supr java.lang.Object
-
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$WINDOWS
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$WINDOWS
 supr java.lang.Object
 
@@ -475,7 +475,7 @@ innr public final static FatalExceptionHandler
 innr public final static NotIncludedAutomatically
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.Class<? extends java.util.function.BooleanSupplier> include()
-meth public abstract !hasdefault java.lang.Class<?> exceptionHandler()
+meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.nativeimage.c.function.CEntryPoint$ExceptionHandler> exceptionHandler()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String[] documentation()
 meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Builtin builtin()
