@@ -26,9 +26,15 @@ package com.oracle.svm.core;
 
 import java.util.Arrays;
 
+import com.oracle.svm.core.option.RuntimeOptionKey;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.PauseNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -82,6 +88,7 @@ import com.oracle.svm.core.util.Counter;
 
 public class SubstrateDiagnostics {
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
+    private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -177,12 +184,23 @@ public class SubstrateDiagnostics {
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         log.newline();
-        // Save the state of the initial error so that this state is consistently used, even if
-        // further errors occur while printing diagnostics.
+        /*
+         * Save the state of the initial error so that this state is consistently used, even if
+         * further errors occur while printing diagnostics.
+         */
         if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
             log.string("Error: printDiagnostics already in progress by another thread.").newline();
             log.newline();
             return false;
+        }
+
+        /*
+         * Execute an endless loop if requested. This makes it easier to attach a debugger lazily.
+         * In the debugger, it is possible to change the value of loopOnFatalError to false if
+         * necessary.
+         */
+        while (loopOnFatalError) {
+            PauseNode.pause();
         }
 
         printFatalErrorForCurrentState();
@@ -959,5 +977,16 @@ public class SubstrateDiagnostics {
         void setInitialInvocationCount(int index, int value) {
             initialInvocationCount[index] = value;
         }
+    }
+
+    public static class Options {
+        @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<Boolean>(false) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                SubstrateDiagnostics.loopOnFatalError = newValue;
+            }
+        };
     }
 }
