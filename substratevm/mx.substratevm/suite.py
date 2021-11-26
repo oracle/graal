@@ -229,6 +229,7 @@ suite = {
                 "java.compiler",
             ],
             "requiresConcealed" : {
+                "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
                 "java.base" : [
                     "jdk.internal.module",
                     "jdk.internal.reflect",

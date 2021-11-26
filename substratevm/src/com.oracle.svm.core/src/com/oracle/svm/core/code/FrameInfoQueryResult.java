@@ -328,13 +328,7 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method, for debugging purposes only.
      */
     public StackTraceElement getSourceReference() {
-        /*
-         * According to StackTraceElement undefined className is denoted by "", undefined fileName
-         * is denoted by null
-         */
-        final String className = sourceClass != null ? sourceClass.getName() : "";
-        String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
-        return new StackTraceElement(className, sourceMethodName, sourceFileName, sourceLineNumber);
+        return SourceReferenceSupplier.createReference(sourceClass, sourceMethodName, sourceLineNumber);
     }
 
     public boolean isNativeMethod() {
