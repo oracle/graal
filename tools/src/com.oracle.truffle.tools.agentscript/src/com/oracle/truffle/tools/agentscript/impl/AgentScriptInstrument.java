@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -42,7 +43,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
     id = "agentscript",
     name = "Agent Script",
     version = Insight.VERSION,
-    services = {}
+    services = {Function.class}
 )
 // @formatter:on
 public final class AgentScriptInstrument extends InsightInstrument {
