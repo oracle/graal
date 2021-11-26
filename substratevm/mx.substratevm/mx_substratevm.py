@@ -1109,6 +1109,7 @@ def hellomodule(args):
     with native_image_context(hosted_assertions=False, config=config) as native_image:
         module_path_sep = ';' if mx.is_windows() else ':'
         moduletest_run_args = [
+            '-ea',
             '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
             '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
             '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'
