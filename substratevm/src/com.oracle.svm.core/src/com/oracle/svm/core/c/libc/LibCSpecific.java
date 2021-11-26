@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.c.libc;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.TYPE, ElementType.PACKAGE})
+public @interface LibCSpecific {
 
-public class CErrorNumber {
+    Class<? extends LibCBase>[] value();
 
-    public interface CErrorNumberSupport {
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        int getCErrorNumber();
-
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        void setCErrorNumber(int value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getCErrorNumber() {
-        return ImageSingletons.lookup(CErrorNumberSupport.class).getCErrorNumber();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setCErrorNumber(int value) {
-        ImageSingletons.lookup(CErrorNumberSupport.class).setCErrorNumber(value);
-    }
 }

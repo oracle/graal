@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
@@ -50,7 +50,7 @@ public final class PosixStat {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
 
-        return result == 0 || CErrorNumber.getCErrorNumber() != Errno.EBADF();
+        return result == 0 || LibC.errno() != Errno.EBADF();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

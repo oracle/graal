@@ -166,6 +166,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final LIRKindTool lirKindTool;
     private final DebugInfoPrinter debugInfoPrinter;
 
+    private final ResolvedJavaType prologueType;
+
     private final String functionName;
     private final boolean isEntryPoint;
     private final boolean canModifySpecialRegisters;
@@ -189,6 +191,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.arithmetic = new ArithmeticLLVMGenerator();
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
+
+        this.prologueType = providers.getMetaAccess().lookupJavaType(CEntryPointOptions.Prologue.class);
 
         this.functionName = SubstrateUtil.uniqueShortName(method);
         this.isEntryPoint = isEntryPoint(method);
@@ -304,7 +308,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private boolean canModifySpecialRegisters(ResolvedJavaMethod method) {
         CEntryPointOptions entryPointOptions = GuardedAnnotationAccess.getAnnotation(method, CEntryPointOptions.class);
-        return (entryPointOptions != null) && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
+        return prologueType.isAssignableFrom(method.getDeclaringClass()) ||
+                        entryPointOptions != null && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointNativeFunctions.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class));

@@ -172,7 +172,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
     private static final CEntryPointLiteral<CFunctionPointer> pthreadStartRoutine = CEntryPointLiteral.create(PosixJavaThreads.class, "pthreadStartRoutine", ThreadStartData.class);
 
-    private static class PthreadStartRoutinePrologue {
+    private static class PthreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
 
         @SuppressWarnings("unused")

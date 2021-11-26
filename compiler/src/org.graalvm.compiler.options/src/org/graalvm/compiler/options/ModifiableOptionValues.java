@@ -75,6 +75,8 @@ public class ModifiableOptionValues extends OptionValues {
                 newMap.put(key, encodeNull(value));
             }
         } while (!v.compareAndSet(expect, newMap));
+
+        key.afterValueUpdate();
     }
 
     /**

@@ -106,8 +106,7 @@ class HostedHeapSizeVerifierFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         // At build-time, we can do a reasonable GC-independent verification of all the heap size
-        // settings. At run-time, we can only do a validation against the address space because we
-        // don't have a fixed order in which the options are set.
+        // settings.
         HeapSizeVerifier.verifyHeapOptions();
     }
 }

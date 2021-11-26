@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -59,11 +60,13 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
@@ -199,8 +202,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
+        IsolateArgumentParser.parse(parameters, parsedArgs);
+
         WordPointer isolate = StackValue.get(WordPointer.class);
-        isolate.write(WordFactory.nullPointer());
         int error = Isolates.create(isolate, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
@@ -209,6 +214,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
+        IsolateArgumentParser.singleton().persistOptions(parsedArgs);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
 
         CodeInfoTable.prepareImageCodeInfo();
@@ -260,6 +266,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 PlatformNativeLibrarySupport.singleton().setIsFirstIsolate();
             } else {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
+                    PauseNode.pause();
                     state = unsafe.getIntVolatile(null, initStateAddr);
                 }
                 if (state == FirstIsolateInitStates.FAILED) {

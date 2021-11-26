@@ -37,13 +37,13 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -168,7 +168,7 @@ final class Util_jdk_internal_misc_Signal {
                     /* Open the C signal handling mechanism. */
                     final int openResult = CSunMiscSignal.open();
                     if (openResult != 0) {
-                        final int openErrno = CErrorNumber.getCErrorNumber();
+                        final int openErrno = LibC.errno();
                         /* Check for the C signal handling mechanism already being open. */
                         if (openErrno == Errno.EBUSY()) {
                             throw new IllegalArgumentException("C signal handling mechanism is in use.");

@@ -116,7 +116,7 @@ public final class WindowsJavaThreads extends JavaThreads {
 
     private static final CEntryPointLiteral<CFunctionPointer> osThreadStartRoutine = CEntryPointLiteral.create(WindowsJavaThreads.class, "osThreadStartRoutine", WindowsThreadStartData.class);
 
-    private static class OSThreadStartRoutinePrologue {
+    private static class OSThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
 
         @SuppressWarnings("unused")

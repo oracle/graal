@@ -38,7 +38,7 @@ public class JNIThreadLocalPendingException {
         return pendingException.get();
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void set(Throwable t) {
         pendingException.set(t);
     }

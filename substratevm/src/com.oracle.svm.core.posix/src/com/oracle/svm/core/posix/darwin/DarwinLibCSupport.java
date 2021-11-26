@@ -24,21 +24,21 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
-import com.oracle.svm.core.CErrorNumber.CErrorNumberSupport;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.posix.PosixLibCSupport;
 import com.oracle.svm.core.posix.headers.darwin.DarwinErrno;
 
-class DarwinCErrorNumberSupport implements CErrorNumberSupport {
+class DarwinLibCSupport extends PosixLibCSupport {
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public int getCErrorNumber() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int errno() {
         return DarwinErrno.__error().read();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void setCErrorNumber(int value) {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setErrno(int value) {
         DarwinErrno.__error().write(value);
     }
 }

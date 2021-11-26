@@ -665,7 +665,9 @@ def _helloworld(native_image, javac_command, path, build_only, args):
                 pout, pin = os.pipe()
                 os.dup2(pin, 1)  # connect stdout to pipe
                 os.environ[envkey] = output
-                lib.run_main(1, 'dummy')  # call run_main of shared lib
+                argc = 1
+                argv = (ctypes.c_char_p * argc)(b'dummy')
+                lib.run_main(argc, argv)  # call run_main of shared lib
                 call_stdout = os.read(pout, 120)  # get pipe contents
                 actual_output.append(call_stdout)
                 os.dup2(stdout, 1)  # restore original stdout
