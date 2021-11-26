@@ -143,7 +143,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link #disposeContext(Object) disposed}.
  *
  *
- * <h4>Context Policy</h4>
+ * <h4>Context Policy and Sharing</h4>
  *
  * The number of {@link TruffleLanguage} instances per polyglot {@link org.graalvm.polyglot.Context
  * context} is configured by the {@link Registration#contextPolicy() context policy}. By default an
@@ -175,6 +175,8 @@ import com.oracle.truffle.api.source.SourceSection;
  *     - I : {@linkplain org.graalvm.polyglot.Instrument Instrument}
  *       - 1 : {@link com.oracle.truffle.api.instrumentation.TruffleInstrument TruffleInstrument}
  * </pre>
+ *
+ * For more information on sharing between multiple contexts please see {@link ContextPolicy}.
  *
  * <h4>Parse Caching</h4>
  *
@@ -506,10 +508,7 @@ public abstract class TruffleLanguage<C> {
      * Returns <code>true</code> if the combination of two sets of options allow to
      * {@link ContextPolicy#SHARED share} or {@link ContextPolicy#REUSE reuse} the same language
      * instance, else <code>false</code>. If options are incompatible then a new language instance
-     * will be created for a new context. The first language context {@link #createContext(Env)
-     * created} for a {@link TruffleLanguage} instance always has compatible options, therefore
-     * {@link #areOptionsCompatible(OptionValues, OptionValues)} will not be invoked for it. The
-     * default implementation returns <code>true</code>.
+     * will be created for a new context. The default implementation returns <code>true</code>.
      * <p>
      * If the context policy of a language is set to {@link ContextPolicy#EXCLUSIVE exclusive}
      * (default behavior) then {@link #areOptionsCompatible(OptionValues, OptionValues)} will never
@@ -709,21 +708,43 @@ public abstract class TruffleLanguage<C> {
      * instance supports being used for multiple contexts depends on its
      * {@link Registration#contextPolicy() context policy}.
      * <p>
-     * With the default context policy {@link ContextPolicy#EXCLUSIVE exclusive}, this method will
-     * never be invoked. This method will be called prior or after the first context was created for
-     * this language. In case an {@link org.graalvm.polyglot.Context.Builder#engine(Engine) explicit
-     * engine} was used to create a context, then this method will be invoked prior to the
-     * {@link #createContext(Env) creation} of the first language context of a language. For inner
-     * contexts, this method may be invoked prior to the first
-     * {@link TruffleLanguage.Env#newContextBuilder() inner context} that is created, but after the
-     * the first outer context was created. No guest language code must be invoked in this method.
-     * This method is called at most once per language instance.
+     * For any sharing of a language instance for multiple language contexts to take place a context
+     * must be created with sharing enabled. By default sharing is disabled for polyglot contexts.
+     * Sharing can be enabled by specifying an {@link Builder#engine(Engine) explicit engine} or
+     * using an option. Before any language is used for sharing
+     * {@link #initializeMultipleContexts()} is invoked. It is guaranteed that sharing between
+     * multiple contexts is {@link #initializeMultipleContexts() initialized} before any language
+     * context is {@link #createContext(Env) created}.
      * <p>
-     * A language may use this method to invalidate assumptions that assume a single context only.
-     * For example, assumptions that are dependent on the language context data. It is required to
-     * invalidate any such assumptions that are used in the AST when this method is invoked.
+     * A language may use this method to configure itself to use context independent speculations
+     * only. Since Truffle nodes are never shared between multiple language instances it is
+     * sufficient to keep track of whether sharing is enabled using a non-volatile boolean field
+     * instead of an assumption. They field may also be annotated with {@link CompilationFinal} as
+     * it is guaranteed that this method is called prior to any compilation. The following criteria
+     * should be satisfied when supporting context independent code:
+     * <ul>
+     * <li>All speculation on runtime value identity must be disabled with multiple contexts
+     * initialized, as they will lead to a guaranteed deoptimization when used with a second
+     * context.
+     * <li>Function inline caches should be modified and implemented as a two-level inline cache.
+     * The first level speculates on the function instance's identity and the second level on the
+     * underlying CallTarget instance. The first level cache must be disabled if multiple contexts
+     * are initialized, as this would unnecessarily cause deoptimization.
+     * <li>The DynamicObject root Shape instance should be stored in the language instance instead
+     * of the language context. Otherwise, any inline cache on shapes will not stabilize and
+     * ultimately end up in the generic state.
+     * <li>All Node implementations must not store context-dependent data structures or
+     * context-dependent runtime values.
+     * <li>All assumption instances should be stored in the language instance instead of the
+     * context. With multiple contexts initialized, the context instance read using context
+     * references may no longer be a constant. In this case any assumption read from the context
+     * would not be folded and they would cause significant runtime performance overhead.
+     * Assumptions from the language can always be folded by the compiler in both single and
+     * multiple context mode.
      *
-     * @see #areOptionsCompatible(OptionValues, OptionValues)
+     * @see ContextPolicy More information on sharing language instances for multiple contexts.
+     * @see #areOptionsCompatible(OptionValues, OptionValues) Specify option configurations that
+     *      make sharing incompatible.
      * @see ContextPolicy
      * @since 19.0
      */
@@ -3954,16 +3975,34 @@ public abstract class TruffleLanguage<C> {
      * {@link TruffleLanguage language} instance, therefore the context policy influences its
      * behavior.
      * <p>
-     * The context policy applies to contexts that were created using the polyglot API as well as
-     * for {@link TruffleContext inner contexts}. The context policy does not apply to nodes that
-     * were created using the Truffle interop protocol. Therefore, interop message nodes always need
-     * to be prepared to be used with policy {@link ContextPolicy#SHARED}.
+     * If multiple sharable languages are used at the same time, nodes of sharable languages may
+     * adopt nodes of a non-sharable languages indirectly, e.g. through Truffle interoperability.
+     * This would complicate language implementations as they would always need to support sharing
+     * for their nodes. To avoid this problem, Truffle uses sharing layers. Sharing layers ensure
+     * that every node created by a language instance can only be observed by a single language
+     * instance at a time. Sharing layers operate on the principle that all languages share the code
+     * with the same language instance or no language shares. As a convenient consequence any call
+     * to {@link LanguageReference#get(Node)} with an adopted {@link Node} can fold to a constant
+     * during partial evaluation.
+     * <p>
+     * For any sharing to take place a context must be created with sharing enabled. By default
+     * sharing is disabled for polyglot contexts. Sharing can be enabled by specifying an
+     * {@link Builder#engine(Engine) explicit engine} or using an option. Before any language is
+     * used for sharing {@link TruffleLanguage#initializeMultipleContexts()} is invoked. It is
+     * guaranteed that sharing between multiple contexts is
+     * {@link TruffleLanguage#initializeMultipleContexts() initialized} before any language context
+     * is {@link TruffleLanguage#createContext(Env) created}.
      *
      * @see Registration#contextPolicy() To configure context policy for a language.
      * @see TruffleLanguage#parse(ParsingRequest)
+     * @see TruffleLanguage#initializeMultipleContexts()
      * @since 19.0
      */
     public enum ContextPolicy {
+
+        /*
+         * The declared order of the enum constants is used. Please do not change.
+         */
 
         /**
          * Use one exclusive {@link TruffleLanguage} instance per language context instance.

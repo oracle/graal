@@ -491,8 +491,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_LOCAL);
                 c1.enter();
                 try {
@@ -512,8 +512,8 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextThreadLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_THREAD_LOCAL);
                 c1.enter();
                 try {
@@ -849,7 +849,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             TruffleContext innerTruffleContext = createInnerContext(outerLanguageOuterEnv);
             Object outerTruffleContext = innerTruffleContext.enter(this);
             try {
-                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(this);
+                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(null);
                 createInstrument(outerLanguageInnerEnv);
                 CallTarget callTarget = parse(outerLanguageInnerEnv);
                 return callNode.call(callTarget);

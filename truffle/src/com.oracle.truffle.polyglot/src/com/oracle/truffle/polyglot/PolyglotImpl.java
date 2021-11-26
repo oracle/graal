@@ -254,7 +254,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             if (impl != null) {
-                if (hostLanguage.getClass() != impl.hostLanguageInstance.spi.getClass()) {
+                if (hostLanguage.getClass() != impl.getHostLanguageSPI().getClass()) {
                     // Patching engine with different host language is not supported.
                     // Fall back to new engine.
                     impl = null;
@@ -269,6 +269,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                     useAllowExperimentalOptions,
                                     boundEngine,
                                     logHandler);
+
                 }
             }
             if (impl == null) {

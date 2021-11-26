@@ -84,6 +84,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -358,7 +359,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     }
 
-    @TruffleLanguage.Registration(id = "test-language-instrumentation-language", name = "", version = "")
+    @TruffleLanguage.Registration(id = "test-language-instrumentation-language", name = "", version = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestLanguageInstrumentationLanguage extends InstrumentationTestLanguage {
 
@@ -911,7 +912,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = TestOtherLanguageParseInline.ID, name = "")
+    @TruffleLanguage.Registration(id = TestOtherLanguageParseInline.ID, name = "", contextPolicy = ContextPolicy.SHARED)
     public static class TestOtherLanguageParseInline extends InstrumentationTestLanguage {
 
         static final String ID = "testOtherParseInline-lang";
@@ -967,7 +968,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         run(source);
     }
 
-    @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "")
+    @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.StatementTag.class})
     public static class TestLanguageNoParseInline extends InstrumentationTestLanguage {
 
@@ -1565,7 +1566,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         engine = null; // avoid a second disposal in @After event
     }
 
-    @TruffleLanguage.Registration(id = "testIsNodeTaggedWith1-lang", name = "")
+    @TruffleLanguage.Registration(id = "testIsNodeTaggedWith1-lang", name = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestIsNodeTaggedWith1Language extends InstrumentationTestLanguage {
 
@@ -2471,7 +2472,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public static class AsynchronousStacksInstrument extends ProxyInstrument {
 
         private final int testDepth = 2;
-        private final int prgDepth = 5;
+        private final int prgDepth = 4;
         CountDownLatch instrumentationFinished;
 
         @Override

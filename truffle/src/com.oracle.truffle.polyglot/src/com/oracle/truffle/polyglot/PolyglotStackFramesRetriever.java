@@ -83,7 +83,7 @@ final class PolyglotStackFramesRetriever {
             }
         }
 
-        TruffleSafepoint.setBlockedThreadInterruptible(context.engine.getUncachedLocation(), new TruffleSafepoint.Interruptible<Future<Void>>() {
+        TruffleSafepoint.setBlockedThreadInterruptible(context.uncachedLocation, new TruffleSafepoint.Interruptible<Future<Void>>() {
             @Override
             public void apply(Future<Void> arg) throws InterruptedException {
                 try {

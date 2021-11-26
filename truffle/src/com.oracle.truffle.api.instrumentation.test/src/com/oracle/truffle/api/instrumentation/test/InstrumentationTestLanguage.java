@@ -233,6 +233,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
      */
     public static Map<String, Object> envConfig = new HashMap<>();
 
+    public final Map<Object, CallTarget> codeCache = new ConcurrentHashMap<>();
+
     @Override
     protected InstrumentContext createContext(TruffleLanguage.Env env) {
         Source initSource = null;
@@ -340,21 +342,19 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     public BaseNode parse(Source code) {
-        return new Parser(this, code).parse();
+        return new Parser(code).parse();
     }
 
     private static final class Parser {
 
         private static final char EOF = (char) -1;
 
-        private final InstrumentationTestLanguage lang;
         private final Source source;
         private final String code;
         private int current;
         private int argumentIndex = 0;
 
-        Parser(InstrumentationTestLanguage lang, Source source) {
-            this.lang = lang;
+        Parser(Source source) {
             this.source = source;
             this.code = source.getCharacters().toString();
         }
@@ -483,10 +483,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return false;
         }
 
-        private BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
+        private static BaseNode createNode(String tag, String[] idents, SourceSection sourceSection, BaseNode[] childArray, List<String> multipleTags) throws AssertionError {
             switch (tag) {
                 case "DEFINE":
-                    return new DefineNode(lang, idents[0], sourceSection, childArray);
+                    return new DefineNode(idents[0], sourceSection, childArray);
                 case "CONTEXT":
                     return new ContextNode(childArray);
                 case "ARGUMENT":
@@ -1450,18 +1450,23 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     static class DefineNode extends InstrumentedNode {
-        private final InstrumentationTestLanguage language;
-        private final String identifier;
-        private final RootCallTarget target;
 
-        DefineNode(InstrumentationTestLanguage lang, String identifier, SourceSection source, BaseNode[] children) {
-            this.language = lang;
+        private final String identifier;
+        private final BaseNode[] children;
+        private final SourceSection source;
+
+        private RootCallTarget target;
+
+        DefineNode(String identifier, SourceSection source, BaseNode[] children) {
+            this.source = source;
             this.identifier = identifier;
+            this.children = children;
+
             String code = source.getCharacters().toString();
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
-            this.target = new InstrumentationTestRootNode(lang, identifier, functionSection, children).getCallTarget();
+            this.target = new InstrumentationTestRootNode(InstrumentationTestLanguage.get(this), identifier, functionSection, children).getCallTarget();
         }
 
         @Override
@@ -1477,7 +1482,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @TruffleBoundary
         private void defineFunction() {
-            InstrumentContext context = InstrumentContext.get(null);
+            InstrumentContext context = InstrumentContext.get(this);
             synchronized (context.callFunctions.callTargets) {
                 if (context.callFunctions.callTargets.containsKey(identifier)) {
                     if (context.callFunctions.callTargets.get(identifier) != target) {
@@ -1490,8 +1495,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            InstrumentationTestRootNode rootNode = (InstrumentationTestRootNode) target.getRootNode();
-            return new DefineNode(language, identifier, rootNode.getSourceSection(), new BaseNode[]{cloneUninitialized(rootNode.functionRoot, materializedTags)});
+            return new DefineNode(identifier, source, cloneUninitialized(children, materializedTags));
         }
     }
 
@@ -1507,28 +1511,71 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         @Override
-        @ExplodeLoop
         public Object execute(VirtualFrame frame) {
-            Object returnValue = Null.INSTANCE;
+            InstrumentationTestLanguage outerLanguage = InstrumentationTestLanguage.get(this);
             TruffleContext inner = createInnerContext();
             Object prev = inner.enter(this);
             try {
-                for (BaseNode child : children) {
-                    if (child != null) {
-                        returnValue = child.execute(frame);
-                    }
+                if (InstrumentationTestLanguage.get(null) == outerLanguage) {
+                    return executeImpl(frame, children);
+                } else {
+                    /*
+                     * If there is no code sharing we need to make sure we do not perform invalid
+                     * sharing between contexts. We recreate a call target for each inner language
+                     * to avoid this.
+                     */
+                    return lookupAsCallTarget().call();
+                }
+            } finally {
+                inner.leave(this, prev);
+                inner.close();
+            }
+        }
+
+        @ExplodeLoop
+        private static Object executeImpl(VirtualFrame f, BaseNode[] c) {
+            Object v = Null.INSTANCE;
+            for (BaseNode child : c) {
+                if (child != null) {
+                    v = child.execute(f);
                 }
                 /*
                  * Normally we would go through call target here which guarantees poll at the end.
                  * This language doesn't use call target here, for simplicity, so we need to poll
                  * manually.
                  */
-                TruffleSafepoint.pollHere(this);
-            } finally {
-                inner.leave(this, prev);
-                inner.close();
+                TruffleSafepoint.pollHere(child);
             }
-            return returnValue;
+            return v;
+        }
+
+        @TruffleBoundary
+        private CallTarget lookupAsCallTarget() {
+            Map<Object, CallTarget> codeCache = InstrumentationTestLanguage.get(null).codeCache;
+            CallTarget target = codeCache.get(children);
+            if (target == null) {
+                target = new RootNode(InstrumentationTestLanguage.get(null)) {
+                    @Children private final BaseNode[] innerChildren = BaseNode.cloneUninitialized(children, null);
+
+                    @Override
+                    public Object execute(VirtualFrame f) {
+                        return executeImpl(f, innerChildren);
+                    }
+
+                    @Override
+                    public boolean isInternal() {
+                        return false;
+                    }
+
+                    @Override
+                    public SourceSection getSourceSection() {
+                        return ContextNode.this.getSourceSection();
+                    }
+
+                }.getCallTarget();
+                codeCache.put(children, target);
+            }
+            return target;
         }
 
         @Override
@@ -1599,7 +1646,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     private static class SpawnNode extends InstrumentedNode {
 
-        @Child private DirectCallNode callNode;
         private final String identifier;
 
         SpawnNode(String identifier, BaseNode[] children) {
@@ -1609,11 +1655,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (callNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                CallTarget target = InstrumentContext.get(this).callFunctions.callTargets.get(identifier);
-                callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
-            }
             spawnCall();
             return Null.INSTANCE;
         }
@@ -1647,14 +1688,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else {
                 asyncInfo = null;
             }
-            InstrumentContext context = InstrumentContext.get(null);
-            Thread t = InstrumentContext.get(null).env.createThread(new Runnable() {
+            final InstrumentContext context = InstrumentContext.get(this);
+            Thread t = context.env.createThread(new Runnable() {
                 @Override
                 public void run() {
+                    RootCallTarget target = InstrumentContext.get(null).callFunctions.callTargets.get(identifier);
                     if (asyncInfo != null) {
-                        callNode.call(new Object[]{asyncInfo});
+                        target.call(new Object[]{asyncInfo});
                     } else {
-                        callNode.call(new Object[0]);
+                        target.call(new Object[0]);
                     }
                 }
             });
@@ -2964,7 +3006,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @ExportLibrary(InteropLibrary.class)
     static class FunctionsObject implements TruffleObject {
 
-        final Map<String, CallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
+        final Map<String, RootCallTarget> callTargets = Collections.synchronizedMap(new LinkedHashMap<>());
         final Map<String, TruffleObject> functions = new ConcurrentHashMap<>();
 
         FunctionsObject() {

@@ -84,9 +84,9 @@ final class PolyglotSourceCache {
         return target;
     }
 
-    void listCachedSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> source) {
-        strongCache.listSources(language, source);
-        weakCache.listSources(language, source);
+    void listCachedSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> source) {
+        strongCache.listSources(polyglot, source);
+        weakCache.listSources(polyglot, source);
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
@@ -170,7 +170,7 @@ final class PolyglotSourceCache {
 
         abstract CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
 
-        abstract void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> source);
+        abstract void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> source);
     }
 
     private static final class StrongCache extends Cache {
@@ -197,10 +197,9 @@ final class PolyglotSourceCache {
         }
 
         @Override
-        void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> sources) {
-            PolyglotImpl polygot = language.getImpl();
+        void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> sources) {
             for (SourceKey key : sourceCache.keySet()) {
-                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polygot, (Source) key.key));
+                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, (Source) key.key));
             }
         }
 
@@ -241,11 +240,10 @@ final class PolyglotSourceCache {
         }
 
         @Override
-        void listSources(PolyglotLanguageInstance language, Collection<org.graalvm.polyglot.Source> sources) {
+        void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> sources) {
             cleanupStaleEntries();
-            PolyglotImpl polygot = language.getImpl();
             for (WeakCacheValue value : sourceCache.values()) {
-                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polygot, value.source));
+                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, value.source));
             }
         }
 

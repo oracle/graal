@@ -56,6 +56,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -277,7 +278,7 @@ public class VariablesScopeLegacyTest extends AbstractInstrumentationTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-legacy-language")
+    @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-legacy-language", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class})
     public static class CustomScopeLegacyLanguage extends TruffleLanguage<Env> {
 

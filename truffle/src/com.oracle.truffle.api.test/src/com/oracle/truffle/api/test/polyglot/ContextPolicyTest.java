@@ -42,7 +42,9 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +55,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
@@ -325,11 +328,6 @@ public class ContextPolicyTest {
     }
 
     @Test
-    public void testOneParseCaching() {
-
-    }
-
-    @Test
     public void testOneReuseContext() {
         Engine engine = Engine.create();
 
@@ -469,6 +467,169 @@ public class ContextPolicyTest {
         engine.close();
     }
 
+    @Test
+    public void testSharingLayersLazyInit() {
+        Engine engine = Engine.create();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+
+        // cannot initialize an exclusive language lazily for a sharing layer.
+        AbstractPolyglotTest.assertFails(() -> {
+            c0.initialize(EXCLUSIVE0);
+        }, PolyglotException.class, (e) -> assertTrue(e.getMessage(),
+                        e.getMessage().contains("The context was configured with a shared engine but lazily initialized language 'ExclusiveLanguage0' does not support sharing.")));
+        c0.close();
+
+        // initializing the exclusive language first works
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.initialize(SHARED0);
+        c1.close();
+
+        // also specify them during creation does the trick
+        Context c2 = Context.newBuilder(EXCLUSIVE0, SHARED0).engine(engine).build();
+        c2.initialize(SHARED0);
+        c2.initialize(EXCLUSIVE0);
+        c2.close();
+
+        // or specify an option eagerly
+        Context c3 = Context.newBuilder().allowExperimentalOptions(true).engine(engine).option(EXCLUSIVE1 + ".Dummy", "42").build();
+        c3.initialize(SHARED0);
+        c3.initialize(EXCLUSIVE0);
+        c3.close();
+
+        engine.close();
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testDisableSharing() {
+        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.DisableCodeSharing", "true").build();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+
+        // with sharing enabled this would fail.
+        c0.initialize(EXCLUSIVE0);
+
+        c0.close();
+        engine.close();
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testTraceCacing() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.TraceCodeSharing", "true").logHandler(out).build();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+        c0.close();
+
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.close();
+
+        String output = out.toString();
+        assertEquals(3, countOccurences(output, " claiming "));
+        assertEquals(1, countOccurences(output, " failed to claim "));
+        assertEquals(2, countOccurences(output, " claimed "));
+        assertEquals(2, countOccurences(output, " compatible "));
+        assertEquals(1, countOccurences(output, " incompatible "));
+
+        engine.close();
+    }
+
+    private static int countOccurences(String s, String search) {
+        int count = 0;
+        int index = 0;
+        while ((index = s.indexOf(search, index)) != -1) {
+            index += search.length();
+            count++;
+        }
+        return count;
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testInvalidSharingLayer() {
+        Engine engine = Engine.create();
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.initialize(EXCLUSIVE1);
+
+        Context c2 = Context.newBuilder().engine(engine).build();
+        c2.initialize(EXCLUSIVE0);
+        c2.initialize(EXCLUSIVE1);
+
+        c1.enter();
+        CallTarget t1 = new RootNode(ExclusiveLanguage0.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage0.REFERENCE.get(this);
+            }
+        }.getCallTarget();
+        CallTarget t2 = new RootNode(ExclusiveLanguage1.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage1.REFERENCE.get(this);
+            }
+        }.getCallTarget();
+
+        CallTarget t3 = new RootNode(ExclusiveLanguage0.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage0.CONTEXT_REF.get(this);
+            }
+        }.getCallTarget();
+        CallTarget t4 = new RootNode(ExclusiveLanguage1.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage1.CONTEXT_REF.get(this);
+            }
+        }.getCallTarget();
+        c1.leave();
+
+        c2.enter();
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t1.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t2.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t3.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t4.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        c2.leave();
+
+        c1.close();
+        c2.close();
+    }
+
     private static void assertEmpty() {
         assertEquals(0, languageInstances.size());
         assertEquals(0, contextCreate.size());
@@ -560,7 +721,7 @@ public class ContextPolicyTest {
 
         // opening contexts consecutively
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b0 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
@@ -578,7 +739,7 @@ public class ContextPolicyTest {
                 v0l0.execute(v0l0, v0l1);
             }
 
-            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b1 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }
@@ -599,14 +760,14 @@ public class ContextPolicyTest {
 
         // opening two contexts at the same time
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b0 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
             if (!language0Compatible) {
                 b0.option(sl0.getLanguage() + ".Dummy", "0");
             }
-            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b1 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }
@@ -849,14 +1010,15 @@ public class ContextPolicyTest {
 
     }
 
-    @Registration(id = EXCLUSIVE1, name = EXCLUSIVE1, contextPolicy = ContextPolicy.EXCLUSIVE)
-    public static class ExclusiveLanguage1 extends ExclusiveLanguage0 {
+    @Registration(id = EXCLUSIVE1, name = EXCLUSIVE1, contextPolicy = ContextPolicy.SHARED)
+    public static final class ExclusiveLanguage1 extends ExclusiveLanguage0 {
         @Option(help = "", category = OptionCategory.INTERNAL) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
+            // this effectively makes it EXCLUSIVE
+            return false;
         }
 
         @Override
@@ -876,6 +1038,7 @@ public class ContextPolicyTest {
 
         static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(ExclusiveLanguage1.class);
         static final LanguageReference<ExclusiveLanguage1> REFERENCE = LanguageReference.create(ExclusiveLanguage1.class);
+
     }
 
     @Registration(id = REUSE0, name = REUSE0, contextPolicy = ContextPolicy.REUSE)
