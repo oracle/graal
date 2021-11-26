@@ -58,17 +58,15 @@ import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 @ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISymbol implements TruffleObject {
 
-    static Object createBound(String backend, Object nativeSymbol, NFISignature signature) {
-        return new NFISymbol(backend, nativeSymbol, signature);
+    static Object createBound(Object nativeSymbol, NFISignature signature) {
+        return new NFISymbol(nativeSymbol, signature);
     }
 
-    final String backend;
     final Object nativeSymbol;
     final NFISignature signature;
 
-    private NFISymbol(String backend, Object nativeSymbol, NFISignature signature) {
+    private NFISymbol(Object nativeSymbol, NFISignature signature) {
         assert signature != null;
-        this.backend = backend;
         this.nativeSymbol = nativeSymbol;
         this.signature = signature;
     }

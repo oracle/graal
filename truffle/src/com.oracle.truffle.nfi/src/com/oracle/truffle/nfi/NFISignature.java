@@ -104,12 +104,12 @@ final class NFISignature implements TruffleObject {
 
         @Specialization
         static Object doSymbol(NFISignature signature, NFISymbol function) {
-            return NFISymbol.createBound(signature.backendId, function.nativeSymbol, signature);
+            return NFISymbol.createBound(function.nativeSymbol, signature);
         }
 
         @Fallback
         static Object doOther(NFISignature signature, Object function) {
-            return NFISymbol.createBound(signature.backendId, function, signature);
+            return NFISymbol.createBound(function, signature);
         }
     }
 
