@@ -81,6 +81,7 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -272,7 +273,7 @@ public abstract class NonSnippetLowerings {
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
 
-                if (verifyTypes && !callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !((SharedMethod) graph.method()).isUninterruptible()) {
+                if (verifyTypes && !callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !Uninterruptible.Utils.isUninterruptible(graph.method())) {
                     /*
                      * Verify that the receiver is an instance of the class that declares the call
                      * target method. To avoid that the new type check floats above a deoptimization

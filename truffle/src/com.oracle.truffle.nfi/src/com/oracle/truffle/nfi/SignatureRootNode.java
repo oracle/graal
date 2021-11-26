@@ -175,7 +175,7 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getSimpleType(api.backend, type);
-            return new NFIType(NFIType.SIMPLE, backendType);
+            return new NFIType(SimpleTypeCachedState.get(type), backendType);
         }
     }
 
@@ -191,7 +191,7 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getArrayType(api.backend, type);
-            return new NFIType(NFIType.SIMPLE, backendType);
+            return new NFIType(SimpleTypeCachedState.nop(), backendType);
         }
     }
 
@@ -201,7 +201,7 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object backendType = backend.getEnvType(api.backend);
-            return new NFIType(NFIType.INJECTED, backendType, null);
+            return new NFIType(SimpleTypeCachedState.injected(), backendType, null);
         }
     }
 
@@ -218,7 +218,7 @@ final class SignatureRootNode extends RootNode {
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object signature = buildSignature.execute(api);
             Object backendType = backend.getSimpleType(api.backend, NativeSimpleType.POINTER);
-            return new NFIType(NFIType.CLOSURE, backendType, signature);
+            return new NFIType(SignatureTypeCachedState.INSTANCE, backendType, signature);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.option;
 
-import com.oracle.svm.core.CErrorNumber.CErrorNumberSupport;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.windows.headers.WindowsErrno;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.Heap;
 
-class WindowsCErrorNumberSupport implements CErrorNumberSupport {
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public int getCErrorNumber() {
-        return WindowsErrno._errno().read();
+/**
+ * Notifies the {@link Heap} implementation after the value of the option has changed.
+ */
+public class GCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
+    public GCRuntimeOptionKey(T defaultValue) {
+        super(defaultValue);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void setCErrorNumber(int value) {
-        WindowsErrno._errno().write(value);
+    protected void afterValueUpdate() {
+        super.afterValueUpdate();
+        if (!SubstrateUtil.HOSTED) {
+            Heap.getHeap().optionValueChanged(this);
+        }
     }
 }

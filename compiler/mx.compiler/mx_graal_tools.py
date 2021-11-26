@@ -36,7 +36,6 @@ from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
-from mx_urlrewrites import rewriteurl
 
 if sys.version_info[0] < 3:
     _long = long # pylint: disable=undefined-variable
@@ -90,44 +89,29 @@ def c1visualizer(args):
     run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
-    """download the hsdis library
+    """download the hsdis library and copy it to a specific dir or to the current JDK
 
     This is needed to support HotSpot's assembly dumping features.
-    By default it downloads the Intel syntax version, use the 'att' argument to install AT&T syntax."""
-    flavor = None
-    if mx.get_arch() == "amd64":
-        flavor = mx.get_env('HSDIS_SYNTAX')
-        if flavor is None:
-            flavor = 'intel'
-        if 'att' in args:
-            flavor = 'att'
+    On amd64 platforms, it downloads the Intel syntax version"""
 
-    libpattern = mx.add_lib_suffix('hsdis-' + mx.get_arch() + '-' + mx.get_os() + '-%s')
+    parser = ArgumentParser(prog='hsdis')
+    args = parser.parse_args(args)
 
-    sha1s = {
-        r'att\hsdis-amd64-windows-%s.dll' : 'bcbd535a9568b5075ab41e96205e26a2bac64f72',
-        r'att/hsdis-amd64-linux-%s.so' : '36a0b8e30fc370727920cc089f104bfb9cd508a0',
-        r'att/hsdis-amd64-darwin-%s.dylib' : 'c1865e9a58ca773fdc1c5eea0a4dfda213420ffb',
-        r'intel\hsdis-amd64-windows-%s.dll' : '6a388372cdd5fe905c1a26ced614334e405d1f30',
-        r'intel/hsdis-amd64-linux-%s.so' : '0d031013db9a80d6c88330c42c983fbfa7053193',
-        r'intel/hsdis-amd64-darwin-%s.dylib' : '67f6d23cbebd8998450a88b5bef362171f66f11a',
-        r'hsdis-aarch64-linux-%s.so': 'fcc9b70ac91c00db8a50b0d4345490a68e3743e1',
-    }
+    hsdis_syntax = mx.get_env('HSDIS_SYNTAX')
+    if hsdis_syntax:
+        mx.warn("The 'hsdis' function ignores the value of the 'HSDIS_SYNTAX' environment variable: " + hsdis_syntax)
 
-    if flavor:
-        flavoredLib = join(flavor, libpattern)
-    else:
-        flavoredLib = libpattern
-    if flavoredLib not in sha1s:
-        mx.warn("hsdis with flavor '{}' not supported on this platform or architecture".format(flavor))
-        return
+    hsdis_lib_name = 'HSDIS'
+    hsdis_lib = mx.library(hsdis_lib_name)
 
-    sha1 = sha1s[flavoredLib]
-    lib = flavoredLib % (sha1)
-    path = join(_suite.get_output_root(), lib)
-    if not exists(path):
-        sha1path = path + '.sha1'
-        mx.download_file_with_sha1('hsdis', path, [rewriteurl('https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/' + lib.replace(os.sep, '/'))], sha1, sha1path, True, True, sources=False)
+    if hsdis_lib.optional:
+        mx.abort('hsdis is not supported on this platform or architecture')
+
+    hsdis_lib_path = hsdis_lib.get_path(resolve=True)
+    hsdis_lib_files = os.listdir(hsdis_lib_path)
+    if len(hsdis_lib_files) != 1:
+        mx.abort("hsdis library '{}' does not contain a single file: {}".format(hsdis_lib_name, hsdis_lib_files))
+    hsdis_lib_file = join(hsdis_lib_path, hsdis_lib_files[0])
 
     overwrite = True
     if copyToDir is None:
@@ -152,14 +136,14 @@ def hsdis(args, copyToDir=None):
         if exists(dest) and not overwrite:
             import filecmp
             # Only issue warning if existing lib is different
-            if filecmp.cmp(path, dest) is False:
-                mx.warn('Not overwriting existing {} with {}'.format(dest, path))
+            if filecmp.cmp(hsdis_lib_file, dest) is False:
+                mx.warn('Not overwriting existing {} with {}'.format(dest, hsdis_lib_file))
         else:
             try:
-                shutil.copy(path, dest)
-                mx.log('Copied {} to {}'.format(path, dest))
+                shutil.copy(hsdis_lib_file, dest)
+                mx.log('Copied {} to {}'.format(hsdis_lib_file, dest))
             except IOError as e:
-                mx.warn('Could not copy {} to {}: {}'.format(path, dest, str(e)))
+                mx.warn('Could not copy {} to {}: {}'.format(hsdis_lib_file, dest, str(e)))
 
 def hcfdis(args, cp=None):
     """disassemble HexCodeFiles embedded in text files
@@ -231,7 +215,7 @@ def jol(args):
 
 mx.update_commands(_suite, {
     'c1visualizer' : [c1visualizer, ''],
-    'hsdis': [hsdis, '[att]'],
+    'hsdis': [hsdis, ''],
     'hcfdis': [hcfdis, ''],
     'igv' : [igv, ''],
     'jol' : [jol, ''],

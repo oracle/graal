@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -550,6 +551,11 @@ public class SVMHost implements HostVM {
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+                /*
+                 * Do a complete Canonicalizer run once before graph encoding, to clean up any
+                 * leftover uncanonicalized nodes.
+                 */
+                CanonicalizerPhase.create().apply(graph, bb.getProviders());
             }
 
             for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {

@@ -40,15 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SerializeArgumentLibrary.class)
 class NativeString implements TruffleObject {
 
     final long nativePointer;
@@ -83,17 +82,6 @@ class NativeString implements TruffleObject {
     @ExportMessage
     long asPointer() {
         return nativePointer;
-    }
-
-    @ExportMessage
-    NativeString toNative() {
-        return this;
-    }
-
-    @ExportMessage(name = "putPointer")
-    @ExportMessage(name = "putString")
-    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
-        buffer.putPointer(nativePointer, ptrSize);
     }
 
     @ExportMessage

@@ -142,7 +142,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
+            Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);

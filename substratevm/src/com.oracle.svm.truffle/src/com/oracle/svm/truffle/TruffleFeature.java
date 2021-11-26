@@ -447,7 +447,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         } else if (implementationMethod.hasNeverInlineDirective()) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
             return false;
-        } else if (uninterruptibleAnnotation != null && !uninterruptibleAnnotation.mayBeInlined()) {
+        } else if (Uninterruptible.Utils.isUninterruptible(implementationMethod) && (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined())) {
             /* The semantics of Uninterruptible would get lost during partial evaluation. */
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {

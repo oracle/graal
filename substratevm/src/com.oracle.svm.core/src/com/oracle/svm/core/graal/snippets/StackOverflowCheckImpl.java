@@ -294,7 +294,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     public static boolean needStackOverflowCheck(SharedMethod method) {
-        if (method.isUninterruptible()) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
             /*
              * Uninterruptible methods are allowed to use the yellow and red zones of the stack.
              * Also, the thread register and stack boundary might not be set up. We cannot do a

@@ -59,7 +59,7 @@ import com.oracle.svm.util.ClassUtil;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionValues extends ModifiableOptionValues {
-    private EconomicSet<String> allOptionNames;
+    private final EconomicSet<String> allOptionNames;
 
     public RuntimeOptionValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values, EconomicSet<String> allOptionNames) {
         super(values);

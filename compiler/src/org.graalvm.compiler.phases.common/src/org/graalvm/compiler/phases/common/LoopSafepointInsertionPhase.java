@@ -31,12 +31,13 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 /**
  * Adds safepoints to loops.
  */
-public class LoopSafepointInsertionPhase extends Phase {
+public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
 
     @Override
     public boolean checkContract() {
@@ -47,7 +48,7 @@ public class LoopSafepointInsertionPhase extends Phase {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, MidTierContext context) {
         if (GenLoopSafepoints.getValue(graph.getOptions())) {
             for (LoopBeginNode loopBeginNode : graph.getNodes(LoopBeginNode.TYPE)) {
                 for (LoopEndNode loopEndNode : loopBeginNode.loopEnds()) {

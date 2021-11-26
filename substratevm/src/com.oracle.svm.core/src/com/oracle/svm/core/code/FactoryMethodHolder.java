@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
+package com.oracle.svm.core.code;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 
-// Checkstyle: stop
-
-@Platforms(Platform.WINDOWS.class)
-public class WindowsErrno {
-
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CIntPointer _errno();
+/**
+ * Holder class for generated factory methods (methods that combine object allocation and invocation
+ * of a constructor).
+ */
+@InternalVMMethod
+public final class FactoryMethodHolder {
+    private FactoryMethodHolder() {
+    }
 }

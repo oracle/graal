@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.libffi;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@GenerateLibrary
-abstract class NativeArgumentLibrary extends Library {
+@ExportLibrary(InteropLibrary.class)
+final class NFIPointer implements TruffleObject {
 
-    public abstract void serialize(CachedTypeInfo type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
+    final long raw;
 
-    public abstract Object deserialize(CachedTypeInfo type, NativeArgumentBuffer buffer);
+    private static final NFIPointer NULL = new NFIPointer(0);
 
-    public static LibraryFactory<NativeArgumentLibrary> getFactory() {
-        return FACTORY;
+    public static NFIPointer nullPtr() {
+        return NULL;
     }
 
-    public static NativeArgumentLibrary getUncached() {
-        return FACTORY.getUncached();
+    public static NFIPointer create(long raw) {
+        return new NFIPointer(raw);
     }
 
-    private static final LibraryFactory<NativeArgumentLibrary> FACTORY = LibraryFactory.resolve(NativeArgumentLibrary.class);
+    private NFIPointer(long raw) {
+        this.raw = raw;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return raw == 0;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return raw;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (isNull()) {
+            return "NULL";
+        } else {
+            return String.format("0x%08x", raw);
+        }
+    }
 }

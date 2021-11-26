@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c.libc;
+package com.oracle.svm.core.option;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.heap.Heap;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.TYPE, ElementType.PACKAGE})
-public @interface LibC {
+/**
+ * Immutable runtime option that notifies the {@link Heap} implementation once the value of the
+ * option was set.
+ */
+public class ImmutableGCRuntimeOptionKey<T> extends ImmutableRuntimeOptionKey<T> {
+    public ImmutableGCRuntimeOptionKey(T defaultValue) {
+        super(defaultValue);
+    }
 
-    Class<? extends LibCBase>[] value();
-
+    @Override
+    protected void afterValueUpdate() {
+        super.afterValueUpdate();
+        if (!SubstrateUtil.HOSTED) {
+            Heap.getHeap().optionValueChanged(this);
+        }
+    }
 }
