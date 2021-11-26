@@ -48,7 +48,6 @@ import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosure
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.ObjectClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.LibFFIType.PointerType;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeArrayNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeDoubleNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeEnvNode;
