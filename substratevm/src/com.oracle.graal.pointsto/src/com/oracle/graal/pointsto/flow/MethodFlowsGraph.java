@@ -479,7 +479,7 @@ public class MethodFlowsGraph {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
                         /* The invoke has been replaced by the context insensitive one. */
-                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveInvoke();
+                        invoke = PointsToAnalysis.assertPointsToAnalysisMethod(callerInvoke.getTargetMethod()).getContextInsensitiveInvoke();
                     }
                     for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
