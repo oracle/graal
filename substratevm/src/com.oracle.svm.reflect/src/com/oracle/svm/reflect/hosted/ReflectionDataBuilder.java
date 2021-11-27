@@ -33,6 +33,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -71,11 +72,13 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
+import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeAnnotationParser;
@@ -98,6 +101,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private Set<AnalysisMethod> hidingMethods;
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
+
+    /* Keep track of annotation interface members to include in proxy classes */
+    private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
     private final ReflectionDataAccessors accessors;
 
@@ -234,6 +240,33 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     processClass(access, originalClass);
                     processedClasses.add(originalClass);
                     access.requireAnalysisIteration();
+                }
+                if (type.getWrappedWithoutResolve() instanceof AnnotationSubstitutionType) {
+                    /*
+                     * Proxy classes for annotations present the annotation default methods and
+                     * fields as their own.
+                     */
+                    ResolvedJavaType annotationType = ((AnnotationSubstitutionType) type.getWrappedWithoutResolve()).getAnnotationInterfaceType();
+                    Class<?> annotationClass = access.getUniverse().lookup(annotationType).getJavaClass();
+                    if (!annotationMembers.containsKey(annotationClass)) {
+                        processClass(access, annotationClass);
+                    }
+                    for (Member member : annotationMembers.get(annotationClass)) {
+                        try {
+                            if (member instanceof Field) {
+                                Field field = (Field) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredField(field.getName()));
+                            } else if (member instanceof Method) {
+                                Method method = (Method) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+                            }
+                        } catch (NoSuchFieldException | NoSuchMethodException e) {
+                            /*
+                             * The annotation member is not present in the proxy class so we don't
+                             * add it.
+                             */
+                        }
+                    }
                 }
             }
         }
@@ -522,6 +555,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+
+        if (type.isAnnotation()) {
+            /*
+             * Cache the annotation members to allow proxy classes seen later to include those in
+             * their own reflection data
+             */
+            Set<Member> members = new HashSet<>();
+            Collections.addAll(members, filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields, access));
+            Collections.addAll(members, filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access));
+            annotationMembers.put(clazz, members);
+            access.requireAnalysisIteration(); /* Need the proxy class to see the added members */
+        }
     }
 
     private static <T> T query(Callable<T> callable, List<Throwable> errors) {
