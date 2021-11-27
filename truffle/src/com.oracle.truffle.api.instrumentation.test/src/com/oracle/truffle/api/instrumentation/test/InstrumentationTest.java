@@ -91,8 +91,6 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -2312,6 +2310,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertNull(stack);
     }
 
+    private static final int TARGET_SLOT = 0;
+
     @Test
     public void testAsynchronousStacks3() {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -2324,14 +2324,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 private final TruffleLanguage<?> language;
                 private final int level;
-                private final FrameSlot targetSlot;
                 @Node.Child private AsyncNode child;
 
                 AsyncRootNode(TruffleLanguage<?> language, int level) {
-                    super(language);
+                    super(language, createFrameDescriptor(1));
                     this.language = language;
                     this.level = level;
-                    this.targetSlot = getFrameDescriptor().findOrAddFrameSlot("target", FrameSlotKind.Object);
                     this.child = new AsyncNode(level);
                 }
 
@@ -2345,7 +2343,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 @TruffleBoundary
                 private void storeInvokedTarget(MaterializedFrame frame) {
                     CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
-                    frame.setObject(targetSlot, callTarget);
+                    frame.setObject(TARGET_SLOT, callTarget);
                 }
 
                 @Override

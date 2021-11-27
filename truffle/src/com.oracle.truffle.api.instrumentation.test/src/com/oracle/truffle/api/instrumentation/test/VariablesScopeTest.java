@@ -57,7 +57,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -375,8 +374,8 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
     static class DefaultRootBlockNode extends Node implements InstrumentableNode {
 
         @Child private DefaultStatementNode statementNode = new DefaultStatementNode();
-        @CompilationFinal private FrameSlot a;
-        @CompilationFinal private FrameSlot b;
+        @CompilationFinal private Integer a;
+        @CompilationFinal private Integer b;
 
         @Override
         public boolean isInstrumentable() {
@@ -401,12 +400,12 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         Object execute(VirtualFrame frame) {
             if (a == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                a = frame.getFrameDescriptor().findOrAddFrameSlot("a");
-                b = frame.getFrameDescriptor().findOrAddFrameSlot("b");
+                a = frame.getFrameDescriptor().findOrAddAuxiliarySlot("a");
+                b = frame.getFrameDescriptor().findOrAddAuxiliarySlot("b");
             }
-            frame.setInt(a, 10);
+            frame.setAuxiliarySlot(a, 10);
             int ret = statementNode.execute(frame);
-            frame.setBoolean(b, true);
+            frame.setAuxiliarySlot(b, true);
             return ret;
         }
     }
@@ -414,7 +413,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
     @GenerateWrapper
     static class DefaultStatementNode extends Node implements InstrumentableNode {
 
-        @CompilationFinal private FrameSlot n;
+        @CompilationFinal private Integer n;
 
         @Override
         public boolean isInstrumentable() {
@@ -439,10 +438,10 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         int execute(VirtualFrame frame) {
             if (n == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                n = frame.getFrameDescriptor().findOrAddFrameSlot("n");
+                n = frame.getFrameDescriptor().findOrAddAuxiliarySlot("n");
             }
             Object[] arguments = frame.getArguments();
-            frame.setInt(n, arguments.length);
+            frame.setAuxiliarySlot(n, arguments.length);
             int s = 0;
             for (int i = 0; i < arguments.length; i++) {
                 s += (int) arguments[i];

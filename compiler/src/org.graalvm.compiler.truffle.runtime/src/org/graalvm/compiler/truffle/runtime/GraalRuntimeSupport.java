@@ -38,6 +38,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;

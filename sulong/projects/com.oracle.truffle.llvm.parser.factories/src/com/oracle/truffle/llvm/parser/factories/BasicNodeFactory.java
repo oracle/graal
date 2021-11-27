@@ -37,7 +37,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -328,17 +329,6 @@ import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI64VectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMVectorSelectNodeFactory.LLVMI8VectorSelectNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWrite80BitFloatingNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteDoubleNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteFloatNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI16NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI32NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI8NodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteIVarBitNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNodeFactory.LLVMWriteVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.StructLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMDoubleExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMFloatExtractElementNodeGen;
@@ -777,41 +767,6 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMWriteNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot) {
-        if (llvmType instanceof VectorType) {
-            return LLVMWriteVectorNodeGen.create(slot, result);
-        } else if (llvmType instanceof PrimitiveType) {
-            switch (((PrimitiveType) llvmType).getPrimitiveKind()) {
-                case I1:
-                    return LLVMWriteI1NodeGen.create(slot, result);
-                case I8:
-                    return LLVMWriteI8NodeGen.create(slot, result);
-                case I16:
-                    return LLVMWriteI16NodeGen.create(slot, result);
-                case I32:
-                    return LLVMWriteI32NodeGen.create(slot, result);
-                case I64:
-                    return LLVMWriteI64NodeGen.create(slot, result);
-                case FLOAT:
-                    return LLVMWriteFloatNodeGen.create(slot, result);
-                case DOUBLE:
-                    return LLVMWriteDoubleNodeGen.create(slot, result);
-                case X86_FP80:
-                    return LLVMWrite80BitFloatingNodeGen.create(slot, result);
-                default:
-                    throw new AssertionError(llvmType);
-            }
-        } else if (llvmType instanceof VariableBitWidthType) {
-            return LLVMWriteIVarBitNodeGen.create(slot, result);
-        } else if (llvmType instanceof PointerType || llvmType instanceof FunctionType) {
-            return LLVMWritePointerNodeGen.create(slot, result);
-        } else if (llvmType instanceof StructureType || llvmType instanceof ArrayType) {
-            return LLVMWritePointerNodeGen.create(slot, result);
-        }
-        throw new AssertionError(llvmType);
-    }
-
-    @Override
     public LLVMLoadNode createExtractValue(Type type, LLVMExpressionNode targetAddress) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
@@ -1071,10 +1026,10 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createGetUniqueStackSpace(Type type, UniquesRegion uniquesRegion, FrameDescriptor frameDescriptor) {
+    public LLVMExpressionNode createGetUniqueStackSpace(Type type, UniquesRegion uniquesRegion) {
         try {
             long slotOffset = uniquesRegion.addSlot(getByteSize(type), getByteAlignment(type));
-            return LLVMGetUniqueStackSpaceInstructionNodeGen.create(slotOffset, frameDescriptor);
+            return LLVMGetUniqueStackSpaceInstructionNodeGen.create(slotOffset);
         } catch (TypeOverflowException e) {
             return Type.handleOverflowExpression(e);
         }
@@ -1167,14 +1122,14 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RootNode createFunction(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] allFunctionNodes, UniquesRegion uniquesRegion, LLVMStatementNode[] copyArgumentsToFrame,
-                    FrameDescriptor frameDescriptor, FrameSlot loopSuccessorSlot, LocalVariableDebugInfo debugInfo, String name, String originalName, int argumentCount, Source bcSource,
+    public RootNode createFunction(int exceptionValueSlot, LLVMBasicBlockNode[] allFunctionNodes, UniquesRegion uniquesRegion, LLVMStatementNode[] copyArgumentsToFrame,
+                    FrameDescriptor frameDescriptor, int loopSuccessorSlot, LocalVariableDebugInfo debugInfo, String name, String originalName, int argumentCount, Source bcSource,
                     LLVMSourceLocation location, LLVMFunction rootFunction) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = uniquesRegion.isEmpty() ? null
-                        : LLVMUniquesRegionAllocNodeGen.create(createAlloca(uniquesRegion.getSize(), uniquesRegion.getAlignment()), frameDescriptor);
+                        : LLVMUniquesRegionAllocNodeGen.create(createAlloca(uniquesRegion.getSize(), uniquesRegion.getAlignment()));
         LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes, loopSuccessorSlot, debugInfo);
         body.setSourceLocation(LLVMSourceLocation.orDefault(location));
-        LLVMStackAccess stackAccess = createStackAccess(frameDescriptor);
+        LLVMStackAccess stackAccess = createStackAccess();
         LLVMFunctionRootNode functionRoot = LLVMFunctionRootNodeGen.create(uniquesRegionAllocNode, stackAccess, copyArgumentsToFrame, body, frameDescriptor);
         functionRoot.setSourceLocation(LLVMSourceLocation.orDefault(location));
         return new LLVMFunctionStartNode(language, stackAccess, functionRoot, frameDescriptor, name, argumentCount, originalName, bcSource, location, dataLayout, rootFunction);
@@ -1232,8 +1187,9 @@ public class BasicNodeFactory implements NodeFactory {
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        assemblyRoot = new LLVMInlineAssemblyRootNode(language, frameDescriptor, createStackAccess(frameDescriptor),
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        addStackSlots(builder);
+        assemblyRoot = new LLVMInlineAssemblyRootNode(language, builder.build(), createStackAccess(),
                         Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
     }
@@ -1245,8 +1201,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionValueSlot, boolean cleanup, long[] clauseKinds,
-                    LLVMExpressionNode[] entries, LLVMExpressionNode getStack) {
+    public LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, int exceptionValueSlot, boolean cleanup, long[] clauseKinds, LLVMExpressionNode[] entries,
+                    LLVMExpressionNode getStack) {
 
         LLVMLandingpadNode.LandingpadEntryNode[] landingpadEntries = new LLVMLandingpadNode.LandingpadEntryNode[entries.length];
         for (int i = 0; i < entries.length; i++) {
@@ -1275,7 +1231,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMControlFlowNode createResumeInstruction(FrameSlot exceptionValueSlot) {
+    public LLVMControlFlowNode createResumeInstruction(int exceptionValueSlot) {
         return LLVMResumeNodeGen.create(exceptionValueSlot);
     }
 
@@ -2116,13 +2072,23 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RepeatingNode createLoopDispatchNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId,
-                    int[] indexMapping, int[] successors, FrameSlot successorSlot) {
+    public RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId,
+                    int[] indexMapping, int[] successors, int successorSlot) {
         return new LLVMLoopDispatchNode(exceptionValueSlot, bodyNodes.toArray(new LLVMBasicBlockNode[bodyNodes.size()]), originalBodyNodes, headerId, indexMapping, successors, successorSlot);
     }
 
     @Override
-    public LLVMStackAccess createStackAccess(FrameDescriptor frameDescriptor) {
-        return new LLVMStack.LLVMNativeStackAccess(frameDescriptor, language.getLLVMMemory());
+    public LLVMStackAccess createStackAccess() {
+        return new LLVMStack.LLVMNativeStackAccess(language.getLLVMMemory());
+    }
+
+    @Override
+    public void addStackSlots(Builder builder) {
+        int stackId = builder.addSlot(FrameSlotKind.Object, null, null);
+        assert stackId == LLVMStack.STACK_ID;
+        int uniquesRegionId = builder.addSlot(FrameSlotKind.Object, null, null);
+        assert uniquesRegionId == LLVMStack.UNIQUES_REGION_ID;
+        int basePointerId = builder.addSlot(FrameSlotKind.Long, null, null);
+        assert basePointerId == LLVMStack.BASE_POINTER_ID;
     }
 }

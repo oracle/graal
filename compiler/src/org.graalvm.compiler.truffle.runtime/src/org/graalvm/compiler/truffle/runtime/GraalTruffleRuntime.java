@@ -98,12 +98,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -373,6 +373,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
@@ -389,7 +390,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ExactMath.class,
                         ArrayUtils.class,
                         FrameDescriptor.class,
-                        FrameSlot.class,
+                        com.oracle.truffle.api.frame.FrameSlot.class,
                         FrameSlotKind.class,
                         MethodHandle.class,
                         ArrayList.class,

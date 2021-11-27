@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -42,8 +41,7 @@ public interface GetStackSpaceFactory {
         return (nodeFactory, type) -> nodeFactory.createAlloca(type);
     }
 
-    static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion, FrameDescriptor frameDescriptor) {
-        return (nodeFactory, type) -> nodeFactory.createGetUniqueStackSpace(type, uniquesRegion, frameDescriptor);
+    static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
+        return (nodeFactory, type) -> nodeFactory.createGetUniqueStackSpace(type, uniquesRegion);
     }
-
 }

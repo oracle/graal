@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -68,43 +67,39 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
     }
 
     @Specialization
-    protected void doI8(VirtualFrame frame, FrameSlot slot, byte value) {
+    protected void doI8(VirtualFrame frame, int slot, byte value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & mask) | (Byte.toUnsignedLong(value) << shift);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void doI16(VirtualFrame frame, FrameSlot slot, short value) {
+    protected void doI16(VirtualFrame frame, int slot, short value) {
         long reg = readRegister.execute(frame, slot);
         long val = (reg & MASK_16) | Short.toUnsignedLong(value);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void doI32(VirtualFrame frame, FrameSlot slot, int value) {
+    protected void doI32(VirtualFrame frame, int slot, int value) {
         long val = Integer.toUnsignedLong(value);
         frame.setLong(slot, val);
     }
 
     @Specialization
-    protected void doI64(VirtualFrame frame, FrameSlot slot, long value) {
+    protected void doI64(VirtualFrame frame, int slot, long value) {
         frame.setLong(slot, value);
     }
 
     @Specialization
-    protected void doNativePointer(VirtualFrame frame, FrameSlot slot, LLVMNativePointer value) {
+    protected void doNativePointer(VirtualFrame frame, int slot, LLVMNativePointer value) {
         frame.setLong(slot, value.asNative());
     }
 
-    @Specialization(guards = "!isFrameSlot(addr)")
+    @Specialization
     protected void doMemoryWrite(LLVMPointer addr, Object value,
                     @Cached("createMemoryWriteNode()") LLVMAMD64MemWriteNode writeNode) {
         writeNode.executeWithTarget(addr, value);
-    }
-
-    protected static boolean isFrameSlot(Object o) {
-        return o instanceof FrameSlot;
     }
 
     protected static LLVMAMD64MemWriteNode createMemoryWriteNode() {

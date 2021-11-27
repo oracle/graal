@@ -41,48 +41,76 @@
 package org.graalvm.wasm.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import org.graalvm.wasm.WasmCodeEntry;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public interface WasmNodeInterface {
-    WasmCodeEntry codeEntry();
+public abstract class WasmFrame {
+
+    private WasmFrame() {
+        // no instances
+    }
 
     /* Stack operations */
 
-    default void push(long[] stack, int slot, long value) {
-        stack[slot] = value;
+    public static void pushLong(VirtualFrame frame, int slot, long value) {
+        frame.setLong(slot, value);
     }
 
-    default void pushInt(long[] stack, int slot, int value) {
-        push(stack, slot, value & 0xffffffffL);
+    public static void pushInt(VirtualFrame frame, int slot, int value) {
+        frame.setInt(slot, value);
     }
 
-    default void pushFloat(long[] stack, int slot, float value) {
-        pushInt(stack, slot, Float.floatToRawIntBits(value));
+    public static void pushFloat(VirtualFrame frame, int slot, float value) {
+        frame.setFloat(slot, value);
     }
 
-    default void pushDouble(long[] stack, int slot, double value) {
-        push(stack, slot, Double.doubleToRawLongBits(value));
+    public static void pushDouble(VirtualFrame frame, int slot, double value) {
+        frame.setDouble(slot, value);
     }
 
-    default long pop(long[] stack, int slot) {
-        long result = stack[slot];
+    public static void drop(VirtualFrame frame, int slot) {
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
-            stack[slot] = 0L;
+            frame.clear(slot);
+        }
+    }
+
+    public static void copy(VirtualFrame frame, int sourceSlot, int targetSlot) {
+        frame.copy(sourceSlot, targetSlot);
+    }
+
+    public static long popLong(VirtualFrame frame, int slot) {
+        long result = frame.getLong(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clear(slot);
         }
         return result;
     }
 
-    default int popInt(long[] stack, int slot) {
-        return (int) pop(stack, slot);
+    public static int popInt(VirtualFrame frame, int slot) {
+        int result = frame.getInt(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clear(slot);
+        }
+        return result;
     }
 
-    default float popAsFloat(long[] stack, int slot) {
-        return Float.intBitsToFloat(popInt(stack, slot));
+    public static float popFloat(VirtualFrame frame, int slot) {
+        float result = frame.getFloat(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clear(slot);
+        }
+        return result;
     }
 
-    default double popAsDouble(long[] stack, int slot) {
-        return Double.longBitsToDouble(pop(stack, slot));
+    public static double popDouble(VirtualFrame frame, int slot) {
+        double result = frame.getDouble(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clear(slot);
+        }
+        return result;
     }
-
 }

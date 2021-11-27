@@ -66,12 +66,12 @@ public class InlinedGetterNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = fieldVersion.getField().isStatic()
                         ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(BytecodeNode.popObject(refs, top - 1));
-        return (getResultAt() - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, getResultAt(), statementIndex);
+                        : nullCheck(BytecodeNode.popObject(frame, top - 1));
+        return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt(), statementIndex);
     }
 
     private int getResultAt() {

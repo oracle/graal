@@ -54,6 +54,8 @@ import org.junit.After;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -303,6 +305,12 @@ public abstract class AbstractPolyglotTest {
             return null;
         }
 
+    }
+
+    public static FrameDescriptor createFrameDescriptor(int count) {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(count);
+        builder.addSlots(count, FrameSlotKind.Illegal);
+        return builder.build();
     }
 
 }

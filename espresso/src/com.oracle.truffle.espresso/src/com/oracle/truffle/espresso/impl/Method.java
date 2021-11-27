@@ -53,8 +53,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
@@ -414,14 +412,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
             return false;
         }
-    }
-
-    public static FrameDescriptor initFrameDescriptor(int slotCount) {
-        FrameDescriptor descriptor = new FrameDescriptor();
-        for (int i = 0; i < slotCount; ++i) {
-            descriptor.addFrameSlot(i, FrameSlotKind.Long);
-        }
-        return descriptor;
     }
 
     private void checkPoisonPill(Meta meta) {
@@ -960,8 +950,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public Method forceSplit() {
         Method result = new Method(this, getCodeAttribute());
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
+        BytecodeNode bytecodeNode = new BytecodeNode(result.getMethodVersion());
+        EspressoRootNode root = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
         result.getMethodVersion().callTarget = root.getCallTarget();
         return result;
     }
@@ -1409,8 +1399,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                     "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                 }
-                FrameDescriptor frameDescriptor = new FrameDescriptor();
-                EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                BytecodeNode bytecodeNode = new BytecodeNode(this);
+                EspressoRootNode rootNode = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
                 target = rootNode.getCallTarget();
             }
             return target;

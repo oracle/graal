@@ -58,7 +58,7 @@ public final class InvokeStaticQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         // Support for AccessController.doPrivileged.
         if (callsDoPrivileged) {
             EspressoRootNode rootNode = (EspressoRootNode) getRootNode();
@@ -67,12 +67,12 @@ public final class InvokeStaticQuickNode extends QuickNode {
                 rootNode.setFrameId(frame, VM.GlobalFrameIDs.getID());
             }
         }
-        Object[] args = BytecodeNode.popArguments(primitives, refs, top, false, method.getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(frame, top, false, method.getParsedSignature());
         Object result = invokeStatic.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getReturnKind());
     }
 
     private int getResultAt() {

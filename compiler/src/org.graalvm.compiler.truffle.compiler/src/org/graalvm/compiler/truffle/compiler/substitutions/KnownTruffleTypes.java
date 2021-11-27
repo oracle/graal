@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
-    public final ResolvedJavaType classFrameClass = lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
+    public final ResolvedJavaType classFrameClass = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");
     public final ResolvedJavaType classFrameDescriptor = lookupType("com.oracle.truffle.api.frame.FrameDescriptor");
     public final ResolvedJavaType classFrameSlot = lookupType("com.oracle.truffle.api.frame.FrameSlot");
     public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");
@@ -43,15 +43,28 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType classRootNode = lookupType("com.oracle.truffle.api.nodes.RootNode");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
 
+    public final ResolvedJavaField fieldDescriptor = findField(classFrameClass, "descriptor");
+    public final ResolvedJavaField fieldArguments = findField(classFrameClass, "arguments");
+    public final ResolvedJavaField fieldAuxiliarySlots = findField(classFrameClass, "auxiliarySlots");
     public final ResolvedJavaField fieldTags = findField(classFrameClass, "tags");
     public final ResolvedJavaField fieldLocals = findField(classFrameClass, "locals");
     public final ResolvedJavaField fieldPrimitiveLocals = findField(classFrameClass, "primitiveLocals");
+    public final ResolvedJavaField fieldIndexedTags = findField(classFrameClass, "indexedTags");
+    public final ResolvedJavaField fieldIndexedLocals = findField(classFrameClass, "indexedLocals");
+    public final ResolvedJavaField fieldIndexedPrimitiveLocals = findField(classFrameClass, "indexedPrimitiveLocals");
+    public final ResolvedJavaField fieldEmptyObjectArray = findField(classFrameClass, "EMPTY_OBJECT_ARRAY");
+    public final ResolvedJavaField fieldEmptyLongArray = findField(classFrameClass, "EMPTY_LONG_ARRAY");
+    public final ResolvedJavaField fieldEmptyByteArray = findField(classFrameClass, "EMPTY_BYTE_ARRAY");
+
+    public final ResolvedJavaField[] frameFields = classFrameClass.getInstanceFields(true);
 
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue = findField(classFrameDescriptor, "defaultValue");
     public final ResolvedJavaField fieldFrameDescriptorVersion = findField(classFrameDescriptor, "version");
     public final ResolvedJavaField fieldFrameDescriptorMaterializeCalled = findField(classFrameDescriptor, "materializeCalled");
     public final ResolvedJavaField fieldFrameDescriptorSlots = findField(classFrameDescriptor, "slots");
     public final ResolvedJavaField fieldFrameDescriptorSize = findField(classFrameDescriptor, "size");
+    public final ResolvedJavaField fieldFrameDescriptorIndexedSlotTags = findField(classFrameDescriptor, "indexedSlotTags");
+    public final ResolvedJavaField fieldFrameDescriptorAuxiliarySlotCount = findField(classFrameDescriptor, "auxiliarySlotCount");
 
     public final ResolvedJavaField fieldArrayListElementData = findField(lookupType(ArrayList.class), "elementData");
 

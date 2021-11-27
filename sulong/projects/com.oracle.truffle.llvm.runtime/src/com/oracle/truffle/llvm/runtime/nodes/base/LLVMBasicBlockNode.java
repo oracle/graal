@@ -33,10 +33,9 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -71,8 +70,8 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
     private final int blockId;
     private final String blockName;
 
-    @CompilationFinal(dimensions = 1) public FrameSlot[] nullableBefore;
-    @CompilationFinal(dimensions = 1) public FrameSlot[] nullableAfter;
+    @CompilationFinal(dimensions = 1) public int[] nullableBefore;
+    @CompilationFinal(dimensions = 1) public int[] nullableAfter;
 
     public LLVMBasicBlockNode(int blockId, String blockName) {
         this.blockId = blockId;
@@ -89,7 +88,7 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         return new LLVMBasicBlockNodeWrapper(this, this, probeNode);
     }
 
-    public void setNullableFrameSlots(FrameSlot[] nullableBefore, FrameSlot[] nullableAfter) {
+    public void setNullableFrameSlots(int[] nullableBefore, int[] nullableAfter) {
         this.nullableBefore = nullableBefore;
         this.nullableAfter = nullableAfter;
     }
@@ -254,7 +253,7 @@ public abstract class LLVMBasicBlockNode extends LLVMStatementNode {
         }
 
         @Override
-        public void setNullableFrameSlots(FrameSlot[] nullableBefore, FrameSlot[] nullableAfter) {
+        public void setNullableFrameSlots(int[] nullableBefore, int[] nullableAfter) {
             this.nullableBefore = nullableBefore;
             this.nullableAfter = nullableAfter;
         }

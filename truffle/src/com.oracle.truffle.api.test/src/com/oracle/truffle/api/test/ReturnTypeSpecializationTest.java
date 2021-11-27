@@ -45,7 +45,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -67,6 +66,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  * order to avoid future failures of this kind.
  * </p>
  */
+@SuppressWarnings("deprecation")
 public class ReturnTypeSpecializationTest {
 
     @BeforeClass
@@ -77,7 +77,7 @@ public class ReturnTypeSpecializationTest {
     @Test
     public void test() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new IntAssignLocal(slot, new StringTestChildNode()), new IntReadLocal(slot));
         Assert.assertEquals(FrameSlotKind.Int, frameDescriptor.getFrameSlotKind(slot));
         Object result = rootNode.getCallTarget().call();
@@ -121,9 +121,9 @@ public class ReturnTypeSpecializationTest {
 
     abstract class FrameSlotNode extends TestChildNode {
 
-        protected final FrameSlot slot;
+        protected final com.oracle.truffle.api.frame.FrameSlot slot;
 
-        FrameSlotNode(FrameSlot slot) {
+        FrameSlotNode(com.oracle.truffle.api.frame.FrameSlot slot) {
             this.slot = slot;
         }
     }
@@ -141,7 +141,7 @@ public class ReturnTypeSpecializationTest {
 
         @Child private TestChildNode value;
 
-        IntAssignLocal(FrameSlot slot, TestChildNode value) {
+        IntAssignLocal(com.oracle.truffle.api.frame.FrameSlot slot, TestChildNode value) {
             super(slot);
             this.value = value;
         }
@@ -164,7 +164,7 @@ public class ReturnTypeSpecializationTest {
 
         @Child private TestChildNode value;
 
-        ObjectAssignLocal(FrameSlot slot, TestChildNode value) {
+        ObjectAssignLocal(com.oracle.truffle.api.frame.FrameSlot slot, TestChildNode value) {
             super(slot);
             this.value = value;
         }
@@ -180,7 +180,7 @@ public class ReturnTypeSpecializationTest {
 
     class IntReadLocal extends FrameSlotNode {
 
-        IntReadLocal(FrameSlot slot) {
+        IntReadLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 
@@ -205,7 +205,7 @@ public class ReturnTypeSpecializationTest {
 
     class ObjectReadLocal extends FrameSlotNode {
 
-        ObjectReadLocal(FrameSlot slot) {
+        ObjectReadLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 

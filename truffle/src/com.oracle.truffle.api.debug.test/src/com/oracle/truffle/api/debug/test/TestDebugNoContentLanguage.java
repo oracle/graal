@@ -42,8 +42,6 @@ package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -136,7 +134,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
         @Node.Child private TestStatementNoContentNode statement;
         private final String name;
         private final SourceSection rootSection;
-        private final FrameSlot slotA;
+        private final int slotA;
 
         TestRootNode(TruffleLanguage<?> language, Source parsedSource, SourceInfo sourceInfo) {
             super(language);
@@ -152,7 +150,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
             statement = new TestStatementNoContentNode(statementSection);
             name = word(parseRootSection.getCharacters().toString());
             insert(statement);
-            slotA = getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Object);
+            slotA = getFrameDescriptor().findOrAddAuxiliarySlot("a");
         }
 
         private static String word(String str) {
@@ -175,7 +173,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(slotA, "A");
+            frame.setAuxiliarySlot(slotA, "A");
             return statement.execute(frame);
         }
 

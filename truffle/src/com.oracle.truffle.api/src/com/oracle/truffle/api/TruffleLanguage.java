@@ -93,7 +93,6 @@ import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
 import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
@@ -1179,7 +1178,7 @@ public abstract class TruffleLanguage<C> {
      * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
      * <p>
      * When not overridden, the enclosing {@link RootNode}'s scope with variables read from its
-     * {@link FrameDescriptor}'s {@link FrameSlot}s is provided by default.
+     * {@link FrameDescriptor}'s frame slots is provided by default.
      * <p>
      * The
      * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findLocalScopes(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.frame.Frame)}

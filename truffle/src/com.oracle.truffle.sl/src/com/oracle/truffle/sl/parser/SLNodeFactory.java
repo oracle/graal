@@ -51,7 +51,6 @@ import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -107,13 +106,21 @@ public class SLNodeFactory {
      */
     static class LexicalScope {
         protected final LexicalScope outer;
-        protected final Map<String, FrameSlot> locals;
+        protected final Map<String, Integer> locals;
 
         LexicalScope(LexicalScope outer) {
             this.outer = outer;
             this.locals = new HashMap<>();
-            if (outer != null) {
-                locals.putAll(outer.locals);
+        }
+
+        public Integer find(String name) {
+            Integer result = locals.get(name);
+            if (result != null) {
+                return result;
+            } else if (outer != null) {
+                return outer.find(name);
+            } else {
+                return null;
             }
         }
     }
@@ -127,7 +134,7 @@ public class SLNodeFactory {
     private String functionName;
     private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
-    private FrameDescriptor frameDescriptor;
+    private FrameDescriptor.Builder frameDescriptorBuilder;
     private List<SLStatementNode> methodNodes;
 
     /* State while parsing a block. */
@@ -149,13 +156,13 @@ public class SLNodeFactory {
         assert functionName == null;
         assert functionBodyStartPos == 0;
         assert parameterCount == 0;
-        assert frameDescriptor == null;
+        assert frameDescriptorBuilder == null;
         assert lexicalScope == null;
 
         functionStartPos = nameToken.getStartIndex();
         functionName = nameToken.getText();
         functionBodyStartPos = bodyStartToken.getStartIndex();
-        frameDescriptor = new FrameDescriptor();
+        frameDescriptorBuilder = FrameDescriptor.newBuilder();
         methodNodes = new ArrayList<>();
         startBlock();
     }
@@ -187,7 +194,7 @@ public class SLNodeFactory {
             final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
             functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
-            final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
+            final SLRootNode rootNode = new SLRootNode(language, frameDescriptorBuilder.build(), functionBodyNode, functionSrc, functionName);
             allFunctions.put(functionName, rootNode.getCallTarget());
         }
 
@@ -195,7 +202,7 @@ public class SLNodeFactory {
         functionName = null;
         functionBodyStartPos = 0;
         parameterCount = 0;
-        frameDescriptor = null;
+        frameDescriptorBuilder = null;
         lexicalScope = null;
     }
 
@@ -454,12 +461,14 @@ public class SLNodeFactory {
         }
 
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(
-                        name,
-                        argumentIndex,
-                        FrameSlotKind.Illegal);
-        FrameSlot existingSlot = lexicalScope.locals.put(name, frameSlot);
-        boolean newVariable = existingSlot == null;
+
+        Integer frameSlot = lexicalScope.find(name);
+        boolean newVariable = false;
+        if (frameSlot == null) {
+            frameSlot = frameDescriptorBuilder.addSlot(FrameSlotKind.Illegal, name, argumentIndex);
+            lexicalScope.locals.put(name, frameSlot);
+            newVariable = true;
+        }
         final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode, newVariable);
 
         if (valueNode.hasSource()) {
@@ -494,7 +503,7 @@ public class SLNodeFactory {
 
         String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
         final SLExpressionNode result;
-        final FrameSlot frameSlot = lexicalScope.locals.get(name);
+        final Integer frameSlot = lexicalScope.find(name);
         if (frameSlot != null) {
             /* Read of a local variable. */
             result = SLReadLocalVariableNodeGen.create(frameSlot);

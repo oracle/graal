@@ -232,5 +232,4 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      */
     boolean isProfilingEnabled();
-
 }

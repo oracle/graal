@@ -27,6 +27,16 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Added the `--engine.TraceCodeSharing` option that allows to log debug information on code sharing.
 * Added the `--engine.ForceCodeSharing` and `--engine.DisableCodeSharing` option that allows to force enable and force disable code sharing. This option is useful for testing to enable or disable sharing across all contexts of a process.
 
+* Added new APIs to `com.oracle.truffle.api.frame.Frame` and `com.oracle.truffle.api.frame.FrameDescriptor`:
+ * Added a new "namespace" of index-based slots in `Frame` that is defined during construction of the frame descriptor and cannot be changed afterwards, and that is accessed using `int` indexes instead of `FrameSlot`s.
+ * Added a second new "namespace" of slots (called auxiliary slots) in `Frame` that can be added to the frame descriptor dynamically (and which only supports "object" slots).
+ * In addition to `get.../set...` methods, the new API also supports `copy` and `swap` of frame slots.
+ * The `FrameSlot`-based API methods in `Frame` and `FrameDescriptor` were deprecated.
+ * `FrameSlotTypeException` is now an unchecked exception, which simplifies many APIs and removes the need for the `FrameUtil` class.
+* Changes to the way frame slots are handled during partial evaluation:
+ * Removed the `FrameClearPhase` - now clearing the frame slots in the "clear" intrinsics instead.
+ * Added a new `FrameAccessVerificationPhase` that detects improper pairing of frame slot types at merges, inserts deopts and outputs a performance warning: frame slots can now change type freely and will still be optimized by the frame intrinsics optimization, as long as the types are compatible at merges (whereas frame slots used to be restricted to one primitive type in the whole compilation unit).
+ 
 ## Version 21.3.0
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
 * The native image `TruffleCheckBlackListedMethods` option was deprecated and replaced by the `TruffleCheckBlockListMethods` option.

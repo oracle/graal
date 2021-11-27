@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
@@ -60,8 +59,13 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
     public String change() {
         FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
         Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE);
-        FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("hello");
-        frame.setObject(slot, "world");
+        int count = frame.getFrameDescriptor().getNumberOfSlots();
+        for (int i = 0; i < count; i++) {
+            if ("hello".equals(frame.getFrameDescriptor().getSlotName(i))) {
+                frame.setObject(i, "world");
+                break;
+            }
+        }
         return "world";
     }
 }

@@ -55,12 +55,12 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 public class FrameDescriptorTest {
 
     @BeforeClass
@@ -68,9 +68,9 @@ public class FrameDescriptorTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private FrameSlot s1;
-    private FrameSlot s2;
-    private FrameSlot s3;
+    private com.oracle.truffle.api.frame.FrameSlot s1;
+    private com.oracle.truffle.api.frame.FrameSlot s2;
+    private com.oracle.truffle.api.frame.FrameSlot s3;
 
     @Test
     public void localsDefaultValue() throws FrameSlotTypeException {
@@ -186,8 +186,8 @@ public class FrameDescriptorTest {
     public void removeFrameSlot() throws FrameSlotTypeException {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot1 = frameDescriptor.addFrameSlot("var1", FrameSlotKind.Object);
-        FrameSlot slot2 = frameDescriptor.addFrameSlot("var2", FrameSlotKind.Object);
+        com.oracle.truffle.api.frame.FrameSlot slot1 = frameDescriptor.addFrameSlot("var1", FrameSlotKind.Object);
+        com.oracle.truffle.api.frame.FrameSlot slot2 = frameDescriptor.addFrameSlot("var2", FrameSlotKind.Object);
         Frame frame = runtime.createMaterializedFrame(new Object[0], frameDescriptor);
         frame.setObject(slot1, "a");
         frame.setObject(slot2, "b");
@@ -201,8 +201,8 @@ public class FrameDescriptorTest {
         assertEquals(2, frameDescriptor.getSize());
         assertEquals(1, frameDescriptor.copy().getSize());
 
-        FrameSlot slot3 = frameDescriptor.addFrameSlot("var3", FrameSlotKind.Object);
-        FrameSlot slot4 = frameDescriptor.addFrameSlot("var4", FrameSlotKind.Object);
+        com.oracle.truffle.api.frame.FrameSlot slot3 = frameDescriptor.addFrameSlot("var3", FrameSlotKind.Object);
+        com.oracle.truffle.api.frame.FrameSlot slot4 = frameDescriptor.addFrameSlot("var4", FrameSlotKind.Object);
         assertEquals("b", frame.getObject(slot2));
         assertEquals(null, frame.getObject(slot3));
         assertEquals(null, frame.getObject(slot4));

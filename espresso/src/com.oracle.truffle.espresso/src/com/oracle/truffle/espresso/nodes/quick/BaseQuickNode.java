@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 @ExportLibrary(NodeLibrary.class)
 public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
 
-    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
+    public abstract int execute(VirtualFrame frame);
 
     public final boolean isInstrumentable() {
         return true;
