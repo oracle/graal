@@ -137,7 +137,8 @@ public class ProgressReporter {
         if (SubstrateOptions.BuildOutputPrefix.hasBeenSet(options)) {
             usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         } else {
-            usePrefix = IS_CI;
+            // Drop mx detection after enabling prefix in gates (GR-35238).
+            usePrefix = IS_CI && System.getenv("MX_HOME") != null;
         }
         boolean enableColors = !IS_CI;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
@@ -177,7 +178,7 @@ public class ProgressReporter {
         }
         l().printHeadlineSeparator();
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
-                        .a(": Generating '").bold().a(imageName).a("'...").reset().flushln();
+                        .a(": Generating '").bold().a(imageName).reset().a("'...").flushln();
         l().printHeadlineSeparator();
         printStageStart(BuildStage.INITIALIZE);
     }
@@ -297,7 +298,7 @@ public class ProgressReporter {
 
     public void printInliningSkipped() {
         printStageStart(BuildStage.INLINING);
-        linePrinter.dim().a(" (skipped)").reset().flushln();
+        linePrinter.dim().a(" (skipped)").reset().flushln(false);
         numStageChars = 0;
     }
 
@@ -331,13 +332,13 @@ public class ProgressReporter {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
         String total = bytesToHuman("%4.2f", imageSize);
         l().a("%9s in total (%2.2f%% for ", total, codeCacheSize / (double) imageSize * 100).doclink("code area", "#glossary-code-area")
-                        .a(" and %2.2f%% for ", imageHeapSize / (double) imageSize * 100).doclink("image heap", "#glossary-image-heap").flushln();
+                        .a(" and %2.2f%% for ", imageHeapSize / (double) imageSize * 100).doclink("image heap", "#glossary-image-heap").a(")").flushln();
         l().a("%9s in code size: %,8d compilation units", bytesToHuman("%4.2f", codeCacheSize), numCompilations).flushln();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
         l().a("%9s in heap size: %,8d classes and %,d objects", bytesToHuman("%4.2f", imageHeapSize), numInstantiatedClasses, numHeapObjects).flushln();
         if (debugInfoTimer != null) {
-            String debugInfoTime = String.format("%4.3fms", debugInfoTimer.getTotalTime());
-            l().dim().a("%9s for generating debug info (%2.2f%% of time to create image)", debugInfoTime, debugInfoTimer.getTotalTime() / creationTimer.getTotalTime() * 100).reset().flushln();
+            String debugInfoTime = String.format("%.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
+            l().dim().a("%9s for generating debug info", debugInfoTime).reset().flushln();
         }
     }
 
@@ -451,7 +452,7 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%.0fm %.0fs", totalSeconds / 60, totalSeconds % 60);
         }
-        l().a("Finished generating '").bold().a(imageName).reset().a(" in ").a(timeStats).a(".").flushln();
+        l().a("Finished generating '").bold().a(imageName).reset().a("' in ").a(timeStats).a(".").flushln();
         executor.shutdown();
     }
 
@@ -946,12 +947,12 @@ public class ProgressReporter {
 
         @Override
         protected LinePrinter link(String text, String url) {
-            return this;
+            return a(text);
         }
 
         @Override
         protected LinePrinter doclink(String text, String htmlAnchor) {
-            return this;
+            return a(text);
         }
 
         @Override
@@ -965,7 +966,7 @@ public class ProgressReporter {
         }
     }
 
-    private class ANSIColors {
+    private static class ANSIColors {
         static final String ESCAPE = "\033";
         static final String RESET = ESCAPE + "[0m";
         static final String BOLD = ESCAPE + "[1m";
