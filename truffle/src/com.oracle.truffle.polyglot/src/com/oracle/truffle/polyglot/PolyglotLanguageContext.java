@@ -214,7 +214,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     final PolyglotLanguage language;
     final boolean eventsEnabled;
 
-    private volatile Thread creatingThread;
+    private Thread creatingThread;
+    private volatile boolean created;
     private volatile boolean initialized;
     volatile boolean finalized;
     volatile boolean exited;
@@ -528,32 +529,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean isCreated() {
-        return lazy != null;
+        return created;
     }
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {
         if (creatingThread == Thread.currentThread()) {
             throw PolyglotEngineException.illegalState(String.format("Cyclic access to language context for language %s. " +
                             "The context is currently being created.", language.getId()));
-        } else if (creatingThread != null) {
-            // Wait for creation
-            boolean interrupted = false;
-            synchronized (context) {
-                while (creatingThread != null) {
-                    try {
-                        context.wait();
-                    } catch (InterruptedException e) {
-                        // Keep waiting
-                        interrupted = true;
-                    }
-                }
-            }
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
         }
 
-        if (lazy == null) {
+        if (!created) {
             checkAccess(accessingLanguage);
 
             Map<String, Object> creatorConfig = context.creator == language ? context.creatorArguments : Collections.emptyMap();
@@ -571,7 +556,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
 
             synchronized (context) {
-                if (lazy == null) {
+                if (!created) {
                     if (eventsEnabled) {
                         EngineAccessor.INSTRUMENT.notifyLanguageContextCreate(context.engine, context.creatorTruffleContext, language.info);
                     }
@@ -626,8 +611,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             throw e;
                         } finally {
                             creatingThread = null;
-                            context.notifyAll();
                         }
+                        created = true;
                     } finally {
                         if (!wasCreated && eventsEnabled) {
                             EngineAccessor.INSTRUMENT.notifyLanguageContextCreateFailed(context.engine, context.creatorTruffleContext, language.info);
@@ -640,6 +625,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void close() {
         assert Thread.holdsLock(context);
+        created = false;
         lazy = null;
         env = null;
     }
