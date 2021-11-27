@@ -164,7 +164,8 @@ final class DefaultInliningPolicy implements InliningPolicy {
 
     @Override
     public void putProperties(CallNode callNode, Map<Object, Object> properties) {
-        properties.put("call diff", data(callNode).callDiff);
+        Data data = data(callNode);
+        properties.put("call diff", data != null ? data.callDiff : 0);
     }
 
     private static final class Data {
