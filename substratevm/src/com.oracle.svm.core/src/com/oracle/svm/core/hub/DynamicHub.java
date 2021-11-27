@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -166,7 +166,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /** Is this an interface. */
     private static final int IS_INTERFACE_FLAG_BIT = 1;
     /** Is this a Hidden Class. */
-    private static final int IS_HIDDED_FLAG_BIT = 2;
+    private static final int IS_HIDDEN_FLAG_BIT = 2;
     /** Is this a Record Class. */
     private static final int IS_RECORD_FLAG_BIT = 3;
     /** Holds assertionStatus determined by {@link RuntimeAssertionsSupport}. */
@@ -183,7 +183,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * {@link ClassInitializationInfo}.
      */
     private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
-
+    /** Is this a Sealed Class. */
+    private static final int IS_SEALED_FLAG_BIT = 7;
     /**
      * Has the type been discovered as instantiated by the static analysis?
      */
@@ -317,7 +318,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
                     String sourceFileName, int modifiers, ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus,
-                    boolean hasDefaultMethods, boolean declaresDefaultMethods) {
+                    boolean hasDefaultMethods, boolean declaresDefaultMethods, boolean isSealed) {
         this.hostedJavaClass = hostedJavaClass;
         this.name = name;
         this.hubType = hubType.getValue();
@@ -331,13 +332,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.nestHost = nestHost;
 
-        this.flags = NumUtil.safeToByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
+        this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
-                        makeFlag(IS_HIDDED_FLAG_BIT, isHidden) |
+                        makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
                         makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
                         makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
                         makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
-                        makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods));
+                        makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
+                        makeFlag(IS_SEALED_FLAG_BIT, isSealed));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -767,13 +769,19 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isHidden() {
-        return isFlagSet(IS_HIDDED_FLAG_BIT);
+        return isFlagSet(IS_HIDDEN_FLAG_BIT);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecord() {
         return isFlagSet(IS_RECORD_FLAG_BIT);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public boolean isSealed() {
+        return isFlagSet(IS_SEALED_FLAG_BIT);
     }
 
     @Substitute
@@ -986,19 +994,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     public static final class ReflectionData {
         static final ReflectionData EMPTY = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null, new Field[0],
-                        new Method[0], new Class<?>[0], new Class<?>[0], null, null);
+                        new Method[0], new Class<?>[0], null, new Class<?>[0], null, null);
 
         public static ReflectionData get(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods,
                         Constructor<?>[] declaredConstructors, Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields,
-                        Method[] declaredPublicMethods, Class<?>[] declaredClasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor, Object[] recordComponents) {
+                        Method[] declaredPublicMethods, Class<?>[] declaredClasses, Class<?>[] permittedSubclasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
+                        Object[] recordComponents) {
 
             if (z(declaredFields) && z(publicFields) && z(publicUnhiddenFields) && z(declaredMethods) && z(publicMethods) && z(declaredConstructors) &&
                             z(publicConstructors) && nullaryConstructor == null && z(declaredPublicFields) && z(declaredPublicMethods) && z(declaredClasses) &&
-                            z(publicClasses) && enclosingMethodOrConstructor == null && (recordComponents == null || z(recordComponents))) {
+                            permittedSubclasses == null && z(publicClasses) && enclosingMethodOrConstructor == null && (recordComponents == null || z(recordComponents))) {
                 return EMPTY; // avoid redundant objects in image heap
             }
             return new ReflectionData(declaredFields, publicFields, publicUnhiddenFields, declaredMethods, publicMethods, declaredConstructors, publicConstructors, nullaryConstructor,
-                            declaredPublicFields, declaredPublicMethods, declaredClasses, publicClasses, enclosingMethodOrConstructor, recordComponents);
+                            declaredPublicFields, declaredPublicMethods, declaredClasses, permittedSubclasses, publicClasses, enclosingMethodOrConstructor, recordComponents);
         }
 
         private static boolean z(Object[] array) { // for better readability above
@@ -1016,6 +1025,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Field[] declaredPublicFields;
         final Method[] declaredPublicMethods;
         final Class<?>[] declaredClasses;
+        final Class<?>[] permittedSubclasses;
         final Class<?>[] publicClasses;
         final Object[] recordComponents;
 
@@ -1027,7 +1037,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
         ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
-                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
+                        Class<?>[] permittedSubclasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
                         Object[] recordComponents) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
@@ -1040,6 +1050,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.declaredPublicFields = declaredPublicFields;
             this.declaredPublicMethods = declaredPublicMethods;
             this.declaredClasses = declaredClasses;
+            this.permittedSubclasses = permittedSubclasses;
             this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
             this.recordComponents = recordComponents;
@@ -1186,6 +1197,22 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                             "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
         }
         return (Target_java_lang_reflect_RecordComponent[]) result;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    private Class<?>[] getPermittedSubclasses() {
+        /*
+         * We make several assumptions here: we precompute this value by using the cached value from
+         * image build time, agent run / custom reflection configuration is required, we ignore all
+         * classloader checks, and assume that cached result would be valid.
+         */
+        if (rd.permittedSubclasses != null) {
+            for (Class<?> clazz : rd.permittedSubclasses) {
+                PredefinedClassesSupport.throwIfUnresolvable(clazz, getClassLoader0());
+            }
+        }
+        return rd.permittedSubclasses;
     }
 
     @Substitute

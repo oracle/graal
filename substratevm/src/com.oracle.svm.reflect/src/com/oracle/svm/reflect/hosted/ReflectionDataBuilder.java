@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -138,6 +139,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         EMPTY_FIELDS,
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
+                        null,
                         EMPTY_CLASSES,
                         null,
                         null);
@@ -528,6 +530,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         query(clazz::getDeclaredConstructors, errors);
         query(clazz::getConstructors, errors);
         Class<?>[] declaredClasses = query(clazz::getDeclaredClasses, errors);
+        Class<?>[] permittedClasses = SealedClassSupport.singleton().getPermittedSubclasses(clazz);
         Class<?>[] classes = query(clazz::getClasses, errors);
         reportLinkingErrors(clazz, errors);
 
@@ -550,6 +553,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields, access),
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
                             filterClasses(declaredClasses, reflectionClasses, access),
+                            filterClasses(permittedClasses, reflectionClasses, access, true),
+                            /* null is different from Class<?>[0] here. */
                             filterClasses(classes, reflectionClasses, access),
                             enclosingMethodOrConstructor(clazz),
                             buildRecordComponents(clazz, access));
@@ -724,8 +729,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
+        return filterClasses(classes, filter, access, false);
+    }
+
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access, boolean keepNull) {
         if (classes == null) {
-            return EMPTY_CLASSES;
+            if (keepNull) {
+                return null;
+            } else {
+                return EMPTY_CLASSES;
+            }
         }
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
