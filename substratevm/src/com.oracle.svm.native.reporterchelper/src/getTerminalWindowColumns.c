@@ -4,7 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,45 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
+#include <jni.h>
 
-import java.lang.reflect.Executable;
+#if defined(__linux__) || defined(__APPLE__)
 
-import org.graalvm.collections.Pair;
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <sys/resource.h>
 
-import com.oracle.svm.core.hub.DynamicHub;
-
-public interface MethodMetadataDecoder {
-    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
-
-    MethodDescriptor[] getAllReachableMethods();
-
-    long getMetadataByteLength();
-
-    class MethodDescriptor {
-        private final Class<?> declaringClass;
-        private final String name;
-        private final Class<?>[] parameterTypes;
-
-        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-            this.parameterTypes = parameterTypes;
-        }
-
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
-        }
-    }
-
+JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    return w.ws_col;
 }
+
+#elif defined(_WIN64)
+
+#include <windows.h>
+
+JNIEXPORT jint JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getTerminalWindowColumns0(void *env, void * ignored) {
+    CONSOLE_SCREEN_BUFFER_INFO c;
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &c);
+    return c.srWindow.Right - c.srWindow.Left + 1;
+}
+
+#endif

@@ -165,6 +165,12 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
         return allMethods.toArray(new MethodDescriptor[0]);
     }
 
+    @Override
+    public long getMetadataByteLength() {
+        MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
+        return encoding.getMethodsEncoding().length + encoding.getIndexEncoding().length;
+    }
+
     private static int getOffset(int typeID) {
         MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
         byte[] index = encoding.getIndexEncoding();

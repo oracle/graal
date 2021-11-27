@@ -274,6 +274,30 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
     /*
+     * Build output options.
+     */
+    @Option(help = "Use new build output style", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
+
+    @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
+
+    @Option(help = "Colorize build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(true);
+
+    @Option(help = "Show links in build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputLinks = new HostedOptionKey<>(true);
+
+    @Option(help = "Report progress in build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputProgress = new HostedOptionKey<>(true);
+
+    @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
+
+    @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
+
+    /*
      * Object and array allocation options.
      */
     @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions.")//

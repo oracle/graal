@@ -22,45 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect;
+package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
-
-import java.lang.reflect.Executable;
-
-import org.graalvm.collections.Pair;
-
-import com.oracle.svm.core.hub.DynamicHub;
-
-public interface MethodMetadataDecoder {
-    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
-
-    MethodDescriptor[] getAllReachableMethods();
-
-    long getMetadataByteLength();
-
-    class MethodDescriptor {
-        private final Class<?> declaringClass;
-        private final String name;
-        private final Class<?>[] parameterTypes;
-
-        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-            this.parameterTypes = parameterTypes;
-        }
-
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
-        }
+/* TODO: Added as a temporary workaround to provide compatibility with JDK8 (GR-35238). */
+public class StringAccess {
+    public static int getInternalByteArrayLength(@SuppressWarnings("unused") String string) {
+        return 0; // not supported
     }
-
 }
