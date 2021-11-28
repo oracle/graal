@@ -100,7 +100,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     @Override
-    public AnalysisMethod getTargetMethod() {
+    public PointsToAnalysisMethod getTargetMethod() {
         return targetMethod;
     }
 

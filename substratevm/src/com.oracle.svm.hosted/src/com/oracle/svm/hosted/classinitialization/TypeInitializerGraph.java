@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -66,7 +65,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class TypeInitializerGraph {
     private final SVMHost hostVM;
-    private final BigBang bb;
     private ClassInitializationSupport classInitializationSupport;
 
     private enum Safety {
@@ -81,7 +79,6 @@ public class TypeInitializerGraph {
     private final Collection<AnalysisMethod> methods;
 
     TypeInitializerGraph(AnalysisUniverse universe) {
-        bb = universe.getBigbang();
         hostVM = ((SVMHost) universe.hostVM());
         classInitializationSupport = hostVM.getClassInitializationSupport();
 

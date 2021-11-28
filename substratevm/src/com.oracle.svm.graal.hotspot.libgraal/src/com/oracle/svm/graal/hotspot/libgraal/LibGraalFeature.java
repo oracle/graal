@@ -53,7 +53,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -549,7 +548,6 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
      */
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
-        BigBang bb = universe.getBigbang();
         Set<AnalysisMethod> seen = new HashSet<>();
         universe.getMethods().stream().filter(AnalysisMethod::isRootMethod).forEach(seen::add);
         Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);

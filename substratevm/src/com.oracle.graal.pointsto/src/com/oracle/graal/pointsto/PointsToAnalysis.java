@@ -433,13 +433,12 @@ public abstract class PointsToAnalysis implements BigBang {
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
-        assertPointsToAnalysisMethod(aMethod);
         if (aMethod.isRootMethod()) {
             return aMethod;
         }
         aMethod.registerAsRootMethod();
 
-        final MethodTypeFlow methodFlow = ((PointsToAnalysisMethod) aMethod).getTypeFlow();
+        final MethodTypeFlow methodFlow = assertPointsToAnalysisMethod(aMethod).getTypeFlow();
         try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
             boolean isStatic = Modifier.isStatic(aMethod.getModifiers());
             int paramCount = aMethod.getSignature().getParameterCount(!isStatic);

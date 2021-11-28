@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,22 +74,21 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return typeFlow;
     }
 
-    @Override
     public boolean registerAsInvoked(InvokeTypeFlow invoke) {
         if (invokedBy != null && invoke != null) {
             invokedBy.put(invoke, Boolean.TRUE);
         }
-        return super.registerAsInvoked(invoke);
+        return super.registerAsInvoked();
     }
 
-    @Override
     public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
         if (implementationInvokedBy != null && invoke != null) {
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
-        return super.registerAsImplementationInvoked(invoke);
+        return super.registerAsImplementationInvoked();
     }
 
+    @Override
     public List<BytecodePosition> getInvokeLocations() {
         List<BytecodePosition> locations = new ArrayList<>();
         for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {

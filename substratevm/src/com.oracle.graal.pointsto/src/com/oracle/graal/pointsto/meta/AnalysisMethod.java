@@ -49,7 +49,6 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -210,11 +209,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
         startTrackInvocations();
     }
 
-    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
+    public boolean registerAsInvoked() {
         return AtomicUtils.atomicMark(isInvoked);
     }
 
-    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
+    public boolean registerAsImplementationInvoked() {
         assert !Modifier.isAbstract(getModifiers());
 
         /*
@@ -260,7 +259,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
      * as invoked also makes the declaring class reachable.
      *
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
-     * as in {@link AnalysisMethod#registerAsImplementationInvoked(InvokeTypeFlow)}.
+     * as in {@link AnalysisMethod#registerAsImplementationInvoked()}.
      */
     public boolean registerAsRootMethod() {
         getDeclaringClass().registerAsReachable();
