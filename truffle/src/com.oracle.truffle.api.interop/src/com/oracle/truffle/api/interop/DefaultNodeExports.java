@@ -40,10 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -52,11 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -102,29 +94,11 @@ final class DefaultNodeExports {
     @SuppressWarnings("deprecation")
     @TruffleBoundary
     private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-        List<? extends FrameSlot> slots;
-        if (frame == null) {
-            slots = root.getFrameDescriptor().getSlots();
-        } else {
-            slots = frame.getFrameDescriptor().getSlots();
-            // Filter out slots with null values:
-            List<FrameSlot> nonNulls = null;
-            int lastI = 0;
-            for (int i = 0; i < slots.size(); i++) {
-                FrameSlot slot = slots.get(i);
-                if (!InteropLibrary.isValidValue(frame.getValue(slot)) || isInternal(slot)) {
-                    if (nonNulls == null) {
-                        nonNulls = new ArrayList<>(slots.size());
-                    }
-                    nonNulls.addAll(slots.subList(lastI, i));
-                    lastI = i + 1;
-                }
-            }
-            if (nonNulls != null) {
-                if (lastI < slots.size()) {
-                    nonNulls.addAll(slots.subList(lastI, slots.size()));
-                }
-                slots = nonNulls;
+        LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
+        FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
+        for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
+            if (!isInternal(slot.getIdentifier()) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
+                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
             }
         }
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
@@ -138,12 +112,12 @@ final class DefaultNodeExports {
     @ExportLibrary(InteropLibrary.class)
     static final class DefaultScope implements TruffleObject {
 
-        private final Map<String, ? extends FrameSlot> slots;
+        private final Map<String, Object> slots;
         private final RootNode root;
         private final Frame frame;
         private final Class<? extends TruffleLanguage<?>> language;
 
-        private DefaultScope(Map<String, ? extends FrameSlot> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
