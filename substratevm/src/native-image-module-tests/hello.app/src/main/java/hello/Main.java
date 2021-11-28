@@ -26,9 +26,11 @@ package hello;
 
 import hello.lib.Greeter;
 
+import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -52,6 +54,8 @@ public class Main {
         greetMethod.invoke(null);
 
         testBootLayer(helloAppModule, helloLibModule);
+
+        testResourceAccess(helloAppModule, helloLibModule);
     }
 
     private static void failIfAssertionsAreDisabled() {
@@ -61,7 +65,7 @@ public class Main {
             throw new AssertionError("This example requires that assertions are enabled (-ea)");
         }
     }
-    
+
     private static void testModuleObjects(Module helloAppModule, Module helloLibModule) {
         assert helloAppModule.getName().equals("moduletests.hello.app");
         assert helloAppModule.isExported(Main.class.getPackageName());
@@ -115,5 +119,34 @@ public class Main {
         System.out.println("Now testing if user modules are part of the boot layer");
         assert ModuleLayer.boot().modules().contains(helloAppModule);
         assert ModuleLayer.boot().modules().contains(helloLibModule);
+    }
+
+    private static void testResourceAccess(Module helloAppModule, Module helloLibModule) {
+        System.out.println("Now testing resources in modules");
+
+        String helloAppModuleResourceContents;
+        String sameResourcePathName = "resource-file.txt";
+
+        // Test Module.getResourceAsStream(String)
+        try (Scanner s = new Scanner(helloAppModule.getResourceAsStream(sameResourcePathName))) {
+            helloAppModuleResourceContents = s.nextLine();
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access resource " + sameResourcePathName + " from " + helloAppModule);
+        }
+        String helloLibModuleResourceContents;
+        try (Scanner s = new Scanner(helloLibModule.getResourceAsStream(sameResourcePathName))) {
+            helloLibModuleResourceContents = s.nextLine();
+        } catch (IOException e) {
+            throw new AssertionError("Unable to access resource " + sameResourcePathName + " from " + helloLibModule);
+        }
+        assert !helloAppModuleResourceContents.equals(helloLibModuleResourceContents) : sameResourcePathName + " not recognized as different resources";
+
+        // Test Class.getResourceAsStream(String)
+        try (Scanner s = new Scanner(Main.class.getResourceAsStream("/" + sameResourcePathName))) {
+            assert helloAppModuleResourceContents.equals(s.nextLine()) : "Class.getResourceAsStream(String) result differs from Module.getResourceAsStream(String) result";
+        }
+        try (Scanner s = new Scanner(Greeter.class.getResourceAsStream("/" + sameResourcePathName))) {
+            assert helloLibModuleResourceContents.equals(s.nextLine()) : "Class.getResourceAsStream(String) result differs from Module.getResourceAsStream(String) result";
+        }
     }
 }
