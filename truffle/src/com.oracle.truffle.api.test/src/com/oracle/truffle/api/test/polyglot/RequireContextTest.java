@@ -96,14 +96,12 @@ public class RequireContextTest extends AbstractPolyglotTest {
         });
         assertFails(() -> instrumentEnv.getTruffleFile("file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
-        assertFails(() -> instrumentEnv.findTopScopes(ProxyLanguage.ID), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         assertFails(() -> instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
         context.enter();
         try {
             assertNotNull(instrumentEnv.getTruffleFile("file"));
             assertNotNull(instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()));
-            assertNotNull(instrumentEnv.findTopScopes(ProxyLanguage.ID));
             assertTrue((boolean) instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()).call());
             assertNotNull(instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class));
         } finally {

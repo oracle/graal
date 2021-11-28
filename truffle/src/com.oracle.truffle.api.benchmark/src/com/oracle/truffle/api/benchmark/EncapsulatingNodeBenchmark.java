@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @State(Scope.Thread)
@@ -60,60 +59,9 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
 
     static final String TEST_LANGUAGE = "benchmark-test-language";
 
-    @State(Scope.Thread)
-    public static class PushPopOldCompiled {
-        final Source source = Source.create(TEST_LANGUAGE, "");
-        final Context context = Context.create(TEST_LANGUAGE);
-        {
-            context.initialize(TEST_LANGUAGE);
-        }
-        final Integer intValue = 42;
-        final CallTarget callTarget = new RootNode(null) {
-
-            private final Integer constant = 42;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Node prev0 = NodeUtil.pushEncapsulatingNode(this);
-                Node prev1 = NodeUtil.pushEncapsulatingNode(this);
-                Node prev2 = NodeUtil.pushEncapsulatingNode(this);
-                sideEffect++;
-                NodeUtil.popEncapsulatingNode(prev2);
-                NodeUtil.popEncapsulatingNode(prev1);
-                NodeUtil.popEncapsulatingNode(prev0);
-                return constant;
-            }
-        }.getCallTarget();
-
-        private final Node node = new Node() {
-        };
-
-        @TearDown
-        public void tearDown() {
-            context.close();
-        }
-    }
-
     private static final Object[] EMPTY_ARGS = new Object[0];
 
-    @Benchmark
-    public Object pushPopOldCompiled(PushPopOldCompiled state) {
-        return state.callTarget.call(EMPTY_ARGS);
-    }
-
     static volatile long sideEffect = 0;
-
-    @Benchmark
-    public Object pushPopOldInterpreter(PushPopOldCompiled state) {
-        Node prev0 = NodeUtil.pushEncapsulatingNode(state.node);
-        Node prev1 = NodeUtil.pushEncapsulatingNode(state.node);
-        Node prev2 = NodeUtil.pushEncapsulatingNode(state.node);
-        sideEffect++;
-        NodeUtil.popEncapsulatingNode(prev2);
-        NodeUtil.popEncapsulatingNode(prev1);
-        NodeUtil.popEncapsulatingNode(prev0);
-        return null;
-    }
 
     @Benchmark
     public Object pushPopNewInterpreter(PushPopNewCompiled state) {

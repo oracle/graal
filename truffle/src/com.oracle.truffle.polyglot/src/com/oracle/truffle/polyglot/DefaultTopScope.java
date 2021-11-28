@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.object.dsl.test;
+package com.oracle.truffle.polyglot;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.util.Collections;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectFactory;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.polyglot.PolyglotBindings.Members;
 
-public class BuildArgumentsTest {
+@ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("static-method")
+final class DefaultTopScope implements TruffleObject {
 
-    @SuppressWarnings("deprecation")
-    @com.oracle.truffle.api.object.dsl.Layout
-    public interface PrepareArgumentsLayout {
+    private static final Object EMPTY_MEMBERS = new Members(Collections.emptySet());
 
-        DynamicObjectFactory createPrepareArgumentsShape(int shapeProperty);
-
-        Object[] build(int a, Object b);
-
-        int getShapeProperty(DynamicObject object);
-
-        void setShapeProperty(DynamicObject object, int value);
-
-        int getA(DynamicObject object);
-
-        Object getB(DynamicObject object);
-
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
     }
 
-    private static final PrepareArgumentsLayout LAYOUT = PrepareArgumentsLayoutImpl.INSTANCE;
+    @ExportMessage
+    Object readMember(String member) throws UnknownIdentifierException {
+        throw UnknownIdentifierException.create(member);
+    }
 
-    @Test
-    public void testCreate() {
-        final DynamicObjectFactory factory = LAYOUT.createPrepareArgumentsShape(14);
-        final DynamicObject object = factory.newInstance(LAYOUT.build(1, 2));
-        Assert.assertEquals(14, LAYOUT.getShapeProperty(object));
-        Assert.assertEquals(1, LAYOUT.getA(object));
-        Assert.assertEquals(2, LAYOUT.getB(object));
+    @ExportMessage
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return EMPTY_MEMBERS;
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+        return false;
     }
 
 }

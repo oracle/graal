@@ -343,7 +343,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     }
 
-    public void markFrameMaterializeCalled(FrameDescriptor descriptor) {
+    public void markFrameMaterializeCalled(@SuppressWarnings("unused") FrameDescriptor descriptor) {
         // empty
     }
 }

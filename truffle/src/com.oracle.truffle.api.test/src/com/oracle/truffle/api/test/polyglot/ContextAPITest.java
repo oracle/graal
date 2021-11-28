@@ -784,22 +784,6 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
     }
 
-    private static void testBindingsLegacy(Context context) {
-        TopScope values = new TopScope();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            @SuppressWarnings("deprecation")
-            protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(LanguageContext env) {
-                return Arrays.asList(com.oracle.truffle.api.Scope.newBuilder("top", values).build());
-            }
-        });
-        Value bindings = context.getBindings(ProxyLanguage.ID);
-
-        testWritableBindings(bindings);
-
-        ValueAssert.assertValue(bindings, Trait.MEMBERS);
-    }
-
     private static void testBindings(Context context) {
         TopScope values = new TopScope();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -891,7 +875,6 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context context = Context.getCurrent();
         testExecute(context);
         testPolyglotBindings(context);
-        testBindingsLegacy(context);
         testBindings(context);
 
         assertFails(() -> context.leave(), IllegalStateException.class);

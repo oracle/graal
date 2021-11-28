@@ -120,7 +120,6 @@ import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
@@ -132,9 +131,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class ValueAPITest {
@@ -1866,59 +1863,6 @@ public class ValueAPITest {
             return false;
         }
 
-    }
-
-    @Test
-    public void testValueContextPropagation() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-        Object o = new TestObject();
-
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return RootNode.createConstantNode(o).getCallTarget();
-            }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return object == o;
-            }
-
-            @Override
-            protected String toString(@SuppressWarnings("hiding") LanguageContext context, Object value) {
-                if (o == value) {
-                    return "true";
-                } else {
-                    return "false";
-                }
-            }
-        });
-        Value v = context.eval(ProxyLanguage.ID, "");
-        assertEquals("true", v.toString());
-        assertEquals("true", context.asValue(v).toString());
-        assertEquals("true", v.as(Map.class).toString());
-        assertEquals("true", v.as(Function.class).toString());
-        assertEquals("true", v.as(List.class).toString());
-        assertEquals("true", context.asValue(v.as(Map.class)).toString());
-        assertEquals("true", context.asValue(v.as(Function.class)).toString());
-        assertEquals("true", context.asValue(v.as(List.class)).toString());
-
-        assertEquals(v, v);
-        assertEquals(v, context.asValue(v));
-
-        assertEquals(v.as(Map.class), v.as(Map.class));
-        assertEquals(v.as(Function.class), v.as(Function.class));
-        assertEquals(v.as(List.class), v.as(List.class));
-        assertEquals(v.as(Map.class), context.asValue(v.as(Map.class)).as(Map.class));
-        assertEquals(v.as(Function.class), context.asValue(v.as(Function.class)).as(Function.class));
-        assertEquals(v.as(List.class), context.asValue(v.as(List.class)).as(List.class));
-
-        assertNotEquals(v.as(Function.class), v.as(Map.class));
-        assertNotEquals(v.as(Function.class), v.as(List.class));
-        assertNotEquals(v.as(Map.class), v.as(Function.class));
-        assertNotEquals(v.as(Map.class), v.as(List.class));
-        assertNotEquals(v.as(List.class), v.as(Function.class));
-        assertNotEquals(v.as(List.class), v.as(Map.class));
     }
 
     @Test

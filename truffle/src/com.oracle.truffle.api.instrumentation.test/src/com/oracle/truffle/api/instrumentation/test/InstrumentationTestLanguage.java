@@ -745,11 +745,28 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
-    @GenerateWrapper
+    public static class InstrumentedBaseNode extends BaseNode implements InstrumentableNode {
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(NodeLibrary.class)
+    @GenerateWrapper
     @SuppressWarnings("static-method")
-    public abstract static class InstrumentedNode extends BaseNode implements InstrumentableNode, TruffleObject {
+    public abstract static class InstrumentedNode extends InstrumentedBaseNode implements InstrumentableNode, TruffleObject {
 
         private static final String THIS = "THIS";
 
@@ -766,6 +783,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         @Override
         public boolean isInstrumentable() {
             return getSourceSection() != null;
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new InstrumentedNodeWrapper(this, probe);
         }
 
         @Override
@@ -816,11 +838,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             }
             throw UnknownIdentifierException.create(key);
-        }
-
-        @Override
-        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
-            return new InstrumentedNodeWrapper(this, probe);
         }
 
         @Override
@@ -881,14 +898,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 } else {
                     arguments = new Object[0];
                 }
-                return AbstractInstrumentationTest.TestAccessor.ACCESSOR.engineAccess().getDefaultArguments(arguments, InstrumentationTestLanguage.class);
+                return new ArgumentsArrayObject(arguments);
             } else {
-                Object variables = AbstractInstrumentationTest.TestAccessor.ACCESSOR.engineAccess().getDefaultVariables(getRootNode(), frame, InstrumentationTestLanguage.class);
+                Object variables = getDefaultScope(frame, nodeEnter);
                 Object[] arguments;
                 if (frame != null && (arguments = frame.getArguments()) != null && arguments.length > 0 && arguments[0] instanceof ThisArg) {
                     variables = new VariablesWithThis(variables, ((ThisArg) arguments[0]).thisElement);
                 }
                 return variables;
+            }
+        }
+
+        private Object getDefaultScope(Frame frame, boolean nodeEnter) {
+            try {
+                // the dummy trigger creating the default scope implementation
+                InstrumentedBaseNode dummy = insert(new InstrumentedBaseNode());
+                return NodeLibrary.getUncached().getScope(dummy, frame, nodeEnter);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
             }
         }
 
@@ -926,6 +953,123 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 return function;
             }
             throw UnsupportedMessageException.create();
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        @SuppressWarnings("static-method")
+        static final class ArgumentsArrayObject implements TruffleObject {
+
+            final Object[] args;
+
+            ArgumentsArrayObject(Object[] args) {
+                this.args = args;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return InstrumentationTestLanguage.class;
+            }
+
+            @ExportMessage
+            boolean isScope() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean hasMembers() {
+                return true;
+            }
+
+            @ExportMessage
+            Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+                return new ArgumentNamesObject(args.length);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isMemberReadable(String member) {
+                try {
+                    int index = Integer.parseInt(member);
+                    if (0 <= index && index < args.length) {
+                        return InteropLibrary.isValidValue(args[index]);
+                    } else {
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    return false;
+                }
+            }
+
+            @ExportMessage(name = "isMemberModifiable")
+            @ExportMessage(name = "isMemberInsertable")
+            boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
+                return false;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object readMember(String member) throws UnsupportedMessageException {
+                try {
+                    int index = Integer.parseInt(member);
+                    if (0 <= index && index < args.length) {
+                        return args[index];
+                    }
+                } catch (NumberFormatException e) {
+                }
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            void writeMember(@SuppressWarnings("unused") String member, @SuppressWarnings("unused") Object value) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+                return "local";
+            }
+        }
+
+        @ExportLibrary(InteropLibrary.class)
+        static final class ArgumentNamesObject implements TruffleObject {
+
+            private final int n;
+
+            ArgumentNamesObject(int n) {
+                this.n = n;
+            }
+
+            @SuppressWarnings("static-method")
+            @ExportMessage
+            boolean hasArrayElements() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            long getArraySize() {
+                return n;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
+                if (!isArrayElementReadable(index)) {
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return Long.toString(index);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isArrayElementReadable(long index) {
+                return index >= 0 && index < n;
+            }
         }
 
         @ExportLibrary(InteropLibrary.class)

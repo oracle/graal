@@ -125,14 +125,6 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
     }
 
     @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        if (value instanceof TestTruffleException) {
-            return new TestTruffleException.MetaObject();
-        }
-        return Objects.toString(value);
-    }
-
-    @Override
     protected Object getLanguageView(LanguageContext context, Object value) {
         return new ProxyInteropObject.InteropWrapper(value) {
             @Override
@@ -147,35 +139,12 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
             @Override
             protected boolean hasMetaObject() {
-                return findMetaObject(context, value) != null || super.hasMetaObject();
+                return true;
             }
 
             @Override
             protected Object getMetaObject() throws UnsupportedMessageException {
-                Object metaObject = findMetaObject(context, value);
-                if (!InteropLibrary.getUncached().isMetaObject(metaObject)) {
-                    metaObject = new MetaObject(metaObject);
-                }
-                return metaObject;
-            }
-
-            @Override
-            protected Object toDisplayString(boolean allowSideEffects) {
-                return TestDebugBuggyLanguage.this.toString(context, value);
-            }
-
-            @Override
-            protected boolean hasSourceLocation() {
-                return findSourceLocation(context, value) != null || InteropLibrary.getUncached().hasSourceLocation(value);
-            }
-
-            @Override
-            protected SourceSection getSourceLocation() throws UnsupportedMessageException {
-                SourceSection location = findSourceLocation(context, value);
-                if (location == null) {
-                    location = InteropLibrary.getUncached().getSourceLocation(value);
-                }
-                return location;
+                return new MetaObject(delegate);
             }
 
             class MetaObject extends ProxyInteropObject.InteropWrapper {
@@ -191,40 +160,17 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
                 @Override
                 protected String getMetaSimpleName() throws UnsupportedMessageException {
-                    String metaSimpleName;
-                    try {
-                        metaSimpleName = super.getMetaSimpleName();
-                    } catch (UnsupportedMessageException ex) {
-                        metaSimpleName = null;
-                    }
-                    if (metaSimpleName == null) {
-                        metaSimpleName = delegate.toString();
-                    }
-                    return metaSimpleName;
+                    return delegate.getClass().getSimpleName();
                 }
 
                 @Override
                 protected String getMetaQualifiedName() throws UnsupportedMessageException {
-                    String metaQualifiedName;
-                    try {
-                        metaQualifiedName = super.getMetaQualifiedName();
-                    } catch (UnsupportedMessageException ex) {
-                        metaQualifiedName = null;
-                    }
-                    if (metaQualifiedName == null) {
-                        metaQualifiedName = delegate.toString();
-                    }
-                    return metaQualifiedName;
+                    return delegate.getClass().getSimpleName();
                 }
 
                 @Override
                 protected Object toDisplayString(boolean allowSideEffects) {
-                    Object toString = TestDebugBuggyLanguage.this.toString(context, delegate);
-                    if (value.toString().equals(toString)) {
-                        return super.toDisplayString(allowSideEffects);
-                    } else {
-                        return toString;
-                    }
+                    return Objects.toString(delegate);
                 }
             }
         };
@@ -492,6 +438,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     static final class TestTruffleException extends AbstractTruffleException {
 
         private static final long serialVersionUID = 7653875618655878235L;
@@ -502,6 +449,21 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
         @Override
         public String toString() {
+            return getMessage();
+        }
+
+        @ExportMessage
+        public boolean hasMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        public Object getMetaObject() {
+            return new MetaObject();
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return getMessage();
         }
 

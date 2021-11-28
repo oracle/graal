@@ -112,7 +112,6 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
@@ -234,10 +233,6 @@ public abstract class Accessor {
 
         public abstract Object createDefaultNodeObject(Node node);
 
-        public abstract Object createLegacyMetaObjectWrapper(Object receiver, Object result);
-
-        public abstract Object unwrapLegacyMetaObjectWrapper(Object receiver);
-
         public abstract boolean isScopeObject(Object receiver);
 
         public abstract Object createDefaultIterator(Object receiver);
@@ -281,6 +276,7 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
+
     }
 
     public abstract static class EngineSupport extends Support {
@@ -330,8 +326,6 @@ public abstract class Accessor {
         public abstract Env getEnvForInstrument(String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
-
-        public abstract Env getLegacyLanguageEnv(Object obj, boolean nullForHost);
 
         public abstract boolean hasCurrentContext();
 
@@ -406,14 +400,6 @@ public abstract class Accessor {
         }
 
         public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> createDefaultLexicalScope(Node node, Frame frame, Class<? extends TruffleLanguage<?>> language);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> createDefaultTopScope(Object global);
-
-        public abstract Object getDefaultVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language);
-
-        public abstract Object getDefaultArguments(Object[] frameArguments, Class<? extends TruffleLanguage<?>> language);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -534,7 +520,7 @@ public abstract class Accessor {
 
         public abstract LanguageInfo getLanguageInfo(Object polyglotInstrument, Class<? extends TruffleLanguage<?>> languageClass);
 
-        public abstract <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value);
+        public abstract Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value);
 
         public abstract Object getLanguageView(LanguageInfo viewLanguage, Object value);
 
@@ -593,14 +579,6 @@ public abstract class Accessor {
                         Function<G, T> guestFrameConvertor);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope);
-
-        public abstract boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes);
-
-        public abstract Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language);
 
         public abstract OptionValues getEngineOptionValues(Object polyglotEngine);
 
@@ -701,8 +679,6 @@ public abstract class Accessor {
 
         public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
-        public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-
         public abstract void dispose(Env env);
 
         public abstract LanguageInfo getLanguageInfo(TruffleLanguage.Env env);
@@ -716,20 +692,6 @@ public abstract class Accessor {
         public abstract ExecutableNode parseInline(Env env, Source code, Node context, MaterializedFrame frame);
 
         public abstract boolean isVisible(Env env, Object value);
-
-        public abstract String legacyToString(Env env, Object obj);
-
-        public abstract <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj);
-
-        public abstract Object legacyFindMetaObject(Env env, Object value);
-
-        public abstract <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value);
-
-        public abstract SourceSection legacyFindSourceLocation(Env env, Object value);
-
-        public abstract <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value);
-
-        public abstract boolean isObjectOfLanguage(Env env, Object value);
 
         public abstract Object getContext(Env env);
 
@@ -759,13 +721,9 @@ public abstract class Accessor {
 
         public abstract void exitContext(Env localEnv, TruffleLanguage.ExitMode exitMode, int exitCode);
 
-        public abstract Iterable<com.oracle.truffle.api.Scope> findLegacyLocalScopes(Env env, Node node, Frame frame);
-
-        public abstract Iterable<com.oracle.truffle.api.Scope> findTopScopes(Env env);
-
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
 
-        public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
+        public abstract void initializeMultiContext(TruffleLanguage<?> language);
 
         public abstract boolean isTruffleStackTrace(Throwable t);
 
@@ -806,8 +764,6 @@ public abstract class Accessor {
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
         public abstract Path getPath(TruffleFile truffleFile);
-
-        public abstract Object getLegacyScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
 
         public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
 

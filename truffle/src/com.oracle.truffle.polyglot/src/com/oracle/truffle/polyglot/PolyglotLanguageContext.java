@@ -340,7 +340,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     Object prev = language.engine.enterIfNeeded(context, true);
                     try {
                         Object scope = LANGUAGE.getScope(env);
-                        assert InteropLibrary.getUncached().hasMembers(scope) : "Scope object must have members.";
+                        if (scope == null) {
+                            scope = new DefaultTopScope();
+                        }
                         this.hostBindings = this.asValue(scope);
                     } finally {
                         language.engine.leaveIfNeeded(prev, context);

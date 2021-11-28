@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,12 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.api.interop;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -52,27 +49,43 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A default {@link com.oracle.truffle.api.frame.FrameSlot}-based implementation of variables
- * contained in the frame.
+ * Default implementation of {@link NodeLibrary}.
  */
-final class DefaultScope {
+@ExportLibrary(value = NodeLibrary.class, receiverType = Node.class)
+@SuppressWarnings("static-method")
+final class DefaultNodeExports {
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasScope(Node node, Frame frame) {
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        return language != null;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"unchecked", "unused"})
+    static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        if (language == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
+    }
 
     private static boolean isInternal(Object identifier) {
         if (identifier == null) {
             return true;
         }
-        if (EngineAccessor.INSTRUMENT.isInputValueSlotIdentifier(identifier)) {
+        if (InteropAccessor.INSTRUMENT.isInputValueSlotIdentifier(identifier)) {
             return true;
         }
         return false;
@@ -80,7 +93,7 @@ final class DefaultScope {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    static Object getVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+    private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
         LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
         for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
@@ -93,22 +106,18 @@ final class DefaultScope {
                 slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
             }
         }
-        return new VariablesMapObject(slotsMap, root, frame, language);
-    }
-
-    static Object getArguments(Object[] frameArguments, Class<? extends TruffleLanguage<?>> language) {
-        return new ArgumentsArrayObject(frameArguments, language);
+        return new DefaultScope(slotsMap, root, frame, language);
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class VariablesMapObject implements TruffleObject {
+    static final class DefaultScope implements TruffleObject {
 
-        final Map<String, Object> slots;
-        final RootNode root;
-        final Frame frame;
+        private final Map<String, Object> slots;
+        private final RootNode root;
+        private final Frame frame;
         private final Class<? extends TruffleLanguage<?>> language;
 
-        private VariablesMapObject(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
@@ -116,28 +125,27 @@ final class DefaultScope {
         }
 
         public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof VariablesMapObject;
+            return obj instanceof DefaultScope;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         boolean hasLanguage() {
-            return true;
+            return language != null;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
+        Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+            if (language == null) {
+                throw UnsupportedMessageException.create();
+            }
             return language;
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isScope() {
             return true;
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasMembers() {
             return true;
@@ -148,7 +156,7 @@ final class DefaultScope {
         @TruffleBoundary
         Object readMember(String member) throws UnknownIdentifierException {
             if (frame == null) {
-                return NullValue.INSTANCE;
+                return DefaultScopeNull.INSTANCE;
             }
             Object slot = slots.get(member);
             if (slot == null) {
@@ -165,7 +173,7 @@ final class DefaultScope {
         @ExportMessage
         @TruffleBoundary
         Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new VariableNamesObject(slots.keySet());
+            return new DefaultScopeMembers(slots.keySet());
         }
 
         @ExportMessage
@@ -199,7 +207,6 @@ final class DefaultScope {
             }
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
             return false;
@@ -229,14 +236,13 @@ final class DefaultScope {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class NullValue implements TruffleObject {
+    static final class DefaultScopeNull implements TruffleObject {
 
-        private static final NullValue INSTANCE = new NullValue();
+        private static final DefaultScopeNull INSTANCE = new DefaultScopeNull();
 
-        NullValue() {
+        private DefaultScopeNull() {
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isNull() {
             return true;
@@ -245,166 +251,35 @@ final class DefaultScope {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class VariableNamesObject implements TruffleObject {
+    static final class DefaultScopeMembers implements TruffleObject {
 
-        static final VariableNamesObject EMPTY = new VariableNamesObject(Collections.emptySet());
+        final String[] names;
 
-        final List<String> names;
-
-        VariableNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names);
+        DefaultScopeMembers(Set<String> names) {
+            this.names = names.toArray(new String[0]);
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
-        @TruffleBoundary
         long getArraySize() {
-            return names.size();
+            return names.length;
         }
 
         @ExportMessage
-        @TruffleBoundary
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return names.get((int) index);
+            return names[(int) index];
         }
 
         @ExportMessage
-        @TruffleBoundary
         boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < names.size();
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class ArgumentsArrayObject implements TruffleObject {
-
-        final Object[] args;
-        private final Class<? extends TruffleLanguage<?>> language;
-
-        ArgumentsArrayObject(Object[] args, Class<? extends TruffleLanguage<?>> language) {
-            this.args = args;
-            this.language = language;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return language;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isScope() {
-            return true;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new ArgumentNamesObject(args.length);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            try {
-                int index = Integer.parseInt(member);
-                if (0 <= index && index < args.length) {
-                    return InteropLibrary.isValidValue(args[index]);
-                } else {
-                    return false;
-                }
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        }
-
-        @ExportMessage(name = "isMemberModifiable")
-        @ExportMessage(name = "isMemberInsertable")
-        @SuppressWarnings("static-method")
-        boolean isMemberModifiable(@SuppressWarnings("unused") String member) {
-            return false;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readMember(String member) throws UnsupportedMessageException {
-            try {
-                int index = Integer.parseInt(member);
-                if (0 <= index && index < args.length) {
-                    return args[index];
-                }
-            } catch (NumberFormatException e) {
-            }
-            throw UnsupportedMessageException.create();
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        void writeMember(@SuppressWarnings("unused") String member, @SuppressWarnings("unused") Object value) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return "local";
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class ArgumentNamesObject implements TruffleObject {
-
-        private final int n;
-
-        ArgumentNamesObject(int n) {
-            this.n = n;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        long getArraySize() {
-            return n;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (!isArrayElementReadable(index)) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            return Long.toString(index);
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < n;
+            return index >= 0 && index < names.length;
         }
     }
 

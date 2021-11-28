@@ -109,7 +109,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -211,8 +210,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value) {
-            return new DefaultLanguageView<>(truffleLanguage, context, value);
+        public Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value) {
+            return new DefaultLanguageView<>(truffleLanguage, value);
         }
 
         @Override
@@ -441,33 +440,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Env getLegacyLanguageEnv(Object obj, boolean nullForHost) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
-            if (context == null) {
-                return null;
-            }
-            PolyglotLanguage language = findLegacyLanguage(context, obj);
-            if (language == null) {
-                return null;
-            }
-            return context.getContext(language).env;
-        }
-
-        private static PolyglotLanguage findLegacyLanguage(PolyglotContextImpl context, Object value) {
-            PolyglotLanguage foundLanguage = null;
-            for (PolyglotLanguageContext searchContext : context.contexts) {
-                if (searchContext.isCreated()) {
-                    final TruffleLanguage.Env searchEnv = searchContext.env;
-                    if (EngineAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
-                        foundLanguage = searchContext.language;
-                        break;
-                    }
-                }
-            }
-            return foundLanguage;
-        }
-
-        @Override
         public Object getCurrentSharingLayer() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
@@ -619,11 +591,6 @@ final class EngineAccessor extends Accessor {
             Value value = context.context.polyglotBindings.get(symbolName);
             if (value != null) {
                 return context.getAPIAccess().getReceiver(value);
-            } else {
-                value = context.context.findLegacyExportedSymbol(symbolName);
-                if (value != null) {
-                    return context.getAPIAccess().getReceiver(value);
-                }
             }
             return null;
         }
@@ -711,28 +678,6 @@ final class EngineAccessor extends Accessor {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("Provided value not an interop value.");
             }
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> createDefaultLexicalScope(Node node, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-            return LegacyDefaultScope.lexicalScope(node, frame, language);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> createDefaultTopScope(Object global) {
-            return LegacyDefaultScope.topScope(global);
-        }
-
-        @Override
-        public Object getDefaultVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-            return DefaultScope.getVariables(root, frame, language);
-        }
-
-        @Override
-        public Object getDefaultArguments(Object[] frameArguments, Class<? extends TruffleLanguage<?>> language) {
-            return DefaultScope.getArguments(frameArguments, language);
         }
 
         @Override
@@ -1443,30 +1388,6 @@ final class EngineAccessor extends Accessor {
             CompilerAsserts.neverPartOfCompilation();
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
             return context.engine.host.createHostAdapter(context.getHostContextImpl(), types, classOverrides);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame) {
-            return LegacyScopesBridge.findLibraryLocalScopesToLegacy(node, frame);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope) {
-            return LegacyScopesBridge.topScopesToLegacy(scope);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes) {
-            return LegacyScopesBridge.legacyScopesHasScope(node, legacyScopes);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
-            return LegacyScopesBridge.legacyScopes2ScopeObject(node, legacyScopes, language);
         }
 
         @Override

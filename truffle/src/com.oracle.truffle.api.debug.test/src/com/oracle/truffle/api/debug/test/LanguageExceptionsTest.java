@@ -45,6 +45,7 @@ import java.io.StringWriter;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -57,58 +58,13 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-import org.graalvm.polyglot.Source;
 
 /**
  * Test that all language Throwables are converted to DebugException.
  */
 public class LanguageExceptionsTest extends AbstractDebugTest {
-
-    @Test
-    public void testBuggyToString() {
-        testBuggyLanguageCalls(new TestDebugBuggyLanguage() {
-            @Override
-            protected String toString(ProxyLanguage.LanguageContext c, Object value) {
-                throwBug(value);
-                return Objects.toString(value);
-            }
-        }, (SuspendedEvent event) -> {
-            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            value.toDisplayString();
-        });
-    }
-
-    @Test
-    public void testBuggyFindMetaObject() {
-        testBuggyLanguageCalls(new TestDebugBuggyLanguage() {
-            @Override
-            protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
-                throwBug(value);
-                return value.getClass().getName();
-            }
-        }, (SuspendedEvent event) -> {
-            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            value.getMetaObject();
-        });
-    }
-
-    @Test
-    public void testBuggySourceLocation() {
-        testBuggyLanguageCalls(new TestDebugBuggyLanguage() {
-            @Override
-            protected SourceSection findSourceLocation(ProxyLanguage.LanguageContext context, Object value) {
-                throwBug(value);
-                return null;
-            }
-        }, (SuspendedEvent event) -> {
-            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            value.getSourceLocation();
-        });
-    }
 
     @Test
     public void testBuggyScope() {

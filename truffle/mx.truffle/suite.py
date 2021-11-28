@@ -442,42 +442,6 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.object.dsl" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.truffle.api.object"],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.object.dsl.test" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.object",
-        "com.oracle.truffle.object",
-        "com.oracle.truffle.api.object.dsl",
-        "mx:JUNIT",
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "8+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "API,Truffle,Codegen,Test",
-      "jacoco" : "exclude",
-      "testProject" : True,
-    },
-
-    "com.oracle.truffle.object.dsl.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.dsl.processor"
-      ],
-      "checkstyle" : "com.oracle.truffle.dsl.processor",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle,Codegen",
-    },
 
     "com.oracle.truffle.api.staticobject" : {
       "subDir" : "src",
@@ -970,7 +934,6 @@ suite = {
         # It exports all the Truffle API packages.
         "exports" : [
           # Unqualified exports
-          "com.oracle.truffle.api.object.dsl",
           "com.oracle.truffle.api.debug",
           "com.oracle.truffle.api.nodes",
           "com.oracle.truffle.api.source",
@@ -1003,7 +966,6 @@ suite = {
         "com.oracle.truffle.api.debug",
         "com.oracle.truffle.api.utilities",
         "com.oracle.truffle.object",
-        "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
         "com.oracle.truffle.host",
         "com.oracle.truffle.api.staticobject",
@@ -1147,8 +1109,7 @@ suite = {
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["truffle:ANTLR4",
-                        "com.oracle.truffle.dsl.processor",
-                        "com.oracle.truffle.object.dsl.processor"],
+                        "com.oracle.truffle.dsl.processor"],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
@@ -1262,7 +1223,6 @@ suite = {
          "com.oracle.truffle.api.library.test",
          "com.oracle.truffle.api.instrumentation.test",
          "com.oracle.truffle.api.debug.test",
-         "com.oracle.truffle.api.object.dsl.test",
          "com.oracle.truffle.object.basic.test",
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",

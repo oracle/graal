@@ -1034,26 +1034,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         throw PolyglotEngineException.illegalState(message);
     }
 
-    Value findLegacyExportedSymbol(String symbolName) {
-        Value legacySymbol = findLegacyExportedSymbol(symbolName, true);
-        if (legacySymbol != null) {
-            return legacySymbol;
-        }
-        return findLegacyExportedSymbol(symbolName, false);
-    }
-
-    private Value findLegacyExportedSymbol(String name, boolean onlyExplicit) {
-        for (PolyglotLanguageContext languageContext : contexts) {
-            if (languageContext.isInitialized()) {
-                Object s = LANGUAGE.findExportedSymbol(languageContext.env, name, onlyExplicit);
-                if (s != null) {
-                    return languageContext.asValue(s);
-                }
-            }
-        }
-        return null;
-    }
-
     public Value getBindings(String languageId) {
         PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
