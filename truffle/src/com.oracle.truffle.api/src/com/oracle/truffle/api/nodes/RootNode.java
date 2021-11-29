@@ -172,6 +172,8 @@ public abstract class RootNode extends ExecutableNode {
     public Node copy() {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
+        root.callTarget = null;
+        root.instrumentationBits = 0;
         return root;
     }
 
@@ -339,18 +341,32 @@ public abstract class RootNode extends ExecutableNode {
             // optimization: uninitializedRootNode should not have been created.
             assert uninitializedRootNode == null;
             clonedRoot = cloneUninitialized();
+
+            // if the language copied we cannot be sure
+            // that the call target is not reset (with their own means of copying)
+            // so better make sure they are reset.
+            clonedRoot.callTarget = null;
+            clonedRoot.instrumentationBits = 0;
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
+            // regular cloning guarantees that call target and instrumentation bits
+            // are null. See #copy().
+            assert clonedRoot.callTarget == null;
+            assert clonedRoot.instrumentationBits == 0;
         }
-        clonedRoot.resetCloned();
-        clonedRoot.initializeCallTarget(sourceCallTarget);
-        return clonedRoot;
-    }
 
-    private void resetCloned() {
-        assert callTarget != null : "resetCloned can only be called once";
-        callTarget = null;
-        instrumentationBits = 0;
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            if (clonedRoot.callTarget != null) {
+                throw CompilerDirectives.shouldNotReachHere("callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?.");
+            }
+            clonedRoot.callTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, this);
+        } finally {
+            l.unlock();
+        }
+
+        return clonedRoot;
     }
 
     /**
@@ -368,22 +384,16 @@ public abstract class RootNode extends ExecutableNode {
         RootCallTarget target = this.callTarget;
         if (target == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            target = initializeCallTarget(null);
-        }
-        return target;
-    }
-
-    private RootCallTarget initializeCallTarget(CallTarget source) {
-        RootCallTarget target;
-        ReentrantLock l = getLazyLock();
-        l.lock();
-        try {
-            target = this.callTarget;
-            if (target == null) {
-                this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(source, this);
+            ReentrantLock l = getLazyLock();
+            l.lock();
+            try {
+                target = this.callTarget;
+                if (target == null) {
+                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                }
+            } finally {
+                l.unlock();
             }
-        } finally {
-            l.unlock();
         }
         return target;
     }
