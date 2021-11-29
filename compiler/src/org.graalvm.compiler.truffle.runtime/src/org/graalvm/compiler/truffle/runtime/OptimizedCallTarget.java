@@ -696,7 +696,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
 
-            assert GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
+            assert !validate || GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
 
             GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
             if (engine.callTargetStatistics) {
