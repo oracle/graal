@@ -1042,14 +1042,11 @@ public final class ObjectKlass extends Klass {
         }
         ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
         if (extensionMetadata != null) {
-            ArrayList<Field> allFields = new ArrayList<>(fieldTable.length);
-            Field[] addedInstanceFields = extensionMetadata.getAddedInstanceFields();
-            for (Field addedInstanceField : addedInstanceFields) {
-                if (!addedInstanceField.isRemoved()) {
-                    allFields.add(addedInstanceField);
-                }
-            }
-            return allFields.toArray(new Field[allFields.size()]);
+            Field[] addedFields = extensionMetadata.getAddedInstanceFields();
+            Field[] allFields = new Field[fieldTable.length + addedFields.length];
+            System.arraycopy(fieldTable, 0, allFields, 0, fieldTable.length);
+            System.arraycopy(addedFields, 0, allFields, fieldTable.length, addedFields.length);
+            return allFields;
         } else {
             // Note that caller is responsible for filtering out removed fields
             return fieldTable;
@@ -1072,14 +1069,11 @@ public final class ObjectKlass extends Klass {
         // add non-removed fields from static field table
         ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
         if (extensionMetadata != null) {
-            ArrayList<Field> allStaticFields = new ArrayList<>(staticFieldTable.length);
             Field[] addedStaticFields = extensionMetadata.getAddedStaticFields();
-            for (Field addedStaticField : addedStaticFields) {
-                if (!addedStaticField.isRemoved()) {
-                    allStaticFields.add(addedStaticField);
-                }
-            }
-            return allStaticFields.toArray(new Field[allStaticFields.size()]);
+            Field[] allStaticFields = new Field[staticFieldTable.length + addedStaticFields.length];
+            System.arraycopy(staticFieldTable, 0, allStaticFields, 0, staticFieldTable.length);
+            System.arraycopy(addedStaticFields, 0, allStaticFields, staticFieldTable.length, addedStaticFields.length);
+            return allStaticFields;
         } else {
             // Note that caller is responsible for filtering out removed fields
             return staticFieldTable;
