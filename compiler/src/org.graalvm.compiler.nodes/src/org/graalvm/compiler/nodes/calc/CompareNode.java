@@ -499,9 +499,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         InterpreterValue xVal = interpreter.interpretExpr(getX());
         InterpreterValue yVal = interpreter.interpretExpr(getY());
 
-        GraalError.guarantee(xVal.isPrimitive(), "x doesn't interpret to primitive value");
-        GraalError.guarantee(yVal.isPrimitive(), "y doesn't interpret to primitive value");
+        GraalError.guarantee(xVal.isPrimitive(), "compare gets non-primitive x: %s", xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "compare gets non-primitive y: %s", yVal);
 
-        return InterpreterValuePrimitive.ofBoolean(condition().foldCondition(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant(), unorderedIsTrue()));
+        boolean result = condition().foldCondition(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant(), unorderedIsTrue());
+        // System.out.printf("   %s %s %s -> %s\n", xVal, condition(), yVal, result);
+        return InterpreterValuePrimitive.ofBoolean(result);
     }
 }

@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.NodeClass;
@@ -238,7 +239,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             fieldVal = interpreter.loadStaticFieldValue(field());
         } else {
             InterpreterValue objectVal = interpreter.interpretExpr(object());
-            GraalError.guarantee(objectVal instanceof InterpreterValueObject, "LoadFieldNode input doesn't interpret to object");
+            GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "LoadFieldNode input doesn't interpret to object");
             GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "LoadFieldNode field doesn't exist on object");
 
             fieldVal = ((InterpreterValueObject) objectVal).getFieldValue(field());

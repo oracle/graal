@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
+import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -38,6 +39,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -51,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
@@ -65,6 +68,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -106,6 +110,7 @@ import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -812,19 +817,54 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected final Result test(String name, Object... args) {
         // return test(getInitialOptions(), name, args);
         Result result = test(getInitialOptions(), name, args);
+        String interpret = System.getProperty("INTERPRETER");
+        if ("ALL".equals(interpret) ||
+                "PRIM".equals(interpret) && primitiveArgs(args) && result.exception == null) {
+            checkAgainstInterpreter(result, false, name, args);
+        }
+        return result;
+    }
 
-        // TODO: move above to a more general place
+    /**
+     * Check that the (static) method name(args) returns result when interpreted.
+     *
+     * @param result normal or exceptional result
+     * @param strict false means silently succeed if the method tries to execute any unimplemented nodes.
+     * @param name the name of a static method in this class.
+     * @param args arguments to call the method with.
+     */
+    public void checkAgainstInterpreter(Result result, boolean strict, String name, Object... args) {
         try {
-            checkAgainstInterpreter(name, result, args);
+            ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(name));
+            if (!method.isStatic()) {
+                // non static methods not handled yet.
+                return;
+            }
+            StructuredGraph methodGraph = parseForCompile(method, getOrCreateCompilationId(method, null), getInitialOptions());
+//            System.out.println("Method: " + method.getName());
+//            for (Node n : methodGraph.getNodes()) {
+//                System.out.println("  node: " + n);
+//            }
+            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext());
+            Result interpreterResult = null;
+            try {
+                interpreterResult = new Result(interpreter.executeGraph(methodGraph, args), null);
+            } catch (InvocationTargetException e) {
+                interpreterResult = new Result(null, e.getTargetException());
+            }
+            assertEquals(result, interpreterResult);
         } catch (GraalError ex) {
             if (ex.getMessage().startsWith("unimplemented: ")) {
-                // This is ok.  We expect that not all nodes in unit tests will be implemented.
+                // this test contained a Node that does not yet implement the interpret methods.
+                if (strict) {
+                    throw new RuntimeException(ex);
+                    // fail(ex.getMessage());
+                }
             } else {
+                // any other kind of exception is serious, so we propagate it.
                 throw ex;
             }
         }
-
-        return result;
     }
 
     protected final Result test(OptionValues options, String name, Object... args) {
@@ -1547,38 +1587,4 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private static final boolean ALL_TESTS = false;
 
-    public void checkAgainstInterpreter(String name, GraalCompilerTest.Result expectedResult, Object... args) {
-        try {
-            ResolvedJavaMethod method;
-            try {
-                method = getMetaAccess().lookupJavaMethod(getMethod(name));
-            } catch (RuntimeException e) {
-                return;
-            }
-
-            // TODO: temporary filter while this functionality is not fully implemented in the
-            // interpreter.
-            boolean testFilter = method.isStatic() && primitiveArgs(args) && expectedResult.exception == null;
-            if (!(testFilter || ALL_TESTS)) {
-                return;
-            }
-
-            StructuredGraph methodGraph = parseForCompile(method, getOrCreateCompilationId(method, null), getInitialOptions());
-
-            GraalInterpreter interpreter = new GraalInterpreter(getDefaultHighTierContext());
-
-            Result interpreterResult;
-            try {
-                interpreterResult = new Result(interpreter.executeGraph(methodGraph, args), null);
-            } catch (InvocationTargetException e) {
-                interpreterResult = new Result(null, e.getTargetException());
-            }
-
-            assertEquals(expectedResult, interpreterResult);
-
-        } catch (AssumptionViolatedException e) {
-            // Suppress so that subsequent calls to this method within the
-            // same Junit @Test annotated method can proceed.
-        }
-    }
 }

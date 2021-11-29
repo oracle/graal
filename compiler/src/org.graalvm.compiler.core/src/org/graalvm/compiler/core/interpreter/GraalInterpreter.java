@@ -4,11 +4,13 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.interpreter.value.InterpreterValueArray;
 import org.graalvm.compiler.interpreter.value.InterpreterValueFactory;
+import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Node;
@@ -63,6 +65,7 @@ public class GraalInterpreter {
     private final InterpreterStateImpl myState;
     private final InterpreterValueFactory valueFactory;
     private final HighTierContext context;
+    private boolean verbose = false;
 
     /**
      * Create a new Graal IR graph interpreter.
@@ -73,6 +76,19 @@ public class GraalInterpreter {
         this.context = context;
         this.valueFactory = new InterpreterValueFactoryImpl(context);
         this.myState = new InterpreterStateImpl();
+    }
+
+    public boolean getVerbose() {
+        return this.verbose;
+    }
+
+    /**
+     * Set the verbose flag, to control printing of control-flow execution progress.
+     *
+     * @param verbose
+     */
+    public void setVerbose(boolean verbose) {
+        this.verbose = verbose;
     }
 
     /**
@@ -139,6 +155,9 @@ public class GraalInterpreter {
         @Override
         public void setNodeLookupValue(Node node, InterpreterValue value) {
             checkActivationsNotEmpty();
+            if (verbose) {
+                System.out.printf("    local[%s] := %s\n", node, value);
+            }
             activations.peek().setNodeValue(node, value);
         }
 
@@ -169,13 +188,13 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValue interpretMethod(CallTargetNode target, List<ValueNode> argumentNodes) {
+            ResolvedJavaMethod meth = target.targetMethod();
             List<InterpreterValue> evaluatedArgs = argumentNodes.stream().map(this::interpretExpr).collect(Collectors.toList());
-
             StructuredGraph methodGraph = new StructuredGraph.Builder(target.getOptions(),
-                            target.getDebug(), StructuredGraph.AllowAssumptions.YES).method(target.targetMethod()).build();
+                            target.getDebug(), StructuredGraph.AllowAssumptions.YES).method(meth).build();
             context.getGraphBuilderSuite().apply(methodGraph, context);
-
-            return interpretGraph(methodGraph, evaluatedArgs);
+            InterpreterValue result = interpretGraph(methodGraph, evaluatedArgs);
+            return result;
         }
 
         @Override
@@ -209,11 +228,17 @@ public class GraalInterpreter {
         }
 
         private InterpreterValue interpretGraph(StructuredGraph graph, List<InterpreterValue> evaluatedParams) {
+            if (verbose) {
+                System.out.printf("interpret graph %s with params %s\n", graph.method(), evaluatedParams);
+            }
             addActivation(evaluatedParams);
             loadStaticFields(graph);
             FixedNode next = graph.start();
             InterpreterValue returnVal = null;
             while (next != null) {
+                if (verbose) {
+                    System.out.printf("  %s...\n", next);
+                }
                 if (next instanceof ReturnNode || next instanceof UnwindNode) {
                     next.interpret(myState);
                     returnVal = myState.getNodeLookupValue(next);
@@ -223,6 +248,9 @@ public class GraalInterpreter {
                 GraalError.guarantee(next != null, "interpret() returned null");
             }
             popActivation();
+            if (verbose) {
+                System.out.printf("interpreted result of %s is %s\n", graph.method(), returnVal);
+            }
             return returnVal;
         }
 
@@ -257,9 +285,11 @@ public class GraalInterpreter {
                     currentField.setAccessible(true);
                     ResolvedJavaField resolvedField = context.getMetaAccess().lookupJavaField(currentField);
                     if (resolvedField.isStatic()) {
-//                        System.out.println("  initializing " + where + " static field: " +
-//                                resolvedField.getDeclaringClass().getName() + "." + resolvedField.getName() +
-//                                " := " + currentField.get(null));
+                        if (verbose) {
+                            System.out.println("  initializing " + where + " static field: " +
+                                    resolvedField.getDeclaringClass().getName() + "." + resolvedField.getName() +
+                                    " := " + currentField.get(null));
+                        }
                         fieldMap.put(resolvedField, valueFactory.createFromObject(currentField.get(null)));
                     }
                 } catch (java.lang.RuntimeException ex) {
@@ -318,7 +348,7 @@ public class GraalInterpreter {
 
         @Override
         public InterpreterValueObject createObject(ResolvedJavaType type) {
-            return new InterpreterValueObject(type, context.getMetaAccessExtensionProvider()::getStorageKind);
+            return new InterpreterValueMutableObject(type, context.getMetaAccessExtensionProvider()::getStorageKind);
         }
 
         private InterpreterValueArray createArray(ResolvedJavaType componentType, int length, boolean populateWithDefaults) {

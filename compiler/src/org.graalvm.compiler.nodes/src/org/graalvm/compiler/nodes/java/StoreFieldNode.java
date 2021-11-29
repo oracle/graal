@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValueMutableObject;
 import org.graalvm.compiler.interpreter.value.InterpreterValueObject;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -139,7 +140,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
             interpreter.storeStaticFieldValue(field(), val);
         } else {
             InterpreterValue objectVal = interpreter.interpretExpr(object());
-            GraalError.guarantee(objectVal instanceof InterpreterValueObject, "StoreFieldNode input doesn't interpret to object");
+            GraalError.guarantee(objectVal instanceof InterpreterValueMutableObject, "StoreFieldNode input doesn't interpret to object");
             GraalError.guarantee(((InterpreterValueObject) objectVal).hasField(field()), "StoreFieldNode field doesn't exist on object");
 
             ((InterpreterValueObject) objectVal).setFieldValue(field(), val);

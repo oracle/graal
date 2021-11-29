@@ -1,38 +1,22 @@
 package org.graalvm.compiler.interpreter.value;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import java.util.HashMap;
-import java.util.function.Function;
-
-public class InterpreterValueObject extends InterpreterValue {
+public abstract class InterpreterValueObject extends InterpreterValue {
     final ResolvedJavaType type;
-    final HashMap<ResolvedJavaField, InterpreterValue> instanceFields;
     private boolean unwindException = false;
 
-    public InterpreterValueObject(ResolvedJavaType type, Function<JavaType, JavaKind> getStorageKind) {
+    public InterpreterValueObject(ResolvedJavaType type) {
         this.type = type;
-        this.instanceFields = new HashMap<>();
-
-        for (ResolvedJavaField field : type.getInstanceFields(true)) {
-            this.instanceFields.put(field, InterpreterValue.createDefaultOfKind(getStorageKind.apply(field.getType())));
-        }
     }
 
-    public boolean hasField(ResolvedJavaField field) {
-        return instanceFields.containsKey(field);
-    }
+    public abstract boolean hasField(ResolvedJavaField field);
 
-    public void setFieldValue(ResolvedJavaField field, InterpreterValue value) {
-        instanceFields.replace(field, value);
-    }
+    public abstract void setFieldValue(ResolvedJavaField field, InterpreterValue value);
 
-    public InterpreterValue getFieldValue(ResolvedJavaField field) {
-        return instanceFields.get(field);
-    }
+    public abstract InterpreterValue getFieldValue(ResolvedJavaField field);
 
     @Override
     public boolean isUnwindException() {
@@ -42,7 +26,7 @@ public class InterpreterValueObject extends InterpreterValue {
     @Override
     public void setUnwindException() {
         try {
-            if (! Exception.class.isAssignableFrom(Class.forName(type.toClassName()))) {
+            if (!Exception.class.isAssignableFrom(Class.forName(type.toClassName()))) {
                 throw new IllegalArgumentException("cannot unwind with non-Exception object");
             }
         } catch (ClassNotFoundException e) {
