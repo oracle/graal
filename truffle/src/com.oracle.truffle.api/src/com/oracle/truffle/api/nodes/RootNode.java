@@ -360,7 +360,7 @@ public abstract class RootNode extends ExecutableNode {
             if (clonedRoot.callTarget != null) {
                 throw CompilerDirectives.shouldNotReachHere("callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?.");
             }
-            clonedRoot.callTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, this);
+            clonedRoot.callTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
         } finally {
             l.unlock();
         }
