@@ -691,7 +691,7 @@ public final class EspressoContext {
         return vm.getJavaVersion();
     }
 
-    public boolean usesExtensionField() {
+    public boolean advancedRedefinitionEnabled() {
         return JDWPOptions != null;
     }
 

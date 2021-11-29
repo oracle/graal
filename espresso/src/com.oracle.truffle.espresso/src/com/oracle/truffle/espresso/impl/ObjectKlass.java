@@ -1037,7 +1037,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public Field[] getFieldTable() {
-        if (!getContext().usesExtensionField()) {
+        if (!getContext().advancedRedefinitionEnabled()) {
             return fieldTable;
         }
         ExtensionFieldsMetadata extensionMetadata = getExtensionFieldsMetadata(false);
@@ -1066,7 +1066,7 @@ public final class ObjectKlass extends Klass {
     }
 
     public Field[] getStaticFieldTable() {
-        if (!getContext().usesExtensionField()) {
+        if (!getContext().advancedRedefinitionEnabled()) {
             return staticFieldTable;
         }
         // add non-removed fields from static field table
@@ -1168,7 +1168,13 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public int getModifiers() {
-        return getKlassVersion().getModifiers();
+        // getKlassVersion().getModifiers() introduces a ~10%
+        // perf hit on some benchmarks, so put behind a check
+        if (getContext().advancedRedefinitionEnabled()) {
+            return getKlassVersion().getModifiers();
+        } else {
+            return super.getModifiers();
+        }
     }
 
     /**
