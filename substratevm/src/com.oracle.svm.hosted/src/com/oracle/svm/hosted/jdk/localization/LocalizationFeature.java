@@ -133,9 +133,7 @@ public abstract class LocalizationFeature implements Feature {
     private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(NativeImageOptions.NumberOfThreads.getValue()) : null;
 
     /**
-     * The Locale that the native image is built for. Currently, switching the Locale at run time is
-     * not supported because the resource bundles are only included for one Locale. We use the
-     * Locale that is set for the image generator.
+     * The Locale that the native image is built for.
      */
     protected Locale defaultLocale = Locale.getDefault();
 
@@ -154,7 +152,8 @@ public abstract class LocalizationFeature implements Feature {
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
 
-        @Option(help = "Default locale of the image, by the default it is the same as the default locale of the image builder.", type = OptionType.User)//
+        @Option(help = "Default locale of the image, by the default it is the same as the default locale of the image builder.", type = OptionType.User, //
+                        deprecated = true, deprecationMessage = "Please switch to using system properties such as -Duser.country=CH -Duser.language=de")//
         public static final HostedOptionKey<String> DefaultLocale = new HostedOptionKey<>(Locale.getDefault().toLanguageTag());
 
         @Option(help = "Default charset of the image, by the default it is the same as the default charset of the image builder.", type = OptionType.User)//
@@ -236,8 +235,10 @@ public abstract class LocalizationFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         findClassByName = access::findClassByName;
         allLocales = processLocalesOption();
-        defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
-        UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
+        if (Options.DefaultLocale.hasBeenSet()) {
+            defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
+            UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
+        }
         try {
             defaultCharset = Charset.forName(Options.DefaultCharset.getValue());
             VMError.guarantee(defaultCharset.name().equals(Options.DefaultCharset.getValue()),
