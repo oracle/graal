@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -211,8 +212,10 @@ public abstract class JavaThreads {
     /* End of accessor functions. */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Thread fromVMThread(IsolateThread vmThread) {
-        return currentThread.get(vmThread);
+    public static Thread fromVMThread(IsolateThread thread) {
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint() || VMThreads.THREAD_MUTEX.isOwner() ||
+                        SubstrateDiagnostics.isFatalErrorHandlingThread() : "must prevent the isolate thread from exiting";
+        return currentThread.get(thread);
     }
 
     public static boolean isVirtual(Thread thread) {
