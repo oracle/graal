@@ -2616,13 +2616,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
             case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
             case Object  : {
-<<<<<<< HEAD
                 StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
-                putObject(refs, resultAt, value);
-=======
-                StaticObject value = InterpreterToVM.getFieldObject(receiver, fieldVersion);
                 putObject(frame, resultAt, value);
->>>>>>> master
                 checkNoForeignObjectAssumption(value);
                 break;
             }
