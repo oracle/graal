@@ -171,6 +171,7 @@ public class ValuePhiNode extends PhiNode {
         return canonical;
     }
 
+    /** ValuePhi nodes are eagerly updated by each merge node, so their value is just a lookup. */
     @Override
     public InterpreterValue interpretExpr(InterpreterState interpreter) {
         return interpreter.getNodeLookupValue(this);

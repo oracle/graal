@@ -293,35 +293,20 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
         int accessIndex = interpreter.getMergeNodeIncomingIndex(this);
         // System.out.printf("visitMerge(%s) gets index %d\n", node, accessIndex);
 
-        // Get all associated phi nodes of this merge node
-        // Evaluate all associated phi nodes with merge access index as their input
-        // store all the INITIAL values (before updating) in local mapping then apply from that
-        // to avoid mapping new state when the prev state should have been used
-        // e.g. a phi node with data input from a phi node.
-        Map<Node, InterpreterValue> prevValues = new HashMap<>();
-
-        // Collecting previous values:
-        // TODO: we could check localstate map directly to see if the phi value is there.
-        //       Rather than allowing interpretDataflowNode to return null, which weakens other error checking / messages.
+        // Update all phi nodes associated with this merge node.
+        // All the phi nodes must be updated in parallel, so we calculate all their
+        // new values into a temporary local mapping (newValues) first, then update
+        // all the phi nodes with their new values as a single atomic step.
+        Map<Node, InterpreterValue> newValues = new HashMap<>();
+        // calculate all phi expressions into newValues, without updating any phi nodes
         for (PhiNode phi : this.phis()) {
-            //System.out.printf("prevValues[%s] :=? %s\n", phi, prevVal);
-            if (interpreter.hasNodeLookupValue(phi)) {
-                // Only maps if the evaluation yielded a value
-                // (i.e. not the first time the phi has been evaluated)
-                prevValues.put(phi, phi.interpretExpr(interpreter));
-            }
+            newValues.put(phi, phi.valueAt(accessIndex).interpretExpr(interpreter));
         }
-
+        // now update all phi nodes with their new values
         for (PhiNode phi : this.phis()) {
-            ValueNode val = phi.valueAt(accessIndex);
-            InterpreterValue phiVal;
-            if (prevValues.containsKey(val)) {
-                phiVal = prevValues.get(val);
-            } else {
-                phiVal = val.interpretExpr(interpreter);
-            }
-            //System.out.printf("set phi value[%s] := %s\n", phi, phiVal);
-            interpreter.setNodeLookupValue(phi, phiVal);
+            InterpreterValue newVal = newValues.get(phi);
+            // System.out.printf("   phi[%s] := %s\n", phi, newVal);
+            interpreter.setNodeLookupValue(phi, newVal);
         }
         return next();
     }
