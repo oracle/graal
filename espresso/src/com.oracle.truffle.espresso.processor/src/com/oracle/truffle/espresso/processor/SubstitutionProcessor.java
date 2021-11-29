@@ -23,6 +23,11 @@
 
 package com.oracle.truffle.espresso.processor;
 
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -71,7 +76,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
     private static final String SUBSTITUTOR = "JavaSubstitution";
-    private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
@@ -107,10 +111,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     }
 
-    private static String extractArg(int index, String clazz, String tabulation) {
-        return tabulation + clazz + " " + ARG_NAME + index + " = " + castTo(ARGS_NAME + "[" + index + "]", clazz) + ";\n";
-    }
-
     private String extractInvocation(String className, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
@@ -131,24 +131,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return str.toString();
     }
 
-    private static String generateParameterTypes(List<String> types, String tabulation) {
-        StringBuilder str = new StringBuilder();
-        str.append("new String[]{");
-        boolean first = true;
+    private static String generateParameterTypes(List<String> types, int tabulation) {
+        IndentingStringBuilder sb = new IndentingStringBuilder(0);
+        sb.appendLine("new String[]{");
+        sb.setIndentLevel(tabulation + 1);
         for (String type : types) {
-            if (first) {
-                str.append("\n");
-                first = false;
-            } else {
-                str.append(",\n");
-            }
-            str.append(tabulation).append(TAB_1).append("\"").append(type).append("\"");
+            sb.append('\"').append(type).appendLine("\",");
         }
-        if (!first) {
-            str.append("\n").append(tabulation);
-        }
-        str.append("}");
-        return str.toString();
+        sb.lowerIndentLevel();
+        sb.append('}');
+        return sb.toString();
     }
 
     private void processElement(Element substitution) {
@@ -568,77 +560,82 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     @Override
-    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(ProcessorUtils.stringify(h.guestMethodName)).append(",\n");
-        str.append(TAB_4).append(ProcessorUtils.stringify(h.targetClassName)).append(",\n");
-        str.append(TAB_4).append(ProcessorUtils.stringify(h.returnType)).append(",\n");
-        str.append(TAB_4).append(generateParameterTypes(h.guestTypeNames, TAB_4)).append(",\n");
-        str.append(TAB_4).append(h.hasReceiver).append("\n");
-        str.append(TAB_3).append(");\n");
-        str.append(TAB_2).append("}\n");
+        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .addBodyLine("super(") //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',') //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',') //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',') //
+                        .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',') //
+                        .addIndentedBodyLine(1, h.hasReceiver) //
+                        .addBodyLine(");");
+        factoryBuilder.withMethod(factoryConstructor);
 
         if (h.nameProvider != null) {
-            str.append(generateNameProviders(h.guestMethodName, h));
+            factoryBuilder.withMethod(generateGetMethodNames(h.guestMethodName, h));
+            factoryBuilder.withMethod(generateSubstitutionClassNames(h));
         }
 
         if (h.versionFilter != null) {
-            str.append(generateVersionFilter(h));
+            factoryBuilder.withMethod(generateIsValidFor(h));
         }
 
-        return str.toString();
+        return factoryBuilder;
     }
 
-    private static String generateNameProviders(String targetMethodName, SubstitutorHelper h) {
-        StringBuilder str = new StringBuilder();
+    private static MethodBuilder generateGetMethodNames(String targetMethodName, SubstitutorHelper h) {
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
-
-        str.append("\n");
-        str.append(TAB_2).append(OVERRIDE).append("\n");
-        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(GET_METHOD_NAME).append("() {\n");
-        str.append(TAB_3).append("return ").append(nameProvider);
-        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(ProcessorUtils.stringify(targetMethodName)).append(");\n");
-        str.append(TAB_2).append("}\n\n");
-        str.append(TAB_2).append(OVERRIDE).append("\n");
-        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(SUBSTITUTION_CLASS_NAMES).append("() {\n");
-        str.append(TAB_3).append("return ").append(nameProvider);
-        str.append(".").append(INSTANCE).append(".").append(SUBSTITUTION_CLASS_NAMES).append("();\n");
-        str.append(TAB_2).append("}\n");
-        return str.toString();
+        MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("String[]") //
+                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");");
+        return getMethodNamesMethod;
     }
 
-    private static String generateVersionFilter(SubstitutorHelper h) {
-        StringBuilder str = new StringBuilder();
-        String versionFilter = h.versionFilter.toString();
+    private static MethodBuilder generateSubstitutionClassNames(SubstitutorHelper h) {
+        String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
+        MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("String[]") //
+                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();");
+        return substitutionClassNamesMethod;
+    }
 
-        str.append("\n");
-        str.append(TAB_2).append(OVERRIDE).append("\n");
-        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("boolean ").append(VERSION_FILTER_METHOD).append("(").append(JAVA_VERSION).append(" version) {\n");
-        str.append(TAB_3).append("return ").append(versionFilter);
-        str.append(".").append(INSTANCE).append(".").append(VERSION_FILTER_METHOD).append("(version);\n");
-        str.append(TAB_2).append("}\n\n");
-        return str.toString();
+    private static MethodBuilder generateIsValidFor(SubstitutorHelper h) {
+        String versionFilter = h.versionFilter.toString();
+        MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD) //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("boolean") //
+                        .withParams(JAVA_VERSION + " version") //
+                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);");
+        return generateIsValidForMethod;
     }
 
     @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        String targetClass = className;
-        StringBuilder str = new StringBuilder();
+    ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
+        MethodBuilder invoke = new MethodBuilder("invoke") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withParams("Object[] " + ARGS_NAME) //
+                        .withReturnType("Object");
         int argIndex = 0;
         for (String argType : parameterTypeName) {
-            str.append(extractArg(argIndex++, argType, TAB_2));
+            invoke.addBodyLine(argType, " ", ARG_NAME, argIndex, " = ", castTo(ARGS_NAME + "[" + argIndex + "]", argType), ";");
+            argIndex++;
         }
         if (h.returnType.equals("V")) {
-            str.append(TAB_2).append(extractInvocation(targetClass, argIndex, helper));
-            str.append(TAB_2).append("return StaticObject.NULL;\n");
+            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim());
+            invoke.addBodyLine("return StaticObject.NULL;");
         } else {
-            str.append(TAB_2).append("return ").append(extractInvocation(targetClass, argIndex, helper));
+            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim());
         }
-        str.append(TAB_1).append("}\n");
-        return str.toString();
+        return classBuilder.withMethod(invoke);
     }
 }
