@@ -90,6 +90,8 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import static com.oracle.graal.pointsto.api.PointstoOptions.CollectImageBuildStatistics;
+
 /**
  * This class applies static analysis results directly to the {@link StructuredGraph Graal IR} used
  * to build the type flow graph.
@@ -400,7 +402,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
          * allows later inlining of the callee.
          */
         private void devirtualizeInvoke(AnalysisMethod singleCallee, Invoke invoke) {
-            if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
+            if (CollectImageBuildStatistics.getValue(graph.getOptions())) {
                 ImageBuildStatistics.singleton().incDevirtualizedInvokeCounter();
             }
 

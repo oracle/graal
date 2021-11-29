@@ -32,7 +32,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.java.BytecodeParserOptions;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -55,6 +54,8 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.runtime.JVMCI;
+
+import static com.oracle.graal.pointsto.api.PointstoOptions.CollectImageBuildStatistics;
 
 public final class AnalysisParsedGraph {
 

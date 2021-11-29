@@ -74,6 +74,9 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 
+import static com.oracle.graal.pointsto.api.PointstoOptions.CollectImageBuildStatistics;
+import static com.oracle.graal.pointsto.api.PointstoOptions.ImageBuildStatisticsFile;
+
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final int PROGRESS_BAR_START = 30;
@@ -541,8 +544,8 @@ public class ProgressReporter {
     private Path reportImageBuildStatistics(String imageName, BigBang bb) {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
         String description = "image build statistics";
-        if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
-            final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bb.getOptions()));
+        if (ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
+            final File file = new File(ImageBuildStatisticsFile.getValue(bb.getOptions()));
             return ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, !isEnabled);
         } else {
             String name = "image_build_statistics_" + ReportUtils.extractImageName(imageName);

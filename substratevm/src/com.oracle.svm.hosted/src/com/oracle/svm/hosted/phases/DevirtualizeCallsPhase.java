@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import static com.oracle.graal.pointsto.api.PointstoOptions.CollectImageBuildStatistics;
 import static com.oracle.svm.core.graal.snippets.DeoptHostedSnippets.AnalysisSpeculation;
 import static com.oracle.svm.core.graal.snippets.DeoptHostedSnippets.AnalysisSpeculationReason;
 
@@ -118,7 +119,7 @@ public class DevirtualizeCallsPhase extends Phase {
     private void singleCallee(HostedMethod singleCallee, StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
         assert !parseOnce : "Must be done by StrengthenGraphs";
 
-        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(graph.getOptions())) {
+        if (CollectImageBuildStatistics.getValue(graph.getOptions())) {
             /* Detect devirtualization of the invoke. */
             ImageBuildStatistics.singleton().incDevirtualizedInvokeCounter();
         }

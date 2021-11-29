@@ -42,26 +42,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.java.BytecodeParserOptions.CollectBytecodeExceptionNodeSourcePosition;
-
 public class ImageBuildStatistics {
-
-    public static class Options {
-        @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
-        public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<Boolean>(false) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                if (newValue) {
-                    TrackNodeSourcePosition.update(values, true);
-                    CollectBytecodeExceptionNodeSourcePosition.update(values, true);
-                }
-            }
-        };
-
-        @Option(help = "File for printing image build statistics")//
-        public static final OptionKey<String> ImageBuildStatisticsFile = new OptionKey<>(null);
-    }
 
     public enum CheckCountLocation {
         AFTER_PARSE_CANONICALIZATION,

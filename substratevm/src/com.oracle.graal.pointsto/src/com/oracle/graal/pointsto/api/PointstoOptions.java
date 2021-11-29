@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.api;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
@@ -118,6 +119,19 @@ public class PointstoOptions {
 
     @Option(help = "Report analysis statistics.")//
     public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
+
+    @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
+    public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                TrackNodeSourcePosition.update(values, true);
+            }
+        }
+    };
+
+    @Option(help = "File for printing image build statistics")//
+    public static final OptionKey<String> ImageBuildStatisticsFile = new OptionKey<>(null);
 
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
