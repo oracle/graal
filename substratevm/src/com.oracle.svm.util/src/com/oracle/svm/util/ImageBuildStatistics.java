@@ -43,7 +43,7 @@ import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.java.BytecodeParserOptions.CollectNodeSourcePosition;
+import static org.graalvm.compiler.java.BytecodeParserOptions.CollectBytecodeExceptionNodeSourcePosition;
 
 public class ImageBuildStatistics {
 
@@ -54,7 +54,7 @@ public class ImageBuildStatistics {
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 if (newValue) {
                     TrackNodeSourcePosition.update(values, true);
-                    CollectNodeSourcePosition.update(values, true);
+                    CollectBytecodeExceptionNodeSourcePosition.update(values, true);
                 }
             }
         };
