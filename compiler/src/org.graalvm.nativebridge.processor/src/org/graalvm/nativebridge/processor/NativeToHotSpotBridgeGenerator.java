@@ -49,6 +49,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
@@ -59,8 +60,10 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     private static final String END_POINT_SIMPLE_NAME = "NativeToHotSpotEndPoint";
     private static final String END_POINT_CLASS_FIELD = "endPointClass";
     private static final String JNI_CONFIG_FIELD = "jniConfig";
+    private static final String HOTSPOT_CALLS_FIELD = "hotSpotCalls";
     private static final String START_POINT_SIMPLE_NAME = "NativeToHotSpotStartPoint";
     private static final String START_POINT_FACTORY_NAME = "createNativeToHotSpot";
+    private static final String EXCEPTION_HANDLER_IMPL_NAME = "ExceptionHandlerImpl";
 
     private final TypeCache typeCache;
 
@@ -94,6 +97,10 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         generateNativeToHSStartPoint(builder, data, factoryMethod);
         builder.lineEnd("");
         generateNativeToHSEndPoint(builder, data);
+        if (data.exceptionHandler != null) {
+            builder.lineEnd("");
+            generateExceptionHandlerImpl(builder, data);
+        }
         builder.dedent();
         builder.line("}");
     }
@@ -104,6 +111,9 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
                         data.annotatedType, Collections.emptyList());
         builder.indent();
         builder.lineEnd("");
+        if (data.exceptionHandler != null) {
+            generateHotSpotCallsField(builder);
+        }
         generateMarshallerFields(builder, data, typeCache.jniNativeMarshaller, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
 
         if (!data.getAllCustomMarshallers().isEmpty()) {
@@ -169,6 +179,13 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         }
         builder.dedent();
         builder.line("}");
+    }
+
+    private void generateHotSpotCallsField(CodeBuilder builder) {
+        Set<Modifier> modSet = EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        CodeBuilder handlerImplSnippet = new CodeBuilder(builder).newInstance(EXCEPTION_HANDLER_IMPL_NAME);
+        builder.lineStart().writeModifiers(modSet).space().write(typeCache.hotSpotCalls).space().write(HOTSPOT_CALLS_FIELD).write(" = ").invokeStatic(typeCache.hotSpotCalls,
+                        "createWithExceptionHandler", handlerImplSnippet.build()).lineEnd(";");
     }
 
     private CodeBuilder.Parameter findParameterOfType(TypeMirror requiredType, Collection<CodeBuilder.Parameter> parameters) {
@@ -372,8 +389,13 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     private void generateCallHotSpot(CodeBuilder builder, DefinitionData data, MethodData methodData, CharSequence jniEnv, CharSequence args, CharSequence receiver) {
-        CodeBuilder getHsCallsBuilder = new CodeBuilder(builder).invokeStatic(typeCache.hotSpotCalls, "getDefault");
-        CodeBuilder jniCallBuilder = new CodeBuilder(builder).invoke(getHsCallsBuilder.build(), callHotSpotName(methodData.type.getReturnType()), jniEnv, "jniMethods_." + END_POINT_CLASS_FIELD,
+        CharSequence hsCallsInstance;
+        if (data.exceptionHandler != null) {
+            hsCallsInstance = HOTSPOT_CALLS_FIELD;
+        } else {
+            hsCallsInstance = new CodeBuilder(builder).invokeStatic(typeCache.hotSpotCalls, "getDefault").build();
+        }
+        CodeBuilder jniCallBuilder = new CodeBuilder(builder).invoke(hsCallsInstance, callHotSpotName(methodData.type.getReturnType()), jniEnv, "jniMethods_." + END_POINT_CLASS_FIELD,
                         "jniMethods_." + jMethodIdField(methodData), args);
         builder.write(marshallerSnippets(data, methodData.getReturnTypeMarshaller()).unmarshallResult(builder, methodData.type.getReturnType(), jniCallBuilder.build(), receiver, jniEnv));
     }
@@ -495,6 +517,46 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         } else {
             builder.lineStart("return ").write(resultSnippet).lineEnd(";");
         }
+        builder.dedent();
+        builder.line("}");
+    }
+
+    private void generateExceptionHandlerImpl(CodeBuilder builder, DefinitionData data) {
+        ExecutableElement handleExceptionMethod = ElementFilter.methodsIn(typeCache.jNIExceptionHandler.asElement().getEnclosedElements()).stream().filter(
+                        (e) -> "handleException".contentEquals(e.getSimpleName())).findAny().get();
+        builder.classStart(EnumSet.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), EXCEPTION_HANDLER_IMPL_NAME,
+                        null, Collections.singletonList(typeCache.jNIExceptionHandler));
+        builder.indent();
+        builder.lineEnd("");
+        // Implement ExceptionHandler#handleException method
+        overrideMethod(builder, handleExceptionMethod, (ExecutableType) handleExceptionMethod.asType());
+        builder.indent();
+        builder.lineStart().write(types.getPrimitiveType(TypeKind.BOOLEAN)).space().write("exceptionHandled").lineEnd(";");
+        builder.line("try {");
+        builder.indent();
+        builder.lineStart("exceptionHandled").write(" = ").invokeStatic((DeclaredType) data.exceptionHandler.getEnclosingElement().asType(), data.exceptionHandler.getSimpleName(), "context").lineEnd(
+                        ";");
+        builder.dedent();
+        builder.lineStart("} catch (").write(typeCache.throwable).space().write("throwable").lineEnd(") {");
+        builder.indent();
+        builder.lineStart("throw").space().invoke(null, "silenceException", new CodeBuilder(builder).classLiteral(typeCache.runtimeException).build(), "throwable").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.line("if (!exceptionHandled) {");
+        builder.indent();
+        builder.lineStart().invoke("context", "throwJNIExceptionWrapper").lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.dedent();
+        builder.line("}");
+        // Generate helper silenceException method
+        builder.lineEnd("");
+        builder.lineStart().annotation(typeCache.suppressWarnings, new CharSequence[]{"unchecked", "unused"}).lineEnd("");
+        builder.line("private static <E extends Throwable> E silenceException(Class<E> type, Throwable throwable) throws E {");
+        builder.indent();
+        builder.line("throw (E) throwable;");
+        builder.dedent();
+        builder.line("}");
         builder.dedent();
         builder.line("}");
     }
