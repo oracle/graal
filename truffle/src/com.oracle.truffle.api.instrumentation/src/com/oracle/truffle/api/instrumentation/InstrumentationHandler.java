@@ -174,7 +174,7 @@ final class InstrumentationHandler {
             trace("ON-LOAD: %-5s CallTarget: %s%n", lang, name);
         }
 
-        if (InstrumentAccessor.nodesAccess().getPolyglotEngine(root) == null) {
+        if (InstrumentAccessor.nodesAccess().getSharingLayer(root) == null) {
             return;
         }
 

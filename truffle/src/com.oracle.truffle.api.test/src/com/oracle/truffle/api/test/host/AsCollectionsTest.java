@@ -63,6 +63,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -95,26 +96,6 @@ public class AsCollectionsTest {
             protected LanguageContext createContext(Env contextEnv) {
                 env = contextEnv;
                 return super.createContext(contextEnv);
-            }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                if (object instanceof ListBasedTO) {
-                    return true;
-                } else if (object instanceof MapBasedTO) {
-                    return true;
-                }
-                return super.isObjectOfLanguage(object);
-            }
-
-            @Override
-            protected String toString(LanguageContext c, Object value) {
-                if (value instanceof ListBasedTO) {
-                    return ((ListBasedTO) value).list.toString();
-                } else if (value instanceof MapBasedTO) {
-                    return ((MapBasedTO) value).map.toString();
-                }
-                return super.toString(c, value);
             }
         });
         context.initialize(ProxyLanguage.ID);
@@ -331,6 +312,22 @@ public class AsCollectionsTest {
             return index >= 0 && index < getArraySize();
         }
 
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(boolean sideEffects) {
+            return list.toString();
+        }
+
     }
 
     @SuppressWarnings({"static-method", "unused"})
@@ -382,6 +379,22 @@ public class AsCollectionsTest {
         @TruffleBoundary
         boolean isMemberInsertable(String member) {
             return !member.contains(member);
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(boolean sideEffects) {
+            return map.toString();
         }
 
     }

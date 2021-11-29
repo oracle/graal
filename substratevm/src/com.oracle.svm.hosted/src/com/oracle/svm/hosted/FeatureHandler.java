@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -193,5 +194,14 @@ public class FeatureHandler {
         }
 
         featureInstances.add(feature);
+    }
+
+    public List<String> getUserFeatureNames() {
+        ClassLoaderSupport classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
+        return featureInstances.stream()
+                        .filter(f -> classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()))
+                        .map(f -> f.getClass().getName())
+                        .sorted()
+                        .collect(Collectors.toList());
     }
 }

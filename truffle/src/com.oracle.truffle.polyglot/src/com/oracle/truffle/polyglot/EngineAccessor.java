@@ -94,14 +94,11 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -112,7 +109,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -214,8 +210,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <C> Object getDefaultLanguageView(TruffleLanguage<C> truffleLanguage, C context, Object value) {
-            return new DefaultLanguageView<>(truffleLanguage, context, value);
+        public Object getDefaultLanguageView(TruffleLanguage<?> truffleLanguage, Object value) {
+            return new DefaultLanguageView<>(truffleLanguage, value);
         }
 
         @Override
@@ -444,30 +440,12 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Env getLegacyLanguageEnv(Object obj, boolean nullForHost) {
+        public Object getCurrentSharingLayer() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             if (context == null) {
                 return null;
             }
-            PolyglotLanguage language = findLegacyLanguage(context, obj);
-            if (language == null) {
-                return null;
-            }
-            return context.getContext(language).env;
-        }
-
-        private static PolyglotLanguage findLegacyLanguage(PolyglotContextImpl context, Object value) {
-            PolyglotLanguage foundLanguage = null;
-            for (PolyglotLanguageContext searchContext : context.contexts) {
-                if (searchContext.isCreated()) {
-                    final TruffleLanguage.Env searchEnv = searchContext.env;
-                    if (EngineAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
-                        foundLanguage = searchContext.language;
-                        break;
-                    }
-                }
-            }
-            return foundLanguage;
+            return context.layer;
         }
 
         @Override
@@ -598,17 +576,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object getInstrumentationHandler(RootNode rootNode) {
+            PolyglotSharingLayer sharing = (PolyglotSharingLayer) NODES.getSharingLayer(rootNode);
+            if (sharing == null) {
+                return null;
+            }
+            return getInstrumentationHandler(sharing.engine);
+        }
+
+        @Override
         @CompilerDirectives.TruffleBoundary
         public Object importSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
             Value value = context.context.polyglotBindings.get(symbolName);
             if (value != null) {
                 return context.getAPIAccess().getReceiver(value);
-            } else {
-                value = context.context.findLegacyExportedSymbol(symbolName);
-                if (value != null) {
-                    return context.getAPIAccess().getReceiver(value);
-                }
             }
             return null;
         }
@@ -696,28 +678,6 @@ final class EngineAccessor extends Accessor {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("Provided value not an interop value.");
             }
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> createDefaultLexicalScope(Node node, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-            return LegacyDefaultScope.lexicalScope(node, frame, language);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> createDefaultTopScope(Object global) {
-            return LegacyDefaultScope.topScope(global);
-        }
-
-        @Override
-        public Object getDefaultVariables(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-            return DefaultScope.getVariables(root, frame, language);
-        }
-
-        @Override
-        public Object getDefaultArguments(Object[] frameArguments, Class<? extends TruffleLanguage<?>> language) {
-            return DefaultScope.getArguments(frameArguments, language);
         }
 
         @Override
@@ -810,7 +770,8 @@ final class EngineAccessor extends Accessor {
                     throw new IllegalStateException("Passed node is not yet adopted. Adopt it first.");
                 }
                 CompilerAsserts.partialEvaluationConstant(root);
-                engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
+                PolyglotSharingLayer sharing = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(root);
+                engine = sharing.engine;
                 CompilerAsserts.partialEvaluationConstant(engine);
                 assert engine != null : "root node engine must not be null";
             } else {
@@ -836,7 +797,6 @@ final class EngineAccessor extends Accessor {
             }
             synchronized (impl) {
                 impl.initializeContextLocals();
-                impl.engine.initializeMultiContext();
                 impl.notifyContextCreated();
                 if (initializeCreatorContext) {
                     impl.initializeInnerContextLanguage(creator.language.getId());
@@ -928,7 +888,7 @@ final class EngineAccessor extends Accessor {
         public PolyglotException wrapGuestException(Object polyglotObject, Throwable e) {
             if (polyglotObject instanceof PolyglotContextImpl) {
                 PolyglotContextImpl polyglotContext = (PolyglotContextImpl) polyglotObject;
-                PolyglotLanguage language = polyglotContext.engine.hostLanguageInstance.language;
+                PolyglotLanguage language = polyglotContext.getHostContext().language;
                 PolyglotLanguageContext languageContext = polyglotContext.getContextInitialized(language, null);
                 return PolyglotImpl.guestToHostException(languageContext, e, true);
             } else if (polyglotObject instanceof PolyglotEngineImpl) {
@@ -945,12 +905,13 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T getOrCreateRuntimeData(Object polyglotEngine) {
-            PolyglotEngineImpl useEngine = (PolyglotEngineImpl) polyglotEngine;
-            if (useEngine == null) {
-                useEngine = PolyglotEngineImpl.getFallbackEngine();
+        public <T> T getOrCreateRuntimeData(Object layer) {
+            PolyglotSharingLayer useLayer = ((PolyglotSharingLayer) layer);
+            PolyglotEngineImpl engine = useLayer != null ? useLayer.engine : null;
+            if (engine == null) {
+                engine = PolyglotEngineImpl.getFallbackEngine();
             }
-            return (T) useEngine.runtimeData;
+            return (T) engine.runtimeData;
         }
 
         @Override
@@ -1278,65 +1239,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
-            return invalidSharingError((PolyglotEngineImpl) polyglotEngine);
-        }
-
-        static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
-            Exception e = new Exception();
-            StringBuilder stack = new StringBuilder();
-            Exception exceptionCreating = null;
-            try {
-                TruffleStackTrace.fillIn(e);
-                ContextPolicy prevPolicy = null;
-                for (TruffleStackTraceElement stackTrace : TruffleStackTrace.getStackTrace(e)) {
-                    RootNode root = stackTrace.getTarget().getRootNode();
-                    PolyglotEngineImpl engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(root);
-                    if (engine != null && usedEngine != engine) {
-                        // different engine different assertion
-                        break;
-                    }
-                    PolyglotLanguageInstance instance = lookupLanguageInstance(root);
-                    ContextPolicy policy = instance.language.getEffectiveContextPolicy(instance.language);
-
-                    SourceSection sourceSection = null;
-                    Node location = stackTrace.getLocation();
-                    if (location != null) {
-                        sourceSection = location.getEncapsulatingSourceSection();
-                    }
-                    if (sourceSection == null) {
-                        sourceSection = root.getSourceSection();
-                    }
-                    if ((prevPolicy == ContextPolicy.EXCLUSIVE || policy == ContextPolicy.EXCLUSIVE) && prevPolicy != policy && prevPolicy != null) {
-                        stack.append(String.format("    <-- Likely Invalid Sharing --> %n"));
-                    }
-                    stack.append(String.format("  %-9s %s%n", policy, createJavaStackFrame(instance.language, root.getName(), sourceSection)));
-                    prevPolicy = policy;
-                }
-            } catch (Exception ex) {
-                exceptionCreating = ex;
-            }
-            AssertionError error = new AssertionError(String.format("Invalid sharing of runtime values in AST nodes detected.Stack trace: %n%s", stack.toString()));
-            if (exceptionCreating != null) {
-                error.addSuppressed(exceptionCreating);
-            }
-            throw error;
-        }
-
-        static StackTraceElement createJavaStackFrame(PolyglotLanguage language, String rootName, SourceSection sourceLocation) {
-            String declaringClass = "<" + language.getId() + ">";
-            String methodName = rootName == null ? "" : rootName;
-            String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
-            int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
-            return new StackTraceElement(declaringClass, methodName, fileName, startLine);
-        }
-
-        private static PolyglotLanguageInstance lookupLanguageInstance(RootNode root) {
-            TruffleLanguage<?> spi = EngineAccessor.NODES.getLanguage(root);
-            if (spi != null) {
-                return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(spi);
-            }
-            return null;
+        public AssertionError invalidSharingError(Node node, Object previousSharingLayer, Object newSharingLayer) throws AssertionError {
+            return PolyglotSharingLayer.invalidSharingError(node, (PolyglotSharingLayer) previousSharingLayer, (PolyglotSharingLayer) newSharingLayer);
         }
 
         @Override
@@ -1448,7 +1352,7 @@ final class EngineAccessor extends Accessor {
                 }
                 context.cancel(resourceExhaused, resourceExhausedReason);
                 if (entered) {
-                    TruffleSafepoint.pollHere(closeLocation != null ? closeLocation : context.engine.getUncachedLocation());
+                    TruffleSafepoint.pollHere(closeLocation != null ? closeLocation : context.uncachedLocation);
                 }
             } else {
                 synchronized (context) {
@@ -1484,30 +1388,6 @@ final class EngineAccessor extends Accessor {
             CompilerAsserts.neverPartOfCompilation();
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
             return context.engine.host.createHostAdapter(context.getHostContextImpl(), types, classOverrides);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> findLibraryLocalScopesToLegacy(Node node, Frame frame) {
-            return LegacyScopesBridge.findLibraryLocalScopesToLegacy(node, frame);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> topScopesToLegacy(Object scope) {
-            return LegacyScopesBridge.topScopesToLegacy(scope);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public boolean legacyScopesHasScope(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes) {
-            return LegacyScopesBridge.legacyScopesHasScope(node, legacyScopes);
-        }
-
-        @Override
-        @SuppressWarnings("deprecation")
-        public Object legacyScopes2ScopeObject(NodeInterface node, Iterator<com.oracle.truffle.api.Scope> legacyScopes, Class<? extends TruffleLanguage<?>> language) {
-            return LegacyScopesBridge.legacyScopes2ScopeObject(node, legacyScopes, language);
         }
 
         @Override
@@ -1668,6 +1548,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getHostNull() {
             return EngineAccessor.HOST.getHostNull();
+        }
+
+        @Override
+        public Object getPolyglotSharingLayer(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).sharing;
         }
     }
 

@@ -360,7 +360,7 @@ public final class CallTreePrinter {
 
     private static void toCsvFile(String description, String reportsPath, String prefix, String reportName, Consumer<PrintWriter> reporter) {
         final String name = prefix + "_" + reportName;
-        final String csvFile = ReportUtils.report(description, reportsPath, name, "csv", reporter);
+        final Path csvFile = ReportUtils.report(description, reportsPath, name, "csv", reporter);
         final Path csvLink = Paths.get(reportsPath).resolve(prefix + ".csv");
 
         if (Files.exists(csvLink, LinkOption.NOFOLLOW_LINKS)) {
@@ -372,7 +372,7 @@ public final class CallTreePrinter {
         }
 
         try {
-            Files.createSymbolicLink(csvLink, Paths.get(csvFile));
+            Files.createSymbolicLink(csvLink, csvFile);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

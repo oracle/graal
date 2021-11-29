@@ -64,8 +64,6 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -321,22 +319,22 @@ public class DebugValueTest extends AbstractDebugTest {
 
             final class TestRootNode extends RootNode {
                 @Node.Child TestBody body = new TestBody();
-                private final FrameSlot a;
-                private final FrameSlot b;
-                private final FrameSlot c;
+                private final int a;
+                private final int b;
+                private final int c;
 
                 TestRootNode(TruffleLanguage<?> language) {
                     super(language);
-                    a = getFrameDescriptor().addFrameSlot("a", FrameSlotKind.Object);
-                    b = getFrameDescriptor().addFrameSlot("b", FrameSlotKind.Int);
-                    c = getFrameDescriptor().addFrameSlot("c", FrameSlotKind.Object);
+                    a = getFrameDescriptor().findOrAddAuxiliarySlot("a");
+                    b = getFrameDescriptor().findOrAddAuxiliarySlot("b");
+                    c = getFrameDescriptor().findOrAddAuxiliarySlot("c");
                 }
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    frame.setObject(a, new ValueLanguageTest.NullObject());
-                    frame.setInt(b, 11);
-                    frame.setObject(c, new Object());
+                    frame.setAuxiliarySlot(a, new ValueLanguageTest.NullObject());
+                    frame.setAuxiliarySlot(b, 11);
+                    frame.setAuxiliarySlot(c, new Object());
                     return body.execute(frame);
                 }
             }

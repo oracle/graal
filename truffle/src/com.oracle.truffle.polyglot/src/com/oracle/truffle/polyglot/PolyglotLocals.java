@@ -229,7 +229,7 @@ final class PolyglotLocals {
         @Override
         public T get() {
             assert assertInstrumentCreated(PolyglotFastThreadLocals.getContext(null), instrument);
-            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(location.engine);
+            PolyglotContextImpl c = PolyglotFastThreadLocals.getContextWithEngine(location.engine);
             return (T) c.getLocal(location);
         }
 
@@ -290,7 +290,7 @@ final class PolyglotLocals {
         @Override
         public T get() {
             LocalLocation l = this.location;
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(l.engine);
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(languageInstance.sharing);
             assert assertLanguageCreated(context, languageInstance.language);
             return (T) context.getLocal(l);
         }
@@ -360,13 +360,13 @@ final class PolyglotLocals {
         @Override
         public T get() {
             assert assertLanguageCreated(PolyglotFastThreadLocals.getContext(null), languageInstance.language);
-            return (T) PolyglotFastThreadLocals.getCurrentThread(location.engine).getThreadLocal(location);
+            return (T) PolyglotFastThreadLocals.getCurrentThread(languageInstance.sharing).getThreadLocal(location);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T get(Thread t) {
-            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(location.engine);
+            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(languageInstance.sharing);
             assert assertLanguageCreated(c, languageInstance.language);
             return (T) c.getThreadLocal(location, t);
         }
@@ -435,14 +435,14 @@ final class PolyglotLocals {
         @Override
         public T get() {
             assert assertInstrumentCreated(PolyglotFastThreadLocals.getContext(null), instrument);
-            return (T) PolyglotFastThreadLocals.getCurrentThread(location.engine).getThreadLocal(location);
+            return (T) PolyglotFastThreadLocals.getCurrentThreadEngine(location.engine).getThreadLocal(location);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public T get(Thread t) {
             assert assertInstrumentCreated(PolyglotFastThreadLocals.getContext(null), instrument);
-            PolyglotContextImpl c = PolyglotFastThreadLocals.getContext(location.engine);
+            PolyglotContextImpl c = PolyglotFastThreadLocals.getContextWithEngine(location.engine);
             return (T) c.getThreadLocal(location, t);
         }
 

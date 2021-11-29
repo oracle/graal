@@ -58,7 +58,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -69,6 +68,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Theories.class)
+@SuppressWarnings("deprecation")
 public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
@@ -459,7 +459,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         @Override
         public Object execute(VirtualFrame frame) {
             super.execute(frame);
-            loopNode2.executeLoop(frame);
+            loopNode2.execute(frame);
             return null;
         }
     }
@@ -518,7 +518,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             }
             boolean next = super.executeRepeating(frame);
             if (next) {
-                loopNode2.executeLoop(frame);
+                loopNode2.execute(frame);
             } else {
                 onBackedge.apply(this);
             }
@@ -677,7 +677,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     }
 
     private interface OSRLoopFactory {
-        OptimizedOSRLoopNode createOSRLoop(int threshold, RepeatingNode repeating, FrameSlot[] readFrameSlots, FrameSlot[] writtenframeSlots);
+        OptimizedOSRLoopNode createOSRLoop(int threshold, RepeatingNode repeating, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots, com.oracle.truffle.api.frame.FrameSlot[] writtenframeSlots);
     }
 
     private static void waitForCompiled(OptimizedCallTarget target) {
@@ -695,7 +695,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         TestRootNodeWithReplacement(int threshold, OSRLoopFactory factory, TestRepeatingNode repeating) {
             super(threshold, factory, repeating);
-            toReplace = factory.createOSRLoop(threshold, repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
+            toReplace = factory.createOSRLoop(threshold, repeating, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2}, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2});
         }
     }
 
@@ -703,14 +703,14 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
         @Child OptimizedOSRLoopNode loopNode;
 
-        final FrameSlot param1;
-        final FrameSlot param2;
+        final com.oracle.truffle.api.frame.FrameSlot param1;
+        final com.oracle.truffle.api.frame.FrameSlot param2;
 
         protected TestRootNode(int threshold, OSRLoopFactory factory, TestRepeatingNode repeating) {
             super(null, new FrameDescriptor());
             param1 = getFrameDescriptor().addFrameSlot("param1", FrameSlotKind.Int);
             param2 = getFrameDescriptor().addFrameSlot("param2", FrameSlotKind.Int);
-            loopNode = factory.createOSRLoop(threshold, repeating, new FrameSlot[]{param1, param2}, new FrameSlot[]{param1, param2});
+            loopNode = factory.createOSRLoop(threshold, repeating, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2}, new com.oracle.truffle.api.frame.FrameSlot[]{param1, param2});
             repeating.param1 = param1;
             repeating.param2 = param2;
         }
@@ -736,7 +736,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
             } else {
                 frame.setInt(param2, 0);
             }
-            loopNode.executeLoop(frame);
+            loopNode.execute(frame);
             return null;
         }
     }
@@ -744,8 +744,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     private static class TestRepeatingNode extends Node implements RepeatingNode {
         int invalidationCounter = -1;
 
-        @CompilationFinal FrameSlot param1;
-        @CompilationFinal FrameSlot param2;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot param1;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot param2;
 
         boolean compiled;
 

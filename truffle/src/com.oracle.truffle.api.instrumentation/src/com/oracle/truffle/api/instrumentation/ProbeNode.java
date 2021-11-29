@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,8 +57,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
@@ -1181,7 +1179,7 @@ public final class ProbeNode extends Node {
     static class EventProviderWithInputChainNode extends EventProviderChainNode {
 
         static final Object[] EMPTY_ARRAY = new Object[0];
-        @CompilationFinal(dimensions = 1) private volatile FrameSlot[] inputSlots;
+        @CompilationFinal(dimensions = 1) private volatile int[] inputSlots;
         @CompilationFinal private volatile FrameDescriptor sourceFrameDescriptor;
         final int inputBaseIndex;
         final int inputCount;
@@ -1221,7 +1219,7 @@ public final class ProbeNode extends Node {
                 initializeSlots(frame);
             }
             assert sourceFrameDescriptor == frame.getFrameDescriptor() : "Unstable frame descriptor used by the language.";
-            frame.setObject(inputSlots[inputIndex], value);
+            frame.setAuxiliarySlot(inputSlots[inputIndex], value);
         }
 
         private void initializeSlots(VirtualFrame frame) {
@@ -1233,10 +1231,10 @@ public final class ProbeNode extends Node {
                         InstrumentationHandler.trace("SLOTS: Adding %s save slots for binding %s%n", inputCount, getBinding().getElement());
                     }
                     FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-                    FrameSlot[] slots = new FrameSlot[inputCount];
+                    int[] slots = new int[inputCount];
                     for (int i = 0; i < inputCount; i++) {
                         int slotIndex = inputBaseIndex + i;
-                        slots[i] = frameDescriptor.findOrAddFrameSlot(new SavedInputValueID(getBinding(), slotIndex));
+                        slots[i] = frameDescriptor.findOrAddAuxiliarySlot(new SavedInputValueID(getBinding(), slotIndex));
                     }
                     this.sourceFrameDescriptor = frameDescriptor;
                     this.inputSlots = slots;
@@ -1259,7 +1257,6 @@ public final class ProbeNode extends Node {
             lock.lock();
             try {
                 if (inputSlots != null) {
-                    FrameSlot[] slots = inputSlots;
                     inputSlots = null;
 
                     RootNode rootNode = context.getInstrumentedNode().getRootNode();
@@ -1269,14 +1266,9 @@ public final class ProbeNode extends Node {
                     FrameDescriptor descriptor = rootNode.getFrameDescriptor();
                     assert descriptor != null;
 
-                    for (FrameSlot slot : slots) {
-                        FrameSlot resolvedSlot = descriptor.findFrameSlot(slot.getIdentifier());
-                        if (resolvedSlot != null) {
-                            descriptor.removeFrameSlot(slot.getIdentifier());
-                        } else {
-                            // slot might be shared and already removed by another event provider
-                            // node.
-                        }
+                    for (int i = 0; i < inputCount; i++) {
+                        int slotIndex = inputBaseIndex + i;
+                        descriptor.disableAuxiliarySlot(new SavedInputValueID(getBinding(), slotIndex));
                     }
                 }
             } finally {
@@ -1299,33 +1291,28 @@ public final class ProbeNode extends Node {
 
         @ExplodeLoop
         private void clearSlots(VirtualFrame frame) {
-            FrameSlot[] slots = inputSlots;
+            int[] slots = inputSlots;
             if (slots != null) {
                 if (frame.getFrameDescriptor() == sourceFrameDescriptor) {
-                    for (int i = 0; i < slots.length; i++) {
-                        frame.setObject(slots[i], null);
+                    for (int slot : slots) {
+                        frame.setAuxiliarySlot(slot, null);
                     }
                 }
             }
         }
 
         protected final Object getSavedInputValue(VirtualFrame frame, int inputIndex) {
-            try {
-                verifyIndex(inputIndex);
-                if (inputSlots == null) {
-                    // never saved any value
-                    return null;
-                }
-                return frame.getObject(inputSlots[inputIndex]);
-            } catch (FrameSlotTypeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+            verifyIndex(inputIndex);
+            if (inputSlots == null) {
+                // never saved any value
+                return null;
             }
+            return frame.getAuxiliarySlot(inputSlots[inputIndex]);
         }
 
         @ExplodeLoop
         protected final Object[] getSavedInputValues(VirtualFrame frame) {
-            FrameSlot[] slots = inputSlots;
+            int[] slots = inputSlots;
             if (slots == null) {
                 return EMPTY_ARRAY;
             }
@@ -1333,12 +1320,7 @@ public final class ProbeNode extends Node {
             if (frame.getFrameDescriptor() == sourceFrameDescriptor) {
                 inputValues = new Object[slots.length];
                 for (int i = 0; i < slots.length; i++) {
-                    try {
-                        inputValues[i] = frame.getObject(slots[i]);
-                    } catch (FrameSlotTypeException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new AssertionError(e);
-                    }
+                    inputValues[i] = frame.getAuxiliarySlot(slots[i]);
                 }
             } else {
                 inputValues = new Object[inputSlots.length];

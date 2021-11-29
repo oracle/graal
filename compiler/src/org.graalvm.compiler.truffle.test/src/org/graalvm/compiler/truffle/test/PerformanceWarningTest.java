@@ -46,7 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -119,8 +119,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void testFrameClear() {
-        testHelper(new RootNodeClearFrameClass(new FrameDescriptor("test")), true, "perf warn");
+    public void testFrameAccessVerification() {
+        testHelper(new RootNodeFrameAccessVerification(), true, "perf warn");
     }
 
     @SuppressWarnings("try")
@@ -257,7 +257,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     private static class L9b extends L8 {
     }
 
-    private abstract class TestRootNode extends RootNode {
+    private abstract static class TestRootNode extends RootNode {
 
         private TestRootNode() {
             super(null);
@@ -411,19 +411,29 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         }
     }
 
-    private final class RootNodeClearFrameClass extends TestRootNode {
-        final FrameSlot slot;
+    private static final class RootNodeFrameAccessVerification extends TestRootNode {
 
-        RootNodeClearFrameClass(FrameDescriptor fd) {
-            super(fd);
-            this.slot = fd.addFrameSlot("test");
+        private static final int SLOT = 0;
+
+        RootNodeFrameAccessVerification() {
+            super(createFrameDescriptor());
+        }
+
+        private static FrameDescriptor createFrameDescriptor() {
+            FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+            int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+            assert SLOT == slot;
+            return builder.build();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
+
             if ((boolean) args[0]) {
-                frame.clear(slot);
+                frame.clear(0);
+            } else {
+                frame.setInt(0, 0);
             }
             // Expected Perf warn
             boundary();

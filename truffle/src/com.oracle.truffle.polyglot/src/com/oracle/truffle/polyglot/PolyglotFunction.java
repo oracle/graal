@@ -115,7 +115,8 @@ final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
 
         @Child private PolyglotExecuteNode apply;
 
-        Apply(Class<?> receiverType, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
+        Apply(PolyglotLanguageInstance language, Class<?> receiverType, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
+            super(language);
             this.receiverClass = Objects.requireNonNull(receiverType);
             this.returnClass = Objects.requireNonNull(returnClass);
             this.returnType = returnType;
@@ -167,7 +168,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
         }
 
         private static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
-            Apply apply = new Apply(receiverClass, returnClass, returnType, paramClass, paramType);
+            Apply apply = new Apply(languageContext.getLanguageInstance(), receiverClass, returnClass, returnType, paramClass, paramType);
             CallTarget target = lookupHostCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, apply, apply.getCallTarget(), CallTarget.class);

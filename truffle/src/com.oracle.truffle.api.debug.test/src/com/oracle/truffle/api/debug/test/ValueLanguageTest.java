@@ -63,7 +63,6 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -410,7 +409,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             private final String name;
             protected final Object value;
             @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
-            @CompilationFinal protected FrameSlot slot;
+            @CompilationFinal protected Integer slot;
 
             VarNode(ValuesLanguage language, String name, Object value, SourceSection sourceSection) {
                 this.language = language;
@@ -445,15 +444,9 @@ public class ValueLanguageTest extends AbstractDebugTest {
             public Object execute(VirtualFrame frame) {
                 if (slot == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slot = frame.getFrameDescriptor().findOrAddFrameSlot(name);
+                    slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(name);
                 }
-                if (value instanceof Integer) {
-                    frame.setInt(slot, (Integer) value);
-                } else if (value instanceof Long) {
-                    frame.setLong(slot, (Long) value);
-                } else {
-                    frame.setObject(slot, value);
-                }
+                frame.setAuxiliarySlot(slot, value);
                 try {
                     interop.writeMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), name, value);
                 } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
@@ -512,25 +505,22 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 Object varObj = null;
                 if (slot == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slot = frame.getFrameDescriptor().findFrameSlot(var);
-                    if (slot == null) {
-                        try {
-                            varObj = interop.readMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), var);
-                        } catch (UnknownIdentifierException e) {
-                            varObj = null;
-                        } catch (UnsupportedMessageException e) {
-                            CompilerDirectives.transferToInterpreter();
-                            throw new AssertionError(e);
-                        }
-                        slot = frame.getFrameDescriptor().addFrameSlot(var);
-                        frame.setObject(slot, varObj);
-                    }
+                    slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(var);
                 }
+                varObj = frame.getAuxiliarySlot(slot);
                 if (varObj == null) {
-                    varObj = frame.getValue(slot);
+                    try {
+                        varObj = interop.readMember(language.getContextReference0().get(null).getEnv().getPolyglotBindings(), var);
+                    } catch (UnknownIdentifierException e) {
+                        varObj = null;
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw new AssertionError(e);
+                    }
                     if (varObj == null) {
                         throw new IllegalStateException("Unknown var " + var);
                     }
+                    frame.setAuxiliarySlot(slot, varObj);
                 }
                 PropertiesMapObject props = (PropertiesMapObject) varObj;
                 props.map.put(prop, value);

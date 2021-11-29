@@ -41,16 +41,15 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationTest {
 
     public static class Bytecode {
@@ -112,15 +111,15 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     public static class Program extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
         public Program(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(null);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new FrameSlot[maxLocals];
-            stack = new FrameSlot[maxStack];
+            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
+            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
                 this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
@@ -658,11 +657,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         public abstract int getFalseSucc();
 
         public static class Const extends Inst {
-            private final FrameSlot slot;
+            private final com.oracle.truffle.api.frame.FrameSlot slot;
             private final int value;
             private final int next;
 
-            public Const(FrameSlot slot, int value, int next) {
+            public Const(com.oracle.truffle.api.frame.FrameSlot slot, int value, int next) {
                 this.slot = slot;
                 this.value = value;
                 this.next = next;
@@ -706,11 +705,11 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         public static class IfZero extends Inst {
-            private final FrameSlot slot;
+            private final com.oracle.truffle.api.frame.FrameSlot slot;
             private final int thenInst;
             private final int elseInst;
 
-            public IfZero(FrameSlot slot, int thenInst, int elseInst) {
+            public IfZero(com.oracle.truffle.api.frame.FrameSlot slot, int thenInst, int elseInst) {
                 this.slot = slot;
                 this.thenInst = thenInst;
                 this.elseInst = elseInst;
@@ -718,7 +717,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
             @Override
             public boolean execute(VirtualFrame frame) {
-                return (FrameUtil.getIntSafe(frame, slot) == 0);
+                return (frame.getInt(slot) == 0);
             }
 
             @Override
@@ -733,12 +732,12 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
         }
 
         public static class IfLt extends Inst {
-            private final FrameSlot slot1;
-            private final FrameSlot slot2;
+            private final com.oracle.truffle.api.frame.FrameSlot slot1;
+            private final com.oracle.truffle.api.frame.FrameSlot slot2;
             private final int thenInst;
             private final int elseInst;
 
-            public IfLt(FrameSlot slot1, FrameSlot slot2, int thenInst, int elseInst) {
+            public IfLt(com.oracle.truffle.api.frame.FrameSlot slot1, com.oracle.truffle.api.frame.FrameSlot slot2, int thenInst, int elseInst) {
                 this.slot1 = slot1;
                 this.slot2 = slot2;
                 this.thenInst = thenInst;
@@ -747,7 +746,7 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
 
             @Override
             public boolean execute(VirtualFrame frame) {
-                return (FrameUtil.getIntSafe(frame, slot1) < FrameUtil.getIntSafe(frame, slot2));
+                return (frame.getInt(slot1) < frame.getInt(slot2));
             }
 
             @Override
@@ -765,9 +764,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
     public static class InstArrayProgram extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) protected final Inst[] inst;
-        protected final FrameSlot returnSlot;
+        protected final com.oracle.truffle.api.frame.FrameSlot returnSlot;
 
-        public InstArrayProgram(String name, Inst[] inst, FrameSlot returnSlot, FrameDescriptor fd) {
+        public InstArrayProgram(String name, Inst[] inst, com.oracle.truffle.api.frame.FrameSlot returnSlot, FrameDescriptor fd) {
             super(null, fd);
             this.name = name;
             this.inst = inst;
@@ -791,15 +790,15 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                     ip = inst[ip].getFalseSucc();
                 }
             }
-            return nonExplodedLoop(FrameUtil.getIntSafe(frame, returnSlot));
+            return nonExplodedLoop(frame.getInt(returnSlot));
         }
     }
 
     @Test
     public void instArraySimpleIfProgram() {
         FrameDescriptor fd = new FrameDescriptor();
-        FrameSlot valueSlot = fd.addFrameSlot("value", FrameSlotKind.Int);
-        FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot valueSlot = fd.addFrameSlot("value", FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot returnSlot = fd.addFrameSlot("return", FrameSlotKind.Int);
         Inst[] inst = new Inst[]{
                         /* 0: */new Inst.Const(valueSlot, 1, 1),
                         /* 1: */new Inst.IfZero(valueSlot, 2, 4),

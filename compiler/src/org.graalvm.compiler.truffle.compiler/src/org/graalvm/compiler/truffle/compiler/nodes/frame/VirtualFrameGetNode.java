@@ -48,17 +48,28 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameGetNode> TYPE = NodeClass.create(VirtualFrameGetNode.class);
 
-    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag) {
-        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag);
+    public VirtualFrameGetNode(Receiver frame, int frameSlotIndex, JavaKind accessKind, int accessTag, VirtualFrameAccessType type) {
+        super(TYPE, StampFactory.forKind(accessKind), frame, frameSlotIndex, accessTag, type);
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
+        ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
         ValueNode dataAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFrameObjectArray : frame.virtualFramePrimitiveArray);
+                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.getObjectArray(type) : frame.getPrimitiveArray(type));
 
-        if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
+        if (type == VirtualFrameAccessType.Auxiliary) {
+            // no tags array
+            if (dataAlias instanceof VirtualObjectNode) {
+                VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
+
+                if (frameSlotIndex < dataVirtual.entryCount()) {
+                    ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
+                    tool.replaceWith(dataEntry);
+                    return;
+                }
+            }
+        } else if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
             VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 

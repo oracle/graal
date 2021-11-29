@@ -72,8 +72,8 @@ import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -298,6 +298,9 @@ public class NativeImageGeneratorRunner {
 
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
+
+        ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
+
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
@@ -310,6 +313,7 @@ public class NativeImageGeneratorRunner {
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
+            reporter.printStart(imageName);
 
             totalTimer.setPrefix(imageName);
             classlistTimer.setPrefix(imageName);
@@ -416,8 +420,8 @@ public class NativeImageGeneratorRunner {
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
             analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
             compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
-            generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData);
-            generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
+            generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+            generator.run(entryPoints, javaMainSupport, imageName, classlistTimer, imageKind, SubstitutionProcessor.IDENTITY,
                             compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
@@ -468,10 +472,7 @@ public class NativeImageGeneratorRunner {
         } finally {
             totalTimer.print();
             if (imageName != null && generator != null) {
-                if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-                    generator.printImageBuildStatistics(imageName);
-                }
-                generator.reportBuildArtifacts(imageName);
+                reporter.printEpilog(generator, imageName, totalTimer, parsedHostedOptions);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();

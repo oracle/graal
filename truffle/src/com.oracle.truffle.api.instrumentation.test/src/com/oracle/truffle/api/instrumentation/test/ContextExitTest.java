@@ -283,7 +283,7 @@ public class ContextExitTest {
         } catch (PolyglotException pe) {
             if (!pe.isExit() && !pe.isInterrupted()) {
                 /*
-                 * Inner context is the one being exited, hence the exiting prroperty of the outer
+                 * Inner context is the one being exited, hence the exiting property of the outer
                  * context is not set, and so if the exit happens during JOIN() the final polyglot
                  * exception has only the interrupted property.
                  */

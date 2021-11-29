@@ -286,21 +286,13 @@ public class TruffleTypes {
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);
 
     // OM API
-    public static final String Layout_Name = "com.oracle.truffle.api.object.dsl.Layout";
-    public static final String Nullable_Name = "com.oracle.truffle.api.object.dsl.Nullable";
-    public static final String Volatile_Name = "com.oracle.truffle.api.object.dsl.Volatile";
-    public static final String Layout_ImplicitCast_Name = "com.oracle.truffle.api.object.Layout.ImplicitCast";
     public static final String DynamicObjectFactory_Name = "com.oracle.truffle.api.object.DynamicObjectFactory";
     public static final String DynamicObject_Name = "com.oracle.truffle.api.object.DynamicObject";
     public static final String ObjectType_Name = "com.oracle.truffle.api.object.ObjectType";
 
-    public final DeclaredType Layout = c.getDeclaredTypeOptional(Layout_Name);
-    public final DeclaredType Nullable = c.getDeclaredTypeOptional(Nullable_Name);
-    public final DeclaredType Volatile = c.getDeclaredTypeOptional(Volatile_Name);
     public final DeclaredType DynamicObjectFactory = c.getDeclaredTypeOptional(DynamicObjectFactory_Name);
     public final DeclaredType DynamicObject = c.getDeclaredTypeOptional(DynamicObject_Name);
     public final DeclaredType ObjectType = c.getDeclaredTypeOptional(ObjectType_Name);
-    public final DeclaredType Layout_ImplicitCast = c.getDeclaredTypeOptional(Layout_ImplicitCast_Name);
 
     // Utilities API
     public static final String TruffleWeakReference_Name = "com.oracle.truffle.api.utilities.TruffleWeakReference";

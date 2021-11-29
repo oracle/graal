@@ -296,7 +296,7 @@ public class InputFilterTest extends InstrumentationEventTest {
         });
 
         // should use maximum four frame slots to save expression values
-        assertEquals(4, descriptor[0].getIdentifiers().size());
+        assertEquals(4, descriptor[0].getNumberOfAuxiliarySlots());
 
         binding.dispose();
         assertCleanedUp(code);
@@ -525,7 +525,7 @@ public class InputFilterTest extends InstrumentationEventTest {
 
         for (RootNode root : rootNodes) {
             // all frame slots got removed
-            assertEquals(new HashSet<>(), root.getFrameDescriptor().getIdentifiers());
+            assertEquals(0, root.getFrameDescriptor().getNumberOfAuxiliarySlots());
 
             // no wrappers left
             root.accept(new NodeVisitor() {

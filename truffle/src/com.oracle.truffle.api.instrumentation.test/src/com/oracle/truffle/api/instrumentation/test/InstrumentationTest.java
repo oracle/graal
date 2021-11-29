@@ -84,14 +84,13 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -358,7 +357,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     }
 
-    @TruffleLanguage.Registration(id = "test-language-instrumentation-language", name = "", version = "")
+    @TruffleLanguage.Registration(id = "test-language-instrumentation-language", name = "", version = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestLanguageInstrumentationLanguage extends InstrumentationTestLanguage {
 
@@ -911,7 +910,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = TestOtherLanguageParseInline.ID, name = "")
+    @TruffleLanguage.Registration(id = TestOtherLanguageParseInline.ID, name = "", contextPolicy = ContextPolicy.SHARED)
     public static class TestOtherLanguageParseInline extends InstrumentationTestLanguage {
 
         static final String ID = "testOtherParseInline-lang";
@@ -967,7 +966,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         run(source);
     }
 
-    @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "")
+    @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.StatementTag.class})
     public static class TestLanguageNoParseInline extends InstrumentationTestLanguage {
 
@@ -978,69 +977,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return parseOriginal(request);
         }
 
-    }
-
-    @Test
-    public void testLegacyReceiver() throws IOException {
-        ReceiverLegacyTester tester = new ReceiverLegacyTester(instrumentEnv);
-        Source source = Source.create(InstrumentationTestLanguage.ID,
-                        "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
-                                        "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
-                                        "CALL(foo1)," +
-                                        "CALL_WITH(foo2, 42)," +
-                                        "CALL_WITH(foo1, 43))");
-        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
-        run(source);
-        tester.assertReceivers(null, null, "42", "43");
-    }
-
-    @SuppressWarnings("deprecation")
-    private static final class ReceiverLegacyTester implements ExecutionEventListener {
-
-        private TruffleInstrument.Env env;
-        private final List<String> receiverObjects = new ArrayList<>();
-
-        ReceiverLegacyTester(TruffleInstrument.Env env) {
-            this.env = env;
-        }
-
-        @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            addReceiverObject(context, frame.materialize());
-        }
-
-        @TruffleBoundary
-        private void addReceiverObject(EventContext context, MaterializedFrame frame) {
-            RootNode rootNode = context.getInstrumentedNode().getRootNode();
-            com.oracle.truffle.api.Scope frameScope = env.findLocalScopes(context.getInstrumentedNode(), frame).iterator().next();
-            Object receiver = frameScope.getReceiver();
-            if (receiver != null) {
-                assertEquals("THIS", frameScope.getReceiverName());
-                try {
-                    receiverObjects.add(InteropLibrary.getUncached().asString(
-                                    InteropLibrary.getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
-                } catch (UnsupportedMessageException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
-                }
-            } else {
-                receiverObjects.add(null);
-            }
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-        }
-
-        @Override
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-        }
-
-        private void assertReceivers(String... objects) {
-            assertEquals(objects.length, receiverObjects.size());
-            for (int i = 0; i < objects.length; i++) {
-                assertEquals(objects[i], receiverObjects.get(i));
-            }
-        }
     }
 
     @Test
@@ -1565,7 +1501,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         engine = null; // avoid a second disposal in @After event
     }
 
-    @TruffleLanguage.Registration(id = "testIsNodeTaggedWith1-lang", name = "")
+    @TruffleLanguage.Registration(id = "testIsNodeTaggedWith1-lang", name = "", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.ExpressionTag.class, StandardTags.StatementTag.class})
     public static class TestIsNodeTaggedWith1Language extends InstrumentationTestLanguage {
 
@@ -2311,6 +2247,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertNull(stack);
     }
 
+    private static final int TARGET_SLOT = 0;
+
     @Test
     public void testAsynchronousStacks3() {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -2323,14 +2261,12 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 private final TruffleLanguage<?> language;
                 private final int level;
-                private final FrameSlot targetSlot;
                 @Node.Child private AsyncNode child;
 
                 AsyncRootNode(TruffleLanguage<?> language, int level) {
-                    super(language);
+                    super(language, createFrameDescriptor(1));
                     this.language = language;
                     this.level = level;
-                    this.targetSlot = getFrameDescriptor().findOrAddFrameSlot("target", FrameSlotKind.Object);
                     this.child = new AsyncNode(level);
                 }
 
@@ -2344,7 +2280,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 @TruffleBoundary
                 private void storeInvokedTarget(MaterializedFrame frame) {
                     CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
-                    frame.setObject(targetSlot, callTarget);
+                    frame.setObject(TARGET_SLOT, callTarget);
                 }
 
                 @Override
@@ -2471,7 +2407,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public static class AsynchronousStacksInstrument extends ProxyInstrument {
 
         private final int testDepth = 2;
-        private final int prgDepth = 5;
+        private final int prgDepth = 4;
         CountDownLatch instrumentationFinished;
 
         @Override

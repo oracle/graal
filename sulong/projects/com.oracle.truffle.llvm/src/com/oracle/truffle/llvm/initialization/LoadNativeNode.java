@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.initialization;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.initialization.LoadModulesNode.LLVMLoadingPhase;
@@ -46,22 +45,23 @@ public final class LoadNativeNode extends RootNode {
 
     private final String path;
 
-    private LoadNativeNode(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        super(language, rootFrame);
+    private LoadNativeNode(LLVMLanguage language, TruffleFile file) {
+        super(language);
         this.path = file.getPath();
     }
 
-    public static LoadNativeNode create(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        return new LoadNativeNode(rootFrame, language, file);
+    public static LoadNativeNode create(LLVMLanguage language, TruffleFile file) {
+        return new LoadNativeNode(language, file);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        Object[] arguments = frame.getArguments();
         Object library = null;
         LLVMLoadingPhase phase;
-        if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
-            phase = (LLVMLoadingPhase) frame.getArguments()[0];
-        } else if (frame.getArguments().length == 0 || (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMDLOpen.RTLDFlags))) {
+        if (arguments.length > 0 && (arguments[0] instanceof LLVMLoadingPhase)) {
+            phase = (LLVMLoadingPhase) arguments[0];
+        } else if (arguments.length == 0 || (arguments.length > 0 && (arguments[0] instanceof LLVMDLOpen.RTLDFlags))) {
             if (path == null) {
                 throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode", path);
             }

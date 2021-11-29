@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -154,39 +153,6 @@ public final class NodeUtil {
     /** @since 0.8 or earlier */
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         return replaceChild(parent, oldChild, newChild, false);
-    }
-
-    /**
-     * @since 19.0
-     * @deprecated in 20.2 use EncapsulatingNode.{@link EncapsulatingNodeReference#getCurrent()
-     *             getCurrent()}.get() instead.
-     */
-    @Deprecated
-    @TruffleBoundary
-    public static Node getCurrentEncapsulatingNode() {
-        return EncapsulatingNodeReference.getCurrent().get();
-    }
-
-    /**
-     * @since 19.0
-     * @deprecated in 20.2 use EncapsulatingNode.{@link EncapsulatingNodeReference#getCurrent()
-     *             getCurrent()}.set(node) instead.
-     */
-    @Deprecated
-    @TruffleBoundary
-    public static Node pushEncapsulatingNode(Node node) {
-        return EncapsulatingNodeReference.getCurrent().set(node);
-    }
-
-    /**
-     * @since 19.0
-     * @deprecated in 20.2 use EncapsulatingNode.{@link EncapsulatingNodeReference#getCurrent()
-     *             getCurrent()}.set(prev) instead.
-     */
-    @Deprecated
-    @TruffleBoundary
-    public static void popEncapsulatingNode(Node prev) {
-        EncapsulatingNodeReference.getCurrent().set(prev);
     }
 
     /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
+                    "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
                     "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
@@ -137,6 +137,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     case "allDeclaredClasses":
                         if (asBoolean(value, "allDeclaredClasses")) {
                             delegate.registerDeclaredClasses(clazz);
+                        }
+                        break;
+                    case "allPermittedSubclasses":
+                        if (asBoolean(value, "allPermittedSubclasses")) {
+                            delegate.registerPermittedSubclasses(clazz);
                         }
                         break;
                     case "allPublicClasses":

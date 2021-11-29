@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -102,7 +103,7 @@ public final class PolyglotAccess {
         return newMap;
     }
 
-    String validate(UnmodifiableEconomicSet<String> availableLanguages) {
+    String validate(Set<String> availableLanguages) {
         if (evalAccess != null) {
             MapCursor<String, UnmodifiableEconomicSet<String>> entries = evalAccess.getEntries();
             while (entries.advance()) {

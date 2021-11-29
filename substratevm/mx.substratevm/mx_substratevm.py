@@ -177,7 +177,7 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
             config_args += ['--components=' + ','.join(c.name for c in components)]
         dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
         if dynamic_imports:
-            config_args += ['--dynamicimports', ','.join(dynamic_imports)]
+            config_args += ['--dynamicimports=' + ','.join(dynamic_imports)]
         primary_suite_dir = None
 
     args = config_args + cmd_args
@@ -780,6 +780,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:NATIVE_IMAGE_BASE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    support_libraries_distributions=['substratevm:SVM_GRAALVM_LIBRARIES_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
 ))
@@ -1109,6 +1110,7 @@ def hellomodule(args):
     with native_image_context(hosted_assertions=False, config=config) as native_image:
         module_path_sep = ';' if mx.is_windows() else ':'
         moduletest_run_args = [
+            '-ea',
             '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
             '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
             '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'

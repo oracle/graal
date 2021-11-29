@@ -53,7 +53,6 @@ import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -93,6 +92,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}.
  * </p>
  */
+@SuppressWarnings("deprecation")
 public class FrameTest {
 
     @BeforeClass
@@ -104,7 +104,7 @@ public class FrameTest {
     public void test() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         String varName = "localVar";
-        FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
         Object result = rootNode.getCallTarget().call();
         assertEquals(42, result);
@@ -139,16 +139,16 @@ public class FrameTest {
 
     abstract class FrameSlotNode extends TestChildNode {
 
-        protected final FrameSlot slot;
+        protected final com.oracle.truffle.api.frame.FrameSlot slot;
 
-        FrameSlotNode(FrameSlot slot) {
+        FrameSlotNode(com.oracle.truffle.api.frame.FrameSlot slot) {
             this.slot = slot;
         }
     }
 
     class AssignLocal extends FrameSlotNode {
 
-        AssignLocal(FrameSlot slot) {
+        AssignLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 
@@ -161,7 +161,7 @@ public class FrameTest {
 
     class ReadLocal extends FrameSlotNode {
 
-        ReadLocal(FrameSlot slot) {
+        ReadLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 

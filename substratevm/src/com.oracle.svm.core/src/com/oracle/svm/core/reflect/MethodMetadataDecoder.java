@@ -37,6 +37,8 @@ public interface MethodMetadataDecoder {
 
     MethodDescriptor[] getAllReachableMethods();
 
+    long getMetadataByteLength();
+
     class MethodDescriptor {
         private final Class<?> declaringClass;
         private final String name;

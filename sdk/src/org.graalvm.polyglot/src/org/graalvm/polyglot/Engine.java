@@ -852,7 +852,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+        public String validatePolyglotAccess(PolyglotAccess access, Set<String> languages) {
             return access.validate(languages);
         }
     }

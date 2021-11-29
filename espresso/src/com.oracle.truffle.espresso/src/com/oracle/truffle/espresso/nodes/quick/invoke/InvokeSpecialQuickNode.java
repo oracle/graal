@@ -48,18 +48,18 @@ public final class InvokeSpecialQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame) {
         /*
          * Method signature does not change across methods. Can safely use the constant signature
          * from `method` instead of the non-constant signature from the lookup.
          */
-        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
+        Object[] args = BytecodeNode.popArguments(frame, top, true, method.getMethod().getParsedSignature());
         nullCheck((StaticObject) args[0]);
         Object result = invokeSpecial.execute(args);
         if (!returnsPrimitiveType) {
             getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + BytecodeNode.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     private int getResultAt() {

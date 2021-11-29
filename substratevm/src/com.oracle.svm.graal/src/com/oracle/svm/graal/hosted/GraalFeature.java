@@ -132,6 +132,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -647,7 +648,8 @@ public final class GraalFeature implements Feature {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
             printCallTree();
         }
-        System.out.println(methods.size() + " method(s) included for runtime compilation");
+
+        ProgressReporter.singleton().printRuntimeCompileMethods(methods.size(), config.getMethods().size());
 
         if (Options.PrintStaticTruffleBoundaries.getValue()) {
             printStaticTruffleBoundaries();
@@ -720,6 +722,7 @@ public final class GraalFeature implements Feature {
             }
         }
 
+        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.updateDataDuringAnalysis((AnalysisMetaAccess) hMetaAccess.getWrapped());

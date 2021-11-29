@@ -44,21 +44,14 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Language;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
@@ -69,8 +62,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageInfo info;
 
     Language api; // effectively final
-    final int contextIndex;
-    private final boolean host;
+    final int engineIndex;
     final RuntimeException initError;
 
     private volatile OptionDescriptors options;
@@ -78,51 +70,22 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     private volatile boolean initialized;
 
     private volatile PolyglotLanguageInstance initLanguage;
-    private final LinkedList<PolyglotLanguageInstance> instancePool;
-
-    final Assumption singleInstance = Truffle.getRuntime().createAssumption("Single language instance per engine.");
     private boolean firstInstance = true;
 
     @CompilationFinal volatile Class<?> contextClass;
     volatile LocalLocation[] previousContextLocalLocations;
     volatile LocalLocation[] previousContextThreadLocalLocations;
 
-    final WeakAssumedValue<PolyglotLanguageInstance> singleLanguageInstance = new WeakAssumedValue<>("single language instance");
-
-    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int contextIndex, boolean host, RuntimeException initError) {
+    PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int engineIndex, RuntimeException initError) {
         this.engine = engine;
         this.cache = cache;
         this.initError = initError;
-        this.contextIndex = contextIndex;
-        this.host = host;
-        this.instancePool = new LinkedList<>();
+        this.engineIndex = engineIndex;
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
     }
 
-    List<PolyglotLanguageInstance> getInstancePool() {
-        synchronized (engine.lock) {
-            return new ArrayList<>(instancePool);
-        }
-    }
-
-    ContextPolicy getEffectiveContextPolicy(PolyglotLanguage inLanguage) {
-        ContextPolicy sourcePolicy;
-        if (engine.singleContextValue.isValid()) {
-            // with a bound engine context policy is effectively always exclusive
-            sourcePolicy = ContextPolicy.EXCLUSIVE;
-        } else {
-            if (inLanguage != null) {
-                sourcePolicy = inLanguage.cache.getPolicy();
-            } else {
-                // we don't know which language we are in so null language means shared policy
-                sourcePolicy = ContextPolicy.SHARED;
-            }
-        }
-        return sourcePolicy;
-    }
-
     PolyglotLanguageContext getCurrentLanguageContext() {
-        return PolyglotContextImpl.requireContext().contexts[contextIndex];
+        return PolyglotContextImpl.requireContext().contexts[engineIndex];
     }
 
     boolean isFirstInstance() {
@@ -155,7 +118,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     }
 
     boolean isHost() {
-        return host;
+        return engineIndex == PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
     }
 
     public OptionDescriptors getOptions() {
@@ -168,35 +131,46 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     }
 
     OptionDescriptors getOptionsInternal() {
+        ensureInitialized();
+        return options;
+    }
+
+    private void ensureInitialized() {
         if (!this.initialized) {
             synchronized (engine.lock) {
                 if (!this.initialized) {
-                    this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
+                    ensureInitialized(getInitLanguage());
                     this.initialized = true;
                 }
             }
         }
-        return options;
+    }
+
+    PolyglotLanguageInstance getInitLanguage() {
+        assert Thread.holdsLock(engine.lock);
+        if (initLanguage == null) {
+            this.initLanguage = new PolyglotLanguageInstance(this, null);
+        }
+        return initLanguage;
     }
 
     @SuppressWarnings("unchecked")
-    private PolyglotLanguageInstance createInstance() {
+    PolyglotLanguageInstance createInstance(PolyglotSharingLayer sharing) {
         assert Thread.holdsLock(engine.lock);
         if (firstInstance) {
             firstInstance = false;
-        } else if (singleInstance.isValid()) {
-            singleInstance.invalidate();
         }
         PolyglotLanguageInstance instance = null;
         if (initLanguage != null) {
             // reuse init language
             instance = this.initLanguage;
+            instance.sharing = sharing;
             initLanguage = null;
         }
         if (instance == null) {
-            instance = ensureInitialized(new PolyglotLanguageInstance(this));
+            instance = new PolyglotLanguageInstance(this, sharing);
+            ensureInitialized(instance);
         }
-        singleLanguageInstance.update(instance);
         return instance;
     }
 
@@ -205,7 +179,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return engine;
     }
 
-    private PolyglotLanguageInstance ensureInitialized(PolyglotLanguageInstance instance) {
+    private void ensureInitialized(PolyglotLanguageInstance instance) {
         if (!initialized) {
             synchronized (engine.lock) {
                 if (!initialized) {
@@ -214,79 +188,11 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
+
                     initialized = true;
                 }
             }
         }
-        return instance;
-    }
-
-    PolyglotLanguageInstance allocateInstance(OptionValuesImpl newOptions) {
-        PolyglotLanguageInstance instance;
-        synchronized (engine.lock) {
-            switch (cache.getPolicy()) {
-                case EXCLUSIVE:
-                    instance = createInstance();
-                    break;
-                case REUSE:
-                    instance = fetchFromPool(newOptions, false);
-                    break;
-                case SHARED:
-                    instance = fetchFromPool(newOptions, true);
-                    break;
-                default:
-                    throw shouldNotReachHere();
-            }
-            instance.ensureMultiContextInitialized();
-        }
-        return instance;
-    }
-
-    private PolyglotLanguageInstance fetchFromPool(OptionValuesImpl newOptions, boolean shared) {
-        synchronized (engine.lock) {
-            PolyglotLanguageInstance foundInstance = null;
-            for (Iterator<PolyglotLanguageInstance> iterator = instancePool.iterator(); iterator.hasNext();) {
-                PolyglotLanguageInstance instance = iterator.next();
-                if (instance.areOptionsCompatible(newOptions)) {
-                    if (!shared) {
-                        iterator.remove();
-                    }
-                    foundInstance = instance;
-                    break;
-                }
-            }
-            if (foundInstance == null) {
-                foundInstance = createInstance();
-                foundInstance.claim(newOptions);
-                if (shared) {
-                    instancePool.addFirst(foundInstance);
-                }
-            }
-            return foundInstance;
-        }
-    }
-
-    void freeInstance(PolyglotLanguageInstance instance) {
-        synchronized (engine.lock) {
-            switch (cache.getPolicy()) {
-                case EXCLUSIVE:
-                    // nothing to do
-                    break;
-                case REUSE:
-                    instancePool.addFirst(instance);
-                    break;
-                case SHARED:
-                    // nothing to do
-                    break;
-                default:
-                    throw shouldNotReachHere("Unknown context cardinality.");
-            }
-        }
-    }
-
-    void close() {
-        assert Thread.holdsLock(engine.lock);
-        instancePool.clear();
     }
 
     OptionValuesImpl getOptionValues() {

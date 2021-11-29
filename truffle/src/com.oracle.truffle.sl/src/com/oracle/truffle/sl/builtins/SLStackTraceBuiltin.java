@@ -50,7 +50,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -91,8 +90,9 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 }
                 str.append("Frame: ").append(rn.toString());
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
-                for (FrameSlot s : frameDescriptor.getSlots()) {
-                    str.append(", ").append(s.getIdentifier()).append("=").append(frame.getValue(s));
+                int count = frameDescriptor.getNumberOfSlots();
+                for (int i = 0; i < count; i++) {
+                    str.append(", ").append(frameDescriptor.getSlotName(i)).append("=").append(frame.getValue(i));
                 }
                 return null;
             }
