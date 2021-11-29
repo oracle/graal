@@ -1,6 +1,7 @@
 package org.graalvm.compiler.phases.common;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -10,27 +11,28 @@ import org.graalvm.compiler.phases.Phase;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class NodeSourceCollection extends Phase {
+public class BytecodeExceptionNodeSourceCollection extends Phase {
 
     private static final ConcurrentLinkedQueue<NodeSourcePosition> originals = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<NodeSourcePosition> exceptionObjectsSourcePosition = new ConcurrentLinkedQueue<>();
 
     @Override
     public void run(StructuredGraph graph) {
-        for (BytecodeExceptionNode node: graph.getNodes().filter(BytecodeExceptionNode.class)) {
-            originals.add(node.getNodeSourcePosition());
-        }
-        /*
-         * These source positions are also important because ExceptionObjectNode is
-         * the entry to an exception handler with the exception coming from a call.
-         */
-        for (ExceptionObjectNode node: graph.getNodes().filter(ExceptionObjectNode.class)) {
-            exceptionObjectsSourcePosition.add(node.getNodeSourcePosition());
+        for (Node node : graph.getNodes()) {
+            if (node instanceof BytecodeExceptionNode) {
+                originals.add(node.getNodeSourcePosition());
+            } else if (node instanceof ExceptionObjectNode) {
+                /*
+                 * These source positions are also important because ExceptionObjectNode is
+                 * the entry to an exception handler with the exception coming from a call.
+                 */
+                exceptionObjectsSourcePosition.add(node.getNodeSourcePosition());
+            }
         }
     }
 
-    public static NodeSourceCollection create() {
-        return new NodeSourceCollection();
+    public static BytecodeExceptionNodeSourceCollection create() {
+        return new BytecodeExceptionNodeSourceCollection();
     }
 
     public static boolean isOriginal(NodeSourcePosition nodeSourcePosition) {

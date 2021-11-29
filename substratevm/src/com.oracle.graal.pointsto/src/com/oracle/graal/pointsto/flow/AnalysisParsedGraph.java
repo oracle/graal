@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Byt
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.NodeSourceCollection;
+import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 

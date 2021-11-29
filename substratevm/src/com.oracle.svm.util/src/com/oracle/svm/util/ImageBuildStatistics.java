@@ -39,7 +39,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.phases.common.NodeSourceCollection;
+import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
@@ -126,20 +126,20 @@ public class ImageBuildStatistics {
                  * occurred.
                  */
             } else {
-                if (NodeSourceCollection.isOriginal(nodeSourcePosition)) {
+                if (BytecodeExceptionNodeSourceCollection.isOriginal(nodeSourcePosition)) {
                     originalCounter.incrementAndGet();
                     original.add(nodeSourcePosition);
-                } else if (NodeSourceCollection.hasOriginalPrefix(nodeSourcePosition)) {
+                } else if (BytecodeExceptionNodeSourceCollection.hasOriginalPrefix(nodeSourcePosition)) {
                     /*
                      * This node source position is from inlining, maybe new one
                      * or duplication occurred after something inlined.
                      */
                 } else {
-                    if (NodeSourceCollection.hasRootFromExceptionObject(nodeSourcePosition)) {
+                    if (BytecodeExceptionNodeSourceCollection.hasRootFromExceptionObject(nodeSourcePosition)) {
                         /*
                          * This node source position is from exception coming from a call.
                          */
-                    } else if (NodeSourceCollection.hasOriginalRoot(nodeSourcePosition)) {
+                    } else if (BytecodeExceptionNodeSourceCollection.hasOriginalRoot(nodeSourcePosition)) {
                         /*
                          * This node source position is coming from a virtual call.
                          */
