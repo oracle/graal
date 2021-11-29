@@ -198,6 +198,15 @@ public class ArrayUtilsTest {
         }
     }
 
+    @Test
+    public void testIndexOf2() {
+        String s = strS + " \u00ff";
+        int maxIndex = s.length();
+        assertEquals(206, ArrayUtils.indexOf(s, 0, maxIndex, "\u00ff".toCharArray()));
+        assertEquals(206, ArrayUtils.indexOf(s.toCharArray(), 0, maxIndex, "\u00ff".toCharArray()));
+        assertEquals(166, ArrayUtils.indexOf(toByteArray(s), 0, maxIndex, toByteArray("\u00ff")));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringException1() {
         ArrayUtils.indexOf(strS, -1, strS.length(), 'L');
@@ -359,9 +368,9 @@ public class ArrayUtilsTest {
     }
 
     private static void doTestIndexOf(String haystack, int fromIndex, int maxIndex, String needle, int expected) {
-        assertEquals(ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle.toCharArray()), expected);
-        assertEquals(ArrayUtils.indexOf(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray()), expected);
-        assertEquals(ArrayUtils.indexOf(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle)), expected);
+        assertEquals(expected, ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle.toCharArray()));
+        assertEquals(expected, ArrayUtils.indexOf(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray()));
+        assertEquals(expected, ArrayUtils.indexOf(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle)));
     }
 
     public static byte[] toByteArray(String s) {
