@@ -29,7 +29,10 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -41,6 +44,8 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -56,6 +61,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -114,49 +120,80 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         if (!tool.canonicalizeReads()) {
             return read;
         }
-        NodeView view = NodeView.from(tool);
-        return canonicalizeRead(read, address, locationIdentity, tool, view);
+        return canonicalizeRead(read, address, locationIdentity, tool, NodeView.from(tool));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CoreProviders tool, NodeView view) {
-        MetaAccessProvider metaAccess = tool.getMetaAccess();
-        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
-        return canonicalizeRead(read, address, locationIdentity, tool, view, metaAccess, constantReflection);
-    }
-
-    public static ValueNode canonicalizeRead(ValueNode read, AddressNode address, LocationIdentity locationIdentity, CoreProviders tool, NodeView view, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider constantReflection) {
         if (address instanceof OffsetAddressNode) {
             OffsetAddressNode objAddress = (OffsetAddressNode) address;
-            ValueNode object = objAddress.getBase();
-            // Note: readConstant cannot be used to read the array length, so in order to avoid an
-            // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
-            // check if we are reading the array length location first.
-            if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
-                ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
-                if (length != null) {
-                    return length;
-                }
-            } else if (metaAccess != null && object.isConstant() && !object.isNullConstant() && objAddress.getOffset().isConstant()) {
-                long displacement = objAddress.getOffset().asJavaConstant().asLong();
+            return canonicalizeRead(read, read.stamp(view), objAddress.getBase(), objAddress.getOffset(), locationIdentity, tool, view);
+        }
+        return read;
+    }
+
+    private static ValueNode canonicalizeRead(ValueNode read, Stamp accessStamp, ValueNode object, ValueNode offset, LocationIdentity locationIdentity, CoreProviders tool, NodeView view) {
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
+        ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+        Stamp resultStamp = read.stamp(view);
+
+        // Note: readConstant cannot be used to read the array length, so in order to avoid an
+        // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
+        // check if we are reading the array length location first.
+        if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
+            ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
+            if (length != null) {
+                assert length.stamp(view).isCompatible(accessStamp);
+                return length;
+            }
+        } else {
+            if (metaAccess != null && object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
+                long displacement = offset.asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
-                    Constant constant = read.stamp(view).readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement);
+                    Constant constant = resultStamp.readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
                     boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
-                        return ConstantNode.forConstant(read.stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
+                        return ConstantNode.forConstant(resultStamp, constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
                     }
                 }
             }
-            if (locationIdentity instanceof CanonicalizableLocation) {
-                CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
-                ValueNode result = canonicalize.canonicalizeRead(read, address, object, tool);
-                assert result != null && result.stamp(view).isCompatible(read.stamp(view));
-                return result;
-            }
-
+        }
+        if (locationIdentity instanceof CanonicalizableLocation) {
+            CanonicalizableLocation canonicalize = (CanonicalizableLocation) locationIdentity;
+            ValueNode result = canonicalize.canonicalizeRead(read, object, offset, tool);
+            assert result != null && result.stamp(view).isCompatible(read.stamp(view));
+            return result;
         }
         return read;
+    }
+
+    public static ValueNode canonicalizeRead(ValueNode read, CanonicalizerTool tool, JavaKind accessKind, ValueNode object, ValueNode offset, LocationIdentity locationIdentity) {
+        if (!tool.canonicalizeReads()) {
+            return read;
+        }
+        NodeView view = NodeView.from(tool);
+        Stamp resultStamp = read.stamp(view);
+        if (!resultStamp.isCompatible(StampFactory.forKind(accessKind))) {
+            return read;
+        }
+        Stamp accessStamp = resultStamp;
+        switch (accessKind) {
+            case Boolean:
+            case Byte:
+                accessStamp = IntegerStamp.OPS.getNarrow().foldStamp(32, 8, accessStamp);
+                break;
+            case Char:
+            case Short:
+                accessStamp = IntegerStamp.OPS.getNarrow().foldStamp(32, 16, accessStamp);
+                break;
+        }
+        ValueNode result = ReadNode.canonicalizeRead(read, accessStamp, object, offset, locationIdentity, tool, view);
+        if (result.isJavaConstant() && accessKind == JavaKind.Char) {
+            PrimitiveStamp primitiveStamp = (PrimitiveStamp) result.stamp(NodeView.DEFAULT);
+            result = NarrowNode.create(result, primitiveStamp.getBits(), accessKind.getBitCount(), view);
+            return ZeroExtendNode.create(result, primitiveStamp.getBits(), NodeView.DEFAULT);
+        }
+        return result;
     }
 
     @Override
