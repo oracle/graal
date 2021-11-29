@@ -338,8 +338,7 @@ public abstract class RootNode extends ExecutableNode {
     final RootNode cloneUninitializedImpl(CallTarget sourceCallTarget, RootNode uninitializedRootNode) {
         RootNode clonedRoot;
         if (isCloneUninitializedSupported()) {
-            // optimization: uninitializedRootNode should not have been created.
-            assert uninitializedRootNode == null;
+            assert uninitializedRootNode == null : "uninitializedRootNode should not have been created";
             clonedRoot = cloneUninitialized();
 
             // if the language copied we cannot be sure
