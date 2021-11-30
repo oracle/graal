@@ -53,7 +53,7 @@ abstract class SulongNFIRootNode extends RootNode {
 
         @TruffleBoundary
         private CallTarget doParse(Env env) {
-            return env.parsePublic(source);
+            return env.parseInternal(source);
         }
 
         CallTarget execute() {

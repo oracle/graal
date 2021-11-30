@@ -52,7 +52,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "6.0.0", internal = true, interactive = false, //
-                services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
+                services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED, dependentLanguages = "llvm")
 public final class SulongNFI extends TruffleLanguage<Env> {
 
     @CompilationFinal private SulongNFIBackend backend;
