@@ -88,7 +88,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     private static final int FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
     private static final int FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
     private static final int FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
-    private static final int FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
+    public static final int FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
     @Input ValueNode descriptor;

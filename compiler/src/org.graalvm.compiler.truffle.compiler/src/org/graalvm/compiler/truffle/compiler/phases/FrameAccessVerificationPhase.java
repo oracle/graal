@@ -234,7 +234,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
             assert !states.containsKey(frame) && !indexedStates.containsKey(frame);
             byte[] entries = frame.getFrameSlotKinds().clone();
             for (int i = 0; i < entries.length; i++) {
-                if (entries[i] == NewFrameNode.FrameSlotKindObjectTag) {
+                if (entries[i] == NewFrameNode.FrameSlotKindObjectTag || entries[i] == NewFrameNode.FrameSlotKindIllegalTag) {
                     entries[i] = NewFrameNode.FrameSlotKindLongTag;
                 }
             }
