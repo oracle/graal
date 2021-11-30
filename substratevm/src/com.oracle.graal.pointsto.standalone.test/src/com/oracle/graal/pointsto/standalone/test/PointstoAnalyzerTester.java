@@ -147,7 +147,7 @@ public class PointstoAnalyzerTester {
 
     /**
      * Run the analysis and check the results.
-     *
+     * 
      * @param expectPass true if the analysis is expected to be successfully finished, false if the
      *            analysis is supposed to fail.
      */

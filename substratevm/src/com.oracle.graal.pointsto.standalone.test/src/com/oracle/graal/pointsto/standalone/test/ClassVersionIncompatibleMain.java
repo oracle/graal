@@ -24,31 +24,10 @@
  * questions.
  */
 
-package com.oracle.graal.pointsto.standalone;
+package com.oracle.graal.pointsto.standalone.test;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-public class StandaloneOptions {
-
-    @Option(help = "File system splitor separated classpath for the analysis target application.")//
-    public static final OptionKey<String> AnalysisTargetAppCP = new OptionKey<>(null);
-
-    @Option(help = "file:doc-files/AnalysisEntryPointsFileHelp.txt")//
-    public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
-
-    @Option(help = "Directory of analysis reports to be generated", type = OptionType.User)//
-    public static final OptionKey<String> ReportsPath = new OptionKey<>("./");
-
-    public static Path reportsPath(OptionValues options, String relativePath) {
-        return Paths.get(Paths.get(ReportsPath.getValue(options)).toString(), relativePath).normalize().toAbsolutePath();
+public class ClassVersionIncompatibleMain {
+    public static void main(String[] args) {
+        IncompatibleClass.run();
     }
-
-    @Option(help = "Print the unresolved class warnings, disabled by default.")//
-    public static final OptionKey<Boolean> PrintUnresolvedElementWarning = new OptionKey<>(false);
 }
