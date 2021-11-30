@@ -26,9 +26,9 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -37,9 +37,9 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
-    @Fold
     public static boolean useDedicatedThread() {
-        return SubstrateOptions.UseReferenceHandlerThread.getValue() && SubstrateOptions.MultiThreaded.getValue();
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
+        return IsolateArgumentParser.getOptionValueAsLong(optionIndex) != 0 && SubstrateOptions.MultiThreaded.getValue();
     }
 
     public static void processPendingReferences() {

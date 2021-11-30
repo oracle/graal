@@ -472,9 +472,6 @@ public class SubstrateOptions {
         return CodeAlignment.getValue();
     }
 
-    @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(true);
-
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
@@ -559,6 +556,9 @@ public class SubstrateOptions {
 
         @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
+
+        @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
+        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(false);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

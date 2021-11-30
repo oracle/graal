@@ -55,7 +55,8 @@ import com.oracle.svm.core.util.VMError;
  * isolate is fully started.
  */
 public class IsolateArgumentParser {
-    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize};
+    private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
+                    SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
@@ -185,11 +186,15 @@ public class IsolateArgumentParser {
 
     public void verifyOptionValues() {
         for (int i = 0; i < OPTION_COUNT; i++) {
-            validate(OPTIONS[i], getParsedOptionValue(i));
+            validate(OPTIONS[i], getOptionValue(i));
         }
     }
 
-    private static Object getParsedOptionValue(int index) {
+    public static long getOptionValueAsLong(int index) {
+        return PARSED_OPTION_VALUES[index];
+    }
+
+    private static Object getOptionValue(int index) {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
         if (optionValueType == Boolean.class) {

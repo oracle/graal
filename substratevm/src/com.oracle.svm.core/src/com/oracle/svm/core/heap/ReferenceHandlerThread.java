@@ -93,11 +93,6 @@ public final class ReferenceHandlerThread implements Runnable {
 @AutomaticFeature
 class ReferenceHandlerThreadFeature implements Feature {
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ReferenceHandler.useDedicatedThread();
-    }
-
-    @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(ReferenceHandlerThread.class, new ReferenceHandlerThread());
     }
