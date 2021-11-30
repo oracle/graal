@@ -324,7 +324,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         }
 
         public SourceSection getLocation() {
-            return node.location;
+            return node.getLocation();
         }
 
         public List<Value> getInputValues() {
@@ -350,6 +350,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         ProfilingNode(ListenerImpl config, EventContext context) {
             super(config, context);
             PolyglotLanguage languageToUse = null;
+            com.oracle.truffle.api.source.SourceSection location = context.getInstrumentedSourceSection();
             if (location != null) {
                 languageToUse = config.engine.idToLanguage.get(location.getSource().getLanguage());
             }
@@ -518,13 +519,11 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
         final ListenerImpl config;
         final EventContext context;
-        final SourceSection location;
         final ExecutionEvent cachedEvent;
 
         AbstractNode(ListenerImpl config, EventContext context) {
             this.config = config;
             this.context = context;
-            this.location = PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
             this.cachedEvent = config.engine.impl.getManagement().newExecutionEvent(this);
         }
 
@@ -578,7 +577,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         }
 
         public final SourceSection getLocation() {
-            return location;
+            return PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
         }
 
         public final List<Value> getInputValues() {
