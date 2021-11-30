@@ -257,6 +257,7 @@ public class InsightInstrument extends TruffleInstrument {
         @CompilerDirectives.CompilationFinal //
         private int functionsMaxLen;
         private final AgentType type;
+        /* @GuardedBy(keys) */
         private EventBinding<?> binding;
 
         private Key(AgentType type, int index) {
@@ -265,8 +266,10 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         Key assign(EventBinding<?> b) {
-            this.binding = b;
-            return this;
+            synchronized (keys) {
+                this.binding = b;
+                return this;
+            }
         }
 
         int index() {
@@ -283,13 +286,15 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         private void close() {
-            EventBinding<?> b = binding;
-            if (b != null) {
-                b.dispose();
-            }
+            EventBinding<?> b;
             synchronized (keys) {
+                b = binding;
+                binding = null;
                 CompilerAsserts.neverPartOfCompilation();
                 index = -1;
+            }
+            if (b != null) {
+                b.dispose();
             }
         }
 
@@ -297,6 +302,12 @@ public class InsightInstrument extends TruffleInstrument {
             if (size > this.functionsMaxLen) {
                 this.functionsMaxLen = size;
                 keysUnchanged.invalidate();
+            }
+        }
+
+        boolean isClosed() {
+            synchronized (keys) {
+                return binding == null;
             }
         }
     }
