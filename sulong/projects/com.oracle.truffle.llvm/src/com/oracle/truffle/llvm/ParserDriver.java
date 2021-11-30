@@ -137,10 +137,9 @@ final class ParserDriver {
      * @return calltarget
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes) {
+        insertDefaultDependencies(source.getName());
         // Process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, bytes);
-        insertDefaultDependencies(source.getName());
-
         if (result == null) {
             // If result is null, then the file parsed does not contain bitcode,
             // as it's purely native.
