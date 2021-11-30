@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
  */
-class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTool, CanonicalizerTool {
+public class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTool, CanonicalizerTool {
 
     private final PartialEscapeClosure<?> closure;
     private final Assumptions assumptions;
@@ -63,7 +63,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     private final DebugContext debug;
     private ConstantNode illegalConstant;
 
-    VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug) {
+    public VirtualizerToolImpl(CoreProviders providers, PartialEscapeClosure<?> closure, Assumptions assumptions, OptionValues options, DebugContext debug) {
         super(providers);
         this.closure = closure;
         this.assumptions = assumptions;
@@ -382,5 +382,20 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     @Override
     public boolean supportsRounding() {
         return getLowerer().supportsRounding();
+    }
+
+    @Override
+    public VirtualizerTool createSnapshot() {
+        VirtualizerToolImpl snapshot = new VirtualizerToolImpl(getProviders(), closure, assumptions, options, debug);
+        snapshot.current = this.current;
+        snapshot.position = this.position;
+        snapshot.effects = new GraphEffectList(this.debug);
+        snapshot.state = new PartialEscapeBlockState.Final(this.getOptions(), this.getDebug());
+        for (int i = 0; i < this.state.getStateCount(); i++) {
+            if (this.state.hasObjectState(i)) {
+                snapshot.state.addObject(i, this.state.getObjectState(i).cloneState());
+            }
+        }
+        return snapshot;
     }
 }

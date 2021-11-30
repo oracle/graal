@@ -172,4 +172,6 @@ public interface VirtualizerTool extends CoreProviders {
     OptionValues getOptions();
 
     DebugContext getDebug();
+
+    VirtualizerTool createSnapshot();
 }
