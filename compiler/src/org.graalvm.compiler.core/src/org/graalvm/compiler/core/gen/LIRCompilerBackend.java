@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder.ComputationTime;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -145,7 +146,7 @@ public class LIRCompilerBackend {
             AbstractBlockBase<?>[] linearScanOrder = blockOrder.computeLinearScanOrder();
             LIR lir = new LIR(schedule.getCFG(), linearScanOrder, graph.getOptions(), graph.getDebug());
             if (ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(graph.getOptions())) {
-                lir.setCodeEmittingOrder(blockOrder.computeCodeEmittingOrder(graph.getOptions()));
+                lir.setCodeEmittingOrder(blockOrder.computeCodeEmittingOrder(graph.getOptions(), ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS));
             }
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;

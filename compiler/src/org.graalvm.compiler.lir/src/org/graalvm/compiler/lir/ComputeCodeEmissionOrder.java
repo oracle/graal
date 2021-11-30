@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.ComputeBlockOrder.ComputationTime;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
 import org.graalvm.compiler.options.Option;
@@ -51,7 +52,7 @@ public final class ComputeCodeEmissionOrder extends PostAllocationOptimizationPh
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        lir.setCodeEmittingOrder(context.blockOrder.computeCodeEmittingOrder(lir.getOptions()));
+        lir.setCodeEmittingOrder(context.blockOrder.computeCodeEmittingOrder(lir.getOptions(), ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS));
         for (AbstractBlockBase<?> block : lir.getBlocks()) {
             if (block.isAligned()) {
                 lir.alignLabelInBlock(block);

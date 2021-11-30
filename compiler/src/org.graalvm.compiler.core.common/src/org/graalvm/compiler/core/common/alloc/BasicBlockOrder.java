@@ -70,6 +70,13 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
      */
     private static final int PENALTY_VERSUS_UNSCHEDULED = 10;
 
+    /**
+     * If the best successor for scheduling has a low successor probability, and its relative
+     * frequency scaled by this factor is lower than the best block from the worklist, stop adding
+     * blocks to the current path.
+     */
+    private static final int UNLIKELY_SUCCESSOR_STOP_FACTOR = 2;
+
     protected int originalBlockCount;
     protected T startBlock;
 
@@ -100,11 +107,11 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
      * @return sorted list of blocks
      */
     @Override
-    public AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options) {
+    public AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = initializeWorklist(startBlock, visitedBlocks);
-        computeCodeEmittingOrder(order, worklist, visitedBlocks);
+        computeCodeEmittingOrder(order, worklist, visitedBlocks, computationTime);
         checkStartBlock(order, startBlock);
         return order.toArray();
     }
@@ -112,10 +119,10 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
     /**
      * Iteratively adds paths to the code emission block order.
      */
-    private static <T extends AbstractBlockBase<T>> void computeCodeEmittingOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> void computeCodeEmittingOrder(BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks, ComputationTime computationTime) {
         while (!worklist.isEmpty()) {
             T nextImportantPath = worklist.poll();
-            addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks);
+            addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks, computationTime);
         }
     }
 
@@ -174,7 +181,8 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks) {
+    private static <T extends AbstractBlockBase<T>> void addPathToCodeEmittingOrder(T initialBlock, BlockList<T> order, PriorityQueue<T> worklist, BitSet visitedBlocks,
+                    ComputationTime computationTime) {
         T block = initialBlock;
         while (block != null) {
             if (order.isScheduled(block)) {
@@ -237,7 +245,7 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
                 }
             }
 
-            T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, order, visitedBlocks);
+            T mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, order, visitedBlocks, computationTime, worklist);
             enqueueSuccessors(block, worklist, visitedBlocks);
             block = mostLikelySuccessor;
         }
@@ -247,14 +255,170 @@ public class BasicBlockOrder<T extends AbstractBlockBase<T>> implements ComputeB
      * Find the highest likely unvisited successor block of a given block.
      */
     private static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks) {
+        return findAndMarkMostLikelySuccessor(block, order, visitedBlocks, ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS, null);
+    }
+
+    private static <T extends AbstractBlockBase<T>> T findAndMarkMostLikelySuccessor(T block, BlockList<T> order, BitSet visitedBlocks, ComputationTime computationTime,
+                    PriorityQueue<T> worklist) {
         T result = null;
         double maxSuccFrequency = -1.0;
-        for (T successor : block.getSuccessors()) {
-            assert successor.getRelativeFrequency() >= 0.0 : "Relative frequencies must be positive";
+        double maxScheduledSuccProbability = -1.0;
+        boolean isTriangle = false;
+        if (block.getSuccessorCount() == 2 && computationTime == ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS) {
+            double thisFrequency = block.getRelativeFrequency();
+            T left = block.getSuccessors()[0];
+            T right = block.getSuccessors()[1];
+            // Check if we have a control flow triangle merging up at one of these successors. See
+            // usage of isTriangle below for explanation.
+            if (Math.abs(left.getRelativeFrequency() - thisFrequency) < 0.0001 && right.getPredecessorCount() == 1) {
+                isTriangle = true;
+            } else if (Math.abs(right.getRelativeFrequency() - thisFrequency) < 0.0001 && left.getPredecessorCount() == 1) {
+                isTriangle = true;
+            }
+        }
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            T successor = block.getSuccessors()[i];
+            double succProbability = block.getSuccessorProbabilities()[i];
+            double succFrequency = successor.getRelativeFrequency();
+            assert succFrequency >= 0.0 : "Relative frequencies must be positive";
+            if (computationTime == ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS) {
+                /**
+                 * Consider the following CFG fragment, with frequencies on blocks and probabilities
+                 * on edges:
+                 *
+                 * <pre>
+                 *         A(0.9)
+                 *          /  \
+                 *     0.9 /    \ 0.1
+                 *        /      \
+                 *   B(0.81)     C(0.09)
+                 *                 \
+                 *              1.0 \  .....
+                 *                   \ | | /
+                 *                   D(0.95) (many predecessors)
+                 * </pre>
+                 *
+                 * We want to select B as the most likely successor for A based on its relative
+                 * frequency of 0.81.
+                 *
+                 * Now assume C is an empty block. It will be removed by control flow optimization,
+                 * giving the following CFG:
+                 *
+                 * <pre>
+                 *         A(0.9)
+                 *          /  \
+                 *     0.9 /    \ 0.1
+                 *        /      \
+                 *   B(0.81)      \  .....
+                 *                 \ | | /
+                 *                 D(0.95) (many predecessors)
+                 * </pre>
+                 *
+                 * Now D is the "most likely" successor based purely on its relative frequency, but
+                 * it's unlikely that we will actually take the A -> D edge. We still want to select
+                 * B as the most likely successor. Therefore, after control flow optimizations, we
+                 * scale the successor block's frequency by the corresponding edge's probability.
+                 */
+                succFrequency *= succProbability;
+
+                if (isTriangle) {
+                    /**
+                     * Control flow diamonds that are optimized to triangles are special. For
+                     * example:
+                     *
+                     * <pre>
+                     *        A(1.0)
+                     *        /    \
+                     *   0.4 /      \ 0.6
+                     *      /        \
+                     *   B(0.4)     C(0.6)
+                     *      \        /
+                     *   1.0 \      / 1.0
+                     *        \    /
+                     *        D(1.0)
+                     * </pre>
+                     *
+                     * Before control flow optimizations we will always choose the successor with
+                     * the higher edge probability (in this case, C) because the successor
+                     * frequencies are proportional to the edge probabilities.
+                     *
+                     * Assume control flow optimization eliminates the less likely successor:
+                     *
+                     * <pre>
+                     *        A(1.0)
+                     *        |    \
+                     *        |     \ 0.6
+                     *        |      \
+                     *    0.4 |     C(0.6)
+                     *        |      /
+                     *        |     / 1.0
+                     *        |    /
+                     *        D(1.0)
+                     * </pre>
+                     *
+                     * Now we still want to select C as the most likely successor. But based either
+                     * on block frequencies, or block frequencies scaled by edge probabilities, we
+                     * would choose D instead. For the most likely path (A -> C -> D) this would
+                     * place C out of line and involve jumping there and back to D.
+                     *
+                     * Therefore, if we are looking at a triangle, use the pure successor edge
+                     * probability as the "successor frequency".
+                     */
+                    succFrequency = succProbability;
+                }
+            }
             boolean scheduled = order.isScheduled(successor);
-            if (!scheduled && successor.getLoopDepth() >= block.getLoopDepth() && successor.getRelativeFrequency() >= maxSuccFrequency) {
-                result = successor;
-                maxSuccFrequency = successor.getRelativeFrequency();
+            if (successor.getLoopDepth() >= block.getLoopDepth() && succFrequency >= maxSuccFrequency) {
+                if (!scheduled) {
+                    result = successor;
+                    maxSuccFrequency = succFrequency;
+                } else {
+                    maxScheduledSuccProbability = Math.max(maxScheduledSuccProbability, succProbability);
+                }
+            }
+        }
+        if (result != null && computationTime == ComputationTime.AFTER_CONTROL_FLOW_OPTIMIZATIONS) {
+            /**
+             * Consider the example above with A's successor probabilities reversed:
+             *
+             * <pre>
+             *         A(0.9)
+             *          /  \
+             *     0.1 /    \ 0.9
+             *        /      \
+             *   B(0.09)     C(0.81)
+             *                 \
+             *              1.0 \  .....
+             *                   \ | | /
+             *                   D(0.95) (many predecessors)
+             * </pre>
+             *
+             * Before control flow optimizations we will select C as the most likely successor. Its
+             * successor D, having many predecessors and a high frequency, may well have been
+             * scheduled already. If that is the case, this path terminates with C. We will then
+             * continue with some other higher frequency path from the worklist, not with B.
+             *
+             * After control flow optimizations, D will be a direct successor of A, but if it's
+             * already been scheduled, we cannot select it, so we would select B instead. This may
+             * cause us to insert some very unlikely blocks in a relatively likely program region.
+             * Therefore, if the current block has a dominant successor (accounting for at least
+             * half the successor probability) that has already been scheduled, and the selected
+             * successor is unlikely compared to the first unscheduled block on the worklist, don't
+             * select this unlikely successor.
+             */
+            if (maxScheduledSuccProbability >= 0.5) {
+                T worklistHead = null;
+                if (worklist != null) {
+                    for (T w : worklist) {
+                        if (!order.isScheduled(w)) {
+                            worklistHead = w;
+                            break;
+                        }
+                    }
+                }
+                if (worklistHead != null && worklistHead.getRelativeFrequency() >= UNLIKELY_SUCCESSOR_STOP_FACTOR * result.getRelativeFrequency()) {
+                    result = null;
+                }
             }
         }
         if (result != null) {

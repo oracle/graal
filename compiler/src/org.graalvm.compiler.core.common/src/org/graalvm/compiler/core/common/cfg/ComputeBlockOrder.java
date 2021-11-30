@@ -29,6 +29,12 @@ import org.graalvm.compiler.options.OptionValues;
 
 public interface ComputeBlockOrder<T extends AbstractBlockBase<T>> {
 
+    /** Specify when the code emitting order is computed. */
+    enum ComputationTime {
+        BEFORE_CONTROL_FLOW_OPTIMIZATIONS,
+        AFTER_CONTROL_FLOW_OPTIMIZATIONS
+    }
+
     /**
      * Computes the block order used for the linear scan register allocator.
      *
@@ -41,5 +47,5 @@ public interface ComputeBlockOrder<T extends AbstractBlockBase<T>> {
      *
      * @return sorted list of blocks
      */
-    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options);
+    AbstractBlockBase<?>[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
 }
