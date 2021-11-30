@@ -110,6 +110,109 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void testLoop() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+        FrameDescriptor fd = builder.build();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "testLoop";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                /*
+                 * Merging at the loop header - the analysis needs to recognize that the starting
+                 * type is int.
+                 */
+                Object[] args = frame.getArguments();
+                for (int i = 0; i < (int) args[0]; i++) {
+                    frame.setInt(slot, 16 * i);
+                }
+                boundary();
+                return frame.getInt(slot);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(0, 1), result(16, 2), result(FrameSlotTypeException.class, 0));
+    }
+
+    @Test
+    public void testDeoptLoop() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+        FrameDescriptor fd = builder.build();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "testDeoptLoop";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                /*
+                 * This deopts either at the LoopBeginNode or at the LoopEndNode.
+                 */
+                Object[] args = frame.getArguments();
+                frame.setLong(slot, -1);
+                for (int i = 0; i < (int) args[0]; i++) {
+                    frame.setInt(slot, 16 * i);
+                }
+                boundary();
+                return frame.getInt(slot);
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 1);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(0, 1), result(16, 2), result(FrameSlotTypeException.class, 0));
+    }
+
+    @Test
+    public void objectIntMerge() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+        FrameDescriptor fd = builder.build();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "invalidMerge";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                /*
+                 * Merging an object and a primitive type is acceptable.
+                 */
+                Object[] args = frame.getArguments();
+                if ((boolean) args[0]) {
+                    frame.setInt(slot, 1);
+                } else {
+                    frame.setObject(slot, 2d);
+                }
+                boundary();
+                if ((boolean) args[1]) {
+                    return frame.getInt(slot);
+                } else {
+                    return frame.getObject(slot);
+                }
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, true, true), result(2d, false, false), result(FrameSlotTypeException.class, false, true), result(FrameSlotTypeException.class, true, false));
+    }
+
+    @Test
     public void switchKinds() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
