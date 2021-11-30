@@ -56,8 +56,9 @@ public final class OptionDescriptor {
     private final OptionStability stability;
     private final boolean deprecated;
     private final String deprecationMessage;
+    private String usageSyntax;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage, String usageSyntax) {
         this.key = key;
         this.name = name;
         this.help = help;
@@ -65,6 +66,7 @@ public final class OptionDescriptor {
         this.stability = stability;
         this.deprecated = deprecated;
         this.deprecationMessage = deprecationMessage;
+        this.usageSyntax = usageSyntax;
     }
 
     /**
@@ -143,13 +145,22 @@ public final class OptionDescriptor {
     }
 
     /**
+     * Specifies a human-readable syntax describing the accepted values for this option.
+     *
+     * @since 22.1
+     */
+    public String getUsageSyntax() {
+        return usageSyntax;
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @since 19.0
      */
     @Override
     public String toString() {
-        return "OptionDescriptor [key=" + key + ", help=" + help + ", category=" + category + ", deprecated=" + deprecated + ", optionMap=" + isOptionMap() + "]";
+        return "OptionDescriptor [key=" + key + ", help=" + help + ", usageSyntax=" + usageSyntax + ", category=" + category + ", deprecated=" + deprecated + ", optionMap=" + isOptionMap() + "]";
     }
 
     /**
@@ -203,7 +214,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null);
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, null);
 
     /**
      * Represents an option descriptor builder.
@@ -219,6 +230,7 @@ public final class OptionDescriptor {
         private OptionCategory category = OptionCategory.INTERNAL;
         private OptionStability stability = OptionStability.EXPERIMENTAL;
         private String help = "";
+        private String usageSyntax;
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;
@@ -272,6 +284,17 @@ public final class OptionDescriptor {
         }
 
         /**
+         * Specifies a human-readable syntax describing the accepted values for this option.
+         * 
+         * @since 22.1
+         */
+        public Builder usageSyntax(@SuppressWarnings("hiding") String usageSyntax) {
+            Objects.requireNonNull(usageSyntax);
+            this.usageSyntax = usageSyntax;
+            return this;
+        }
+
+        /**
          * Specifies a human-readable deprecation reason and the recommended fix.
          *
          * @since 20.1.0
@@ -288,7 +311,7 @@ public final class OptionDescriptor {
          * @since 19.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage);
+            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage, usageSyntax);
         }
     }
 

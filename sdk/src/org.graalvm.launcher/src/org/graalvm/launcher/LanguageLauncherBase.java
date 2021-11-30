@@ -54,6 +54,7 @@ import java.util.Set;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -356,8 +357,10 @@ public abstract class LanguageLauncherBase extends Launcher {
     private static Launcher.PrintableOption asPrintableOption(OptionDescriptor descriptor) {
         StringBuilder key = new StringBuilder("--");
         key.append(descriptor.getName());
-        key.append("=");
-        key.append(descriptor.getKey().getDefaultValue());
+        if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
+            key.append("=");
+            key.append(descriptor.getUsageSyntax());
+        }
         return new PrintableOption(key.toString(), descriptor.getHelp());
     }
 

@@ -53,7 +53,12 @@ public final class PolyglotCompilerOptions {
     public enum EngineModeEnum {
         DEFAULT,
         THROUGHPUT,
-        LATENCY
+        LATENCY;
+
+        @Override
+        public String toString() {
+            return name().toLowerCase();
+        }
     }
 
     static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode", new Function<String, EngineModeEnum>() {

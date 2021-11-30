@@ -169,35 +169,35 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "", help = "Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false).", usageSyntax = "false|true|<Output>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<EnableOptionData> ENABLED = new OptionKey<>(new EnableOptionData(false, null), ENABLE_OPTION_TYPE);
 
-    @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Period", help = "Period in milliseconds to sample the stack (default: 10)", usageSyntax = "<ms>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(10L);
 
-    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", usageSyntax = "<ms>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
 
-    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements (default: 10000).", usageSyntax = "[0-9]+", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Print a 'histogram', 'calltree', 'json', or `flamegraph` as output (default:HISTOGRAM).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "Define the output format (default: histogram).", usageSyntax = "histogram|calltree|json|flamegraph", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
-                    "Note: Interpreter is considered Tier 0.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+                    "Note: Interpreter is considered Tier 0. (default: false)", usageSyntax = "false|true|0,1,2", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<int[]> ShowTiers = new OptionKey<>(null, SHOW_TIERS_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only profile the language with given mime-type. (eg. application/javascript) (default: profile all)", usageSyntax = "<mime-type>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only profile the language with given ID. (eg. js) (default: profile all).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     @Option(name = "SampleInternal", help = "Capture internal elements.", category = OptionCategory.INTERNAL) //
@@ -209,13 +209,13 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "GatherHitTimes", help = "Save a timestamp for each taken sample.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> GATHER_HIT_TIMES = new OptionKey<>(false);
 
-    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
-    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0)", usageSyntax = "<int>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> MIN_SAMPLES = new OptionKey<>(0);
 
-    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
