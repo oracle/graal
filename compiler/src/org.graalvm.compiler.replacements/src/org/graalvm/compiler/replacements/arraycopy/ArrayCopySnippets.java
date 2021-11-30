@@ -125,11 +125,6 @@ public abstract class ArrayCopySnippets implements Snippets {
                 b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length, forceAnyLocation));
                 return true;
             }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
         });
     }
 
