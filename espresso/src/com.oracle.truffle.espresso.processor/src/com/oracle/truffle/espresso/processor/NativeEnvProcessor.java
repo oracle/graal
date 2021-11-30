@@ -502,6 +502,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         }
 
         MethodBuilder generatedBy = new MethodBuilder("generatedBy") //
+                        .withOverrideAnnotation() //
                         .withReturnType("String") //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .addBodyLine("try {") //

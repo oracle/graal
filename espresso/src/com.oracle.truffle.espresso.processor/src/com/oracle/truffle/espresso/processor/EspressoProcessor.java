@@ -92,7 +92,6 @@ public abstract class EspressoProcessor extends BaseProcessor {
      *
      * package com.oracle.truffle.espresso.substitutions;
      *
-     * import com.oracle.truffle.espresso.meta.Meta;
      * import com.oracle.truffle.espresso.substitutions.Collect;
      *
      * import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
@@ -120,15 +119,15 @@ public abstract class EspressoProcessor extends BaseProcessor {
      *         }
      *
      *         @Override
-     *         public final JavaSubstitution create(Meta meta) {
-     *             return new Target_java_lang_invoke_MethodHandleNatives_Resolve_2(meta);
+     *         public final JavaSubstitution create() {
+     *             return new Target_java_lang_invoke_MethodHandleNatives_Resolve_2();
      *         }
      *     }
      *
      *     private @Child Resolve node;
      *
      *     @SuppressWarnings("unused")
-     *     private Target_java_lang_invoke_MethodHandleNatives_Resolve_2(Meta meta) {
+     *     private Target_java_lang_invoke_MethodHandleNatives_Resolve_2() {
      *         this.node = com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNativesFactory.ResolveNodeGen.create();
      *     }
      *
@@ -240,6 +239,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String CONTEXT = "EspressoContext.get(this)";
     static final String CONTEXT_META = "EspressoContext.get(this).getMeta()";
+    static final String META_TYPE = "Meta";
 
     static final String PROFILE_CLASS = "SubstitutionProfiler";
     static final String PROFILE_ARG_CALL = "this";
@@ -391,6 +391,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return hasInjectedParameter(method, substitutionProfiler.asType());
     }
 
+    boolean hasMetaInjection(ExecutableElement method) {
+        return hasInjectedParameter(method, meta.asType());
+    }
+
     boolean hasContextInjection(ExecutableElement method) {
         return hasInjectedParameter(method, espressoContext.asType());
     }
@@ -472,6 +476,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     static boolean appendInvocationMetaInformation(StringBuilder str, boolean first, SubstitutionHelper helper) {
         boolean f = first;
+        if (helper.hasMetaInjection) {
+            f = injectMeta(str, f);
+        }
         if (helper.hasProfileInjection) {
             f = injectProfile(str, f);
         }
@@ -506,6 +513,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
+        }
+        if (helper.hasMetaInjection) {
+            linkSignature.addParam(META_TYPE);
         }
         if (helper.hasProfileInjection) {
             linkSignature.addParam(PROFILE_CLASS);
@@ -644,8 +654,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
-        expectedImports.add(IMPORT_META);
-        expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
+        if (helper.hasMetaInjection || helper.hasContextInjection) {
+            expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
+        }
         expectedImports.add(IMPORT_COLLECT);
         // Add imports (filter useless import)
         for (String toImport : expectedImports) {
@@ -661,7 +672,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
 
-        if (helper.isNodeTarget() || helper.hasProfileInjection || helper.hasContextInjection) {
+        if (helper.isNodeTarget() || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             generateChildInstanceField(substitutorClass, helper);
         }
 
