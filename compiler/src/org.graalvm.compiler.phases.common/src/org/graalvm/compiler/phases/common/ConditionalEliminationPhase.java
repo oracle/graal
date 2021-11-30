@@ -443,15 +443,17 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
+                    debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Killed fixed %s guard because of %s", node, guard);
                     if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
                         rebuildPiNodes((DeoptimizingGuard) guard);
                     }
+                    debug.log("Kill fixed guard %s because of %s", node, guard);
                 } else {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
                     // Don't kill this branch immediately, see `processGuard`.
+                    debug.log("Set condition on fixed guard %s to be delted because of %s", node, guard);
+                    debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Killed fixed guard %s because of %s by setting condition instead of direct kill", node, guard);
                 }
-
-                debug.log("Kill fixed guard %s", node);
                 return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node);
@@ -500,12 +502,16 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                  * appear unrelated so there's we must skip the replacement.
                                  */
                                 if (alternatePi.stamp(NodeView.DEFAULT).join(existing.stamp(NodeView.DEFAULT)).equals(alternatePi.stamp(NodeView.DEFAULT))) {
+                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: Before replacing %s with alternate %s", existing, alternatePi);
                                     existing.replaceAndDelete(alternatePi);
+                                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: After replacing %s with alternate %s", existing, alternatePi);
                                 }
                             }
                             continue;
                         }
+                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: Before replacing %s with %s", existing, pi);
                         existing.replaceAndDelete(pi);
+                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Rebuild pis: After replacing %s with %s", existing, pi);
                     }
                 }
             }
@@ -753,9 +759,28 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         protected void registerNewCondition(LogicNode condition, boolean negated, GuardingNode guard) {
+            /*
+             * <PI proven always true> Special case PI nodes and already-to-be-proven logic nodes:
+             * If a previous operation leads to a guard that will already unconditionally fold away
+             * because of its (new) input: Since we did not yet ran canonicalization on it we are
+             * not allowed to use this guard to try to prove any other knowledge. This is the case
+             * since this node is not a valid source of truth if we look through pi nodes. If a
+             * rebuilt pi in a dominator lets it to be correct already, using this guard without
+             * considering the proving guard of its pi is not allowed. A follow up canonicalization
+             * can plainly remove this guard then and any proven guards lose the relation to this
+             * nodes input pi.
+             */
+
             if (condition instanceof UnaryOpLogicNode) {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
+
+                TriState unconditionallyFold = unaryLogicNode.tryFold(value.stamp(NodeView.DEFAULT));
+                if (unconditionallyFold.isKnown()) {
+                    // <PI proven always true>
+                    return;
+                }
+
                 if (maybeMultipleUsages(value)) {
                     // getSucceedingStampForValue doesn't take the (potentially a Pi Node) input
                     // stamp into account, so it can be safely propagated.
@@ -763,9 +788,18 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     registerNewStamp(value, newStamp, guard, true);
                 }
             } else if (condition instanceof BinaryOpLogicNode) {
+
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
                 ValueNode x = binaryOpLogicNode.getX();
                 ValueNode y = binaryOpLogicNode.getY();
+
+                TriState unconditionallyFold = binaryOpLogicNode.tryFold(x.stamp(NodeView.DEFAULT),
+                                y.stamp(NodeView.DEFAULT));
+                if (unconditionallyFold.isKnown()) {
+                    // <PI proven always true>
+                    return;
+                }
+
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
                     Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getSafeStamp(x), getOtherSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
@@ -794,6 +828,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 }
             }
             if (guard instanceof DeoptimizingGuard) {
+                // For <PI proven always true> no need since both optimizable classes of logic nodes
+                // are handled under the unary and binary cases above
                 assert ((DeoptimizingGuard) guard).getCondition() == condition;
                 pendingTests.push((DeoptimizingGuard) guard);
             }
@@ -911,9 +947,13 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     boolean mustDeopt = result == otherGuard.isNegated();
                     if (rewireGuardFunction.rewire(guard, mustDeopt == thisGuard.isNegated(), innerGuardedValueStamp, newInput)) {
                         if (!mustDeopt) {
+                            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Fold guard:thisGuard=%s otherGuard=%s, replacing condition from %s to %s", thisGuard, otherGuard,
+                                            otherGuard.getCondition(),
+                                            condition);
                             otherGuard.setCondition(condition, thisGuard.isNegated());
                             otherGuard.setAction(action);
                             otherGuard.setReason(thisGuard.getReason());
+                            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After guard folding at %s", otherGuard);
                         }
                         return true;
                     }
