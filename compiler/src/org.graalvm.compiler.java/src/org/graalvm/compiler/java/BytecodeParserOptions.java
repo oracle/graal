@@ -66,8 +66,5 @@ public class BytecodeParserOptions {
 
     @Option(help = "Dump the current graph after every bci to IGV.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpAfterEveryBCI = new OptionKey<>(false);
-
-    @Option(help = "Collect node source positions for all BytecodeExceptionNode instances.")
-    public static final OptionKey<Boolean> CollectBytecodeExceptionNodeSourcePosition = new OptionKey<>(false);
     // @formatter:on
 }
