@@ -261,6 +261,9 @@ public class InsightInstrument extends TruffleInstrument {
         private EventBinding<?> binding;
 
         private Key(AgentType type, int index) {
+            if (index < 0) {
+                throw new IllegalArgumentException();
+            }
             this.type = type;
             this.index = index;
         }
@@ -307,7 +310,7 @@ public class InsightInstrument extends TruffleInstrument {
 
         boolean isClosed() {
             synchronized (keys) {
-                return binding == null;
+                return index == -1;
             }
         }
     }
