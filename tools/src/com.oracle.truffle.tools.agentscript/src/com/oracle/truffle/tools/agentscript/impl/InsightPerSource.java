@@ -153,10 +153,13 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     public void close() {
         InsightInstrument.Key[] keys;
         synchronized (this) {
-            onInit.dispose();
+            if (bindings == null) {
+                return;
+            }
             keys = bindings.values().toArray(new InsightInstrument.Key[0]);
             bindings = null;
         }
+        onInit.dispose();
         instrument.closeKeys(keys);
     }
 
