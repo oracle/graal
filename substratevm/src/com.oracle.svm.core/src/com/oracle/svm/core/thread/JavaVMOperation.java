@@ -45,7 +45,8 @@ import com.oracle.svm.core.jdk.SplittableRandomAccessors;
  * executed multiple times. However, extra care must be taken as each VM operation object can only
  * be in the VM operation queue once. Therefore, it must be guaranteed that the VM operation is
  * executed before it is enqueued again. Otherwise, this could result in various race conditions,
- * especially if {@linkplain SubstrateOptions#UseDedicatedVMOperationThread} is enabled.
+ * especially if {@linkplain SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread} is
+ * enabled.
  */
 public abstract class JavaVMOperation extends VMOperation implements VMOperationControl.JavaAllocationFreeQueue.Element<JavaVMOperation> {
     protected IsolateThread queuingThread;

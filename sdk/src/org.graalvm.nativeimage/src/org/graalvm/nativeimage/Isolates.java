@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,8 +133,9 @@ public final class Isolates {
             }
 
             /**
-             * Sets the size in bytes of an address space to reserve for loading an auxiliary image
-             * in addition to the main image, or 0 if no space should be reserved.
+             * Enables or disables the dedicated reference handler. Please note that this option
+             * only has an effect if the support for VM-internal threads is part of the Native
+             * Image.
              *
              * @since 22.1
              */

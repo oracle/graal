@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -92,6 +93,11 @@ public final class ReferenceHandlerThread implements Runnable {
 
 @AutomaticFeature
 class ReferenceHandlerThreadFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.AllowVMInternalThreads.getValue();
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(ReferenceHandlerThread.class, new ReferenceHandlerThread());

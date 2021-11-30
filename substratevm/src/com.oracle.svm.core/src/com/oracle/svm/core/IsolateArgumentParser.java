@@ -190,8 +190,8 @@ public class IsolateArgumentParser {
         }
     }
 
-    public static long getOptionValueAsLong(int index) {
-        return PARSED_OPTION_VALUES[index];
+    public static boolean getBooleanOptionValue(int index) {
+        return PARSED_OPTION_VALUES[index] == 1;
     }
 
     private static Object getOptionValue(int index) {

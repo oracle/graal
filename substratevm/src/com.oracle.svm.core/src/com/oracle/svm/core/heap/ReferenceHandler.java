@@ -38,8 +38,12 @@ import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
+        if (!SubstrateOptions.MultiThreaded.getValue() || !SubstrateOptions.AllowVMInternalThreads.getValue()) {
+            return false;
+        }
+
         int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
-        return IsolateArgumentParser.getOptionValueAsLong(optionIndex) != 0 && SubstrateOptions.MultiThreaded.getValue();
+        return IsolateArgumentParser.getBooleanOptionValue(optionIndex);
     }
 
     public static void processPendingReferences() {

@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 
 import java.util.Collections;
 import java.util.List;
@@ -69,13 +68,15 @@ import com.oracle.svm.core.util.VMError;
  * {@linkplain SubstrateOptions#MultiThreaded}), the single application thread can always directly
  * execute VM operations. Neither locking nor initiating a safepoint is necessary.</li>
  * <li>Temporary VM operation threads: if multi-threading is enabled, but no dedicated VM operation
- * thread is used (see {@linkplain SubstrateOptions#UseDedicatedVMOperationThread}), VM operations
- * are executed by the application thread that queued the VM operation. For the time of the
- * execution, the application thread holds a lock to guarantee that it is the single temporary VM
- * operation thread.</li>
- * <li>Dedicated VM operation thread: if {@linkplain SubstrateOptions#UseDedicatedVMOperationThread}
- * is enabled, a dedicated VM operation thread is spawned during isolate startup and used for the
- * execution of all VM operations.</li>
+ * thread is used (see
+ * {@linkplain SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread}), VM operations are
+ * executed by the application thread that queued the VM operation. For the time of the execution,
+ * the application thread holds a lock to guarantee that it is the single temporary VM operation
+ * thread.</li>
+ * <li>Dedicated VM operation thread: if
+ * {@linkplain SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread} is enabled, a
+ * dedicated VM operation thread is spawned during isolate startup and used for the execution of all
+ * VM operations.</li>
  * </ul>
  *
  * It is possible that the execution of a VM operation triggers another VM operation explicitly or
@@ -115,6 +116,11 @@ public final class VMOperationControl {
         return ImageSingletons.lookup(VMOperationControl.class);
     }
 
+    @Fold
+    public static boolean useDedicatedVMOperationThread() {
+        return MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue() && SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread.getValue();
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static VMOperationThread getDedicatedVMOperationThread() {
         VMOperationControl control = get();
@@ -123,7 +129,7 @@ public final class VMOperationControl {
     }
 
     public static void startVMOperationThread() {
-        assert UseDedicatedVMOperationThread.getValue();
+        assert useDedicatedVMOperationThread();
 
         VMOperationControl control = get();
         assert control.mainQueues.isEmpty();
@@ -133,7 +139,7 @@ public final class VMOperationControl {
     }
 
     public static void shutdownAndDetachVMOperationThread() {
-        assert UseDedicatedVMOperationThread.getValue();
+        assert useDedicatedVMOperationThread();
         VMOperationControl control = get();
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
             control.dedicatedVMOperationThread.shutdown();
@@ -176,7 +182,7 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread(IsolateThread thread) {
-        if (UseDedicatedVMOperationThread.getValue()) {
+        if (useDedicatedVMOperationThread()) {
             return thread == get().dedicatedVMOperationThread.getIsolateThread();
         }
         return false;
@@ -186,7 +192,7 @@ public final class VMOperationControl {
     public static boolean mayExecuteVmOperations() {
         if (!MultiThreaded.getValue()) {
             return true;
-        } else if (UseDedicatedVMOperationThread.getValue()) {
+        } else if (useDedicatedVMOperationThread()) {
             return isDedicatedVMOperationThread();
         } else {
             return get().mainQueues.mutex.isOwner();
@@ -264,7 +270,7 @@ public final class VMOperationControl {
             log().string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
-                assert !UseDedicatedVMOperationThread.getValue();
+                assert !useDedicatedVMOperationThread();
                 markAsQueued(operation, data);
                 try {
                     operation.execute(data);
@@ -275,7 +281,7 @@ public final class VMOperationControl {
                 // a recursive VM operation (either triggered implicitly or explicitly) -> execute
                 // it right away
                 immediateQueues.enqueueAndExecute(operation, data);
-            } else if (UseDedicatedVMOperationThread.getValue()) {
+            } else if (useDedicatedVMOperationThread()) {
                 // a thread queues an operation that the VM operation thread will execute
                 assert !isDedicatedVMOperationThread() : "the dedicated VM operation thread must execute and not queue VM operations";
                 assert dedicatedVMOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
@@ -295,7 +301,7 @@ public final class VMOperationControl {
 
     @Uninterruptible(reason = "Called from a non-Java thread.")
     public void enqueueFromNonJavaThread(NativeVMOperation operation, NativeVMOperationData data) {
-        assert UseDedicatedVMOperationThread.getValue() && MultiThreaded.getValue();
+        assert useDedicatedVMOperationThread();
         assert CurrentIsolate.getCurrentThread().isNull() || StatusSupport.isStatusNativeOrSafepoint() : StatusSupport.getStatusString(CurrentIsolate.getCurrentThread());
         assert dedicatedVMOperationThread.isRunning() : "must not queue VM operations before the VM operation thread is started or after it is shut down";
 
@@ -360,8 +366,9 @@ public final class VMOperationControl {
 
     /**
      * A dedicated thread that executes {@link VMOperation}s. If the option
-     * {@link SubstrateOptions#UseDedicatedVMOperationThread} is enabled, then this thread is the
-     * only one that may initiate a safepoint. Therefore, it never gets blocked at a safepoint.
+     * {@link SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread} is enabled, then this
+     * thread is the only one that may initiate a safepoint. Therefore, it never gets blocked at a
+     * safepoint.
      */
     public static class VMOperationThread implements Runnable {
         private final Thread thread;
@@ -481,7 +488,7 @@ public final class VMOperationControl {
         }
 
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
-            assert UseDedicatedVMOperationThread.getValue();
+            assert useDedicatedVMOperationThread();
             lock();
             try {
                 enqueue(operation, data);
@@ -692,7 +699,7 @@ public final class VMOperationControl {
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
         private VMCondition createCondition() {
-            if (mutex != null && UseDedicatedVMOperationThread.getValue()) {
+            if (mutex != null && useDedicatedVMOperationThread()) {
                 return new VMCondition(mutex);
             }
             return null;

@@ -35,6 +35,8 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.thread.VMOperationControl;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -408,9 +410,6 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
-    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
-
     /*
      * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
      * segfaults when the -dead_strip option is used.
@@ -471,6 +470,9 @@ public class SubstrateOptions {
     public static int codeAlignment() {
         return CodeAlignment.getValue();
     }
+
+    @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> AllowVMInternalThreads = new HostedOptionKey<>(true);
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
@@ -557,6 +559,11 @@ public class SubstrateOptions {
         @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
 
+        /** Use {@link VMOperationControl#useDedicatedVMOperationThread()} instead. */
+        @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
+
+        /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
         @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
         public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(false);
     }

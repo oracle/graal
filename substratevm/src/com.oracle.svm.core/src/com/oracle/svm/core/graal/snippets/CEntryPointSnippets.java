@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
@@ -279,7 +278,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * The VM operation thread must be started early as no VM operations can be scheduled before
          * this thread is fully started.
          */
-        if (UseDedicatedVMOperationThread.getValue()) {
+        if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.startVMOperationThread();
         }
 
