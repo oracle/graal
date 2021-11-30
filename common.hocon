@@ -103,10 +103,6 @@ windows-amd64 : ${windows} {
   capabilities : [windows, amd64]
 }
 
-solaris-sparcv9 : ${solaris} {
-  capabilities : [solaris, sparcv9]
-}
-
 linux-sparcv9 : ${linux} {
   capabilities : [linux, sparcv9]
 }
