@@ -24,7 +24,7 @@ vm_bench_js_linux: ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${cus
 
 vm_polybench_linux_commands: {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
-  interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
+  interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~r[(compiler/.*)|(warmup/.*)]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
   compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
   warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:r[warmup/.*]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
 }
