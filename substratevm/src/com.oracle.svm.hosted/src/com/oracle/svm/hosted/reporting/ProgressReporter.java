@@ -134,12 +134,7 @@ public class ProgressReporter {
         if (isEnabled) {
             Timer.disablePrinting();
         }
-        if (SubstrateOptions.BuildOutputPrefix.hasBeenSet(options)) {
-            usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        } else {
-            // Drop mx detection after enabling prefix in gates (GR-35238).
-            usePrefix = IS_CI && System.getenv("MX_HOME") != null;
-        }
+        usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         boolean enableColors = !IS_CI;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
