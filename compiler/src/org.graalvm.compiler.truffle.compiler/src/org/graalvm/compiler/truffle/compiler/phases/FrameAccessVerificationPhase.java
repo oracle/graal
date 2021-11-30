@@ -104,12 +104,13 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("location", location);
                 properties.put("method", compilable.getName());
+                properties.put("index", index);
                 PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
                                 Collections.emptyList(),
                                 "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
                                                 "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
                                 properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %i at %s", index, location);
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
                 reported.add(location);
             } catch (Throwable t) {
                 debug.handle(t);
