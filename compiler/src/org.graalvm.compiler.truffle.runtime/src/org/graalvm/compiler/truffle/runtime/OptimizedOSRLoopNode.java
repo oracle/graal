@@ -266,7 +266,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         if (speculationLog == null) {
             speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
         }
-        OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(createRootNodeImpl(root, frame.getClass()));
+        OptimizedCallTarget osrTarget = (OptimizedCallTarget) createRootNodeImpl(root, frame.getClass()).getCallTarget();
         if (!osrTarget.acceptForCompilation()) {
             /*
              * Don't retry if the target will not be accepted anyway.

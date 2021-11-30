@@ -58,9 +58,17 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public RootCallTarget newCallTarget(RootNode rootNode) {
+    public RootCallTarget newCallTarget(CallTarget source, RootNode rootNode) {
+        assert GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
+
         CompilerAsserts.neverPartOfCompilation();
-        final OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().newCallTarget(rootNode, null);
+        OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+        if (target.engine.compileAOTOnCreate) {
+            if (target.prepareForAOT()) {
+                target.compile(true);
+            }
+        }
         TruffleSplittingStrategy.newTargetCreated(target);
         return target;
     }
