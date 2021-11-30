@@ -62,6 +62,7 @@ public final class IsolatedGraalUtils {
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
         }
+        builder.useReferenceHandlerThread(false);
         CreateIsolateParameters params = builder.build();
         return (CompilerIsolateThread) Isolates.createIsolate(params);
     }

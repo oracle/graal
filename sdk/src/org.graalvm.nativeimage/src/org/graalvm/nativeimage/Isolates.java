@@ -90,6 +90,7 @@ public final class Isolates {
             private UnsignedWord reservedAddressSpaceSize;
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
+            private boolean useReferenceHandlerThread;
 
             /**
              * Creates a new builder with default values.
@@ -132,13 +133,24 @@ public final class Isolates {
             }
 
             /**
+             * Sets the size in bytes of an address space to reserve for loading an auxiliary image
+             * in addition to the main image, or 0 if no space should be reserved.
+             *
+             * @since 22.1
+             */
+            public Builder useReferenceHandlerThread(boolean value) {
+                this.useReferenceHandlerThread = value;
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, useReferenceHandlerThread);
             }
         }
 
@@ -156,11 +168,13 @@ public final class Isolates {
         private final UnsignedWord reservedAddressSpaceSize;
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
+        private final boolean useReferenceHandlerThread;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, boolean useReferenceHandlerThread) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
+            this.useReferenceHandlerThread = useReferenceHandlerThread;
         }
 
         /**
@@ -190,6 +204,16 @@ public final class Isolates {
          */
         public UnsignedWord getAuxiliaryImageReservedSpaceSize() {
             return auxiliaryImageReservedSpaceSize;
+        }
+
+        /**
+         * Returns the size in bytes of an address space to reserve for loading an auxiliary image
+         * in addition to the main image, or 0 if no space should be reserved.
+         *
+         * @since 22.1
+         */
+        public boolean getUseReferenceHandlerThread() {
+            return useReferenceHandlerThread;
         }
     }
 
