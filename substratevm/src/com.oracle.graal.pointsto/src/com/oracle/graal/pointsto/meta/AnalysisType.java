@@ -793,7 +793,20 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        AnalysisType analysisOther = other instanceof AnalysisType ? ((AnalysisType) other) : universe.lookup(other);
+        AnalysisType analysisOther;
+        if (other instanceof AnalysisType) {
+            analysisOther = ((AnalysisType) other);
+        } else if (other instanceof WrappedJavaType) {
+            // might be a HostedType, which is not accessible here, but implements WrappedJavaType
+            WrappedJavaType wrapped = (WrappedJavaType) other;
+            if (wrapped.getWrapped() instanceof AnalysisType) {
+                analysisOther = ((AnalysisType) wrapped.getWrapped());
+            } else {
+                analysisOther = universe.lookup(other);
+            }
+        } else {
+            analysisOther = universe.lookup(other);
+        }
         ResolvedJavaType subst = universe.substitutions.resolve(analysisOther.wrapped);
         return wrapped.isAssignableFrom(subst);
     }

@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class MethodSummary {
     public static final MethodSummary EMPTY = new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], new AnalysisType[0], new AnalysisType[0], new AnalysisField[0], new AnalysisField[0],
@@ -74,6 +75,10 @@ public class MethodSummary {
         this.embeddedConstants = new JavaConstant[0];
         this.foreignCallDescriptors = new ForeignCallDescriptor[0];
         this.foreignCallSignatures = new ForeignCallSignature[0];
+    }
+
+    public static MethodSummary accessed(List<AnalysisType> accessedTypes) {
+        return new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], accessedTypes.toArray(new AnalysisType[0]), new AnalysisType[0], new AnalysisField[0], new AnalysisField[0]);
     }
 
     @Override

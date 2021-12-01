@@ -58,7 +58,9 @@ import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvider {
 
@@ -75,7 +77,14 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.getEncodedGraph() == null) {
             System.err.println("Encoded empty for " + method);
-            return MethodSummary.EMPTY;
+            List<AnalysisType> accessedTypes = new ArrayList<>();
+            try {
+                accessedTypes = Arrays.stream(method.getParameters()).map(param -> analysisType(((ResolvedJavaType) param.getType()))).collect(Collectors.toList());
+            } catch (UnsupportedOperationException ex) {
+                ex.printStackTrace();
+            }
+            accessedTypes.add(analysisType((ResolvedJavaType) method.getSignature().getReturnType(null)));
+            return MethodSummary.accessed(accessedTypes);
         }
 
         StructuredGraph decoded = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);

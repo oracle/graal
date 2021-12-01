@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -172,6 +173,8 @@ import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
+import com.oracle.svm.hosted.reporting.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -380,7 +383,6 @@ public class CompileQueue {
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
-
         callForReplacements(debug, runtimeConfig);
     }
 
@@ -459,7 +461,9 @@ public class CompileQueue {
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
-// phaseSuite.appendPhase(new StrengthenStampsPhase());
+        if (!NativeImageOptions.UseExperimentalReachabilityAnalysis.getValue()) {
+            phaseSuite.appendPhase(new StrengthenStampsPhase());
+        }
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {
@@ -797,7 +801,13 @@ public class CompileQueue {
         AnalysisMethod aMethod = hMethod.getWrapped();
         StructuredGraph aGraph = aMethod.getAnalyzedGraph();
         if (aGraph == null) {
-            throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
+            // todo (d-kozak) how to handle this properly? (spring boot case, where method.getCode()
+            // is null)
+            HostedProviders providers = universe.getBigBang().getProviders();
+            String msg = "Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason;
+            System.err.println(msg);
+            aGraph = DeletedMethod.buildGraph(debug, hMethod, providers, msg);
+// throw VMError.shouldNotReachHere(msg);
         }
 
         /*
@@ -1034,6 +1044,12 @@ public class CompileQueue {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
+        }
+
+        if (method.getQualifiedName().startsWith("org.springframework.transaction.reactive.TransactionalOperator.create(")) {
+            // todo(d-kozak) get rid of this
+            System.err.println("!!!!!! Skipping org.springframework.transaction.reactive.TransactionalOperator.create(");
+            return;
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
