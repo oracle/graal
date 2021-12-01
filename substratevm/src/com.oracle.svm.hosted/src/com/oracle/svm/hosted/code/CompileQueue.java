@@ -52,6 +52,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -95,6 +96,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -116,7 +121,9 @@ import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -150,7 +157,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
@@ -170,10 +179,8 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -777,6 +784,8 @@ public class CompileQueue {
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
         StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), options, debug, trackNodeSourcePosition);
 
+        transplantEscapeAnalysisState(graph);
+
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
         for (Node node : graph.getNodes()) {
             NodeClass<?> nodeClass = node.getNodeClass();
@@ -816,12 +825,12 @@ public class CompileQueue {
         if (obj instanceof Node) {
             throw VMError.shouldNotReachHere("Must not replace a Graal graph nodes, only data objects referenced from a node");
 
-        } else if (obj instanceof JavaType) {
-            newReplacement = hUniverse.lookup((JavaType) obj);
-        } else if (obj instanceof JavaMethod) {
-            newReplacement = hUniverse.lookup((JavaMethod) obj);
-        } else if (obj instanceof JavaField) {
-            newReplacement = hUniverse.lookup((JavaField) obj);
+        } else if (obj instanceof AnalysisType) {
+            newReplacement = hUniverse.lookup((AnalysisType) obj);
+        } else if (obj instanceof AnalysisMethod) {
+            newReplacement = hUniverse.lookup((AnalysisMethod) obj);
+        } else if (obj instanceof AnalysisField) {
+            newReplacement = hUniverse.lookup((AnalysisField) obj);
 
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
@@ -903,6 +912,78 @@ public class CompileQueue {
 
         replacements.put(obj, newReplacement);
         return newReplacement;
+    }
+
+    /**
+     * The nodes produced by escape analysis need some manual patching: escape analysis requires
+     * that {@link ResolvedJavaType#getInstanceFields} is stable and uses the index of a field in
+     * that array also to index its own data structures. But {@link AnalysisType} and
+     * {@link HostedType} cannot return fields in the same order: Fields that are not seen as
+     * reachable by the static analysis are removed from the hosted type; and the layout of objects,
+     * i.e., the field order, is only decided after static analysis. Therefore, we need to fix up
+     * all the nodes that implicitly use the field index.
+     */
+    private void transplantEscapeAnalysisState(StructuredGraph graph) {
+        for (CommitAllocationNode node : graph.getNodes().filter(CommitAllocationNode.class)) {
+            List<ValueNode> values = node.getValues();
+            List<ValueNode> aValues = new ArrayList<>(values);
+            values.clear();
+
+            int aObjectStartIndex = 0;
+            for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
+                transplantVirtualObjectState(virtualObject, aValues, values, aObjectStartIndex);
+                aObjectStartIndex += virtualObject.entryCount();
+            }
+            assert aValues.size() == aObjectStartIndex;
+        }
+
+        for (VirtualObjectState node : graph.getNodes().filter(VirtualObjectState.class)) {
+            List<ValueNode> values = node.values();
+            List<ValueNode> aValues = new ArrayList<>(values);
+            values.clear();
+
+            transplantVirtualObjectState(node.object(), aValues, values, 0);
+        }
+
+        for (VirtualInstanceNode node : graph.getNodes(VirtualInstanceNode.TYPE)) {
+            AnalysisType aType = (AnalysisType) node.type();
+            ResolvedJavaField[] aFields = node.getFields();
+            assert Arrays.equals(aFields, aType.getInstanceFields(true));
+            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            /*
+             * We cannot directly write the final field `VirtualInstanceNode.fields`. So we rely on
+             * the NodeClass mechanism, which is also used to transplant all other fields.
+             */
+            Fields nodeClassDataFields = node.getNodeClass().getData();
+            for (int i = 0; i < nodeClassDataFields.getCount(); i++) {
+                if (nodeClassDataFields.get(node, i) == aFields) {
+                    nodeClassDataFields.putObjectChecked(node, i, hFields);
+                }
+            }
+        }
+    }
+
+    private void transplantVirtualObjectState(VirtualObjectNode virtualObject, List<ValueNode> aValues, List<ValueNode> hValues, int aObjectStartIndex) {
+        AnalysisType aType = (AnalysisType) virtualObject.type();
+        if (aType.isArray()) {
+            /* For arrays, there is no change between analysis and hosted elements. */
+            for (int i = 0; i < virtualObject.entryCount(); i++) {
+                hValues.add(aValues.get(aObjectStartIndex + i));
+            }
+        } else {
+            /*
+             * For instance fields, we need to add fields in the order of the hosted fields.
+             * `AnalysisField.getPosition` gives us the index of the field in the analysis-level
+             * list of field values.
+             */
+            assert virtualObject.entryCount() == aType.getInstanceFields(true).length;
+            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            for (HostedField hField : hFields) {
+                int aPosition = hField.wrapped.getPosition();
+                assert hField.wrapped.equals(aType.getInstanceFields(true)[aPosition]);
+                hValues.add(aValues.get(aObjectStartIndex + aPosition));
+            }
+        }
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();

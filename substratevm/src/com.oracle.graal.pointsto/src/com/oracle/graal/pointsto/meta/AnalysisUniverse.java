@@ -111,6 +111,7 @@ public class AnalysisUniverse implements Universe {
     private final SnippetReflectionProvider snippetReflection;
 
     private AnalysisType objectClass;
+    private AnalysisType cloneableClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private BigBang bb;
@@ -260,7 +261,7 @@ public class AnalysisUniverse implements Universe {
 
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
-            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
+            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
                 /*
@@ -277,9 +278,10 @@ public class AnalysisUniverse implements Universe {
                 assert typesById[newValue.getId()] == null;
                 typesById[newValue.getId()] = newValue;
 
-                if (newValue.isJavaLangObject()) {
-                    assert objectClass == null;
+                if (objectClass == null && newValue.isJavaLangObject()) {
                     objectClass = newValue;
+                } else if (cloneableClass == null && newValue.toJavaName(true).equals(Cloneable.class.getName())) {
+                    cloneableClass = newValue;
                 }
             }
 

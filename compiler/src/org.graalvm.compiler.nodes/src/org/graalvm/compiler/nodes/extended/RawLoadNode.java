@@ -86,12 +86,10 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         // precise stamp but array accesses will not, so manually compute a better stamp from
         // the underlying object.
         if (accessKind.isObject() && type != null && type.getType().isArray() && type.getType().getComponentType().getJavaKind().isObject()) {
-            TypeReference oldType = StampTool.typeReferenceOrNull(oldStamp);
             TypeReference componentType = TypeReference.create(object.graph().getAssumptions(), type.getType().getComponentType());
+            Stamp newStamp = StampFactory.object(componentType);
             // Don't allow the type to get worse
-            if (oldType == null || oldType.getType().isAssignableFrom(componentType.getType())) {
-                return StampFactory.object(componentType);
-            }
+            return oldStamp == null ? newStamp : oldStamp.improveWith(newStamp);
         }
         if (oldStamp != null) {
             return oldStamp;
