@@ -1152,6 +1152,9 @@ suite = {
                         "sun.util.resources",
                         "sun.invoke.util",
                     ],
+                    "java.management": [
+                        "sun.management",
+                    ],
                     "java.xml.crypto": [
                         "org.jcp.xml.dsig.internal.dom",
                     ],
