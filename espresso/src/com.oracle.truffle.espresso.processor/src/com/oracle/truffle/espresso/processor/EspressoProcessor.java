@@ -654,7 +654,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         // Prepare imports
         List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
-        if (helper.hasMetaInjection || helper.hasContextInjection) {
+        if (helper.hasMetaInjection) {
+            expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
+            expectedImports.add(IMPORT_META);
+        } else if (helper.hasContextInjection) {
             expectedImports.add(IMPORT_ESPRESSO_CONTEXT);
         }
         expectedImports.add(IMPORT_COLLECT);

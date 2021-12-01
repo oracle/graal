@@ -240,7 +240,7 @@ public abstract class NativeEnv implements ContextAccess {
             NativeEnvComputer getJvmti = context -> context.getVM().getJvmti();
         }
 
-        @SuppressWarnings("FieldMayBeFinal")
+        @SuppressWarnings("FieldMayBeFinal") //
         @Child private CallableFromNative node;
         private final NativeEnvComputer getNativeEnvFromContext;
 
@@ -285,10 +285,10 @@ public abstract class NativeEnv implements ContextAccess {
                 try {
                     CallTarget actualTarget = target;
                     if (actualTarget == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         synchronized (this) {
                             actualTarget = target;
                             if (actualTarget == null) {
-                                CompilerDirectives.transferToInterpreterAndInvalidate();
                                 CallableFromNative subst = factory.create();
                                 NativeRootNode rootNode = new NativeRootNode(EspressoLanguage.get(null), subst);
                                 target = actualTarget = rootNode.getCallTarget();
