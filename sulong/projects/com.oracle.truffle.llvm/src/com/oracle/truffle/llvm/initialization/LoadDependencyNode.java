@@ -141,7 +141,6 @@ public final class LoadDependencyNode extends LLVMNode {
         if (getContext().getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return RootNode.createConstantNode(0).getCallTarget();
         } else {
-            // check if the functions should be resolved eagerly or lazily.
             LoadNativeNode loadNative = LoadNativeNode.create(getLanguage(), file);
             return loadNative.getCallTarget();
         }
