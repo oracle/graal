@@ -49,6 +49,14 @@
         return arg + 1; \
     } \
     \
+    EXPORT type decrement_##name(type arg) { \
+        return arg - 1; \
+    } \
+    \
+    EXPORT type call_closure_##name(type (*fn)(type), type arg) { \
+        return fn(arg); \
+    } \
+    \
     EXPORT type callback_##name(type (*fn)(type), type arg) { \
         return fn(arg + 1) * 2; \
     } \
